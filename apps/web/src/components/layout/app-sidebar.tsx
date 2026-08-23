@@ -4,6 +4,7 @@ import {
 	SidebarGroup,
 	SidebarHeader,
 	SidebarRail,
+	SidebarTrigger,
 } from "@automationstack/ui/components/sidebar";
 import { useSidebar } from "@automationstack/ui/components/sidebar-context";
 import {
@@ -16,7 +17,6 @@ import {
 	BotIcon,
 	FlaskConicalIcon,
 	FolderKanbanIcon,
-	PanelLeftCloseIcon,
 	PanelLeftOpenIcon,
 	UsersIcon,
 } from "lucide-react";
@@ -31,24 +31,49 @@ const MEMBERS_PATH = "/members";
 const AI_PROVIDER_PATH = "/ai-provider";
 
 /**
- * 品牌行本身就是收起开关。
+ * 展开态的品牌行：左边是标识，右边是那颗常驻的收起按钮。
  *
- * 收起后侧边栏不再滑走，而是留下一条 3rem 的图标轨，品牌行始终可见，
- * 于是它就是最近的那个开关——宽屏顶栏因此不必再放一颗重复的。
- * 静止时显示 logo，悬停才原地换成方向图标：不打扰阅读，指上去才暴露可点。
- * 它不再链去 /projects——「项目管理」这一项就在下面，出口没有丢。
+ * 标识这块不再是开关。整行可点、且只在悬停时才把 logo 换成方向图标，等于把
+ * 「这里可以收起」藏进了必须先碰一下才看得见的状态里；拆出一颗独立的
+ * SidebarTrigger 之后，入口静止时就摆在那儿，不必先猜。
+ *
+ * size 显式写 icon 而不是省略：Button 的 icon 档现在本身就是 32px（见
+ * packages/ui/src/components/button.tsx 顶部的台阶说明），与下面每一行导航
+ * （sidebar-menu.tsx 的 h-8）等高，不必再拿更小的档去覆盖。留着这个 prop 只为
+ * 让这颗按钮的档位在调用点上一眼可读——它旁边的 className 写着 size-8，
+ * 两者说的是同一件事，谁也别单独改。
  */
-function SidebarBrandButton() {
-	const { isCompact, state, toggleSidebar } = useSidebar();
-	// 窄屏抽屉里 state 仍是宽屏那份收起状态，只看它会在抽屉里画出反向的图标
-	const collapsed = state === "collapsed" && !isCompact;
-	const ToggleIcon = collapsed ? PanelLeftOpenIcon : PanelLeftCloseIcon;
+function SidebarBrandRow() {
+	return (
+		// 收起态交给下面那颗品牌格：图标轨只有 32px 宽，塞不下第二个可点目标
+		<div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
+			{/* min-w-0 不能省：flex 子项的 min-width 默认是 auto，truncate 在里面不生效 */}
+			<div className="flex min-w-0 flex-1 items-center gap-2 px-2">
+				<FlaskConicalIcon aria-hidden="true" className="size-4 shrink-0" />
+				<span className="truncate font-medium text-sm">{BRAND_NAME}</span>
+			</div>
+			<SidebarTrigger className="size-8 shrink-0" size="icon" />
+		</div>
+	);
+}
+
+/**
+ * 收起态（图标轨）的品牌格：格子本身就是展开开关。
+ *
+ * 轨里只有 32px，放不下「标识 + 按钮」两个目标，所以这一态仍旧沿用整格可点的做法。
+ * 静止是 logo、悬停才换成方向图标：轨里没有文字可读，图标是唯一的落点，
+ * 两枚常驻只会互相打架。
+ */
+function SidebarBrandToggle() {
+	const { toggleSidebar } = useSidebar();
 	return (
 		<SidebarMenuButton
-			// 收起态文字被原语藏了，可访问名只剩它；文案随状态走，读屏才知道按下去会发生什么
-			aria-label={collapsed ? "展开侧边栏" : "收起侧边栏"}
-			// 图标轨里整行被压成 32px 见方且 padding 归零，不居中的话图标会贴着左边缘
-			className="group/logo group-data-[collapsible=icon]:justify-center"
+			// 轨里文字被原语藏了，可访问名只剩它；这一格只在收起态露面，文案不必随状态变
+			aria-label="展开侧边栏"
+			// hidden 打底、命中收起态才 flex：用显隐而不是条件渲染，收起动画补间到一半时
+			// 节点若被整个换掉会闪一下，而宽度补间（transition-sidebar-offset / -gap）
+			// 全程要求这棵子树不 remount
+			className="group/logo hidden group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center"
 			onClick={toggleSidebar}
 			size="lg"
 			// 收起态才弹，展开态与窄屏抽屉由原语自己关掉
@@ -60,23 +85,33 @@ function SidebarBrandButton() {
 					aria-hidden="true"
 					className="transition-opacity ease-emphasized group-hover/logo:opacity-0"
 				/>
-				<ToggleIcon
+				<PanelLeftOpenIcon
 					aria-hidden="true"
 					className="absolute opacity-0 transition-opacity ease-emphasized group-hover/logo:opacity-100"
 				/>
 			</span>
-			{/* 末位的 span 就是原语在图标轨里负责藏起来的那个文字标签 */}
+			{/* 这个 span 在轨里永远看不见，但删不得：原语藏的是「末位的 span」，
+			    它一走，上面那枚图标就顶上末位、跟着被藏掉 */}
 			<span className="truncate font-medium text-sm">{BRAND_NAME}</span>
 		</SidebarMenuButton>
 	);
 }
 
+/**
+ * 品牌区。两种形态同时挂在树上，靠 CSS 显隐二选一。
+ *
+ * 窄屏抽屉走的是 SidebarDrawer 分支，外层没有 data-collapsible，
+ * group-data-[collapsible=icon]:* 一族全不命中，于是抽屉里显示的是展开态那一行——
+ * 里面那颗 SidebarTrigger 在窄屏切的是 openMobile，也就是关掉抽屉，
+ * 正好补上 SheetContent 关掉的那颗关闭按钮。
+ */
 function SidebarBrand() {
 	return (
 		<SidebarHeader>
 			<SidebarMenu>
 				<SidebarMenuItem>
-					<SidebarBrandButton />
+					<SidebarBrandRow />
+					<SidebarBrandToggle />
 				</SidebarMenuItem>
 			</SidebarMenu>
 		</SidebarHeader>
@@ -88,12 +123,23 @@ const selectPathname = (state: { location: { pathname: string } }) =>
 	state.location.pathname;
 
 /*
- * 「项目管理」的选中态必须精确匹配：/projects 是 /projects/<id> 的前缀，
- * 按前缀算的话待在某个项目里时它会一直亮着，而它恰恰是「离开当前项目」的出口，
- * 高亮反而在说「你就在项目列表页」。尾斜杠是同一个地址，一并算上。
+ * 「项目管理」按前缀算，进到 /projects/<id> 里面之后也保持高亮。
+ *
+ * 这里曾经要求精确匹配，理由是「它恰恰是离开当前项目的出口，高亮会让人以为
+ * 自己在项目列表页」。那条论证把两件事混成了一件：待在 /projects/<id>/cases 时,
+ * 「我在项目这一块」为真，「我在项目列表页」为假——前者是视觉高亮该说的,
+ * 后者是 aria-current="page" 该说的。精确匹配同时关掉了两者，代价是一级侧栏
+ * 在整个项目内部全程无高亮，看着像高亮「跳」进了二级面板。
+ *
+ * 两个通道在这个组件里本来就是两个 prop：isActive 走 data-active（纯视觉），
+ * Link 的 activeOptions 走 aria-current（读屏语义）。所以分开给：
+ * 视觉按前缀亮，aria-current="page" 仍旧只在精确匹配时出现。
+ *
+ * 两栏回答的是不同的问题——一级说「在应用的哪一块」，二级说「在项目的哪个模块 /
+ * 哪个视图」——它们是正交的，本就该同时亮着。
  */
-const isProjectsRoot = (pathname: string) =>
-	pathname === PROJECTS_PATH || pathname === `${PROJECTS_PATH}/`;
+const isInProjectsSection = (pathname: string) =>
+	pathname.startsWith(PROJECTS_PATH);
 
 /**
  * 这一层唯一的导航组：全站的一级去处（管理员比成员多出两个管理入口）。
@@ -111,12 +157,13 @@ function GlobalNavGroup() {
 				<SidebarMenuItem>
 					<SidebarMenuButton
 						aria-label="项目管理"
-						isActive={isProjectsRoot(pathname)}
+						isActive={isInProjectsSection(pathname)}
 						/*
-						 * activeOptions.exact 不能省：Link 默认按前缀判定活动态，
-						 * 而 /projects 是 /projects/<id> 的前缀，于是待在某个项目里时
-						 * 它会给自己挂上 aria-current="page"，读屏据此播报「当前页」——
-						 * 可这一项恰恰是「离开当前项目」的出口，视觉上也没有任何高亮。
+						 * activeOptions.exact 不能省，而且它与上面的 isActive 刻意不同步：
+						 * Link 默认按前缀判定活动态，于是待在某个项目里时它会挂上
+						 * aria-current="page"，读屏据此播报「当前页」——可那时人在项目
+						 * 内部，不在项目列表页，这句播报是假的。视觉高亮按前缀（见
+						 * isInProjectsSection 的注释），语义只在精确匹配时给。
 						 */
 						render={<Link activeOptions={{ exact: true }} to="/projects" />}
 						tooltip="项目管理"

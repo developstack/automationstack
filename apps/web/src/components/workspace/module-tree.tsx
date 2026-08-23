@@ -41,6 +41,19 @@ const DRAG_CONTEXT_ID = "module-tree-dnd";
 /** 概览页的路径后缀，用来判定侧栏第 0 行的选中态。 */
 const OVERVIEW_PATH_SUFFIX = "/overview";
 
+/** 项目路由的前缀，用来拼出列表页（项目根路径）自身的地址。 */
+const PROJECTS_PATH_PREFIX = "/projects";
+
+/**
+ * 当前是不是这个项目的用例列表页本身。列表页就是项目根路径，
+ * /overview、/mindmap 等兄弟路由都在它下面多一段，等值判断天然把它们排除掉。
+ * 尾斜杠是同一个地址，一并算上。
+ */
+function isCaseListPath(pathname: string, projectId: string): boolean {
+	const projectRootPath = `${PROJECTS_PATH_PREFIX}/${projectId}`;
+	return pathname === projectRootPath || pathname === `${projectRootPath}/`;
+}
+
 /** 与 routes/projects/$projectId/route.tsx 同样的取法：只订阅 pathname。 */
 const selectPathname = (state: { location: { pathname: string } }) =>
 	state.location.pathname;
@@ -201,9 +214,18 @@ export function ModuleTree({ projectId }: ModuleTreeProps) {
 	 * 选中态必须同时看 pathname：概览页与「全部用例」一样不带 moduleId，
 	 * 只按 `selectedModuleId === undefined` 判断的话，人在 /overview 时两行会
 	 * 一起高亮，看着像同时选中了两个去处。
+	 *
+	 * 「全部用例」用**正向**匹配列表页，而不是逐个排除别的视图。原先写的是
+	 * `!onOverview && selectedModuleId === undefined`，只排掉了概览，于是人在
+	 * /mindmap 时这一行照样亮着——它指向列表页，可用户并不在列表页，这个高亮
+	 * 是假的。改成逐个补 `&& !onMindmap` 的话，$projectId 底下每加一个子路由
+	 * 都要回来补一次，漏掉的那个会重犯同样的错（route.tsx 的 viewFor 已经踩过
+	 * 这个坑，它的注释里专门写了这条告诫）。列表页的地址就是项目根路径本身，
+	 * 拿它做等值判断，新增兄弟路由不会再影响这里。
 	 */
 	const pathname = useRouterState({ select: selectPathname });
 	const onOverview = pathname.endsWith(OVERVIEW_PATH_SUFFIX);
+	const onCaseList = isCaseListPath(pathname, projectId);
 	const handleDeleted = useHandleModuleDeleted(projectId, selectedModuleId);
 	const { actions, close, createRoot, dialog } = useModuleDialogState();
 	const expansion = useModuleExpansion(
@@ -238,7 +260,7 @@ export function ModuleTree({ projectId }: ModuleTreeProps) {
 			<ProjectOverviewLink projectId={projectId} selected={onOverview} />
 			<AllCasesLink
 				projectId={projectId}
-				selected={!onOverview && selectedModuleId === undefined}
+				selected={onCaseList && selectedModuleId === undefined}
 			/>
 			<ModuleTreeList
 				actions={actions}
