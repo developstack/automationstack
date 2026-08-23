@@ -1,8 +1,65 @@
-# 交互动画改进计划
+# 计划总览
+
+本目录目前有两批计划，来源不同、基线不同，**不要混着读**：
+
+| 批次 | 计划 | 来源 | 基线 commit |
+| --- | --- | --- | --- |
+| 第一批：交互动画 | 001–007 | `/improve-animations 增加一些交互的动画` 的审计 | `0c78c13` |
+| 第二批：侧边栏与控件尺度 | 008–010 | 用户对侧栏宽度、选中态高亮、按钮尺寸的三次直接反馈 | `a33a38e` |
+
+计划里引用的行号只对它自己那一批的基线成立。若你的工作区已经偏离，先核对行号，
+对不上就停下来报告，不要凭猜测改。
+
+---
+
+# 第二批：侧边栏与控件尺度（008–010）
+
+## 计划一览
+
+| # | 计划 | 起因 | 触及文件 | 状态 |
+| --- | --- | --- | --- | --- |
+| 008 | [一级侧栏收窄 + 展开态显式收起按钮](008-sidebar-width-and-explicit-collapse.md) | 「一级侧边栏的宽度应该再窄一些……展开的时候 logo 旁边应该有收起的按钮」 | `sidebar-context.tsx`、`layout/app-sidebar.tsx`、`layout/app-shell.tsx` | DONE |
+| 009 | [选中态：淡底 + 左侧指示条](009-selected-state-fill-and-indicator.md) | 「一级侧边栏收起的时候也没有高亮。二级侧边栏用例管理的部分高亮也不明显」 | `styles/theme.css`、`sidebar-menu.tsx`、`workspace/` 下 3 个文件 | DONE |
+| 010 | [控件尺寸整条台阶下调一档](010-control-scale-step-down.md) | 「页面上的按钮应该等比例再统一缩小一下。现在太大了」 | `button/input/select/tabs.tsx`、`layout/` 3 个、`cases/` 3 个、`provider-config-skeleton.tsx` | DONE |
+
+## 依赖关系
+
+```
+008 ──▶ 010
+（008 新增的 SidebarTrigger 用 size="icon-sm"；010 把 icon-sm 降到 28px，
+  该调用点必须同步改成 size="icon"，否则那颗按钮比 32px 的导航行矮 4px）
+
+009        （独立；只改选中态的填充与指示条，不碰任何尺寸）
+```
+
+## 落地后发现的三处计划错误（已在代码里改正，留档以免重犯）
+
+1. **009 把 `rounded-md` 算成 6px。** 实际 `--radius: 0.625rem`(10px) → `--radius-md` = **8px**。
+   选定的 `before:inset-y-1.5` 仍然正确，但理由要换成「条长 20px 优于 16px」，
+   而不是「让开圆弧」。
+2. **009 声称指示条会跟着行的 `transition-control` 淡入。** 不成立：`transition-*`
+   不被伪元素继承，`::before` 拿不到宿主的过渡声明，实际是硬切。**尚未处理**，
+   要淡入得在行上补 `before:transition-control`。
+3. **009 假设模块树行高 24px。** 实际是 28px（`py-0.5` + 24px 的 `icon-xs` 按钮，
+   且 `project-overview-link` 有显式 `min-h-7`）。`inset-y-1` 仍给出与侧栏一致的
+   20px 条长，无需改类名，只改了注释。
+
+另有 **010 漏列一个文件**：`cases/case-list-skeleton.tsx` 是同一段工具栏骨架的第四份
+拷贝，实现时被发现并单独补改（注释 36px→32px、四个 `h-9`→`h-8`）。
+
+## 010 的一条硬约束（不要在后续计划里撤销）
+
+`xs`(h-6) 与 `icon-xs`(size-6) **钉死在 24px**，不随台阶下调。WCAG 2.2 SC 2.5.8
+Target Size (Minimum) 的下限正是 24×24，而本仓库有 13 处控件恰好压在这条线上且
+**全部没有** `after:-inset-*` 扩靶。要动这一档，得先逐处补扩靶——那是独立的一轮工作。
+本目录唯一做对扩靶的样板是 `packages/ui/src/components/checkbox.tsx:11`。
+
+---
+
+# 第一批：交互动画（001–007）
 
 来源：`/improve-animations 增加一些交互的动画` 的审计结果。
-基线 commit：`0c78c13`。所有计划针对该 commit 的代码写就；若你的工作区已经偏离，
-先核对计划里引用的行号，对不上就停下来报告，不要凭猜测改。
+基线 commit：`0c78c13`。
 
 ## 计划一览
 
@@ -62,7 +119,7 @@ node scripts/check-file-rules.js <改过的文件>
 **已知的 3 条 `noConsole` 警告**在 `apps/server/src/index.ts` 的 :53、:66、:128，
 与本批计划无关，不要顺手清理。
 
-## 对执行者的硬性约束
+## 对执行者的硬性约束（两批通用）
 
 1. **只改计划 Steps 段里点名的文件与行。** 每条计划的 Boundaries 段列出了明确
    不许碰的东西，那些不是建议。
@@ -75,7 +132,7 @@ node scripts/check-file-rules.js <改过的文件>
    那里的判定标准是「与 shadcn registry 一致」，任何偏离都必须在文件头部注释里
    写清楚理由——`packages/ui/src/components/chart.tsx:3-13` 是范本。
 
-## 审计中被否决、未成为计划的项
+## 第一批审计中被否决、未成为计划的项
 
 留档以免后来者重新提一遍：
 
