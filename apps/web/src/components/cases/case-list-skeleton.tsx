@@ -6,9 +6,9 @@ import { CaseTableSkeleton } from "@/components/cases/case-table-states";
  * 工具栏骨架。
  *
  * 为什么非摆不可：工具栏是 main 这列 flex 的第一行，省掉它表格骨架就顶到最上面，
- * 数据到达时整张表要连着 36px 的工具栏加 gap-3 一起往下挪 48px。
- * 同一条工具栏里的控件一律 36px（约定见 case-filters.tsx 顶部），所以这排一律 h-9：
- * 真实 36px vs 骨架 36px，底下的表格不会上下跳。
+ * 数据到达时整张表要连着 32px 的工具栏加 gap-3 一起往下挪 44px。
+ * 同一条工具栏里的控件一律 32px（约定见 case-filters.tsx 顶部），所以这排一律 h-8：
+ * 真实 32px vs 骨架 32px，底下的表格不会上下跳。
  * 左右分组照搬 CaseListToolbar 的 justify-between，两端各自贴边；灰条宽度与真实控件
  * 对不齐只会横向差一点，不构成跳动，所以不去逐个控件描它的宽度。
  *
@@ -26,12 +26,12 @@ function CaseListToolbarSkeleton() {
 		>
 			<div className="flex items-center gap-2">
 				{/* w-64 与真实搜索框（Input className="w-64"）同宽 */}
-				<Skeleton className="h-9 w-64" />
-				<Skeleton className="h-9 w-28" />
+				<Skeleton className="h-8 w-64" />
+				<Skeleton className="h-8 w-28" />
 			</div>
 			<div className="flex items-center gap-2">
-				<Skeleton className="h-9 w-24" />
-				<Skeleton className="h-9 w-28" />
+				<Skeleton className="h-8 w-24" />
+				<Skeleton className="h-8 w-28" />
 			</div>
 		</div>
 	);

@@ -2,7 +2,7 @@
  * 加载态骨架。尺寸逐项按真实内容折算，数据到达时不该有任何位移：
  * - 小标题 = text-sm（20px 行高）→ h-5；
  * - 字段标签与说明行 = text-xs（16px 行高）→ h-4；
- * - Input / SelectTrigger 一律 32px 档（见 case-filters.tsx 的控件高度约定）→ h-8；
+ * - Input / SelectTrigger 与 case-filters.tsx 顶部的控件高度约定同档 = 32px → h-8；
  * - provider / model 两格各有「搜索框 + 下拉」两个控件，base URL 与 API Key 各一个。
  */
 import { Skeleton } from "@automationstack/ui/components/skeleton";

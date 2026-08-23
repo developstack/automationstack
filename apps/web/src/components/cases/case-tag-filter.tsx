@@ -103,7 +103,7 @@ export function CaseTagFilter({
 		<Popover>
 			<PopoverTrigger
 				render={
-					// 无 size：与同排的 Input / SelectTrigger 一样是 36px 档，
+					// 无 size：与同排的 Input / SelectTrigger 一样是 32px 档，
 					// 见 case-filters.tsx 的控件高度约定。
 					<Button type="button" variant="outline">
 						<TagIcon data-icon="inline-start" />

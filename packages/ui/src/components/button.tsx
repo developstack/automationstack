@@ -1,3 +1,22 @@
+/* 与 shadcn registry 的一处偏离：整条尺寸台阶统一下调一档。
+   registry 原值 —— default h-9(36) / sm h-8(32) / lg h-10(40) /
+   icon size-9(36) / icon-sm size-8(32) / icon-lg size-10(40)；
+   本仓库新值 —— default h-8(32) / sm h-7(28) / lg h-9(36) /
+   icon size-8(32) / icon-sm size-7(28) / icon-lg size-9(36)。
+
+   理由是信息密度：这是一个以数据表格与树形导航为主的内部工具，一屏里筛选栏、
+   数据行、模块树是并排堆着看的，registry 那套疏密是按消费级落地页调的，
+   落到这里等于每一行都在替按钮让出高度。同档的尺寸源必须一起降，否则会有两档
+   撞到同一像素值：input.tsx 的 h-9/file:h-7、select.tsx 的
+   data-[size=default]:h-9 与 data-[size=sm]:h-8、tabs.tsx 的
+   group-data-horizontal/tabs:h-9。
+
+   xs 的 h-6 与 icon-xs 的 size-6 刻意不跟着降，钉死在 24px：WCAG 2.2 SC 2.5.8
+   Target Size (Minimum) 的下限正是 24×24，而本仓库有 13 处控件恰好压在这条线上，
+   且全部没有 after:-inset-* 扩靶（本目录唯一做对扩靶的样板是 checkbox.tsx:11，
+   size-4 靠 after:-inset-x-3 after:-inset-y-2 撑到 40×32）。这一档再降就是
+   20×20，当场违规；要动它得先逐处补扩靶，那是另一轮工作。 */
+
 import { cn } from "@automationstack/ui/lib/utils";
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -20,15 +39,15 @@ const buttonVariants = cva(
 		variants: {
 			size: {
 				default:
-					"h-9 gap-1.5 in-data-[slot=button-group]:rounded-md px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-				icon: "size-9",
-				"icon-lg": "size-10",
+					"h-8 gap-1.5 in-data-[slot=button-group]:rounded-md px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+				icon: "size-8",
+				"icon-lg": "size-9",
 				"icon-sm":
-					"size-8 in-data-[slot=button-group]:rounded-md rounded-[min(var(--radius-md),10px)]",
+					"size-7 in-data-[slot=button-group]:rounded-md rounded-[min(var(--radius-md),10px)]",
 				"icon-xs":
 					"size-6 in-data-[slot=button-group]:rounded-md rounded-[min(var(--radius-md),8px)] [&_svg:not([class*='size-'])]:size-3",
-				lg: "h-10 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-				sm: "h-8 gap-1 in-data-[slot=button-group]:rounded-md rounded-[min(var(--radius-md),10px)] px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
+				lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+				sm: "h-7 gap-1 in-data-[slot=button-group]:rounded-md rounded-[min(var(--radius-md),10px)] px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
 				xs: "h-6 gap-1 in-data-[slot=button-group]:rounded-md rounded-[min(var(--radius-md),8px)] px-2 text-xs has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
 			},
 			variant: {

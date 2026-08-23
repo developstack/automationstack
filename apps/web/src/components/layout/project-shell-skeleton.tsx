@@ -50,12 +50,12 @@ function ModuleTreeSkeleton() {
  *
  * 两个使用点的就绪态并不同高：顶栏（route.tsx 的 WorkspaceHeader）那处是 text-sm
  * 的 h1，行高 20px，与这条 h-5 严丝合缝；二级面板的 header 槽那处就绪后换成
- * ProjectSwitcher 的 Button（不传 size = h-9 = 36px），比这条高出 16px。
- * 差这 16px 也不跳：两处的行高都由 min-h-12 的 48px 兜着——顶栏是 min-h-12 + py-1
- * + border-b（4 + 36 + 4 + 1 = 45px，仍够不到 48px），面板标题行是 min-h-12 且无 py
- * 无边框，两边都稳定在 48px；20px 与 36px 的内容都进得去，items-center 只让它们
+ * ProjectSwitcher 的 Button（不传 size = h-8 = 32px），比这条高出 12px。
+ * 差这 12px 也不跳：两处的行高都由 min-h-12 的 48px 兜着——顶栏是 min-h-12 + py-1
+ * + border-b（4 + 32 + 4 + 1 = 41px，仍够不到 48px），面板标题行是 min-h-12 且无 py
+ * 无边框，两边都稳定在 48px；20px 与 32px 的内容都进得去，items-center 只让它们
  * 各自上下居中，换人时边框与下方内容一格不动。
- * 所以 h-5 不为面板那处改成 h-9：那只会让顶栏那处的骨架比真实文字高出一档。
+ * 所以 h-5 不为面板那处改成 h-8：那只会让顶栏那处的骨架比真实文字高出一档。
  * 不写「加载中…」之类的占位文字：它会在项目名到达时被整段换掉，宽度跟着跳一次。
  */
 function ProjectNameSkeleton() {
@@ -65,8 +65,8 @@ function ProjectNameSkeleton() {
 /**
  * 用例列表工具栏的骨架。
  *
- * 同一条工具栏里的控件一律 36px（约定见 case-filters.tsx 顶部），所以这排一律 h-9：
- * 真实 36px vs 骨架 36px，底下隔着 gap-3 的表格不会上下挪。
+ * 同一条工具栏里的控件一律 32px（约定见 case-filters.tsx 顶部），所以这排一律 h-8：
+ * 真实 32px vs 骨架 32px，底下隔着 gap-3 的表格不会上下挪。
  * 左右分组也照搬：左边筛选、右边计数与操作，justify-between 把它们推到两端。
  */
 function CaseToolbarSkeleton() {
@@ -77,12 +77,12 @@ function CaseToolbarSkeleton() {
 		>
 			<div className="flex items-center gap-2">
 				{/* w-64 与真实搜索框（Input className="w-64"）同宽 */}
-				<Skeleton className="h-9 w-64" />
-				<Skeleton className="h-9 w-28" />
+				<Skeleton className="h-8 w-64" />
+				<Skeleton className="h-8 w-28" />
 			</div>
 			<div className="flex items-center gap-2">
-				<Skeleton className="h-9 w-24" />
-				<Skeleton className="h-9 w-28" />
+				<Skeleton className="h-8 w-24" />
+				<Skeleton className="h-8 w-28" />
 			</div>
 		</div>
 	);

@@ -168,9 +168,9 @@ interface CaseFiltersProps {
 /**
  * Keyword (debounced), status, priority and tag filters — all written to the URL.
  *
- * 控件高度约定：同一条工具栏里的所有控件走 default 档 = 36px
- * （Input h-9 / SelectTrigger data-[size=default] h-9 / Button size="default" h-9）。
- * 优先级按钮与标签筛选此前用 size="sm"（h-8），比相邻的输入框和下拉矮 4px，
+ * 控件高度约定：同一条工具栏里的所有控件走 default 档 = 32px
+ * （Input h-8 / SelectTrigger data-[size=default] h-8 / Button size="default" h-8）。
+ * 优先级按钮与标签筛选此前用 size="sm"（h-7），比相邻的输入框和下拉矮 4px，
  * items-center 让它们各自居中后，上下边缘就成了两条错开的线。
  * size="sm" 留给嵌在弹层、单元格里的次级按钮，不要出现在这一行。
  */
