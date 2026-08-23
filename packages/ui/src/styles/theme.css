@@ -76,6 +76,13 @@
 	--sidebar-primary-foreground: oklch(0.985 0 0);
 	--sidebar-accent: oklch(0.97 0 0);
 	--sidebar-accent-foreground: oklch(0.205 0 0);
+	/* 选中态的填充，本仓库自有令牌（shadcn 没有这一支）。这个 L 是解出来的，不是挑的：
+	   底色不去追 3:1——亮色下要 3:1 得 L≈0.658，那是一整块中灰，导航里三行有一行成了
+	   深色方块，喧宾夺主。填充只要压得过悬停态、让两态不再同色就够了，「这一行被选中」
+	   的可见性由左侧那条 2px 指示条承担（见 sidebar-menu.tsx）。
+	   实测 0.90 压 --sidebar 1.291:1、压悬停用的 --sidebar-accent 1.236:1；
+	   选中行文字仍继承 --sidebar-foreground，压这层填充 14.68:1，远过正文门槛。 */
+	--sidebar-selected: oklch(0.9 0 0);
 	--sidebar-border: oklch(0.922 0 0);
 	--sidebar-ring: oklch(0.708 0 0);
 	--radius: 0.625rem;
@@ -155,6 +162,10 @@
 	--sidebar-primary-foreground: oklch(0.985 0 0);
 	--sidebar-accent: oklch(0.269 0 0);
 	--sidebar-accent-foreground: oklch(0.985 0 0);
+	/* 与亮色同一套推导（写在 :root 那条上）：压得过悬停即可，可见性交给指示条。
+	   实测 0.34 压 --sidebar 1.524:1、压悬停用的 --sidebar-accent 1.286:1；
+	   --sidebar-foreground 压这层填充 11.26:1。 */
+	--sidebar-selected: oklch(0.34 0 0);
 	--sidebar-border: oklch(1 0 0 / 10%);
 	--sidebar-ring: oklch(0.556 0 0);
 	color-scheme: dark;
@@ -168,6 +179,7 @@
 	--color-sidebar-primary: var(--sidebar-primary);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-selected: var(--sidebar-selected);
 	--color-sidebar-foreground: var(--sidebar-foreground);
 	--color-sidebar: var(--sidebar);
 	--color-chart-5: var(--chart-5);

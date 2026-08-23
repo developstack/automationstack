@@ -172,10 +172,16 @@ function ModuleNodeRow(props: ModuleNodeRowProps) {
 			<ContextMenuTrigger
 				className={cn(
 					// px-2：与 aside 的 p-2 相加正好是 16px 的侧栏 gutter，见 module-tree.tsx 顶部约定。
-					"group/module-row flex items-center gap-1 rounded-md px-2 py-0.5",
-					selected ? "bg-accent text-accent-foreground" : "hover:bg-muted",
+					// relative + before:*：选中态的左侧 2px 指示条，用伪元素而不是多一层子节点——
+					// 这个 div 的碰撞盒是按行算的，加节点会改布局。内缩 4px 使条长 20px，与一级侧栏
+					// 那条等长（行高 28px = py-0.5 + icon-xs 24px）；行没有 overflow-hidden，
+					// 条端比 8px 的圆角弧多探出约 0.5px，被自身的 rounded-full 吃掉，看不出来。
+					"group/module-row relative flex items-center gap-1 rounded-md px-2 py-0.5 before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-foreground",
+					selected
+						? "bg-sidebar-selected before:opacity-100"
+						: "before:opacity-0 hover:bg-sidebar-accent",
 					// 菜单开着时保持底色：否则右键之后指针一移开，就看不出菜单属于哪一行。
-					!selected && "data-popup-open:bg-muted",
+					!selected && "data-popup-open:bg-sidebar-accent",
 					drag.isDragging && "opacity-50"
 				)}
 				onKeyDown={handleContextMenuKey}

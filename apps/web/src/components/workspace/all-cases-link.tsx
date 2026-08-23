@@ -22,7 +22,12 @@ export function AllCasesLink({ projectId, selected }: AllCasesLinkProps) {
 		<div
 			className={cn(
 				"flex items-center gap-1 rounded-md px-2 py-0.5",
-				selected ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+				// 这一行坐在 bg-sidebar 上（secondary-panel.tsx），底色与悬停都得走侧栏那套令牌。
+				// before:* 是选中态的左侧 2px 指示条，绝对定位、不占流内空间，不动 px-2 那笔账。
+				"relative before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-foreground",
+				selected
+					? "bg-sidebar-selected before:opacity-100"
+					: "before:opacity-0 hover:bg-sidebar-accent"
 			)}
 		>
 			<Link

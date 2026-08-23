@@ -36,7 +36,11 @@ export function ProjectOverviewLink({
 		<Link
 			className={cn(
 				"flex min-h-7 min-w-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-sm",
-				selected ? "bg-accent text-accent-foreground" : "hover:bg-muted"
+				// 同模块行：坐在 bg-sidebar 上就走侧栏令牌，选中态另加左侧 2px 指示条（伪元素）。
+				"relative before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-foreground",
+				selected
+					? "bg-sidebar-selected before:opacity-100"
+					: "before:opacity-0 hover:bg-sidebar-accent"
 			)}
 			params={{ projectId }}
 			to="/projects/$projectId/overview"
