@@ -132,6 +132,15 @@ export function CaseCreateSheet(props: CaseCreateSheetProps) {
 		props.onClose();
 	}, [props.onClose]);
 	const guard = useUnsavedCloseGuard(isCaseFormDirty(values, baseline), close);
+	/**
+	 * 标题栏的「取消」= 关抽屉，与 Esc / 点外面 / 右上角 × 同一个后果，
+	 * 所以它也必须走守卫；确认之后走的仍然是上面那个 close（含表单重置）。
+	 * useCallback 稳住引用，避免 CaseCreateBody 每次 render 都拿到新函数。
+	 */
+	const requestClose = useCallback(
+		() => guard.handleOpenChange(false),
+		[guard.handleOpenChange]
+	);
 
 	const handleCreated = useCallback(
 		(caseId: string) => {
@@ -148,7 +157,7 @@ export function CaseCreateSheet(props: CaseCreateSheetProps) {
 					{open && props.moduleId ? (
 						<CaseCreateBody
 							moduleId={props.moduleId}
-							onCancel={close}
+							onCancel={requestClose}
 							onCreated={handleCreated}
 							onValuesChange={setValues}
 							projectId={props.projectId}

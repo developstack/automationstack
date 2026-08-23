@@ -90,17 +90,34 @@ export function useUnsavedCloseGuard(
 	return { cancelClose, confirmClose, confirming, handleOpenChange };
 }
 
+/**
+ * 默认文案说的是「关掉抽屉」这一种后果。别的破坏性动作（比如取消编辑、
+ * 抽屉留在原地）必须自己传准确的措辞进来，否则提示会与实际发生的事不符。
+ */
+const DEFAULT_CONFIRM_LABEL = "放弃并关闭";
+const DEFAULT_DESCRIPTION = "这个抽屉里还有没保存的内容，关掉就找不回来了。";
+const DEFAULT_TITLE = "放弃未保存的修改？";
+
 interface UnsavedChangesDialogProps {
+	/** 确认（破坏性）按钮文案，默认「放弃并关闭」。 */
+	confirmLabel?: string;
+	/** 正文，默认描述「关闭抽屉」的后果。 */
+	description?: string;
 	onCancel: () => void;
 	onConfirm: () => void;
 	open: boolean;
+	/** 标题，默认「放弃未保存的修改？」。 */
+	title?: string;
 }
 
-/** 误关抽屉时的挽回提示。 */
+/** 丢弃未保存内容前的挽回提示。默认文案针对「误关抽屉」。 */
 export function UnsavedChangesDialog({
+	confirmLabel = DEFAULT_CONFIRM_LABEL,
+	description = DEFAULT_DESCRIPTION,
 	onCancel,
 	onConfirm,
 	open,
+	title = DEFAULT_TITLE,
 }: UnsavedChangesDialogProps) {
 	const handleOpenChange = useCallback(
 		(nextOpen: boolean) => {
@@ -115,15 +132,13 @@ export function UnsavedChangesDialog({
 		<AlertDialog onOpenChange={handleOpenChange} open={open}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>放弃未保存的修改？</AlertDialogTitle>
-					<AlertDialogDescription>
-						这个抽屉里还有没保存的内容，关掉就找不回来了。
-					</AlertDialogDescription>
+					<AlertDialogTitle>{title}</AlertDialogTitle>
+					<AlertDialogDescription>{description}</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
 					<AlertDialogCancel>继续编辑</AlertDialogCancel>
 					<AlertDialogAction onClick={onConfirm} variant="destructive">
-						放弃并关闭
+						{confirmLabel}
 					</AlertDialogAction>
 				</AlertDialogFooter>
 			</AlertDialogContent>
