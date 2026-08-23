@@ -10,12 +10,16 @@
     "dev": "turbo run dev",
     "build": "turbo run build",
     "check-types": "turbo run check-types",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "dev:web": "turbo run dev -F web --",
     "dev:server": "turbo run dev -F server --",
     "db:push": "turbo run db:push -F @automationstack/db --",
     "db:studio": "turbo run db:studio -F @automationstack/db --",
     "db:generate": "turbo run db:generate -F @automationstack/db --",
     "db:migrate": "turbo run db:migrate -F @automationstack/db --",
+    "db:seed": "pnpm --filter server exec tsx ../../scripts/seed.ts",
+    "db:seed-admin": "pnpm --filter server exec tsx ../../scripts/seed-admin.ts",
     "db:start": "docker compose up -d postgres",
     "db:watch": "docker compose up postgres",
     "db:stop": "docker compose stop postgres",
@@ -25,7 +29,9 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "check": "ultracite check",
-    "fix": "ultracite fix"
+    "fix": "ultracite fix",
+    "lint": "eslint . --cache",
+    "lint:fix": "eslint . --cache --fix"
   },
   "dependencies": {
     "@automationstack/env": "workspace:*",
@@ -34,12 +40,18 @@
   },
   "devDependencies": {
     "@automationstack/config": "workspace:*",
-    "@biomejs/biome": "2.5.3",
+    "@biomejs/biome": "2.5.9",
     "@types/node": "catalog:",
-    "lefthook": "latest",
-    "turbo": "^2.10.7",
+    "@typescript-eslint/eslint-plugin": "8.67.0",
+    "@typescript-eslint/parser": "8.67.0",
+    "eslint": "10.8.1",
+    "eslint-import-resolver-typescript": "4.4.5",
+    "eslint-plugin-import": "2.32.0",
+    "lefthook": "2.1.10",
+    "turbo": "2.10.10",
     "typescript": "catalog:",
-    "ultracite": "7.9.4"
+    "ultracite": "7.9.4",
+    "vitest": "4.1.11"
   },
   "packageManager": "pnpm@11.17.0"
 }

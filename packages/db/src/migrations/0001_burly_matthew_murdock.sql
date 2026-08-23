@@ -1,0 +1,1 @@
+CREATE INDEX "ai_case_proposals_session_id_sort_order_idx" ON "ai_case_proposals" USING btree ("session_id","sort_order");

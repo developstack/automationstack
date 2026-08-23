@@ -1,0 +1,265 @@
+import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
+import { Button } from "@automationstack/ui/components/button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "@automationstack/ui/components/collapsible";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+} from "@automationstack/ui/components/context-menu";
+import { cn } from "@automationstack/ui/lib/utils";
+import { ChevronRightIcon } from "lucide-react";
+import type { KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import {
+	ModuleDragHandle,
+	ModuleDropStrip,
+	useModuleRowDrag,
+	useModuleRowDrop,
+} from "@/components/workspace/module-drag-parts";
+import {
+	ModuleMindmapLink,
+	ModuleNodeLink,
+} from "@/components/workspace/module-node-links";
+import { ModuleRenameInput } from "@/components/workspace/module-rename-input";
+import {
+	contextMenuPointFromRect,
+	isContextMenuKey,
+} from "@/components/workspace/module-row-context-key";
+import type { ModuleExpansion } from "@/components/workspace/use-module-expansion";
+
+export interface ModuleNodeActions {
+	onCreateChild: (parentId: string) => void;
+	onDelete: (node: ModuleTreeNode) => void;
+}
+
+interface NodeMenuProps {
+	actions: ModuleNodeActions;
+	node: ModuleTreeNode;
+	onRename: () => void;
+}
+
+/**
+ * 模块行的操作菜单。只有菜单体，触发器是整行（见 ModuleNodeRow）。
+ *
+ * 原先是行尾一枚 hover 才显形的「⋯」按钮：它把同一行的脑图图标往左顶了
+ * 28px（icon-xs 的 24px + 行内 gap-1 的 4px），使模块行的脑图与「全部用例」
+ * 那一行的脑图差了整整一档，侧栏右缘对不齐。改成右键菜单后行尾不再有按钮，
+ * 各行的脑图自然收在同一条竖线上。
+ */
+function NodeMenu({ actions, node, onRename }: NodeMenuProps) {
+	const createChild = useCallback(
+		() => actions.onCreateChild(node.id),
+		[actions, node.id]
+	);
+	const remove = useCallback(() => actions.onDelete(node), [actions, node]);
+
+	return (
+		<ContextMenuContent aria-label={`模块「${node.name}」操作`}>
+			<ContextMenuItem onClick={onRename}>重命名</ContextMenuItem>
+			<ContextMenuItem onClick={createChild}>新建子模块</ContextMenuItem>
+			<ContextMenuSeparator />
+			<ContextMenuItem onClick={remove} variant="destructive">
+				删除
+			</ContextMenuItem>
+		</ContextMenuContent>
+	);
+}
+
+/**
+ * 键盘请求上下文菜单时，在行元素上补派发一个带坐标的 `contextmenu`。
+ *
+ * 刻意走原生事件而不是直接开菜单：ContextMenuTrigger 的锚点是在它自己的
+ * onContextMenu 里按事件坐标 setAnchor 的，绕过这条路径菜单会锚在错误位置。
+ * keydown 从行内已聚焦的 `<Link>` 冒泡上来即可，所以行本身不需要 tabIndex。
+ */
+function useContextMenuKey() {
+	return useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+		if (!isContextMenuKey(event)) {
+			return;
+		}
+		// Windows / Linux 上浏览器自己也会补一次原生 contextmenu，拦下来免得锚点设两遍。
+		event.preventDefault();
+		const row = event.currentTarget;
+		const point = contextMenuPointFromRect(row.getBoundingClientRect());
+		row.dispatchEvent(
+			new MouseEvent("contextmenu", {
+				bubbles: true,
+				cancelable: true,
+				clientX: point.x,
+				clientY: point.y,
+			})
+		);
+	}, []);
+}
+
+interface ModuleToggleProps {
+	hasChildren: boolean;
+	open: boolean;
+}
+
+function ModuleToggle({ hasChildren, open }: ModuleToggleProps) {
+	return (
+		<CollapsibleTrigger
+			render={
+				<Button
+					aria-label={open ? "折叠" : "展开"}
+					className={cn(!hasChildren && "invisible")}
+					size="icon-xs"
+					variant="ghost"
+				>
+					<ChevronRightIcon
+						className={cn("transition-transform", open && "rotate-90")}
+					/>
+				</Button>
+			}
+		/>
+	);
+}
+
+interface ModuleNodeRowProps {
+	actions: ModuleNodeActions;
+	/** 只往下传给模块名链接选字号档位，行高与缩进不随深度变，见 module-node-links.tsx。 */
+	depth: number;
+	editing: boolean;
+	hasChildren: boolean;
+	node: ModuleTreeNode;
+	onStartRename: () => void;
+	onStopRename: () => void;
+	open: boolean;
+	selected: boolean;
+}
+
+/**
+ * 深链（`?moduleId=…`）打开时，选中的模块可能在折叠层之下：祖先链由
+ * useModuleExpansion 自动展开，这里负责把展开出来的那一行滚进视野。
+ * `block: "nearest"` 只滚动必要的最近祖先容器，不会把整页拽走。
+ */
+function useScrollSelectedIntoView(selected: boolean) {
+	const rowRef = useRef<HTMLElement | null>(null);
+	useEffect(() => {
+		if (selected) {
+			rowRef.current?.scrollIntoView({ block: "nearest" });
+		}
+	}, [selected]);
+	return rowRef;
+}
+
+function ModuleNodeRow(props: ModuleNodeRowProps) {
+	const { actions, depth, editing, hasChildren, node, open, selected } = props;
+	const drag = useModuleRowDrag(node.id);
+	const drop = useModuleRowDrop(node.id);
+	const rowRef = useScrollSelectedIntoView(selected);
+	const setRowRef = useCallback(
+		(element: HTMLElement | null) => {
+			rowRef.current = element;
+			drag.setRowRef(element);
+		},
+		[drag.setRowRef, rowRef]
+	);
+	const handleContextMenuKey = useContextMenuKey();
+
+	return (
+		// 整行就是右键菜单的触发器。用 render 把它并进这个 div，而不是在外面再套一层：
+		// 这个 div 上挂着 dnd-kit 的 setRowRef（拖拽碰撞矩形按行算），多一层会改掉布局与碰撞盒。
+		<ContextMenu>
+			<ContextMenuTrigger
+				className={cn(
+					// px-2：与 aside 的 p-2 相加正好是 16px 的侧栏 gutter，见 module-tree.tsx 顶部约定。
+					"group/module-row flex items-center gap-1 rounded-md px-2 py-0.5",
+					selected ? "bg-accent text-accent-foreground" : "hover:bg-muted",
+					// 菜单开着时保持底色：否则右键之后指针一移开，就看不出菜单属于哪一行。
+					!selected && "data-popup-open:bg-muted",
+					drag.isDragging && "opacity-50"
+				)}
+				onKeyDown={handleContextMenuKey}
+				render={<div ref={setRowRef} />}
+			>
+				<ModuleDragHandle drag={drag} name={node.name} />
+				<ModuleToggle hasChildren={hasChildren} open={open} />
+				<div
+					className={cn(
+						"flex min-w-0 flex-1 items-center",
+						drop.insideClassName
+					)}
+					ref={drop.setNodeRef}
+				>
+					{editing ? (
+						<ModuleRenameInput node={node} onDone={props.onStopRename} />
+					) : (
+						<ModuleNodeLink depth={depth} node={node} />
+					)}
+				</div>
+				<ModuleMindmapLink node={node} />
+			</ContextMenuTrigger>
+			<NodeMenu actions={actions} node={node} onRename={props.onStartRename} />
+		</ContextMenu>
+	);
+}
+
+interface ModuleNodeItemProps {
+	actions: ModuleNodeActions;
+	/** 根节点为 0；展开规则按深度算，见 module-expansion.ts。 */
+	depth: number;
+	expansion: ModuleExpansion;
+	node: ModuleTreeNode;
+	selectedModuleId: string | undefined;
+}
+
+/** One module row plus (recursively) its children. */
+export function ModuleNodeItem({
+	actions,
+	depth,
+	expansion,
+	node,
+	selectedModuleId,
+}: ModuleNodeItemProps) {
+	const [editing, setEditing] = useState(false);
+	const hasChildren = node.children.length > 0;
+	// 展开状态是整棵树共用的一份，节点自己不持有 —— 否则 modules.tree 一刷新就丢。
+	const open = expansion.isOpen(node.id, depth);
+	const handleOpenChange = useCallback(
+		(next: boolean) => expansion.setOpen(node.id, next),
+		[expansion, node.id]
+	);
+	const startRename = useCallback(() => setEditing(true), []);
+	const stopRename = useCallback(() => setEditing(false), []);
+
+	return (
+		<Collapsible onOpenChange={handleOpenChange} open={open}>
+			<ModuleDropStrip moduleId={node.id} />
+			<ModuleNodeRow
+				actions={actions}
+				depth={depth}
+				editing={editing}
+				hasChildren={hasChildren}
+				node={node}
+				onStartRename={startRename}
+				onStopRename={stopRename}
+				open={open}
+				selected={node.id === selectedModuleId}
+			/>
+			{/* ps-3 而非 pl-3：缩进是方向相关的布局，逻辑属性才跟着书写方向翻面。 */}
+			{hasChildren ? (
+				<CollapsibleContent className="ps-3">
+					{node.children.map((child) => (
+						<ModuleNodeItem
+							actions={actions}
+							depth={depth + 1}
+							expansion={expansion}
+							key={child.id}
+							node={child}
+							selectedModuleId={selectedModuleId}
+						/>
+					))}
+				</CollapsibleContent>
+			) : null}
+		</Collapsible>
+	);
+}

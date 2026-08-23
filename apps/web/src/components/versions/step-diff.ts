@@ -1,0 +1,158 @@
+/**
+ * Pure diff of two `CaseStep[]` lists, paired by `step.id`.
+ *
+ * Classification per step id:
+ * - only in new list            -> "added"
+ * - only in old list            -> "removed"
+ * - content (step/expected) changed -> "modified" (with word-diff segments;
+ *   index changes are still reported via oldIndex/newIndex)
+ * - content identical, index changed -> "moved"
+ * - otherwise                   -> "unchanged"
+ *
+ * Entry order: new-list order first, then removed entries in old-list order.
+ */
+import type { CaseStep } from "@automationstack/db/schema/test-cases";
+import {
+	buildWordDiffSegments,
+	type TextDiffSegment,
+} from "./diff-segments.ts";
+
+export type StepDiffKind =
+	| "added"
+	| "modified"
+	| "moved"
+	| "removed"
+	| "unchanged";
+
+export interface StepDiffEntry {
+	/** Word-diff of `expected`; only present for "modified" entries. */
+	expectedSegments: TextDiffSegment[] | null;
+	id: string;
+	kind: StepDiffKind;
+	newIndex: number | null;
+	newStep: CaseStep | null;
+	oldIndex: number | null;
+	oldStep: CaseStep | null;
+	/** Word-diff of `step`; only present for "modified" entries. */
+	stepSegments: TextDiffSegment[] | null;
+}
+
+export type StepsDiffCounts = Record<StepDiffKind, number>;
+
+export interface StepsDiff {
+	counts: StepsDiffCounts;
+	entries: StepDiffEntry[];
+	hasChanges: boolean;
+}
+
+interface PairedSteps {
+	newIndex: number;
+	newStep: CaseStep;
+	oldIndex: number;
+	oldStep: CaseStep;
+}
+
+function createAddedEntry(newStep: CaseStep, newIndex: number): StepDiffEntry {
+	return {
+		expectedSegments: null,
+		id: newStep.id,
+		kind: "added",
+		newIndex,
+		newStep,
+		oldIndex: null,
+		oldStep: null,
+		stepSegments: null,
+	};
+}
+
+function createRemovedEntry(
+	oldStep: CaseStep,
+	oldIndex: number
+): StepDiffEntry {
+	return {
+		expectedSegments: null,
+		id: oldStep.id,
+		kind: "removed",
+		newIndex: null,
+		newStep: null,
+		oldIndex,
+		oldStep,
+		stepSegments: null,
+	};
+}
+
+function createPairedEntry(pair: PairedSteps): StepDiffEntry {
+	const { newIndex, newStep, oldIndex, oldStep } = pair;
+	const contentChanged =
+		oldStep.step !== newStep.step || oldStep.expected !== newStep.expected;
+	const base = {
+		expectedSegments: null,
+		id: newStep.id,
+		newIndex,
+		newStep,
+		oldIndex,
+		oldStep,
+		stepSegments: null,
+	};
+	if (contentChanged) {
+		return {
+			...base,
+			expectedSegments: buildWordDiffSegments(
+				oldStep.expected,
+				newStep.expected
+			),
+			kind: "modified",
+			stepSegments: buildWordDiffSegments(oldStep.step, newStep.step),
+		};
+	}
+	return { ...base, kind: oldIndex === newIndex ? "unchanged" : "moved" };
+}
+
+function countEntries(entries: readonly StepDiffEntry[]): StepsDiffCounts {
+	const counts: StepsDiffCounts = {
+		added: 0,
+		modified: 0,
+		moved: 0,
+		removed: 0,
+		unchanged: 0,
+	};
+	for (const entry of entries) {
+		counts[entry.kind] += 1;
+	}
+	return counts;
+}
+
+/** Diffs two step lists paired by `step.id`. Pure; inputs are not mutated. */
+export function diffCaseSteps(
+	oldSteps: readonly CaseStep[],
+	newSteps: readonly CaseStep[]
+): StepsDiff {
+	const oldIndexById = new Map<string, number>();
+	for (const [index, step] of oldSteps.entries()) {
+		oldIndexById.set(step.id, index);
+	}
+	const newIds = new Set(newSteps.map((step) => step.id));
+
+	const entries: StepDiffEntry[] = [];
+	for (const [newIndex, newStep] of newSteps.entries()) {
+		const oldIndex = oldIndexById.get(newStep.id);
+		if (oldIndex === undefined) {
+			entries.push(createAddedEntry(newStep, newIndex));
+		} else {
+			const oldStep = oldSteps[oldIndex];
+			entries.push(createPairedEntry({ newIndex, newStep, oldIndex, oldStep }));
+		}
+	}
+	for (const [oldIndex, oldStep] of oldSteps.entries()) {
+		if (!newIds.has(oldStep.id)) {
+			entries.push(createRemovedEntry(oldStep, oldIndex));
+		}
+	}
+
+	const counts = countEntries(entries);
+	return {
+		counts,
+		entries,
+		hasChanges: entries.length > counts.unchanged,
+	};
+}

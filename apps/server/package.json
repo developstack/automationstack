@@ -13,19 +13,23 @@
     "@automationstack/api": "workspace:*",
     "@automationstack/db": "workspace:*",
     "@automationstack/env": "workspace:*",
-    "@hono/node-server": "^2.0.12",
+    "@hono/mcp": "0.3.2",
+    "@hono/node-server": "2.1.1",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
     "@orpc/zod": "catalog:",
     "dotenv": "catalog:",
     "hono": "catalog:",
+    "ws": "8.21.3",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@automationstack/config": "workspace:*",
     "@types/node": "catalog:",
-    "tsdown": "^0.22.14",
-    "tsx": "^4.23.1",
+    "@types/ws": "8.18.1",
+    "tsdown": "0.22.14",
+    "tsx": "4.23.12",
     "typescript": "catalog:"
   }
 }

@@ -1,0 +1,188 @@
+/**
+ * 无状态会话令牌。
+ *
+ * 会话是一枚 HMAC-SHA256 签名的自包含令牌，装在 HttpOnly cookie 里。
+ * 「自包含」意味着不需要 sessions 表——数据库里没有会话状态，重启服务端
+ * 不会把所有人踢下线，也不用为每个请求多打一次库。
+ *
+ * 代价写在这里：**签发后无法单独吊销**。停用某个账号靠的是每次请求都按
+ * `sub` 重新读一遍 users 行（见 context.ts），而不是删令牌；要一次性作废
+ * 全部会话，就换 `SESSION_SECRET`。
+ *
+ * 令牌格式：`base64url(payload).base64url(hmac)`，payload 为 `{ sub, iat, exp }`。
+ */
+
+export const SESSION_COOKIE = "automationstack_session";
+
+const MS_PER_SECOND = 1000;
+const SECONDS_PER_MINUTE = 60;
+const MINUTES_PER_HOUR = 60;
+const HOURS_PER_DAY = 24;
+const SECONDS_PER_DAY = SECONDS_PER_MINUTE * MINUTES_PER_HOUR * HOURS_PER_DAY;
+const SESSION_TTL_DAYS = 7;
+const SESSION_TTL_SECONDS = SESSION_TTL_DAYS * SECONDS_PER_DAY;
+const SESSION_TTL_MS = SESSION_TTL_SECONDS * MS_PER_SECOND;
+
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+
+/** base64 ↔ base64url 的字符替换；提到顶层，正则只编译一次。 */
+const PLUS_TO_DASH = /\+/g;
+const SLASH_TO_UNDERSCORE = /\//g;
+const TRAILING_EQUALS = /[=]+$/;
+const DASH_TO_PLUS = /-/g;
+const UNDERSCORE_TO_SLASH = /_/g;
+/** base64 以 4 字符为一组，不足处补 `=`。 */
+const BASE64_GROUP = 4;
+
+interface SessionPayload {
+	exp: number;
+	iat: number;
+	sub: string;
+}
+
+function toBase64Url(bytes: Uint8Array): string {
+	let binary = "";
+	for (const byte of bytes) {
+		binary += String.fromCharCode(byte);
+	}
+	return btoa(binary)
+		.replace(PLUS_TO_DASH, "-")
+		.replace(SLASH_TO_UNDERSCORE, "_")
+		.replace(TRAILING_EQUALS, "");
+}
+
+function fromBase64Url(value: string): Uint8Array {
+	const padding = (BASE64_GROUP - (value.length % BASE64_GROUP)) % BASE64_GROUP;
+	const base64 = value
+		.replace(DASH_TO_PLUS, "+")
+		.replace(UNDERSCORE_TO_SLASH, "/")
+		.padEnd(value.length + padding, "=");
+	const binary = atob(base64);
+	const bytes = new Uint8Array(binary.length);
+	for (let index = 0; index < binary.length; index += 1) {
+		bytes[index] = binary.charCodeAt(index);
+	}
+	return bytes;
+}
+
+function timingSafeEqual(left: Uint8Array, right: Uint8Array): boolean {
+	if (left.length !== right.length) {
+		return false;
+	}
+	let diff = 0;
+	for (let index = 0; index < left.length; index += 1) {
+		// biome-ignore lint/suspicious/noBitwiseOperators: 恒定时间比较靠异或累积差异
+		diff |= (left[index] ?? 0) ^ (right[index] ?? 0);
+	}
+	return diff === 0;
+}
+
+async function sign(data: string, secret: string): Promise<Uint8Array> {
+	const key = await crypto.subtle.importKey(
+		"raw",
+		encoder.encode(secret),
+		{ hash: "SHA-256", name: "HMAC" },
+		false,
+		["sign"]
+	);
+	const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
+	return new Uint8Array(signature);
+}
+
+/** 为某个用户签发有效期 7 天的会话令牌。 */
+export async function createSessionToken(
+	userId: string,
+	secret: string
+): Promise<string> {
+	const now = Date.now();
+	const payload: SessionPayload = {
+		exp: now + SESSION_TTL_MS,
+		iat: now,
+		sub: userId,
+	};
+	const encoded = toBase64Url(encoder.encode(JSON.stringify(payload)));
+	return `${encoded}.${toBase64Url(await sign(encoded, secret))}`;
+}
+
+function parsePayload(encoded: string): SessionPayload | null {
+	try {
+		const raw: unknown = JSON.parse(decoder.decode(fromBase64Url(encoded)));
+		if (typeof raw !== "object" || raw === null) {
+			return null;
+		}
+		const payload = raw as Partial<SessionPayload>;
+		if (typeof payload.sub !== "string" || typeof payload.exp !== "number") {
+			return null;
+		}
+		return { exp: payload.exp, iat: payload.iat ?? 0, sub: payload.sub };
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * 校验签名与有效期，返回用户 id；令牌畸形 / 过期 / 签名不符一律返回 null。
+ * **先验签再解析 payload**：顺序反过来就等于拿未经认证的字节去喂 JSON.parse。
+ */
+export async function verifySessionToken(
+	token: string,
+	secret: string
+): Promise<string | null> {
+	const [encoded, signatureBase64] = token.split(".");
+	if (!(encoded && signatureBase64)) {
+		return null;
+	}
+	let signature: Uint8Array;
+	try {
+		signature = fromBase64Url(signatureBase64);
+	} catch {
+		return null;
+	}
+	if (!timingSafeEqual(await sign(encoded, secret), signature)) {
+		return null;
+	}
+	const payload = parsePayload(encoded);
+	if (payload === null || payload.exp <= Date.now()) {
+		return null;
+	}
+	return payload.sub;
+}
+
+/** 从原始 `Cookie` 请求头里取出某个 cookie 的值。 */
+export function readCookieHeader(
+	header: string | null | undefined,
+	name: string
+): string | null {
+	if (!header) {
+		return null;
+	}
+	for (const part of header.split(";")) {
+		const index = part.indexOf("=");
+		if (index === -1) {
+			continue;
+		}
+		if (part.slice(0, index).trim() === name) {
+			// 只按第一个 `=` 切：base64url 里不会有 `=`，但签名格式若变则会有
+			return part.slice(index + 1).trim() || null;
+		}
+	}
+	return null;
+}
+
+/**
+ * 拼 `Set-Cookie` 头。传 null 表示清除（登出）。
+ *
+ * - `HttpOnly`：脚本读不到，XSS 拿不走会话
+ * - `SameSite=Lax`：web(:3001) 与 server(:3000) 端口不同但同站，Lax 够用；
+ *   真跨站部署要改 `None`，那就必须同时有 `Secure`
+ * - `Secure` 只在 HTTPS 请求上加：本地 http 开发照常可用
+ */
+export function sessionCookieHeader(
+	token: string | null,
+	secure: boolean
+): string {
+	const base = `${SESSION_COOKIE}=${token ?? ""}; Path=/; HttpOnly; SameSite=Lax`;
+	const life = token === null ? "Max-Age=0" : `Max-Age=${SESSION_TTL_SECONDS}`;
+	return `${base}; ${life}${secure ? "; Secure" : ""}`;
+}

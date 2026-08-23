@@ -1,1 +1,84 @@
 @import "@automationstack/ui/globals.css";
+
+/*
+ * 工作区外壳：Header + 分隔线 + 内容区占满剩余空间
+ * （等价于 grid-rows-[auto_auto_1fr]）。
+ * 不能用 Tailwind 自带的 grid-rows-3：那是三行等分 1fr，
+ * header 与 <Separator /> 会被各拉到 1/3 视口高。
+ */
+@utility grid-rows-workspace-shell {
+	grid-template-rows: auto auto 1fr;
+}
+
+/* 用例步骤行（sm 及以上）：步骤描述 / 预期结果 / 行操作按钮。
+   窄屏由调用方回落到 grid-cols-1 单栏堆叠，见 steps-editor.tsx。 */
+@utility grid-cols-case-step {
+	grid-template-columns: 1fr 1fr auto;
+}
+
+/* 协作头像首字与光标用户名标签的 10px 小号字（等价于 text-[10px]） */
+@utility text-presence-label {
+	font-size: 0.625rem;
+	line-height: 1;
+}
+
+/* 强调缓动：起步快、收尾慢，用于图标交叉淡入这类一次性切换
+   （等价于 ease-[cubic-bezier(0.2,0,0,1)]）。 */
+@utility ease-emphasized {
+	transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* 与 regular 字重正文并排的图标描边（等价于 stroke-[1.5]）；
+   lucide 默认的 2 只配 medium/semibold 的文字。 */
+@utility icon-stroke-regular {
+	stroke-width: 1.5;
+}
+
+/*
+ * 跳转链接：平时视觉隐藏但留在 Tab 序里，聚焦时浮到左上角显形
+ * （等价于 sr-only + focus:not-sr-only + focus:fixed）。
+ * 不用那三个类拼是因为 sr-only 与 fixed 都写 position，
+ * 谁生效取决于生成表里的先后顺序；写成一条具名类结果才是确定的。
+ */
+@utility skip-link {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	white-space: nowrap;
+	clip-path: inset(50%);
+	&:focus {
+		position: fixed;
+		width: auto;
+		height: auto;
+		overflow: visible;
+		clip-path: none;
+	}
+}
+
+/*
+ * 模块树的层级字号（三档，下标即深度，见 module-node-links.tsx 的查表）。
+ * 层级原本只靠 ps-3 的缩进表达，缩进到深层会被侧栏宽度吃干净；
+ * 字号递减是第二条不占横向空间的层级线索。
+ * 只给到第三档、再深也不缩：中文低于 12px 笔画就糊了，而模块可以无限嵌套。
+ * 行高跟着字号一起降档，行的 py-0.5 与图标 size-3.5 保持不动，
+ * 否则整棵树的行距会在第三层突然变紧，看着像混了两套节奏。
+ */
+
+/* depth 0：与树外的「全部用例」同档（等价于 text-sm） */
+@utility text-tree-1 {
+	font-size: 0.875rem;
+	line-height: 1.25rem;
+}
+
+/* depth 1（等价于 text-[13px]/[18px]） */
+@utility text-tree-2 {
+	font-size: 0.8125rem;
+	line-height: 1.125rem;
+}
+
+/* depth ≥ 2，封底档（等价于 text-xs） */
+@utility text-tree-3 {
+	font-size: 0.75rem;
+	line-height: 1rem;
+}

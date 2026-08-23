@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# 同一分支上后推的提交会取消前一次尚未跑完的流水线。
+# main 上不取消：那里的每一次运行都要产出镜像。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  # 与根 package.json 的 packageManager 字段、以及两个 Dockerfile 里的
+  # node:24-slim 保持一致。三处都改才算改完。
+  NODE_VERSION: "24"
+
+jobs:
+  check:
+    name: 类型 / 测试 / 规约
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # 不写 version：action 会读根 package.json 的 packageManager
+      # （pnpm@11.17.0），避免在两个地方各写一遍版本号。
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # 三步互不依赖，但刻意串行：任何一步挂了都要能一眼看出是哪一步，
+      # 并行进 matrix 只会为省下不到一分钟而把日志摊开到三个 job 里。
+      - name: 类型检查
+        run: pnpm check-types
+
+      # vitest 的四个 project 全是 node 环境的纯函数测试，
+      # 不连库、不连网、不需要任何环境变量（见根 vitest.config.ts 的注释）。
+      - name: 单元测试
+        run: pnpm test
+
+      - name: 代码规约（Biome / Ultracite）
+        run: pnpm check
+
+      # eslint 与上面的 Biome 不重叠：这里管的是 Biome 没有的那几条
+      # ——函数行数、圈复杂度、consistent-return、no-non-null-assertion。
+      # 本地 lefthook 的 eslint-rules 只跑暂存的文件，所以存量问题从不显形；
+      # 这里对全仓跑一次，才是真正的那道网。
+      - name: eslint（行数 / 复杂度）
+        run: pnpm eslint --no-cache .
+
+      # 仓库自有的两条硬规则，本地由 lefthook 在提交前跑（只跑暂存的文件），
+      # 这里对全仓补一道网。
+      #
+      # 两个脚本都只认「文件列表」参数，不带参数会打印「没有文件需要检查」
+      # 然后 exit 0——那是空跑，不是通过。文件列表必须显式喂进去。
+      # 用 git ls-files 而不是 find：只有进了版本库的文件才该被检查，
+      # 顺带天然排除 node_modules 与各 app 的构建产物。
+      - name: 仓库自有规则
+        run: |
+          files=$(git ls-files '*.ts' '*.tsx' '*.js' '*.jsx' '*.cjs' '*.mjs' '*.cts' '*.mts')
+          # 故意不加引号：这里要的就是按空白拆成多个参数（仓库内无带空格的路径）。
+          node scripts/check-tailwind.js $files
+          node scripts/check-file-rules.js $files
+
+  docker:
+    name: 构建镜像 (${{ matrix.app }})
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [web, server]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      # 只有 main 上的推送才登录并推镜像；PR 只构建，不推。
+      # 外部 fork 发来的 PR 拿不到 packages:write，登录必然失败——
+      # 这个条件同时也是那道防线。
+      - name: 登录 GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}-${{ matrix.app }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # 两个 Dockerfile 的 context 都是仓库根（compose 里也是这么配的），
+      # 因为 pnpm workspace 的构建需要看到整棵 monorepo。
+      #
+      # VITE_SERVER_URL 只对 web 有意义，它在构建期被烘进前端产物，
+      # 所以必须在这里给定而不能留到运行时。默认值与 docker-compose.yml
+      # 里的 build args 一致；要发到别的域名就在仓库 Variables 里设同名变量。
+      # 它是公开的后端地址，不是密钥，放 vars 而不是 secrets。
+      - name: 构建并推送
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VITE_SERVER_URL=${{ vars.VITE_SERVER_URL || 'http://localhost:3000' }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}

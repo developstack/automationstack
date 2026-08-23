@@ -1,0 +1,33 @@
+/*
+ * 平移的可见提示。
+ *
+ * 为什么是一份 CSS 而不是 Tailwind 工具类：要着色的 `.map-container` 是
+ * mind-elixir 在运行时自己 new 出来的（MindElixir.js:2865），React 拿不到它的
+ * className；把工具类挂到外层 React div 上靠 cursor 继承也能到达容器，但那样就
+ * 没法用选择器把"按下态"和 mind-elixir 自带的 `.space-pressed` 规则排出确定的
+ * 优先级——而那两条恰恰带 `!important`。
+ */
+
+/*
+ * 只有空白画布能拖动平移，所以 grab 落在容器自身。节点不受影响：
+ * `.map-container me-parent{cursor:pointer}`（0,1,1）压得住这条（0,1,0），
+ * 模块 / 用例 / 步骤都还是 pointer。
+ */
+.map-container {
+	cursor: grab;
+}
+
+/* me-root 是唯一没写 cursor 的节点，不补的话它会继承到 grab，暗示一个不存在的手势。 */
+.map-container me-root {
+	cursor: pointer;
+}
+
+/*
+ * 拖拽期间整块容器统一 grabbing。(0,2,0) 压得住上面两条与 me-parent 的 pointer；
+ * 压不住 mind-elixir 的 `.map-container.space-pressed:active{cursor:grabbing!important}`，
+ * 但那条给的正是同一个值 —— 空格+左键拖也走这里的平移，两者语义一致，不冲突。
+ */
+.map-container.mindmap-panning,
+.map-container.mindmap-panning * {
+	cursor: grabbing;
+}

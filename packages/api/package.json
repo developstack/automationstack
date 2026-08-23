@@ -9,8 +9,11 @@
       "default": "./src/*.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
   "dependencies": {
+    "@automationstack/ai": "workspace:*",
     "@automationstack/db": "workspace:*",
     "@automationstack/env": "workspace:*",
     "@orpc/client": "catalog:",

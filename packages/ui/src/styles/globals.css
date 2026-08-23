@@ -1,130 +1,273 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "./theme.css";
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.58 0.22 27);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.87 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.371 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-@theme inline {
-  --font-sans: "Inter Variable", sans-serif;
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
-}
-
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply font-sans bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
+	* {
+		@apply border-border outline-ring/50;
+	}
+	body {
+		@apply font-sans bg-background text-foreground;
+	}
+	html {
+		@apply font-sans;
+	}
+}
+
+/*
+ * 以下具名工具类替代 Tailwind 任意值：仓库基线禁止 `xxx-[...]`
+ * （scripts/check-tailwind.js 会拦），所以按 grid-rows-workspace-shell 的先例
+ * 在这里定义，并在注释里写明等价写法。
+ */
+
+/* 交互控件的过渡：只列真正会变的属性，避免 transition-all 连 width/height 这类
+   布局属性一起过渡（等价于
+   transition-[color,background-color,border-color,box-shadow,opacity,scale]）。 */
+@utility transition-control {
+	transition-timing-function: ease-out;
+	transition-duration: 150ms;
+	transition-property:
+		color, background-color, border-color, box-shadow, opacity, scale;
+}
+
+/* 纯透明度的交叉淡入：两块内容叠放，只切 opacity，绝不带位移或缩放
+   （等价于 transition-[opacity] + duration-150 + ease-[cubic-bezier(0.2,0,0,1)]）。
+   曲线取 better-ui 为图标/内容交叉淡入规定的 cubic-bezier(0.2, 0, 0, 1)：
+   起步的斜率是 0（第一控制点 x=0.2、y=0），因此不会一上来就闪，尾段拉长收住。
+
+   --motion-reduced-duration: 120ms 是这个类存在的主要理由。文件末尾那条全局的
+   prefers-reduced-motion 规则会把一切过渡压到 0.01ms，而交叉淡入是纯透明度、不引起
+   前庭不适，被压掉之后这批用户看到的正是这套结构本来要消除的那一下硬切。120ms 与
+   page-transition.tsx 的 REDUCED_DURATION_S（0.12s）取同一个值：全站在减弱动效下
+   只保留这一档「几乎察觉不到、但不是硬切」的透明度变化。
+
+   & > * 把变量在子元素上重置为 initial（自定义属性的 initial 是「保证无效值」，
+   于是 var() 回落到 0.01ms 的兜底）：这个变量会继承，不重置的话挂着本类的容器会
+   顺手把自己的子孙后代全部从减弱动效里放出来，那不是本类的职责范围。 */
+@utility transition-crossfade {
+	--motion-reduced-duration: 120ms;
+	transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+	transition-duration: 150ms;
+	transition-property: opacity;
+
+	& > * {
+		--motion-reduced-duration: initial;
+	}
+}
+
+/* 按压反馈：按下时缩到 0.96（等价于 active:scale-[0.96]），过渡由 transition-control 提供。
+   带 aria-haspopup 的触发器不参与——弹层自己的出现就是反馈，再缩一下反而抖。 */
+@utility press-scale {
+	&:active:not([aria-haspopup]):not(:disabled) {
+		scale: 0.96;
+	}
+}
+
+/* tooltip 箭头：旋转 45° 后要上提半个身位再补 2px 才压住气泡边，左右方向则改为按方向贴边。
+   原本是 translate 任意值加十二个 data-[side=*] 任意变体堆在类名里，彼此还在抢 translate
+   简写、只能靠 ! 强压优先级；收进工具类后各方向互斥，顺序确定，也不再出现任意值。
+   （等价于 translate-y-[calc(-50%-2px)] 配 data-[side=top]:-bottom-2.5、
+   data-[side=bottom]:top-1、data-[side=left]:top-1/2! 等一整串。）
+   排在 popup-transition 之前：两者都按 data-side 分支，但这里是单层选择器、
+   那边多裹了一层 :is()，反过来放会被 noDescendingSpecificity 判成特异性倒挂。 */
+@utility tooltip-arrow {
+	z-index: 50;
+	translate: 0 calc(-50% - 2px);
+
+	&[data-side="top"] {
+		bottom: calc(var(--spacing) * -2.5);
+	}
+
+	&[data-side="bottom"] {
+		top: calc(var(--spacing) * 1);
+	}
+
+	&:is([data-side="left"], [data-side="inline-start"]) {
+		top: 50%;
+		right: calc(var(--spacing) * -1);
+		translate: 0 -50%;
+	}
+
+	&:is([data-side="right"], [data-side="inline-end"]) {
+		top: 50%;
+		left: calc(var(--spacing) * -1);
+		translate: 0 -50%;
+	}
+}
+
+/* 浮层进出场。用 transition 而不是 keyframes：keyframes 不可打断，退场播到一半再打开
+   会跳回位移起点重播，而模块树每一行都挂着这类浮层。Base UI 用 data-starting-style /
+   data-ending-style 标出首帧与退场帧，浏览器在两端之间插值，中途反向也能从当前值接上。
+   只列这三个属性，避免 duration-* 单独出现时被解释成 transition-property: all
+   （等价于 transition-[opacity,scale,translate] 加一组 data-[side=*] 的位移任意值）。 */
+@utility popup-transition {
+	transition-timing-function: ease-out;
+	transition-duration: 150ms;
+	transition-property: opacity, scale, translate;
+
+	/* Base UI 在「瞬时打开」（键盘连续操作、焦点转移）时打上 data-instant，
+	   这种时候还播过渡只会留下拖影。 */
+	&[data-instant] {
+		transition-duration: 0s;
+	}
+
+	&:is([data-starting-style], [data-ending-style]) {
+		opacity: 0;
+		scale: 0.95;
+
+		&[data-side="top"] {
+			translate: 0 0.5rem;
+		}
+		&[data-side="bottom"] {
+			translate: 0 -0.5rem;
+		}
+		&:is([data-side="left"], [data-side="inline-start"]) {
+			translate: 0.5rem 0;
+		}
+		&:is([data-side="right"], [data-side="inline-end"]) {
+			translate: -0.5rem 0;
+		}
+	}
+}
+
+/* 卡片内边距刻度（等价于 [--card-spacing:--spacing(4)] / [--card-spacing:--spacing(3)]）。 */
+@utility card-spacing {
+	--card-spacing: calc(var(--spacing) * 4);
+}
+@utility card-spacing-sm {
+	--card-spacing: calc(var(--spacing) * 3);
+}
+
+/* 卡片头部：正文列吃满剩余宽度、action 列按内容宽（等价于 grid-cols-[1fr_auto]）。 */
+@utility grid-cols-content-action {
+	grid-template-columns: 1fr auto;
+}
+
+/* 标题 + 描述两行，各自按内容高度（等价于 grid-rows-[auto_auto]，
+   grid-rows-2 是 minmax(0,1fr) 平分，会把两行拉等高，不能替代）。 */
+@utility grid-rows-auto-pair {
+	grid-template-rows: auto auto;
+}
+
+/* 对话框在窄屏下左右各留 1rem 视口边距（等价于 max-w-[calc(100%-2rem)]）。 */
+@utility max-w-viewport-inset {
+	max-width: calc(100% - 2rem);
+}
+
+/* 滚动视口跟外层容器共用圆角（等价于 rounded-[inherit]；rounded-* 刻度里没有 inherit 这一档）。 */
+@utility rounded-inherit {
+	border-radius: inherit;
+}
+/* 焦点环的过渡：ring 走 box-shadow，故只列 color 与 box-shadow（等价于 transition-[color,box-shadow]）。
+   不复用 transition-control——它多带 background-color / border-color / opacity / scale 且缓动写死
+   ease-out；这里取 Tailwind 的默认过渡变量，实测与内建 transition-* 同值（代价是 duration-* 不再能覆盖）。 */
+@utility transition-focus-ring {
+	transition-timing-function: var(--default-transition-timing-function);
+	transition-duration: var(--default-transition-duration);
+	transition-property: color, box-shadow;
+}
+/* 对话框头部：标题按内容高、正文吃满剩余高度，带媒体图标时在前面再多一行（等价于
+   grid-rows-[auto_1fr] / grid-rows-[auto_auto_1fr]；grid-rows-N 是 minmax(0,1fr) 平分会拉等高）。 */
+@utility grid-rows-header-body {
+	grid-template-rows: auto 1fr;
+}
+@utility grid-rows-media-header-body {
+	grid-template-rows: auto auto 1fr;
+}
+/* 侧边栏折叠动画（等价于 transition-[width] / transition-[left,width] 各加 duration-200 ease-linear）。
+   拆成两个名字是因为它们作用在两层不同的元素上：占位层只补间 width，固定面两种收起方式各补间一个属性——
+   offcanvas 靠 left 把整块滑出，icon 靠 width 收成图标轨，两条路都走这一个工具类，所以 left 与 width 都要列。
+   时长与缓动必须一致——不一致的话主内容补空的速度对不上面板收窄的速度，看着像先跳后滑。
+   linear 而非 ease-*：这是一段跟手的尺寸/位置变化，加速度会让人觉得面板“弹”了一下。 */
+@utility transition-sidebar-gap {
+	transition-timing-function: linear;
+	transition-duration: 200ms;
+	transition-property: width;
+}
+@utility transition-sidebar-offset {
+	transition-timing-function: linear;
+	transition-duration: 200ms;
+	transition-property: left, width;
+}
+/* 组标题在图标轨里的淡出（等价于 transition-[margin,opacity] + duration-200 ease-linear）。
+   与上面两个同时长同缓动：标题塌陷、面板收窄、主内容补空必须是同一段动作，
+   快一拍会看到标题先没、再等面板慢慢收。 */
+@utility transition-sidebar-label {
+	transition-timing-function: linear;
+	transition-duration: 200ms;
+	transition-property: margin, opacity;
+}
+/* 二级面板的收放动画（等价于 transition-[width] + duration-200 ease-linear）。
+   与 transition-sidebar-gap 同属性同时长同缓动，却另起一个名字：两者作用在不同的层上，
+   一级侧边栏改时长时若把二级也一起改掉，收放节奏才不会跑偏——共用一个名字就没法只改一边。
+   反过来，只要两边还在同一个值上，一级收起、二级收起、主内容补空就是同一段动作；
+   慢一拍会看到两列先后塌陷，像掉了帧。linear 的理由同上：跟手的尺寸变化不该有加速度。 */
+@utility transition-secondary-panel {
+	transition-timing-function: linear;
+	transition-duration: 200ms;
+	transition-property: width;
+}
+/* muted 气泡里可点击内容的悬停底色（等价于
+   bg-[color-mix(in_oklch,var(--muted),var(--foreground)_5%)]）。secondary 的对应色
+   已有 --secondary-hover 令牌，直接用 bg-secondary-hover；muted 没有，保留 color-mix。 */
+@utility bg-muted-hover {
+	background-color: color-mix(in oklch, var(--muted), var(--foreground) 5%);
+}
+/* tinted 气泡底色，由 --primary 经相对色语法派生。明暗两套 L/C 不同，一个名字带不过去，
+   故按 dark: 变体拆成四个具名类。
+
+   现主题（shadcn 官方 neutral）的 --primary 是纯中性色 C=0，calc(c * 0.4) 恒为 0，这四个
+   底色实际是纯灰——tinted 与 muted 气泡只剩明度差。仍保留 from var(--primary) 的派生写法：
+   将来若换回带 chroma 的 primary，色调会自动跟回来，不必再改这里。
+
+   L 值本次按「C=0 也要分得开」重取（原来是 0.93 / 0.3 / 0.88 / 0.35，靠 chroma 拉开差别，
+   在纯灰下与 --muted 几乎重合：亮色 0.93 对 muted 0.97 只有 1.13:1，暗色 0.3 对 muted
+   0.269 只有 1.11:1）。现值实测：亮色 0.90 对 muted 1.24:1、对 background 1.35:1；暗色
+   0.34 对 muted 1.29:1、对 background 1.68:1；--foreground 压在两种 tinted 底上 86.4 /
+   -97.3，压在两种 hover 底上 77.2 / -92.3，都在正文 75 线以上。
+
+   注意：packages/ui/src/components/bubble.tsx 的 tinted 变体是 vendored 原件，至今直接写
+   着旧 L 值的任意值（该目录豁免 check-tailwind），并未引用这四个类；两处目前不等价，改
+   bubble.tsx 超出本次范围。 */
+@utility bg-bubble-tinted {
+	background-color: oklch(from var(--primary) 0.9 calc(c * 0.4) h);
+}
+@utility bg-bubble-tinted-dark {
+	background-color: oklch(from var(--primary) 0.34 calc(c * 0.4) h);
+}
+@utility bg-bubble-tinted-hover {
+	background-color: oklch(from var(--primary) 0.85 calc(c * 0.5) h);
+}
+@utility bg-bubble-tinted-hover-dark {
+	background-color: oklch(from var(--primary) 0.4 calc(c * 0.5) h);
+}
+
+/*
+ * 尊重系统「减弱动效」偏好：把过渡与动画压到近似瞬时（而不是直接 none，
+ * 否则 Base UI 等 transitionend/animationend 的弹层会卡在挂载状态）。
+ * 刻意放过 animate-spin / animate-pulse：它们是「仍在进行中」的唯一提示，
+ * 停下来会被读成假死。
+ *
+ * 时长走 var(--motion-reduced-duration, 0.01ms) 而不是写死 0.01ms：
+ * 这条偏好针对的是前庭不适——位移、缩放、旋转、视差。纯透明度的交叉淡入不引起
+ * 前庭反应，它恰恰是这批用户仍然需要的那条「东西换了」的线索，压成硬切等于给他们
+ * 一个比默认更突兀的界面。于是留一个自报时长的口子：想活下来的元素在自己身上写
+ * --motion-reduced-duration，没写的一律照旧压到 0.01ms。
+ *
+ * 为什么必须走自定义属性而不是让工具类自己写 transition-duration 去盖：@utility
+ * 生成的类落在 @layer utilities 里，而这条 @media 块不在任何 @layer 内，无层样式
+ * 的优先级高于一切有层样式，跟特异性无关——工具类无论写到多特异都盖不住它。
+ * 自定义属性的取值发生在元素自身，不参与这场层叠竞争，所以能穿过去。
+ */
+@media (prefers-reduced-motion: reduce) {
+	*:not(.animate-spin):not(.animate-pulse) {
+		transition-duration: var(--motion-reduced-duration, 0.01ms);
+		animation-duration: var(--motion-reduced-duration, 0.01ms);
+		animation-iteration-count: 1;
+	}
 }

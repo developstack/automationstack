@@ -5,21 +5,40 @@ allowBuilds:
   esbuild: true
   sharp: true
   lefthook: true
+  unrs-resolver: true
 catalog:
-  dotenv: ^17.4.2
-  zod: ^4.4.3
-  typescript: ^6.0.3
-  "@types/node": ^22.20.1
-  hono: ^4.12.32
-  "@orpc/server": ^1.14.12
-  "@orpc/openapi": ^1.14.12
-  "@orpc/zod": ^1.14.12
-  lucide-react: ^1.27.0
-  next-themes: ^0.4.6
-  react: ^19.2.8
-  react-dom: ^19.2.8
-  sonner: ^2.0.7
-  tailwindcss: ^4.3.3
-  "@orpc/client": ^1.14.12
-  "@types/react": ^19.2.17
-  "@types/react-dom": ^19.2.3
+  dotenv: 17.4.2
+  zod: 4.4.3
+  typescript: 6.0.3
+  "@types/node": 22.20.1
+  hono: 4.13.2
+  "@orpc/server": 1.15.0
+  "@orpc/openapi": 1.15.0
+  "@orpc/zod": 1.15.0
+  lucide-react: 1.31.0
+  react: 19.2.8
+  recharts: 3.10.1
+  react-dom: 19.2.8
+  sonner: 2.0.8
+  tailwindcss: 4.3.3
+  "@orpc/client": 1.15.0
+  "@types/react": 19.2.18
+  "@types/react-dom": 19.2.4
+minimumReleaseAgeExclude:
+  # blobatar 2026-08-16 首发、@blobatar/react 2026-08-19 首发，装的时候都不满 release age。
+  # 钉死精确版本而不是 caret：豁免的是「这一个已经审过的版本」，不是这个包以后的任何发布，
+  # 升级必须是一次显式改动。审计结论：无 install 生命周期脚本、零运行时依赖、
+  # dist 与 src 里无 fetch/eval/child_process/process.env 等外联或动态执行。
+  - blobatar@2.4.0
+  - '@blobatar/react@2.4.0'
+  - '@ai-sdk/gateway@3.0.176 || 4.0.54'
+  - ai@6.0.258 || 7.0.68
+  - '@hono/mcp@0.3.2'
+  - '@vitest/expect@4.1.11'
+  - '@vitest/mocker@4.1.11'
+  - '@vitest/pretty-format@4.1.11'
+  - '@vitest/runner@4.1.11'
+  - '@vitest/snapshot@4.1.11'
+  - '@vitest/spy@4.1.11'
+  - '@vitest/utils@4.1.11'
+  - vitest@4.1.11

@@ -9,7 +9,11 @@ build
 *.tsbuildinfo
 
 # Generated files
-apps/web/src/routeTree.gen.ts
+# 注意：apps/web/src/routeTree.gen.ts 刻意**不**忽略。它由 TanStack Start 的
+# vite 插件生成，但 apps/web/src/router.tsx 直接 import 它，而 check-types
+# 跑的是 tsc --noEmit（不经过 vite）。忽略掉的话，全新 clone 与 CI 上
+# `pnpm install && pnpm check-types` 会直接报「找不到模块 ./routeTree.gen」。
+# 仓库里也没装 @tanstack/router-cli（没有 tsr 命令），无法在类型检查前单独生成。
 local.db
 local.db-*
 
