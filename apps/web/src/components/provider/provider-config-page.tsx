@@ -2,7 +2,9 @@
  * AI 配置页：全平台唯一的一份 provider + model + base URL + API Key。
  *
  * 四个过程都是 adminProcedure，所以这里和成员管理用同一套判断：先看会话角色，
- * 非管理员就地说清楚「这页要管理员」，而不是让 FORBIDDEN 冒到错误边界变成白页。
+ * 非管理员就地说清楚「这页要管理员」，而不是把 FORBIDDEN 丢给全站兜底的错误边界
+ * （router.tsx 的 defaultErrorComponent）——那儿只能原样转述服务端那句话，
+ * 再给一颗对权限问题毫无用处的重试按钮。
  */
 import {
 	Empty,

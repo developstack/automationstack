@@ -14,6 +14,7 @@ import { FileQuestionIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { PageTransition } from "./components/layout/page-transition";
+import { RouteError } from "./components/layout/route-error";
 import Loader from "./components/loader";
 import { routeTree } from "./routeTree.gen";
 import { createQueryClient, orpc } from "./utils/orpc";
@@ -67,6 +68,12 @@ export const getRouter = () => {
 
 	const router = createTanStackRouter({
 		context: { orpc, queryClient },
+		/*
+		 * 兜底的错误边界：自己没写 errorComponent 的路由都落到它。缺了它的话，
+		 * loader 抛错或 useSuspenseQuery 失败会一路冒到 React 根部，
+		 * 把侧栏、顶栏连同主内容一起卸载成白页。
+		 */
+		defaultErrorComponent: RouteError,
 		defaultNotFoundComponent: NotFoundPage,
 		/*
 		 * 兜底的整页 spinner：只有自己没写 pendingComponent 的路由才会用到它。

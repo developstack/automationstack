@@ -18,7 +18,9 @@ import {
 
 /**
  * 侧边栏只给管理员显示入口，但地址栏是拦不住的：非管理员直接输 /members
- * 会被 adminProcedure 挡成 FORBIDDEN。与其让错误边界给一张白页，
+ * 会被 adminProcedure 挡成 FORBIDDEN。放任它冒到全站兜底的错误边界
+ * （router.tsx 的 defaultErrorComponent）不至于白页，但那儿只会把服务端那句
+ * FORBIDDEN 原样摆出来，还配一颗重试——权限不够，重试多少次都是同一句话。
  * 不如在这里说清楚「这页要管理员」以及从哪儿回去。
  */
 function MembersForbidden() {
