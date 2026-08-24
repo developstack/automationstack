@@ -13,11 +13,15 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiProviderRouteImport } from './routes/ai-provider'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MembersRouteImport } from './routes/members'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsProjectIdRouteRouteImport } from './routes/projects/$projectId/route'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
 import { Route as ProjectsProjectIdMindmapRouteImport } from './routes/projects/$projectId/mindmap'
 import { Route as ProjectsProjectIdOverviewRouteImport } from './routes/projects/$projectId/overview'
+import { Route as ProjectsProjectIdTestRunsIndexRouteImport } from './routes/projects/$projectId/test-runs/index'
+import { Route as ProjectsProjectIdTestRunsRunIdIndexRouteImport } from './routes/projects/$projectId/test-runs/$runId/index'
+import { Route as ProjectsProjectIdTestRunsRunIdReportRouteImport } from './routes/projects/$projectId/test-runs/$runId/report'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -37,6 +41,11 @@ const LoginRoute = LoginRouteImport.update({
 const MembersRoute = MembersRouteImport.update({
   id: '/members',
   path: '/members',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
@@ -66,27 +75,53 @@ const ProjectsProjectIdOverviewRoute =
     path: '/overview',
     getParentRoute: () => ProjectsProjectIdRouteRoute,
   } as any)
+const ProjectsProjectIdTestRunsIndexRoute =
+  ProjectsProjectIdTestRunsIndexRouteImport.update({
+    id: '/test-runs/',
+    path: '/test-runs/',
+    getParentRoute: () => ProjectsProjectIdRouteRoute,
+  } as any)
+const ProjectsProjectIdTestRunsRunIdIndexRoute =
+  ProjectsProjectIdTestRunsRunIdIndexRouteImport.update({
+    id: '/test-runs/$runId/',
+    path: '/test-runs/$runId/',
+    getParentRoute: () => ProjectsProjectIdRouteRoute,
+  } as any)
+const ProjectsProjectIdTestRunsRunIdReportRoute =
+  ProjectsProjectIdTestRunsRunIdReportRouteImport.update({
+    id: '/test-runs/$runId/report',
+    path: '/test-runs/$runId/report',
+    getParentRoute: () => ProjectsProjectIdRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-provider': typeof AiProviderRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
+  '/settings': typeof SettingsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
   '/projects/': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/test-runs/': typeof ProjectsProjectIdTestRunsIndexRoute
+  '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
+  '/projects/$projectId/test-runs/$runId/': typeof ProjectsProjectIdTestRunsRunIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-provider': typeof AiProviderRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
+  '/settings': typeof SettingsRoute
   '/projects': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/test-runs': typeof ProjectsProjectIdTestRunsIndexRoute
+  '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
+  '/projects/$projectId/test-runs/$runId': typeof ProjectsProjectIdTestRunsRunIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -94,11 +129,15 @@ export interface FileRoutesById {
   '/ai-provider': typeof AiProviderRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
+  '/settings': typeof SettingsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
   '/projects/': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/test-runs/': typeof ProjectsProjectIdTestRunsIndexRoute
+  '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
+  '/projects/$projectId/test-runs/$runId/': typeof ProjectsProjectIdTestRunsRunIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -107,32 +146,44 @@ export interface FileRouteTypes {
     | '/ai-provider'
     | '/login'
     | '/members'
+    | '/settings'
     | '/projects/$projectId'
     | '/projects/'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
     | '/projects/$projectId/'
+    | '/projects/$projectId/test-runs/'
+    | '/projects/$projectId/test-runs/$runId/report'
+    | '/projects/$projectId/test-runs/$runId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/ai-provider'
     | '/login'
     | '/members'
+    | '/settings'
     | '/projects'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
     | '/projects/$projectId'
+    | '/projects/$projectId/test-runs'
+    | '/projects/$projectId/test-runs/$runId/report'
+    | '/projects/$projectId/test-runs/$runId'
   id:
     | '__root__'
     | '/'
     | '/ai-provider'
     | '/login'
     | '/members'
+    | '/settings'
     | '/projects/$projectId'
     | '/projects/'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
     | '/projects/$projectId/'
+    | '/projects/$projectId/test-runs/'
+    | '/projects/$projectId/test-runs/$runId/report'
+    | '/projects/$projectId/test-runs/$runId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -140,6 +191,7 @@ export interface RootRouteChildren {
   AiProviderRoute: typeof AiProviderRoute
   LoginRoute: typeof LoginRoute
   MembersRoute: typeof MembersRoute
+  SettingsRoute: typeof SettingsRoute
   ProjectsProjectIdRouteRoute: typeof ProjectsProjectIdRouteRouteWithChildren
   ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
@@ -172,6 +224,13 @@ declare module '@tanstack/react-router' {
       path: '/members'
       fullPath: '/members'
       preLoaderRoute: typeof MembersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/': {
@@ -209,6 +268,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdOverviewRouteImport
       parentRoute: typeof ProjectsProjectIdRouteRoute
     }
+    '/projects/$projectId/test-runs/': {
+      id: '/projects/$projectId/test-runs/'
+      path: '/test-runs'
+      fullPath: '/projects/$projectId/test-runs/'
+      preLoaderRoute: typeof ProjectsProjectIdTestRunsIndexRouteImport
+      parentRoute: typeof ProjectsProjectIdRouteRoute
+    }
+    '/projects/$projectId/test-runs/$runId/': {
+      id: '/projects/$projectId/test-runs/$runId/'
+      path: '/test-runs/$runId'
+      fullPath: '/projects/$projectId/test-runs/$runId/'
+      preLoaderRoute: typeof ProjectsProjectIdTestRunsRunIdIndexRouteImport
+      parentRoute: typeof ProjectsProjectIdRouteRoute
+    }
+    '/projects/$projectId/test-runs/$runId/report': {
+      id: '/projects/$projectId/test-runs/$runId/report'
+      path: '/test-runs/$runId/report'
+      fullPath: '/projects/$projectId/test-runs/$runId/report'
+      preLoaderRoute: typeof ProjectsProjectIdTestRunsRunIdReportRouteImport
+      parentRoute: typeof ProjectsProjectIdRouteRoute
+    }
   }
 }
 
@@ -216,6 +296,9 @@ interface ProjectsProjectIdRouteRouteChildren {
   ProjectsProjectIdMindmapRoute: typeof ProjectsProjectIdMindmapRoute
   ProjectsProjectIdOverviewRoute: typeof ProjectsProjectIdOverviewRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
+  ProjectsProjectIdTestRunsIndexRoute: typeof ProjectsProjectIdTestRunsIndexRoute
+  ProjectsProjectIdTestRunsRunIdReportRoute: typeof ProjectsProjectIdTestRunsRunIdReportRoute
+  ProjectsProjectIdTestRunsRunIdIndexRoute: typeof ProjectsProjectIdTestRunsRunIdIndexRoute
 }
 
 const ProjectsProjectIdRouteRouteChildren: ProjectsProjectIdRouteRouteChildren =
@@ -223,6 +306,11 @@ const ProjectsProjectIdRouteRouteChildren: ProjectsProjectIdRouteRouteChildren =
     ProjectsProjectIdMindmapRoute: ProjectsProjectIdMindmapRoute,
     ProjectsProjectIdOverviewRoute: ProjectsProjectIdOverviewRoute,
     ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
+    ProjectsProjectIdTestRunsIndexRoute: ProjectsProjectIdTestRunsIndexRoute,
+    ProjectsProjectIdTestRunsRunIdReportRoute:
+      ProjectsProjectIdTestRunsRunIdReportRoute,
+    ProjectsProjectIdTestRunsRunIdIndexRoute:
+      ProjectsProjectIdTestRunsRunIdIndexRoute,
   }
 
 const ProjectsProjectIdRouteRouteWithChildren =
@@ -235,6 +323,7 @@ const rootRouteChildren: RootRouteChildren = {
   AiProviderRoute: AiProviderRoute,
   LoginRoute: LoginRoute,
   MembersRoute: MembersRoute,
+  SettingsRoute: SettingsRoute,
   ProjectsProjectIdRouteRoute: ProjectsProjectIdRouteRouteWithChildren,
   ProjectsIndexRoute: ProjectsIndexRoute,
 }

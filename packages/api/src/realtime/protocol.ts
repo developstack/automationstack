@@ -47,7 +47,12 @@ export const presencePatchSchema = presenceEntrySchema
 	.omit({ clientId: true, color: true, joinedAt: true, name: true })
 	.partial();
 
-export const invalidateEntitySchema = z.enum(["case", "module", "project"]);
+export const invalidateEntitySchema = z.enum([
+	"case",
+	"module",
+	"project",
+	"testRun",
+]);
 
 export const invalidateActionSchema = z.enum([
 	"create",

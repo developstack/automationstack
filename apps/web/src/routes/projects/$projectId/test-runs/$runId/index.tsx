@@ -1,0 +1,120 @@
+/**
+ * 测试任务详情 = 执行台（plan §7.3）。
+ *
+ * 文件放在 `test-runs/$runId/index.tsx` 而不是 `test-runs/$runId.tsx`：
+ * 报告页是 `test-runs/$runId/report.tsx`，用扁平写法的话这一份就成了报告页的
+ * 父布局，必须再画一个 `<Outlet />`，否则报告页整页空白。目录 + index 的
+ * URL 与扁平写法完全一致，且与本仓库既有路由（`projects/$projectId/index.tsx`）同构。
+ */
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback } from "react";
+import { z } from "zod";
+
+import { PageTransition } from "@/components/layout/page-transition";
+import { RunExecutionView } from "@/components/test-runs/run-execution-view";
+import type { RouterAppContext } from "@/routes/__root";
+
+/**
+ * 选中的用例行写进 URL：刷新、后退、把链接发给同事都能停在同一条上。
+ * 用 `runCaseId`（执行行）而不是 `caseId`（用例）——同一条用例可以出现在
+ * 多个测试任务里，只有执行行 id 才唯一标识「这个测试任务里的这一条」。
+ */
+const runDetailSearchSchema = z.object({
+	runCaseId: z.string().optional(),
+});
+
+const EXECUTION_MAIN = "flex min-h-0 flex-col";
+
+interface RunDetailLoaderData {
+	projectName: string;
+}
+
+/**
+ * 预热执行台要的那条 `testRuns.get`，另外把项目名带回来给 `head` 用。
+ *
+ * `projects.get` 父路由（route.tsx）已经取过，这里命中缓存、不产生第二次请求；
+ * 要的只是把名字拿到这一层——`head` 只能读本路由自己的 loaderData。
+ *
+ * 只 return 项目名，不 return 整份 run：loader 的返回值会被序列化进 SSR 载荷，
+ * 而 run 那一份已经随 queryClient 脱水传过去一遍了。
+ */
+const runDetailLoader = async ({
+	context,
+	params,
+}: {
+	context: RouterAppContext;
+	params: { projectId: string; runId: string };
+}): Promise<RunDetailLoaderData> => {
+	const [project] = await Promise.all([
+		context.queryClient.ensureQueryData(
+			context.orpc.projects.get.queryOptions({
+				input: { id: params.projectId },
+			})
+		),
+		context.queryClient.ensureQueryData(
+			context.orpc.testRuns.get.queryOptions({ input: { runId: params.runId } })
+		),
+	]);
+	return { projectName: project.name };
+};
+
+export const Route = createFileRoute("/projects/$projectId/test-runs/$runId/")({
+	component: RunExecutionPage,
+	/*
+	 * 标题里必须有项目名：并排开着两个项目的执行台时，光看「测试任务 · 测试用例平台」
+	 * 两个标签页一模一样，只能挨个点开试。形状与父路由 route.tsx 的标题一致，
+	 * 中间插一段模块用词而已。
+	 *
+	 * 这里用记录用词「测试任务」而不是模块名——这一页看的是某一个具体的测试任务。
+	 */
+	head: ({ loaderData }) => ({
+		meta: [
+			{
+				title: `${loaderData?.projectName ?? "项目"} · 测试任务 · 测试用例平台`,
+			},
+		],
+	}),
+	loader: runDetailLoader,
+	pendingComponent: RunExecutionPending,
+	validateSearch: runDetailSearchSchema,
+});
+
+/*
+ * loaderDeps 不取 search：换选中用例只该改右栏，重跑 loader 会把整页换成骨架。
+ * 与用例列表页同一条取舍（见 projects/$projectId/index.tsx 的长注释）。
+ */
+function RunExecutionPending() {
+	return (
+		<PageTransition className={EXECUTION_MAIN} phase="pending">
+			<p className="p-8 text-center text-muted-foreground text-sm">
+				正在载入测试任务…
+			</p>
+		</PageTransition>
+	);
+}
+
+function RunExecutionPage() {
+	const { projectId, runId } = Route.useParams();
+	const { runCaseId } = Route.useSearch();
+	const navigate = Route.useNavigate();
+
+	const handleSelectRunCase = useCallback(
+		(nextId: string | undefined) => {
+			// replace: true —— 逐条打结论会连续换选中项，不 replace 的话
+			// 浏览器的「后退」要按几十次才能真的离开这一页。
+			navigate({ replace: true, search: { runCaseId: nextId } });
+		},
+		[navigate]
+	);
+
+	return (
+		<PageTransition className={EXECUTION_MAIN} phase="ready">
+			<RunExecutionView
+				onSelectRunCase={handleSelectRunCase}
+				projectId={projectId}
+				runId={runId}
+				selectedRunCaseId={runCaseId}
+			/>
+		</PageTransition>
+	);
+}

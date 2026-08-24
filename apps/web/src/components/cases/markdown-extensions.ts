@@ -24,20 +24,22 @@ import {
 import type { Extension } from "@codemirror/state";
 import { EditorView, keymap, placeholder } from "@codemirror/view";
 import { tags } from "@lezer/highlight";
-import { parser } from "@lezer/markdown";
+
+import { markdownParser } from "@/components/cases/markdown-parser";
 
 /**
  * `@lezer/markdown` 的 parser 是 MarkdownParser 而不是 LRParser，
  * 所以用 Language 基类包装（LRLanguage.define 只收 LRParser）。
- * 直接用它而不是 `@codemirror/lang-markdown`：后者为了给围栏代码块做嵌套高亮
- * 会连带打包 lang-html / lang-javascript / lang-css，实测 gzip 从 99KB 涨到 173KB，
- * 而用例里的代码块只需要等宽字体，不需要按语言着色。
+ *
+ * parser 本身住在 `markdown-parser.ts`：只读预览（`markdown-doc.ts`）要在 SSR 里
+ * 用同一个 parser，而它不能碰本文件——`@codemirror/view` 进不了 SSR bundle。
+ * 选它而不选 `@codemirror/lang-markdown` 的理由写在那个文件的头注释里。
  */
 const markdownLanguage = new Language(
 	defineLanguageFacet({
 		commentTokens: { block: { close: "-->", open: "<!--" } },
 	}),
-	parser,
+	markdownParser,
 	[],
 	"markdown"
 );
@@ -102,6 +104,14 @@ interface MarkdownExtensionOptions {
 	 * 返回 true 让 CodeMirror 吞掉这次按键。
 	 */
 	onEscape: () => void;
+	/**
+	 * 剪贴板里带图片时接管这次粘贴。返回 true = 已接管，CodeMirror 会替我们
+	 * `preventDefault()` 并跳过内置的 paste 处理；返回 false = 原样放行。
+	 *
+	 * ⚠️ 判定必须严到「真的有图片文件」为止：粘纯文本（往步骤里贴一段日志）
+	 * 走的是同一个事件，误接管一次就是把用户的文本吞掉。
+	 */
+	onPasteFiles?: (files: File[]) => boolean;
 	placeholder: string;
 }
 
@@ -134,6 +144,25 @@ export function markdownExtensions(
 			"aria-multiline": "true",
 		}),
 		placeholder(options.placeholder),
+		/**
+		 * 粘贴挂在**编辑器实例**上，不是 document 上。
+		 *
+		 * `test-runs/run-attachments.tsx` 那份挂 document 是对的——那里只有一个
+		 * 附件区，页面任何位置粘贴都该落进去。这里恰恰相反：同屏可能有 40 个
+		 * markdown 字段，「贴到哪个字段的哪个光标位」只有拿到事件的那个实例知道。
+		 *
+		 * 由 `computeHandlers` 的顺序保证我们排在内置 paste 处理之前，
+		 * 所以放行时内置行为一点不受影响（见 CM6 的 runHandlers）。
+		 */
+		EditorView.domEventHandlers({
+			paste: (event) => {
+				const files = [...(event.clipboardData?.files ?? [])];
+				if (files.length === 0) {
+					return false;
+				}
+				return options.onPasteFiles?.(files) ?? false;
+			},
+		}),
 		EditorView.updateListener.of((update) => {
 			if (update.docChanged) {
 				options.onChange(update.state.doc.toString());

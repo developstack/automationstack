@@ -21,6 +21,7 @@
     "@orpc/zod": "catalog:",
     "dotenv": "catalog:",
     "hono": "catalog:",
+    "pg-boss": "^12.27.0",
     "ws": "8.21.3",
     "zod": "catalog:"
   },

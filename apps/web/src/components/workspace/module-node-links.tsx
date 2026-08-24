@@ -23,6 +23,9 @@ function useSelectModuleSearch(moduleId: string) {
 	return useCallback(
 		(prev: WorkspaceSearch) => ({
 			...clearCaseSelection(prev),
+			// 换模块时把新建抽屉收掉：`create` 跟着走会让抽屉在另一个模块下
+			// 凭空弹开，而那个模块的草稿与当前这份毫无关系。
+			create: undefined,
 			moduleId,
 			// 换模块相当于换了一份列表，停在旧页码上多半是空页。
 			page: undefined,
@@ -90,8 +93,18 @@ export function ModuleNodeLink({ depth, node }: ModuleNameLinkProps) {
 						to="/projects/$projectId"
 					>
 						{/* 图标不跟着字号缩：缩到第三档就只剩 12px，和左边同样在缩的展开箭头
-						    一起会小到点不准；固定 size-3.5 还能让整列图标落在同一条竖线上 */}
-						<FolderIcon className="icon-stroke-regular size-3.5 shrink-0 text-muted-foreground" />
+						    一起会小到点不准；固定 size-3.5 还能让整列图标落在同一条竖线上。
+						    悬停整行时淡出：拖拽把手绝对定位压在这一格上（见 module-drag-parts.tsx
+						    的 start-8），把手一显形两枚图标就会糊在一起。只改 opacity 不改布局，
+						    这一格的宽度始终在，模块名不会因为悬停左右挪动。
+						    pointer-events-none 是这条淡出的必要配套（实测出来的，不是保险）：
+						    opacity < 1 的元素会自成层叠上下文，按「z-index:0 的定位元素」参与绘制，
+						    而它在 DOM 里排在把手之后——淡出的那一刻它反而盖到把手上面，
+						    把手看得见却抓不动。它本来就是装饰图标，不该吃指针事件，
+						    与 button.tsx 里给图标统一加 pointer-events-none 是同一条约定。
+						    两条淡出条件对应把手显形的两种方式：鼠标悬停整行、键盘聚焦到把手本身
+						    （data-drag-handle 的由来见 module-drag-parts.tsx）。 */}
+						<FolderIcon className="icon-stroke-regular pointer-events-none size-3.5 shrink-0 text-muted-foreground transition-opacity group-hover/module-row:opacity-0 group-has-[[data-drag-handle]:focus-visible]/module-row:opacity-0" />
 						<span className="truncate">{node.name}</span>
 					</Link>
 				}

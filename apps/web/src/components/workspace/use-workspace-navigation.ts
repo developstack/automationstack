@@ -21,6 +21,8 @@ type SearchPatch = Partial<WorkspaceSearch>;
 export interface WorkspaceNavigation {
 	clearFilters: () => void;
 	closeCase: () => void;
+	closeCreate: () => void;
+	openCreate: () => void;
 	selectCase: (caseId: string) => void;
 	setHistory: (open: boolean) => void;
 	setKeyword: (keyword: string) => void;
@@ -84,8 +86,23 @@ function filterActions(patch: ApplyPatch, reduce: ApplyReducer) {
 function selectionActions(patch: ApplyPatch) {
 	return {
 		closeCase: () => patch({ caseId: undefined, history: undefined }, false),
+		/*
+		 * 新建抽屉的开合也推新历史项，与详情抽屉一致：用户按后退退出抽屉是
+		 * 学得会的预期，而把它做成 replace 会让后退直接跳出整个列表页。
+		 */
+		closeCreate: () => patch({ create: undefined, draft: undefined }, false),
+		/*
+		 * ⚠️ openCreate 必须显式清掉 `draft`：这个按钮的语义就是「建一条全新的」。
+		 * 留着上一次「继续编辑」带进 URL 的那份 id，点新建又会把那份草稿恢复出来，
+		 * 正是这次要修的老毛病。
+		 */
+		openCreate: () => patch({ create: true, draft: undefined }, false),
+		// 创建成功后要打开的是详情抽屉，顺手收掉新建那一个（连同它的草稿指名）。
 		selectCase: (caseId: string) =>
-			patch({ caseId, history: undefined }, false),
+			patch(
+				{ caseId, create: undefined, draft: undefined, history: undefined },
+				false
+			),
 		setHistory: (open: boolean) => patch({ history: open || undefined }, false),
 		setPage: (page: number) =>
 			patch({ page: page <= 1 ? undefined : page }, false),

@@ -6,7 +6,7 @@ import { Button } from "@automationstack/ui/components/button";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useCallback } from "react";
 
 import { CaseCreateSheet } from "@/components/cases/case-create-sheet";
 import { CaseDetailSheet } from "@/components/cases/case-detail-sheet";
@@ -149,31 +149,22 @@ function CaseListResult(props: CaseListResultProps) {
 	);
 }
 
-/** Local open/close state for the create dialog, plus post-create selection. */
-function useCreateDialog(onCreated: (caseId: string) => void) {
-	const [open, setOpen] = useState(false);
-	const close = useCallback(() => setOpen(false), []);
-	const start = useCallback(() => setOpen(true), []);
-	const created = useCallback(
-		(caseId: string) => {
-			setOpen(false);
-			onCreated(caseId);
-		},
-		[onCreated]
-	);
-	return { close, created, open, start };
-}
-
 interface CaseListOverlaysProps {
-	createDialog: ReturnType<typeof useCreateDialog>;
 	navigation: WorkspaceNavigation;
 	projectId: string;
 	search: WorkspaceSearch;
 }
 
-/** 详情抽屉与新建抽屉：都脱离文档流，不参与 main 的间距计算。 */
+/**
+ * 详情抽屉与新建抽屉：都脱离文档流，不参与 main 的间距计算。
+ *
+ * 新建抽屉的开合读的是 URL 上的 `create`，不是本组件的 state：侧栏的
+ * 「未完成草稿」要能把人送回某个模块的新建抽屉，而侧栏挂在父路由的 layout 上，
+ * 够不到这里的 state（理由与参数定义见 workspace-search.ts）。
+ * 顺带的好处是深链、后退/前进都能还原抽屉，与详情抽屉的行为对齐。
+ */
 function CaseListOverlays(props: CaseListOverlaysProps) {
-	const { createDialog, navigation, search } = props;
+	const { navigation, search } = props;
 	return (
 		<>
 			<CaseDetailSheet
@@ -183,10 +174,12 @@ function CaseListOverlays(props: CaseListOverlaysProps) {
 				onToggleHistory={navigation.setHistory}
 			/>
 			<CaseCreateSheet
+				draftId={search.draft}
 				moduleId={search.moduleId}
-				onClose={createDialog.close}
-				onCreated={createDialog.created}
-				open={createDialog.open}
+				onClose={navigation.closeCreate}
+				// selectCase 会顺手清掉 create，抽屉随之关闭，不必再单独收一次。
+				onCreated={navigation.selectCase}
+				open={search.create === true}
 				projectId={props.projectId}
 			/>
 		</>
@@ -226,7 +219,6 @@ export const CASE_LIST_MAIN = "flex min-h-0 flex-col gap-3 overflow-y-auto p-4";
 export function CaseListView({ action, projectId }: CaseListViewProps) {
 	const search = routeApi.useSearch();
 	const navigation = useWorkspaceNavigation();
-	const createDialog = useCreateDialog(navigation.selectCase);
 	const listQuery = useQuery(
 		orpc.cases.list.queryOptions({
 			input: caseListInput(projectId, search),
@@ -240,7 +232,7 @@ export function CaseListView({ action, projectId }: CaseListViewProps) {
 				action={action}
 				canCreate={search.moduleId !== undefined}
 				navigation={navigation}
-				onCreate={createDialog.start}
+				onCreate={navigation.openCreate}
 				projectId={projectId}
 				search={search}
 				total={listQuery.data?.total}
@@ -257,7 +249,6 @@ export function CaseListView({ action, projectId }: CaseListViewProps) {
 				<CaseTableSkeleton />
 			)}
 			<CaseListOverlays
-				createDialog={createDialog}
 				navigation={navigation}
 				projectId={projectId}
 				search={search}

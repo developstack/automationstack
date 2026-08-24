@@ -1,7 +1,7 @@
 import type { AgentDeps, ExistingCaseSummary } from "@automationstack/ai/tools";
 import { insertCaseProposals } from "@automationstack/db/repositories/ai-proposals-repository";
+import { listTestCases } from "@automationstack/db/repositories/case-list-repository";
 import { listModulesByProject } from "@automationstack/db/repositories/modules-repository";
-import { listTestCases } from "@automationstack/db/repositories/test-cases-repository";
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 
 import { formatModuleOutline } from "./module-outline";

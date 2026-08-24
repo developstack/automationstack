@@ -164,8 +164,10 @@ async function applyCaseOp(
 		});
 		return result.kind === "ok" ? null : result.kind;
 	}
+	// `blocked`（被测试任务引用，plan §3.4）与 `not-found` 一样直接作为 reason
+	// 上抛，整批回滚——脑图批量里删一半留一半会让画布和库对不上。
 	const removed = await removeTestCaseInTx(tx, resolveId(idMap, op.id));
-	return removed ? null : "not-found";
+	return removed.kind === "removed" ? null : removed.kind;
 }
 
 function applyOperation(

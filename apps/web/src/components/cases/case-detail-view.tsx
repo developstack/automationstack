@@ -8,24 +8,45 @@ import {
 	TableHeader,
 	TableRow,
 } from "@automationstack/ui/components/table";
+import type { ReactNode } from "react";
 
+import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
 import {
 	CASE_TYPE_LABELS,
 	formatDateTime,
 	PRIORITY_BADGE_VARIANTS,
 } from "@/components/cases/case-meta";
 import { CaseStatusBadge } from "@/components/cases/case-status-badge";
+import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
+import { MarkdownRender } from "@/components/cases/markdown-render";
 
-function DetailRow({ children, label }: { children: string; label: string }) {
+/**
+ * children 是 ReactNode 而不是 string：前置条件现在走 markdown 渲染，塞进来的
+ * 是一棵含 <p>/<ul>/<img> 的树。外层也从 <span> 换成 <div>——块级元素放进
+ * <span> 是非法 HTML，浏览器会就地拆标签，SSR 出来的结构与水合时对不上。
+ */
+function DetailRow({
+	children,
+	label,
+}: {
+	children: ReactNode;
+	label: string;
+}) {
 	return (
 		<div className="flex flex-col gap-1">
 			<span className="text-muted-foreground text-xs">{label}</span>
-			<span className="text-sm">{children}</span>
+			<div className="text-sm">{children}</div>
 		</div>
 	);
 }
 
-function CaseStepsTable({ testCase }: { testCase: TestCase }) {
+function CaseStepsTable({
+	imageUrls,
+	testCase,
+}: {
+	imageUrls: MarkdownImageUrls;
+	testCase: TestCase;
+}) {
 	if (testCase.steps.length === 0) {
 		return <p className="text-muted-foreground text-sm">暂无步骤。</p>;
 	}
@@ -42,9 +63,13 @@ function CaseStepsTable({ testCase }: { testCase: TestCase }) {
 				{testCase.steps.map((step, index) => (
 					<TableRow key={step.id}>
 						<TableCell className="text-muted-foreground">{index + 1}</TableCell>
-						<TableCell className="whitespace-pre-wrap">{step.step}</TableCell>
-						<TableCell className="whitespace-pre-wrap">
-							{step.expected}
+						{/* whitespace-pre-wrap 交给 MarkdownRender 内部的文本块自己管，
+						    在单元格上再来一层会让 markdown 生成的结构性空白也被保留 */}
+						<TableCell>
+							<MarkdownRender imageUrls={imageUrls} text={step.step} />
+						</TableCell>
+						<TableCell>
+							<MarkdownRender imageUrls={imageUrls} text={step.expected} />
 						</TableCell>
 					</TableRow>
 				))}
@@ -55,6 +80,10 @@ function CaseStepsTable({ testCase }: { testCase: TestCase }) {
 
 /** Read-only rendering of a saved case. */
 export function CaseDetailView({ testCase }: { testCase: TestCase }) {
+	// 一次请求签完这条用例的全部附件，正文里的每个引用按 id 在这张表里查——
+	// 绝不能改成每张图一个请求。
+	const imageUrls = useCaseAttachmentUrls(testCase.id);
+
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex flex-wrap items-center gap-2">
@@ -77,8 +106,14 @@ export function CaseDetailView({ testCase }: { testCase: TestCase }) {
 					{formatDateTime(testCase.updatedAt)}
 				</DetailRow>
 			</div>
-			<DetailRow label="前置条件">{testCase.preconditions ?? "—"}</DetailRow>
-			<CaseStepsTable testCase={testCase} />
+			<DetailRow label="前置条件">
+				{testCase.preconditions ? (
+					<MarkdownRender imageUrls={imageUrls} text={testCase.preconditions} />
+				) : (
+					"—"
+				)}
+			</DetailRow>
+			<CaseStepsTable imageUrls={imageUrls} testCase={testCase} />
 		</div>
 	);
 }

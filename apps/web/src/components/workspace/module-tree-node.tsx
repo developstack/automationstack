@@ -49,9 +49,9 @@ interface NodeMenuProps {
  * 模块行的操作菜单。只有菜单体，触发器是整行（见 ModuleNodeRow）。
  *
  * 原先是行尾一枚 hover 才显形的「⋯」按钮：它把同一行的脑图图标往左顶了
- * 28px（icon-xs 的 24px + 行内 gap-1 的 4px），使模块行的脑图与「全部用例」
- * 那一行的脑图差了整整一档，侧栏右缘对不齐。改成右键菜单后行尾不再有按钮，
- * 各行的脑图自然收在同一条竖线上。
+ * 28px（icon-xs 的 24px + 行内 gap-1 的 4px），使模块行的脑图与「模块」标题行
+ * 右端那枚全项目脑图差了整整一档，侧栏右缘对不齐。改成右键菜单后行尾不再有
+ * 按钮，各行的脑图自然收在同一条竖线上。
  */
 function NodeMenu({ actions, node, onRename }: NodeMenuProps) {
 	const createChild = useCallback(
@@ -110,6 +110,8 @@ function ModuleToggle({ hasChildren, open }: ModuleToggleProps) {
 			render={
 				<Button
 					aria-label={open ? "折叠" : "展开"}
+					// invisible 而不是不渲染：没有子模块的行也要留下这一格，
+					// 否则叶子行的模块名会比有子模块的行左移一整档。
 					className={cn(!hasChildren && "invisible")}
 					size="icon-xs"
 					variant="ghost"
@@ -172,6 +174,9 @@ function ModuleNodeRow(props: ModuleNodeRowProps) {
 			<ContextMenuTrigger
 				className={cn(
 					// px-2：与 aside 的 p-2 相加正好是 16px 的侧栏 gutter，见 module-tree.tsx 顶部约定。
+					// 行首第一个流内元素是展开箭头，所以模块行的内容正起于这条 16px 线，与
+					// 「项目概览 / 测试评审和执行 / 未完成草稿」那几行的行首图标同起点；拖拽把手
+					// 绝对定位、不占流内宽度（理由见 module-drag-parts.tsx），这个 relative 同时是它的包含块。
 					// relative + before:*：选中态的左侧 2px 指示条，用伪元素而不是多一层子节点——
 					// 这个 div 的碰撞盒是按行算的，加节点会改布局。内缩 4px 使条长 20px，与一级侧栏
 					// 那条等长（行高 28px = py-0.5 + icon-xs 24px）；行没有 overflow-hidden，

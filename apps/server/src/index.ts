@@ -11,6 +11,8 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
+import { registerJiraWebhook } from "./jira/webhook";
+import { startJobs, stopJobs } from "./jobs/boss";
 import { handleMcpRequest } from "./mcp/server";
 import { responseCompression } from "./middleware/response-compression";
 import {
@@ -46,6 +48,13 @@ app.use(
  * 后续中间件不会被执行，压缩因此天然碰不到 WebSocket。
  */
 app.use("/*", responseCompression());
+
+/**
+ * Jira webhook 注册在 oRPC 中间件**之前**：它是外部系统发来的、没有会话
+ * cookie 的请求，走一遍 createContext 只会白做一次 cookie 解析加一次读库，
+ * 而且它需要原始请求体，本来就不该进 oRPC 的输入管道。
+ */
+registerJiraWebhook(app);
 
 export const apiHandler = new OpenAPIHandler(appRouter, {
 	interceptors: [
@@ -118,6 +127,10 @@ app.get("/", (c) => c.text("OK"));
 
 startRealtime();
 
+// 后台任务（pg-boss）：启动失败在内部已吞掉，不 await、也不拖慢 HTTP 服务起来。
+// biome-ignore lint/complexity/noVoid: 刻意的 fire-and-forget——void 标记不等待，失败已在 startJobs 内部吞掉
+void startJobs();
+
 serve(
 	{
 		fetch: app.fetch,
@@ -128,3 +141,13 @@ serve(
 		console.log(`Server is running on http://localhost:${info.port}`);
 	}
 );
+
+// 最小优雅退出：此前没有 shutdown 处理，这里只做「停掉后台任务再退出」，
+// 不引入框架。两个信号都收到第二次时按 Node 默认行为直接终止。
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+	process.on(signal, () => {
+		console.log(`收到 ${signal}，正在退出…`);
+		stopJobs();
+		process.exit(0);
+	});
+}

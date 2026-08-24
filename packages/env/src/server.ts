@@ -30,6 +30,16 @@ export const env = createEnv({
 		AI_API_KEY: z.string().min(1).optional(),
 		AI_BASE_URL: z.url().optional(),
 		AI_MODEL: z.string().min(1).optional(),
+		/**
+		 * 测试报告每日自动提交扫描的 cron 表达式（plan 011 D5）。时刻本身无
+		 * 业务含义，仅钻夜间低谷；条件是累积式的，停机错过一天次日自然补上。
+		 */
+		AUTO_SUBMIT_SCAN_CRON: z.string().min(1).default("0 3 * * *"),
+		/**
+		 * 上一项 cron 的时区，需为 IANA 时区名（pg-boss 要求），如
+		 * `Asia/Shanghai`；不能用 `UTC+8` 这类缩写写法。
+		 */
+		AUTO_SUBMIT_SCAN_TZ: z.string().min(1).default("Asia/Shanghai"),
 		CORS_ORIGIN: z.url(),
 		DATABASE_URL: z.string().min(1),
 		NODE_ENV: z
@@ -37,6 +47,31 @@ export const env = createEnv({
 			.default("development"),
 		/** 可选：HTTP/WS 监听端口，便于本地并行起多个实例。 */
 		PORT: z.coerce.number().int().positive().default(DEFAULT_PORT),
+		/**
+		 * Cloudflare R2 附件存储（plan §6）。**五个变量全部 optional**，
+		 * 判定见本文件末尾的 `isR2Configured()`。
+		 *
+		 * 为什么不做成「要么全配、要么全不配」的 superRefine：那会让「配错一个」
+		 * 变成整个服务起不来，而附件只是测试任务的一个可选侧翼能力。缺项一律折算成
+		 * 「未配置」，与 Jira 未配置时 `getJiraClient()` 返回 null 是同一种降级
+		 * 姿势（plan §5.1 / D9）——上传入口禁用，测试任务主流程一行不受影响。
+		 */
+		R2_ACCESS_KEY_ID: z.string().min(1).optional(),
+		/** R2 账号 ID；未显式给 `R2_ENDPOINT` 时用它拼出默认 endpoint。 */
+		R2_ACCOUNT_ID: z.string().min(1).optional(),
+		/**
+		 * 存桶名。**这个桶必须保持私有**：测试截图常含测试环境的真实业务数据，
+		 * 读取一律走 15 分钟短期签名 GET（plan §6 / D10），不开 public access。
+		 */
+		R2_BUCKET: z.string().min(1).optional(),
+		/**
+		 * 可选的 endpoint 覆盖。留空时用
+		 * `https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com`。
+		 * 存在的意义是本地/CI 能指向 MinIO 之类的 S3 兼容实现做联调，
+		 * 不必为了跑一次上传去开真桶。
+		 */
+		R2_ENDPOINT: z.url().optional(),
+		R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 		/**
 		 * 数据库里那份 AI provider 配置的 API Key 主密钥：base64 编码的 32 字节，
 		 * 用 `openssl rand -base64 32` 生成。
@@ -64,3 +99,23 @@ export const env = createEnv({
 	},
 	skipValidation: !!process.env.SKIP_ENV_VALIDATION,
 });
+
+/**
+ * R2 是否可用。**任何附件写路径都必须先过这一关**，未配置时 router 返回
+ * 明确的「未配置」而不是让 SDK 在没有 credentials 的情况下抛出 500。
+ *
+ * `R2_ACCOUNT_ID` 与 `R2_ENDPOINT` 是二选一而不是都必需：endpoint 能从
+ * account id 拼出来，反过来指向 MinIO 时压根没有 account id 这个概念。
+ * 只要 endpoint 有了，account id 就是多余信息。
+ *
+ * 放在 env 包而不是 R2 客户端里：判定只依赖环境变量，前端 / router / 服务启动
+ * 日志都可能要问这一句，而它们不该为了问一句话把 aws-sdk 拖进依赖图。
+ */
+export function isR2Configured(): boolean {
+	return Boolean(
+		env.R2_ACCESS_KEY_ID &&
+			env.R2_SECRET_ACCESS_KEY &&
+			env.R2_BUCKET &&
+			(env.R2_ENDPOINT || env.R2_ACCOUNT_ID)
+	);
+}

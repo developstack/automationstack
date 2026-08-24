@@ -1,61 +1,10 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
-import { ArrowDownIcon, ArrowUpIcon, PlusIcon, XIcon } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { PlusIcon } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 
 import { MarkdownField } from "@/components/cases/markdown-field";
-
-interface StepRowActionsProps {
-	canMoveDown: boolean;
-	canMoveUp: boolean;
-	/** 0 基索引；标签里带上序号，读屏的按钮列表才不会是 N 组同名按钮。 */
-	index: number;
-	onMoveDown: () => void;
-	onMoveUp: () => void;
-	onRemove: () => void;
-}
-
-function StepRowActions(props: StepRowActionsProps) {
-	const position = props.index + 1;
-	return (
-		/*
-		 * 宽屏是行尾竖排的一列（步骤行的 auto 轨）；窄屏整行堆叠后改成横排并靠
-		 * 行尾对齐——竖排会在两个编辑器下面拖出 80px 高的一条空白，而横排一行
-		 * 24px 就够，行操作也仍然待在「内容之后」的位置上。
-		 */
-		<div className="flex justify-end gap-1 sm:flex-col sm:justify-start">
-			<Button
-				aria-label={`第 ${position} 步上移`}
-				disabled={!props.canMoveUp}
-				onClick={props.onMoveUp}
-				size="icon-xs"
-				type="button"
-				variant="ghost"
-			>
-				<ArrowUpIcon />
-			</Button>
-			<Button
-				aria-label={`第 ${position} 步下移`}
-				disabled={!props.canMoveDown}
-				onClick={props.onMoveDown}
-				size="icon-xs"
-				type="button"
-				variant="ghost"
-			>
-				<ArrowDownIcon />
-			</Button>
-			<Button
-				aria-label={`删除第 ${position} 步`}
-				onClick={props.onRemove}
-				size="icon-xs"
-				type="button"
-				variant="ghost"
-			>
-				<XIcon />
-			</Button>
-		</div>
-	);
-}
+import { StepRowActions } from "@/components/cases/step-row-actions";
 
 interface StepRowProps {
 	canMoveDown: boolean;
@@ -112,24 +61,43 @@ function StepRow(props: StepRowProps) {
 		handleStepChange,
 	} = useStepRowHandlers(props);
 
+	/*
+	 * 预览开关是**行级**的，而且默认关。
+	 *
+	 * 步骤格的两格并排站着，谁的布局一动都会把另一格推走。之前预览跟着聚焦走，
+	 * 于是「点一下另一格」＝「整行重排一次」，两格互换位置，点击看上去石沉大海。
+	 * 现在它只听这一个 useState，除非用户按了行尾那枚按钮，否则聚焦、失焦、
+	 * 进出编辑态都不会让任何元素改变尺寸或位置。
+	 *
+	 * 放在行上而不是格上：一行两格共用一个开关，20 步只多 20 个按钮而不是 40 个，
+	 * 而且开关待在行操作那一列里，不给格子本身增加任何常驻高度。
+	 */
+	const [previewOpen, setPreviewOpen] = useState(false);
+	const togglePreview = useCallback(() => setPreviewOpen((open) => !open), []);
+
 	return (
 		/*
 		 * 窄屏（<640px）单栏堆叠，理由与短字段栅格同源：内容区只剩 288px 时
 		 * 切两栏每个编辑器只有 124px，markdown 一行放不下几个字。
 		 * 列间距 gap-3(12px) 与短字段栅格的 gap-x-3 同档，整个表单只有一种
 		 * 横向水槽；行与行之间的 16px 比它大，一行才读得出是一行。
+		 *
+		 * 这个 className 是常量：轨道数不随任何状态变化，展开预览只让预览在
+		 * 各自格子内部往下长，不会顶到隔壁那一格。
 		 */
 		<li className="grid grid-cols-1 items-start gap-3 sm:grid-cols-case-step">
 			<MarkdownField
 				ariaLabel={`第 ${props.index + 1} 步操作`}
 				onChange={handleStepChange}
 				placeholder="操作步骤，支持 markdown"
+				preview={previewOpen}
 				value={step.step}
 			/>
 			<MarkdownField
 				ariaLabel={`第 ${props.index + 1} 步预期结果`}
 				onChange={handleExpectedChange}
 				placeholder="预期结果，支持 markdown"
+				preview={previewOpen}
 				value={step.expected}
 			/>
 			<StepRowActions
@@ -139,6 +107,8 @@ function StepRow(props: StepRowProps) {
 				onMoveDown={handleMoveDown}
 				onMoveUp={handleMoveUp}
 				onRemove={handleRemove}
+				onTogglePreview={togglePreview}
+				previewOpen={previewOpen}
 			/>
 		</li>
 	);

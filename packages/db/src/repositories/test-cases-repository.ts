@@ -1,50 +1,18 @@
-import {
-	and,
-	asc,
-	count,
-	eq,
-	gt,
-	gte,
-	ilike,
-	inArray,
-	ne,
-	type SQL,
-	sql,
-} from "drizzle-orm";
+import { and, count, eq, gt, gte, ne, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import { modules } from "../schema/modules";
-import {
-	type CasePriority,
-	type CaseStatus,
-	type TestCase,
-	testCases,
-} from "../schema/test-cases";
-import { getModuleSubtreeIds } from "./module-subtree";
-import type { DbTransaction } from "./repository-types";
+import { type TestCase, testCases } from "../schema/test-cases";
+import type { DbTransaction, RemoveTestCaseResult } from "./repository-types";
+import { countCaseRunReferences } from "./test-runs-repository";
 
-export const DEFAULT_PAGE_SIZE = 20;
-export const MAX_PAGE_SIZE = 100;
-
-export interface ListTestCasesFilter {
-	includeDescendants?: boolean;
-	keyword?: string;
-	moduleId?: string;
-	page?: number;
-	pageSize?: number;
-	priority?: CasePriority[];
-	projectId: string;
-	status?: CaseStatus;
-	/** 标签筛选，any-of 语义：命中任意一个即匹配；空数组视同不筛选。 */
-	tags?: string[];
-}
-
-export interface ListTestCasesResult {
-	items: TestCase[];
-	page: number;
-	pageSize: number;
-	total: number;
-}
+/**
+ * 单条用例的读取与**结构性写入**：取一条、移动到别的模块、模块内重排、删除。
+ *
+ * 「结构性」指的是只动 `moduleId` / `sortOrder` 这类位置字段，以及删除本身；
+ * 用例内容字段的增改在 `case-mutations-repository.ts`（那边还要写版本快照）。
+ * 列表查询在 `case-list-repository.ts`。
+ */
 
 /** 重排成功时回带 projectId，便于调用方发布实时失效事件。 */
 export type ReorderCasesResult =
@@ -55,83 +23,6 @@ export type CaseStructureResult =
 	| { kind: "invalid-module" }
 	| { kind: "not-found" }
 	| { kind: "ok"; testCase: TestCase };
-
-async function buildModuleCondition(
-	filter: ListTestCasesFilter
-): Promise<SQL | undefined> {
-	if (!filter.moduleId) {
-		return undefined;
-	}
-	if (filter.includeDescendants) {
-		const ids = await getModuleSubtreeIds(db, filter.moduleId);
-		return inArray(testCases.moduleId, ids);
-	}
-	return eq(testCases.moduleId, filter.moduleId);
-}
-
-/**
- * 标签筛选条件。
- *
- * 语义定为 **any-of**（命中任意一个标签即匹配），与优先级筛选的多选
- * 语义保持一致：用户勾选多个标签是「扩大」结果集而非「收窄」。
- * 若将来需要 all-of，应新增独立参数而不是改变本参数语义。
- *
- * SQL 用 jsonb 的 `?|`（存在任意一个 key/元素）配合单个 text[] 绑定参数：
- * `tags` 存的是 string[]，`?|` 对 jsonb 数组按元素比较。
- * 注意不能直接把 JS 数组插进 sql 模板（drizzle 会展开成 `($1, $2)`
- * 的列表），必须用 sql.param 打成单个参数再 ::text[]。
- */
-function buildTagsCondition(tags: string[]): SQL {
-	return sql`${testCases.tags} ?| ${sql.param(tags)}::text[]`;
-}
-
-async function buildListConditions(
-	filter: ListTestCasesFilter
-): Promise<SQL[]> {
-	const conditions: SQL[] = [eq(testCases.projectId, filter.projectId)];
-	const moduleCondition = await buildModuleCondition(filter);
-	if (moduleCondition) {
-		conditions.push(moduleCondition);
-	}
-	if (filter.status) {
-		conditions.push(eq(testCases.status, filter.status));
-	}
-	if (filter.priority && filter.priority.length > 0) {
-		conditions.push(inArray(testCases.priority, filter.priority));
-	}
-	if (filter.tags && filter.tags.length > 0) {
-		conditions.push(buildTagsCondition(filter.tags));
-	}
-	if (filter.keyword) {
-		const escaped = filter.keyword.replace(/[%_\\]/g, "\\$&");
-		conditions.push(ilike(testCases.name, `%${escaped}%`));
-	}
-	return conditions;
-}
-
-export async function listTestCases(
-	filter: ListTestCasesFilter
-): Promise<ListTestCasesResult> {
-	const conditions = await buildListConditions(filter);
-	const where = and(...conditions);
-	const page = Math.max(filter.page ?? 1, 1);
-	const pageSize = Math.min(
-		Math.max(filter.pageSize ?? DEFAULT_PAGE_SIZE, 1),
-		MAX_PAGE_SIZE
-	);
-	const [countRow] = await db
-		.select({ value: count() })
-		.from(testCases)
-		.where(where);
-	const items = await db
-		.select()
-		.from(testCases)
-		.where(where)
-		.orderBy(asc(testCases.moduleId), asc(testCases.sortOrder))
-		.limit(pageSize)
-		.offset((page - 1) * pageSize);
-	return { items, page, pageSize, total: countRow?.value ?? 0 };
-}
 
 export async function getTestCaseById(id: string): Promise<TestCase | null> {
 	const [row] = await db
@@ -255,18 +146,36 @@ export async function reorderTestCasesInTx(
 	return { kind: "ok", projectId };
 }
 
-/** 返回被删除的用例行（调用方据此拿到 projectId / moduleId），不存在时 null。 */
+/**
+ * 删除一条用例。
+ *
+ * **返回契约**（三选一，任何分支都不抛异常）：
+ * - `{ kind: "removed", testCase }` —— 删成功，回带被删的行，
+ *   调用方据此拿到 projectId / moduleId 发实时失效事件
+ * - `{ kind: "not-found" }` —— 用例不存在（或已被并发删除）
+ * - `{ kind: "blocked", referencedByRunCount }` —— 被 N 个测试任务引用，拒绝删除；
+ *   router 应映射成「该用例被 N 个测试任务引用，无法删除；可改为『废弃』状态」
+ *
+ * 引用检查必须在这里做而不是靠数据库外键报错：`test_run_cases.caseId` 的
+ * `onDelete: restrict`（plan §3.4）只能给出一个 23503 违约异常，拿不到引用数量，
+ * 也没法在同一事务里安全地区分「被引用」和其它约束冲突。检查与删除同事务，
+ * 否则查完到删掉之间别人可以新建测试任务引用它。
+ */
 export async function removeTestCaseInTx(
 	tx: DbTransaction,
 	id: string
-): Promise<TestCase | null> {
+): Promise<RemoveTestCaseResult> {
 	const current = await getTestCaseInTx(tx, id);
 	if (!current) {
-		return null;
+		return { kind: "not-found" };
+	}
+	const referencedByRunCount = await countCaseRunReferences(tx, id);
+	if (referencedByRunCount > 0) {
+		return { kind: "blocked", referencedByRunCount };
 	}
 	await tx.delete(testCases).where(eq(testCases.id, id));
 	await closeCaseSlot(tx, current.moduleId, current.sortOrder);
-	return current;
+	return { kind: "removed", testCase: current };
 }
 
 export function moveTestCase(input: {
@@ -284,6 +193,6 @@ export function reorderTestCases(input: {
 	return db.transaction((tx) => reorderTestCasesInTx(tx, input));
 }
 
-export function removeTestCase(id: string): Promise<TestCase | null> {
+export function removeTestCase(id: string): Promise<RemoveTestCaseResult> {
 	return db.transaction((tx) => removeTestCaseInTx(tx, id));
 }

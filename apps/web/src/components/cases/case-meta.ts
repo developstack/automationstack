@@ -91,6 +91,29 @@ export const PRIORITY_OPTIONS: readonly CaseOption[] = PRIORITY_VALUES.map(
 	(value) => ({ label: value, value })
 );
 
+/**
+ * 枚举的**取值**清单，与上面几张 label 表分开导出。
+ *
+ * label 表是 `Record<Enum, string>`（编译期保证不漏项），但它没法直接当成
+ * 「合法取值列表」用：`Object.keys` 的返回类型是 `string[]`，收窄回枚举要一次
+ * 断言。而校验不可信输入（`case-draft-storage.ts` 读回来的 localStorage）这件事
+ * 本身就不该建立在断言上，所以这里显式列一遍，写错会被类型直接顶回来。
+ */
+export const STATUS_VALUES: readonly CaseStatus[] = [
+	"active",
+	"deprecated",
+	"draft",
+];
+
+export const CASE_TYPE_VALUES: readonly CaseType[] = [
+	"compatibility",
+	"functional",
+	"interface",
+	"other",
+	"performance",
+	"security",
+];
+
 export const STATUS_OPTIONS: readonly CaseOption[] = (
 	Object.entries(STATUS_LABELS) as [CaseStatus, string][]
 ).map(([value, label]) => ({ label, value }));

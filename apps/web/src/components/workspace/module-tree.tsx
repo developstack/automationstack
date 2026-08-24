@@ -1,5 +1,4 @@
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
-import { Button } from "@automationstack/ui/components/button";
 import {
 	Empty,
 	EmptyDescription,
@@ -10,9 +9,9 @@ import {
 import { DndContext } from "@dnd-kit/core";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
-import { FolderTreeIcon, PlusIcon } from "lucide-react";
+import { FolderTreeIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { AllCasesLink } from "@/components/workspace/all-cases-link";
+import { CaseDraftsLink } from "@/components/workspace/case-drafts-link";
 import {
 	CreateModuleDialog,
 	DeleteModuleDialog,
@@ -23,11 +22,13 @@ import {
 	moduleDragInstructions,
 } from "@/components/workspace/module-drag-a11y";
 import { ModuleRootDropEnd } from "@/components/workspace/module-drag-parts";
+import { ModuleSection } from "@/components/workspace/module-section";
 import {
 	type ModuleNodeActions,
 	ModuleNodeItem,
 } from "@/components/workspace/module-tree-node";
 import { ProjectOverviewLink } from "@/components/workspace/project-overview-link";
+import { TestRunsLink } from "@/components/workspace/test-runs-link";
 import { useModuleDrag } from "@/components/workspace/use-module-drag";
 import {
 	type ModuleExpansion,
@@ -41,18 +42,11 @@ const DRAG_CONTEXT_ID = "module-tree-dnd";
 /** 概览页的路径后缀，用来判定侧栏第 0 行的选中态。 */
 const OVERVIEW_PATH_SUFFIX = "/overview";
 
-/** 项目路由的前缀，用来拼出列表页（项目根路径）自身的地址。 */
-const PROJECTS_PATH_PREFIX = "/projects";
-
 /**
- * 当前是不是这个项目的用例列表页本身。列表页就是项目根路径，
- * /overview、/mindmap 等兄弟路由都在它下面多一段，等值判断天然把它们排除掉。
- * 尾斜杠是同一个地址，一并算上。
+ * 测试任务相关路径的公共片段。用 includes 而不是 endsWith：测试任务详情页
+ * （/test-runs/<id>）与报告页也在这一支下面，侧栏那一行在它们上面同样要亮着。
  */
-function isCaseListPath(pathname: string, projectId: string): boolean {
-	const projectRootPath = `${PROJECTS_PATH_PREFIX}/${projectId}`;
-	return pathname === projectRootPath || pathname === `${projectRootPath}/`;
-}
+const TEST_RUNS_PATH_SEGMENT = "/test-runs";
 
 /** 与 routes/projects/$projectId/route.tsx 同样的取法：只订阅 pathname。 */
 const selectPathname = (state: { location: { pathname: string } }) =>
@@ -211,21 +205,13 @@ export function ModuleTree({ projectId }: ModuleTreeProps) {
 	const search = useSearch({ strict: false });
 	const selectedModuleId = search.moduleId;
 	/*
-	 * 选中态必须同时看 pathname：概览页与「全部用例」一样不带 moduleId，
-	 * 只按 `selectedModuleId === undefined` 判断的话，人在 /overview 时两行会
-	 * 一起高亮，看着像同时选中了两个去处。
-	 *
-	 * 「全部用例」用**正向**匹配列表页，而不是逐个排除别的视图。原先写的是
-	 * `!onOverview && selectedModuleId === undefined`，只排掉了概览，于是人在
-	 * /mindmap 时这一行照样亮着——它指向列表页，可用户并不在列表页，这个高亮
-	 * 是假的。改成逐个补 `&& !onMindmap` 的话，$projectId 底下每加一个子路由
-	 * 都要回来补一次，漏掉的那个会重犯同样的错（route.tsx 的 viewFor 已经踩过
-	 * 这个坑，它的注释里专门写了这条告诫）。列表页的地址就是项目根路径本身，
-	 * 拿它做等值判断，新增兄弟路由不会再影响这里。
+	 * 选中态按 pathname 判，不按 `selectedModuleId === undefined` 判：概览页与
+	 * 测试任务页都不带 moduleId，光看 moduleId 会让这两行跟着模块行一起亮，
+	 * 看着像同时选中了两个去处。
 	 */
 	const pathname = useRouterState({ select: selectPathname });
 	const onOverview = pathname.endsWith(OVERVIEW_PATH_SUFFIX);
-	const onCaseList = isCaseListPath(pathname, projectId);
+	const onTestRuns = pathname.includes(TEST_RUNS_PATH_SEGMENT);
 	const handleDeleted = useHandleModuleDeleted(projectId, selectedModuleId);
 	const { actions, close, createRoot, dialog } = useModuleDialogState();
 	const expansion = useModuleExpansion(
@@ -243,32 +229,31 @@ export function ModuleTree({ projectId }: ModuleTreeProps) {
 		 *   侧栏    = aside p-2 (8) + 行 px-2 (8)   → 16px
 		 * 侧栏拆成「面板 8 + 行 8」而不是直接 px-4，是因为行要有自己的
 		 * hover / 选中底色：底色需要从面板边缘内缩 8px，文字才落在同一条 16px 线上。
-		 * 所以侧栏里任何直接子行（标题行、全部用例、模块行）一律 px-2，不要写 px-1。
+		 * 所以侧栏里任何直接子行（标题行、项目级入口、模块行）一律 px-2，不要写 px-1。
+		 * 底下的 <ModuleSection> 只是分组用的壳，本身不带内边距，这笔账不变。
 		 */
-		<aside aria-label="模块树" className="flex flex-col gap-1 p-2">
-			<div className="flex items-center justify-between px-2">
-				<h2 className="font-medium text-muted-foreground text-xs">模块</h2>
-				<Button
-					aria-label="新建根模块"
-					onClick={createRoot}
-					size="icon-xs"
-					variant="ghost"
-				>
-					<PlusIcon />
-				</Button>
-			</div>
+		<aside aria-label="项目导航" className="flex flex-col gap-1 p-2">
 			<ProjectOverviewLink projectId={projectId} selected={onOverview} />
-			<AllCasesLink
-				projectId={projectId}
-				selected={onCaseList && selectedModuleId === undefined}
-			/>
-			<ModuleTreeList
-				actions={actions}
-				expansion={expansion}
-				nodes={treeQuery.data}
-				projectId={projectId}
-				selectedModuleId={selectedModuleId}
-			/>
+			<TestRunsLink projectId={projectId} selected={onTestRuns} />
+			{/*
+			 * 「未完成草稿」也是项目级去处（草稿散落在各个模块下，不属于任何一个），
+			 * 所以和概览、测试任务同组；它没有草稿时整行不渲染，见 case-drafts-link.tsx。
+			 */}
+			<CaseDraftsLink nodes={treeQuery.data} projectId={projectId} />
+			{/*
+			 * 上面几行是项目级去处，与模块无关；「模块」这一组从这里开始。
+			 * 不另画分隔线：标题行本身就是分界，而侧栏至今没有任何 <Separator/>，
+			 * 为这一处引进一种新的分隔方式反而多出一条与全局不一致的横线。
+			 */}
+			<ModuleSection onCreateRoot={createRoot} projectId={projectId}>
+				<ModuleTreeList
+					actions={actions}
+					expansion={expansion}
+					nodes={treeQuery.data}
+					projectId={projectId}
+					selectedModuleId={selectedModuleId}
+				/>
+			</ModuleSection>
 			<ModuleTreeDialogs
 				dialog={dialog}
 				onClose={close}

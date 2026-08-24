@@ -22,10 +22,19 @@ import { noopCleanup } from "./noop-cleanup";
 
 /** target → 部分匹配的 query key（`key()` 覆盖该 router 下所有查询）。 */
 const TARGET_KEYS: Record<InvalidateTarget, () => QueryKey> = {
+	/** 用例贴图住在独立 router，不在 `orpc.cases.key()` 的前缀里（同下 testRunAttachments）。 */
+	caseAttachments: () => orpc.caseAttachments.key(),
 	cases: () => orpc.cases.key(),
 	mindmap: () => orpc.mindmap.key(),
 	modules: () => orpc.modules.key(),
 	projects: () => orpc.projects.key(),
+	/**
+	 * 附件列表是独立 router，不在 `orpc.testRuns.key()` 的前缀里；
+	 * 后端把附件的失效事件并进了 `entity: "testRun"`（plan §6.4），
+	 * 因此这两个缓存根都得由 testRun 事件带着刷。
+	 */
+	testRunAttachments: () => orpc.testRunAttachments.key(),
+	testRuns: () => orpc.testRuns.key(),
 };
 
 function invalidateTargets(

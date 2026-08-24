@@ -16,6 +16,28 @@ export interface RepositoryNotFound {
 	kind: "not-found";
 }
 
+/**
+ * 用例被测试任务引用，删除被拒（plan §3.4）。
+ *
+ * 与乐观锁冲突一样走类型化返回而不是抛异常：这是可预期的业务分支，
+ * router 要把 `referencedByRunCount` 拼进给用户看的文案，异常里带不了结构化数据。
+ */
+export interface CaseDeleteBlocked {
+	kind: "blocked";
+	referencedByRunCount: number;
+}
+
+/** 删除成功，回带被删的行（调用方据此拿到 projectId / moduleId 发失效事件）。 */
+export interface CaseDeleteRemoved {
+	kind: "removed";
+	testCase: TestCase;
+}
+
+export type RemoveTestCaseResult =
+	| CaseDeleteBlocked
+	| CaseDeleteRemoved
+	| RepositoryNotFound;
+
 /** Successful snapshot write: updated row plus the version row it produced. */
 export interface CaseWriteSuccess {
 	kind: "written";

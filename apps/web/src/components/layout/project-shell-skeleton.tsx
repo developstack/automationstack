@@ -20,11 +20,16 @@ const PANEL_FALLBACK_TITLE = "项目";
 const MODULE_ROW_KEYS = ["first", "second", "third"];
 
 /**
- * 模块树骨架。高度逐条折算自 module-tree.tsx 的真实行：
+ * 侧栏骨架。行序与高度逐条折算自 module-tree.tsx 的真实行：
+ * 项目概览、测试评审和执行 →「模块」标题行 → 模块行。
  * 标题行 = Button size="icon-xs" 的 24px（h-6），里面的 h2 只有 16px，不决定行高；
- * 「全部用例」与每条模块行 = px-2 py-0.5（2+2）+ icon-xs 24px = 28px（h-7）；
+ * 其余每行 = px-2 py-0.5（2+2）+ icon-xs 24px = 28px（h-7）；
  * 容器沿用真实树的 aside p-2（8px）+ gap-1（4px）。
- * 核对（按 3 条模块行算）：8 + 24 + 4 + 28 + 4 + 28×3 + 4×2 + 8 = 168px，两边相等。
+ * 核对（按 3 条模块行算，共 6 行 5 道 gap）：
+ * 8 + 28×5 + 24 + 4×5 + 8 = 200px，两边相等。
+ *
+ * 「未完成草稿」那一行不进骨架：它只在本机存着草稿时才存在，而这份骨架是
+ * 服务端也要渲染的，猜它在等于让首帧多出一行、随后又凭空消失。
  *
  * 行数只能猜——真实条数正是还没拿到的那份数据。猜多猜少都只影响这一列自己的尾部：
  * 二级面板独立滚动，它长短几像素不会把顶栏和内容区顶得上下跳。
@@ -35,9 +40,11 @@ const MODULE_ROW_KEYS = ["first", "second", "third"];
 function ModuleTreeSkeleton() {
 	return (
 		<div aria-hidden="true" className="flex flex-col gap-1 p-2">
-			{/* 标题行是「模块」两个字 + 右端一颗新建按钮，整行大半是空的，骨架也别拉满宽 */}
-			<Skeleton className="h-6 w-16" />
+			{/* 项目概览、测试评审和执行：模块分组之外的两个项目级去处 */}
 			<Skeleton className="h-7 w-full" />
+			<Skeleton className="h-7 w-full" />
+			{/* 标题行是「模块」两个字 + 右端两颗图标按钮，整行大半是空的，骨架也别拉满宽 */}
+			<Skeleton className="h-6 w-16" />
 			{MODULE_ROW_KEYS.map((key) => (
 				<Skeleton className="h-7 w-full" key={key} />
 			))}

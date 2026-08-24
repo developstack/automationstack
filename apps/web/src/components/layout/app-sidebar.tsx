@@ -18,6 +18,7 @@ import {
 	FlaskConicalIcon,
 	FolderKanbanIcon,
 	PanelLeftOpenIcon,
+	SettingsIcon,
 	UsersIcon,
 } from "lucide-react";
 
@@ -29,6 +30,7 @@ const BRAND_NAME = "测试用例平台";
 const PROJECTS_PATH = "/projects";
 const MEMBERS_PATH = "/members";
 const AI_PROVIDER_PATH = "/ai-provider";
+const SETTINGS_PATH = "/settings";
 
 /**
  * 展开态的品牌行：左边是标识，右边是那颗常驻的收起按钮。
@@ -144,7 +146,7 @@ const isInProjectsSection = (pathname: string) =>
 /**
  * 这一层唯一的导航组：全站的一级去处（管理员比成员多出两个管理入口）。
  *
- * 不加组标题——全组至多三项，且再没有第二组要跟它区分，标题除了占掉一行
+ * 不加组标题——全组至多四项，且再没有第二组要跟它区分，标题除了占掉一行
  * 什么也没说。也不 mt-auto 顶到底部：那种排法是给「上面还有一组视图入口」
  * 准备的，如今它紧接品牌行，再钉到底部只会让上半截空出一大片。
  */
@@ -202,6 +204,23 @@ function GlobalNavGroup() {
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 				) : null}
+				{/*
+				 * 不按角色收起：projectSettings 与 jira 那几个过程都是
+				 * protectedProcedure（不是 adminProcedure），普通成员点进去拿得到
+				 * 数据也存得下去，藏起来反而是前端擅自加了一道后端没有的权限。
+				 */}
+				<SidebarMenuItem>
+					<SidebarMenuButton
+						aria-label="设置"
+						// 按前缀算：这一项底下若再长出子路由，人仍然在设置里
+						isActive={pathname.startsWith(SETTINGS_PATH)}
+						render={<Link to="/settings" />}
+						tooltip="设置"
+					>
+						<SettingsIcon aria-hidden="true" />
+						<span>设置</span>
+					</SidebarMenuButton>
+				</SidebarMenuItem>
 			</SidebarMenu>
 		</SidebarGroup>
 	);

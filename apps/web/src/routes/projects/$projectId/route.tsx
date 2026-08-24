@@ -5,12 +5,14 @@ import {
 	Outlet,
 	useRouterState,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import {
 	ProjectShell,
 	ProjectShellHeader,
 } from "@/components/layout/project-shell";
 import { ProjectShellSkeleton } from "@/components/layout/project-shell-skeleton";
+import { rememberRecentProjectId } from "@/components/settings/recent-project";
 import { PresenceAvatars } from "@/realtime/presence-avatars";
 import { RealtimeProvider } from "@/realtime/realtime-provider";
 import type { RouterAppContext } from "@/routes/__root";
@@ -69,6 +71,12 @@ const selectPathname = (state: { location: { pathname: string } }) =>
 
 const MINDMAP_PATH_SUFFIX = "/mindmap";
 const OVERVIEW_PATH_SUFFIX = "/overview";
+/**
+ * 测试任务那一支：列表 /test-runs、详情 /test-runs/<id>、报告 /test-runs/<id>/report
+ * 都算同一处。用 includes 而不是 endsWith，否则详情与报告会被归进「列表」。
+ * 三者不再细分——presence 只回答「他在哪一块」，分到子页对读的人没有用处。
+ */
+const TEST_RUNS_PATH_SEGMENT = "/test-runs";
 
 /**
  * 当前路径对应哪个视图。这个值会随 presence 广播出去，别人顶栏头像的 tooltip
@@ -81,6 +89,9 @@ function viewFor(pathname: string): string {
 	}
 	if (pathname.endsWith(OVERVIEW_PATH_SUFFIX)) {
 		return "overview";
+	}
+	if (pathname.includes(TEST_RUNS_PATH_SEGMENT)) {
+		return "testRuns";
 	}
 	return "list";
 }
@@ -130,6 +141,15 @@ function WorkspaceLayout() {
 		orpc.projects.get.queryOptions({ input: { id: projectId } })
 	);
 	const projectName = projectQuery.data.name;
+
+	/*
+	 * 记住「最近在哪个项目里干活」，供设置页作默认选中（见
+	 * components/settings/recent-project.ts）。一级侧栏是全局作用域的，从那里
+	 * 点进设置时地址栏里没有项目，落到「列表第一个」对多项目团队几乎必然是错的。
+	 */
+	useEffect(() => {
+		rememberRecentProjectId(projectId);
+	}, [projectId]);
 
 	return (
 		/*

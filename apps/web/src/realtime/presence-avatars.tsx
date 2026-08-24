@@ -18,11 +18,18 @@ import { usePresence } from "./use-presence";
 
 const MAX_VISIBLE_AVATARS = 5;
 
-/** 视图标识 → 中文名（未知视图原样显示）。 */
+/**
+ * 视图标识 → 中文名（未知视图原样显示）。
+ *
+ * 键要跟 `routes/projects/$projectId/route.tsx` 的 `viewFor()` 一一对上。
+ * 协议里 `view` 是 `z.string().min(1)`，不是枚举，后端不会替这里挡漏项——
+ * 漏一个的下场是头像 tooltip 上直接念出 `testRuns` 这种内部标识。
+ */
 const VIEW_LABELS: Record<string, string> = {
 	list: "列表",
 	mindmap: "脑图",
 	overview: "概览",
+	testRuns: "测试任务",
 };
 
 /**

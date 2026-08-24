@@ -12,7 +12,10 @@
  *   这些既有纯文本一个字符都不会被 markdown 解析吃掉。
  * - 降级：编辑器 chunk 加载失败时 textarea 仍然是可用的输入框。
  *
- * 代价是多一次焦点交接，交接期间的 focusout 竞态见下方 useFocusOut 的注释。
+ * 代价是多一次焦点交接，交接期间的 focusout 竞态见 markdown-field-focus.ts。
+ *
+ * 布局与焦点是**两条独立的线**：聚焦只换输入控件（textarea ⇄ 编辑器），
+ * 绝不改变容器的宽度或位置；预览开不开由 `preview` prop 说了算，见那条注释。
  */
 import { Label } from "@automationstack/ui/components/label";
 import { Textarea } from "@automationstack/ui/components/textarea";
@@ -28,6 +31,10 @@ import {
 	useRef,
 	useState,
 } from "react";
+
+import { useFocusOut } from "@/components/cases/markdown-field-focus";
+import { MarkdownPreviewPane } from "@/components/cases/markdown-preview-pane";
+import { useMarkdownFieldPaste } from "@/components/cases/use-markdown-field-paste";
 
 const LazyMarkdownCodeEditor = lazy(async () => {
 	const editorModule = await import("@/components/cases/markdown-code-editor");
@@ -58,6 +65,34 @@ const EDITOR_FALLBACK = (
 
 const TEXTAREA_CLASS = "text-sm leading-relaxed";
 
+/** 不显示预览时的形态：输入框独占容器，与未聚焦态同宽同位。 */
+const PLAIN_CLASS = "flex w-full min-w-0 flex-col";
+
+/**
+ * 左右分栏：左边编辑区、右边实时预览。只给独占整行（~1200px）的字段用。
+ * 窄屏（<640px）回落成单列——那时整个内容区只有 288px，切两栏每边 138px，
+ * markdown 一行放不下几个字。
+ */
+const SPLIT_CLASS = "grid grid-cols-1 items-start gap-3 sm:grid-cols-2";
+
+/**
+ * 上下堆叠：预览在编辑区下方，占满整个格子宽度。
+ * 步骤格再宽也只有 ~590px，左右分栏每边不到 300px 根本读不了。
+ */
+const STACK_CLASS = "flex w-full min-w-0 flex-col gap-3";
+
+/**
+ * 预览可见时用哪种形态。分栏与堆叠的差别由 `preview` 是否受控一并决定，
+ * 因为这两件事本来就是同一个决策的两面：受控的是步骤格（窄，堆叠），
+ * 不受控的是前置条件（独占整行，分栏）。
+ */
+function layoutClass(preview: boolean | undefined, visible: boolean): string {
+	if (!visible) {
+		return PLAIN_CLASS;
+	}
+	return preview === undefined ? SPLIT_CLASS : STACK_CLASS;
+}
+
 interface MarkdownFieldControlProps {
 	/** 编辑区的可访问名；有可见 <Label> 时必须与其文案一致。 */
 	ariaLabel: string;
@@ -65,54 +100,21 @@ interface MarkdownFieldControlProps {
 	id?: string;
 	onChange: (value: string) => void;
 	placeholder: string;
+	/**
+	 * 预览是否显示。省略 = 跟随聚焦（前置条件：独占整行，聚焦即左右分栏预览）。
+	 *
+	 * 步骤格必须显式传：它旁边并排站着另一个字段，预览一旦跟着聚焦冒出来，
+	 * 布局就由焦点驱动了——点「预期结果」会让「步骤」失焦、整行重排，两格当场
+	 * 互换位置，用户看到的是「点了没反应」。所以步骤格传行上「展开」按钮的状态，
+	 * 用户不点就永远是两个并排输入框，聚焦/失焦一个像素都不动。
+	 */
+	preview?: boolean;
 	value: string;
 }
 
 interface MarkdownFieldProps extends MarkdownFieldControlProps {
 	/** 传了就在字段上方渲染可见标签；文案必须与 ariaLabel 一致。 */
 	label?: string;
-}
-
-/**
- * 焦点离开整个字段（含工具条）时退回未聚焦态。
- *
- * 交接竞态：mode 置为 "editing" 后 React 会把**正持有焦点的** textarea 从 DOM 摘掉，
- * 焦点要等编辑器挂好、`editor.focus()` 跑完才补回来。这中间浏览器会为被摘掉的
- * textarea 派发一次 focusout，且 `relatedTarget` 为 null（Chrome 实测如此，
- * 各家行为并不一致）。照字面处理就会立刻退回 textarea，编辑器永远进不去。
- * 所以 relatedTarget 为 null 时不当场下结论，等交接跑完再看焦点落在哪：
- * 只要焦点回到了本字段容器里，就当没离开过。
- */
-function useFocusOut(container: HTMLDivElement | null, onFocusOut: () => void) {
-	useEffect(() => {
-		const stillInside = () =>
-			container?.contains(document.activeElement) ?? false;
-		const handleFocusOut = (event: FocusEvent) => {
-			const next = event.relatedTarget;
-			// 工具条按钮也在这个容器里，点它们不算离开本字段。
-			if (next instanceof Node && container?.contains(next)) {
-				return;
-			}
-			if (next !== null) {
-				onFocusOut();
-				return;
-			}
-			requestAnimationFrame(() => {
-				if (stillInside()) {
-					return;
-				}
-				// 再等一帧：编辑器 chunk 已预取，但 Suspense 解挂 + effect 落焦
-				// 未必赶得上第一帧。
-				requestAnimationFrame(() => {
-					if (!stillInside()) {
-						onFocusOut();
-					}
-				});
-			});
-		};
-		container?.addEventListener("focusout", handleFocusOut);
-		return () => container?.removeEventListener("focusout", handleFocusOut);
-	}, [container, onFocusOut]);
 }
 
 /**
@@ -187,19 +189,36 @@ function MarkdownFieldControl({
 	id,
 	onChange,
 	placeholder,
+	preview,
 	value,
 }: MarkdownFieldControlProps) {
 	const [container, setContainer] = useState<HTMLDivElement | null>(null);
 	const activation = useFieldActivation();
 	useFocusOut(container, activation.handleFocusOut);
+	const paste = useMarkdownFieldPaste({
+		onChange,
+		textareaRef: activation.textareaRef,
+		value,
+	});
 
 	const handleTextareaChange = useCallback(
 		(event: ChangeEvent<HTMLTextAreaElement>) => onChange(event.target.value),
 		[onChange]
 	);
 
+	const previewVisible = preview ?? activation.editing;
+
 	return (
-		<div className="flex w-full flex-col" ref={setContainer}>
+		/*
+		 * 容器本身既是 useFocusOut 的观察范围，也是「编辑区 + 预览」的排版容器：
+		 * 预览必须是这个容器的**子节点**而不是兄弟，否则点一下预览（选中一段文字）
+		 * 就会被判成焦点离开，整个字段退回未聚焦态。
+		 *
+		 * 预览的开关只改这个 div 的 className、并在编辑区**后面**加/减一个兄弟节点，
+		 * 编辑区自己在 children 里的位置和元素类型都不变——React 因此不会重建那棵
+		 * 子树，CodeMirror 实例、焦点和光标位置全都留在原地。
+		 */
+		<div className={layoutClass(preview, previewVisible)} ref={setContainer}>
 			{activation.editing ? (
 				<ClientOnly fallback={EDITOR_FALLBACK}>
 					<Suspense fallback={EDITOR_FALLBACK}>
@@ -208,6 +227,8 @@ function MarkdownFieldControl({
 							initialCaret={activation.caretRef.current}
 							onChange={onChange}
 							onEscape={activation.handleEscape}
+							onPasteFiles={paste.handlePasteFiles}
+							onView={paste.setView}
 							placeholder={placeholder}
 							value={value}
 						/>
@@ -221,11 +242,13 @@ function MarkdownFieldControl({
 					onChange={handleTextareaChange}
 					onClick={activation.handleClick}
 					onFocus={activation.handleFocus}
+					onPaste={paste.handleTextareaPaste}
 					placeholder={placeholder}
 					ref={activation.textareaRef}
 					value={value}
 				/>
 			)}
+			{previewVisible ? <MarkdownPreviewPane text={value} /> : null}
 		</div>
 	);
 }

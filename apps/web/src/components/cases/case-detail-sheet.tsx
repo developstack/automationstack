@@ -12,6 +12,11 @@ import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { PencilIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import {
+	CaseAttachmentProvider,
+	useCaseAttachments,
+	useCaseEditAttachments,
+} from "@/components/cases/case-attachment-context";
 import { CaseConflictAlert } from "@/components/cases/case-conflict-alert";
 import { CaseDeleteButton } from "@/components/cases/case-delete-button";
 import {
@@ -20,13 +25,13 @@ import {
 	useCaseEditor,
 } from "@/components/cases/case-detail-body";
 import { CaseDetailTabs } from "@/components/cases/case-detail-tabs";
+import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
 import { caseToFormValues } from "@/components/cases/case-meta";
 import {
-	CASE_SHEET_CONTENT_CLASS,
-	isCaseFormDirty,
 	UnsavedChangesDialog,
 	useUnsavedCloseGuard,
-} from "@/components/cases/case-sheet-shell";
+	WIDE_SHEET_CONTENT_CLASS,
+} from "@/components/wide-sheet-shell";
 import { CaseEditingNotice } from "@/realtime/editing-notice";
 import { useCasePresence } from "@/realtime/use-editing";
 import { orpc } from "@/utils/orpc";
@@ -38,14 +43,26 @@ interface CaseDetailActionsProps {
 }
 
 function CaseDetailActions({ editor, onStopEditing }: CaseDetailActionsProps) {
+	/**
+	 * 贴图还没传完时禁用保存。不禁的话，用户在上传完成前点保存，正文里的
+	 * `![](uploading:<token>)` 会被原样存进去：抽屉退出编辑态之后，上传回来时
+	 * 既找不到编辑器也找不到那份表单值，正文里就永久留下一处渲染成
+	 * 「图片上传中…」的死引用，还会被冻进这次保存产生的版本快照。
+	 * 第二道防线（回车绕过按钮）在 `case-detail-body.tsx` 的 handleSave 里。
+	 */
+	const { uploading } = useCaseAttachments();
+
 	if (editor.form) {
 		return (
 			<div className="flex items-center gap-2">
+				{uploading ? (
+					<span className="text-muted-foreground text-xs">图片上传中…</span>
+				) : null}
 				<Button onClick={onStopEditing} size="sm" variant="ghost">
 					取消
 				</Button>
 				<Button
-					disabled={editor.saving}
+					disabled={editor.saving || uploading}
 					form={CASE_EDITOR_FORM_ID}
 					size="sm"
 					type="submit"
@@ -155,6 +172,7 @@ function CaseDetailContent(props: CaseDetailContentProps) {
 	);
 	const testCase = caseQuery.data;
 	const editor = useCaseEditor(caseId, testCase);
+	const attachments = useCaseEditAttachments(caseId);
 	// 软提示：抽屉一开就算「在看」，进编辑态再升级成「在改」
 	// （冲突仍由乐观锁 409 兜底，这里不加锁）
 	useCasePresence(caseId, editor.form !== null);
@@ -169,7 +187,11 @@ function CaseDetailContent(props: CaseDetailContentProps) {
 	}
 
 	return (
-		<>
+		/*
+		 * Provider 罩住整个内容（含标题栏），不只是编辑表单：标题栏的「保存」按钮
+		 * 要读 `uploading` 才能在图没传完时禁用自己，而它在 <form> 外面。
+		 */
+		<CaseAttachmentProvider value={attachments}>
 			<CaseDetailHeader
 				editor={editor}
 				onClose={onClose}
@@ -195,7 +217,7 @@ function CaseDetailContent(props: CaseDetailContentProps) {
 				onConfirm={guard.confirmClose}
 				open={guard.confirming}
 			/>
-		</>
+		</CaseAttachmentProvider>
 	);
 }
 
@@ -221,7 +243,7 @@ export function CaseDetailSheet(props: CaseDetailSheetProps) {
 				onOpenChange={guard.handleOpenChange}
 				open={props.caseId !== undefined}
 			>
-				<SheetContent className={CASE_SHEET_CONTENT_CLASS} side="right">
+				<SheetContent className={WIDE_SHEET_CONTENT_CLASS} side="right">
 					{props.caseId ? (
 						<CaseDetailContent
 							caseId={props.caseId}

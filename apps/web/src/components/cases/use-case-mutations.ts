@@ -75,15 +75,40 @@ export function useUpdateCase(onSaved: () => void) {
 	return { clearConflict, conflict, mutation };
 }
 
-export function useCreateCase(onCreated: (caseId: string) => void) {
+export interface CreateCaseHandlers {
+	onCreated: (caseId: string) => void;
+	/**
+	 * 服务端说这个预生成的 id 已经建过了（`CONFLICT`）。
+	 *
+	 * 只会在一种情况下出现：同一份 localStorage 草稿在两个标签页里各点了一次
+	 * 保存。这不是故障——用例确实已经存在了，第二次点的人该做的是别再存，
+	 * 而不是改点什么再试一次。
+	 */
+	onDuplicate?: () => void;
+}
+
+export function useCreateCase(handlers: CreateCaseHandlers) {
 	const invalidateCases = useInvalidateCases();
 
 	return useMutation(
 		orpc.cases.create.mutationOptions({
+			meta: { suppressErrorToast: true },
+			onError: (error) => {
+				if (isDefinedError(error) && error.code === "CONFLICT") {
+					// 用服务端那句现成的中文，不要把原始错误串糊到用户脸上。
+					toast.error(error.message);
+					// 库里已经有这条用例了，本地那份草稿再留着只会被反复提交，
+					// 每次都撞同一堵墙。交给调用方去清缓存并收拾抽屉。
+					invalidateCases();
+					handlers.onDuplicate?.();
+					return;
+				}
+				toast.error(error.message);
+			},
 			onSuccess: (result) => {
 				toast.success("用例已创建");
 				invalidateCases();
-				onCreated(result.testCase.id);
+				handlers.onCreated(result.testCase.id);
 			},
 		})
 	);
