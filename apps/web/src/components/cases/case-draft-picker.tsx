@@ -93,6 +93,88 @@ function CaseDraftActions({
 	);
 }
 
+interface CaseDraftPickerSummaryProps {
+	expanded: boolean;
+	items: readonly CaseDraft[];
+	/** 最近一份的写入时刻文案，由调用方从 items[0] 上算好。 */
+	latest: string;
+	onDelete: (caseId: string) => void;
+	onToggle: () => void;
+	projectId: string;
+	/** 只有一份时不做「展开」这一层，两个出口直接摆在摘要行里。 */
+	single: boolean;
+}
+
+/** 默认折叠时看得见的那一行：一句摘要 + 一个出口。 */
+function CaseDraftPickerSummary({
+	expanded,
+	items,
+	latest,
+	onDelete,
+	onToggle,
+	projectId,
+	single,
+}: CaseDraftPickerSummaryProps) {
+	return (
+		<div className="flex flex-wrap items-center gap-2">
+			<p className="min-w-0 flex-1">
+				{/* 必须写明「这台电脑」：本地草稿换台机器就没有，
+				    不说清楚用户会当成服务端保存过了。 */}
+				{single
+					? `这个模块还有 1 份没写完的草稿（${latest}，只存在这台电脑上），当前这张表单是全新的。`
+					: `这个模块还有 ${items.length} 份没写完的草稿（只存在这台电脑上），最近一份是 ${latest}。当前这张表单是全新的。`}
+			</p>
+			{single ? (
+				<CaseDraftActions
+					draft={items[0]}
+					onDelete={onDelete}
+					projectId={projectId}
+				/>
+			) : (
+				<Button
+					aria-expanded={expanded}
+					onClick={onToggle}
+					size="xs"
+					type="button"
+					variant="outline"
+				>
+					{expanded ? "收起" : `查看这 ${items.length} 份`}
+				</Button>
+			)}
+		</div>
+	);
+}
+
+interface CaseDraftPickerListProps {
+	items: readonly CaseDraft[];
+	onDelete: (caseId: string) => void;
+	projectId: string;
+}
+
+/** 展开后的那份清单。展不展开由调用方决定，这里只管把 items 摆出来。 */
+function CaseDraftPickerList({
+	items,
+	onDelete,
+	projectId,
+}: CaseDraftPickerListProps) {
+	return (
+		<ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+			{items.map((draft) => (
+				<li className="flex items-center gap-2" key={draft.caseId}>
+					<span className="min-w-0 flex-1 truncate">
+						{`${caseDraftTitle(draft)} · ${caseDraftSavedLabel(draft)}`}
+					</span>
+					<CaseDraftActions
+						draft={draft}
+						onDelete={onDelete}
+						projectId={projectId}
+					/>
+				</li>
+			))}
+		</ul>
+	);
+}
+
 interface CaseDraftPickerProps {
 	/**
 	 * 本次会话正在编辑的那份。它不该出现在「别的草稿」里：从「继续编辑」进来时
@@ -132,49 +214,23 @@ export function CaseDraftPicker({
 		<div className={DRAFT_BANNER_CLASS} role="status">
 			<FilePenLineIcon className="icon-stroke-regular mt-0.5 size-3.5 shrink-0" />
 			<div className="flex min-w-0 flex-1 flex-col gap-2">
-				<div className="flex flex-wrap items-center gap-2">
-					<p className="min-w-0 flex-1">
-						{/* 必须写明「这台电脑」：本地草稿换台机器就没有，
-						    不说清楚用户会当成服务端保存过了。 */}
-						{single
-							? `这个模块还有 1 份没写完的草稿（${latest}，只存在这台电脑上），当前这张表单是全新的。`
-							: `这个模块还有 ${items.length} 份没写完的草稿（只存在这台电脑上），最近一份是 ${latest}。当前这张表单是全新的。`}
-					</p>
-					{single ? (
-						<CaseDraftActions
-							draft={items[0]}
-							onDelete={drafts.remove}
-							projectId={projectId}
-						/>
-					) : (
-						<Button
-							aria-expanded={expanded}
-							onClick={toggle}
-							size="xs"
-							type="button"
-							variant="outline"
-						>
-							{expanded ? "收起" : `查看这 ${items.length} 份`}
-						</Button>
-					)}
-				</div>
+				<CaseDraftPickerSummary
+					expanded={expanded}
+					items={items}
+					latest={latest}
+					onDelete={drafts.remove}
+					onToggle={toggle}
+					projectId={projectId}
+					single={single}
+				/>
 				{expanded && !single ? (
 					// max-h-40 + 滚动：草稿条数没有上限，不兜住的话这条提示会把
 					// 整张表单挤出视口。
-					<ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
-						{items.map((draft) => (
-							<li className="flex items-center gap-2" key={draft.caseId}>
-								<span className="min-w-0 flex-1 truncate">
-									{`${caseDraftTitle(draft)} · ${caseDraftSavedLabel(draft)}`}
-								</span>
-								<CaseDraftActions
-									draft={draft}
-									onDelete={drafts.remove}
-									projectId={projectId}
-								/>
-							</li>
-						))}
-					</ul>
+					<CaseDraftPickerList
+						items={items}
+						onDelete={drafts.remove}
+						projectId={projectId}
+					/>
 				) : null}
 			</div>
 		</div>

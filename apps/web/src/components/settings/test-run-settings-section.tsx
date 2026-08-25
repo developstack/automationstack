@@ -4,9 +4,6 @@
  * 这一页唯一一个纯标量偏好，落在 `project_settings` 表上（懒创建，见
  * plan §3.3）。它与 Jira 分区分开保存，互不阻塞。
  */
-import { Button } from "@automationstack/ui/components/button";
-import { Input } from "@automationstack/ui/components/input";
-import { Label } from "@automationstack/ui/components/label";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, type FormEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -21,12 +18,10 @@ import {
 	SettingsSection,
 	SettingsSectionError,
 } from "@/components/settings/settings-section";
+import { TestRunSettingsFields } from "@/components/settings/test-run-settings-fields";
 import { orpc } from "@/utils/orpc";
 
 const HEADING_ID = "settings-test-run-heading";
-const FIELD_ID = "settings-auto-submit-days";
-const HINT_ID = "settings-auto-submit-days-hint";
-const ERROR_ID = "settings-auto-submit-days-error";
 
 /*
  * 用模块名「测试评审和执行」而不是记录名「测试任务」：这一节配的是整个模块的
@@ -76,6 +71,22 @@ function hintText(settings: ProjectSettingsData): string {
 	return `本项目从未保存过设置，当前使用默认值 ${settings.autoSubmitAfterCompletedDays} 天。范围 ${MIN_AUTO_SUBMIT_DAYS}–${MAX_AUTO_SUBMIT_DAYS} 天。`;
 }
 
+/**
+ * 提交前再校验一次，不合法就不给载荷。
+ *
+ * 之所以要在 handleSubmit 里重跑一遍而不是复用渲染时算好的那份：渲染那份是
+ * 给「该不该标红」用的，它受 `submitted` 影响；能不能发请求只取决于当前输入
+ * 本身，两条判断混用一份结果，第一次提交就会因为 `submitted` 还是 false 而
+ * 把一个非法值放过去。
+ */
+function autoSubmitPayload(raw: string, projectId: string) {
+	const result = validateAutoSubmitDays(raw);
+	if (result.kind !== "ok") {
+		return null;
+	}
+	return { autoSubmitAfterCompletedDays: result.days, projectId };
+}
+
 function TestRunSettingsForm({
 	projectId,
 	settings,
@@ -110,14 +121,10 @@ function TestRunSettingsForm({
 		(event: FormEvent<HTMLFormElement>) => {
 			event.preventDefault();
 			setSubmitted(true);
-			const result = validateAutoSubmitDays(raw);
-			if (result.kind !== "ok") {
-				return;
+			const payload = autoSubmitPayload(raw, projectId);
+			if (payload !== null) {
+				save.mutate(payload);
 			}
-			save.mutate({
-				autoSubmitAfterCompletedDays: result.days,
-				projectId,
-			});
 		},
 		[projectId, raw, save]
 	);
@@ -129,45 +136,13 @@ function TestRunSettingsForm({
 			noValidate={true}
 			onSubmit={handleSubmit}
 		>
-			<div className="flex flex-col gap-2">
-				<Label htmlFor={FIELD_ID}>自动提交等待天数</Label>
-				<div className="flex items-center gap-2">
-					<Input
-						aria-describedby={
-							error === null ? HINT_ID : `${ERROR_ID} ${HINT_ID}`
-						}
-						aria-invalid={error !== null}
-						className="w-28"
-						disabled={save.isPending}
-						id={FIELD_ID}
-						// 数字键盘：手机上默认弹出的全键盘要多两步才够得着数字
-						inputMode="numeric"
-						max={MAX_AUTO_SUBMIT_DAYS}
-						min={MIN_AUTO_SUBMIT_DAYS}
-						onChange={handleChange}
-						step={1}
-						type="number"
-						value={raw}
-					/>
-					{/* 单位不放进 Label：读屏念字段名时不该带上量纲，它属于值 */}
-					<span aria-hidden="true" className="text-muted-foreground text-sm">
-						天
-					</span>
-				</div>
-				{error === null ? null : (
-					<p className="text-destructive text-xs" id={ERROR_ID}>
-						{error}
-					</p>
-				)}
-				<p className="text-muted-foreground text-xs" id={HINT_ID}>
-					{hintText(settings)}
-				</p>
-			</div>
-			<div className="flex justify-end">
-				<Button disabled={save.isPending} type="submit">
-					{save.isPending ? "保存中…" : "保存"}
-				</Button>
-			</div>
+			<TestRunSettingsFields
+				error={error}
+				hint={hintText(settings)}
+				onChange={handleChange}
+				pending={save.isPending}
+				value={raw}
+			/>
 		</form>
 	);
 }

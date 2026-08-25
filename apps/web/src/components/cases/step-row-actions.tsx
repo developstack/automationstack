@@ -14,6 +14,55 @@ import {
 	XIcon,
 } from "lucide-react";
 
+interface StepMoveButtonsProps {
+	canMoveDown: boolean;
+	canMoveUp: boolean;
+	onMoveDown: () => void;
+	onMoveUp: () => void;
+	/** 1 基序号，已经由调用方算好；这里只往标签里填。 */
+	position: number;
+}
+
+/**
+ * 排序的一对。拆出来只是为了给 <StepRowActions> 留行数余量，两枚按钮必须
+ * 一起改：尺寸/变体一旦不一致，同一列里的四枚按钮就会错开半格。
+ *
+ * 边界不在这里判——能不能上移/下移由拥有整份步骤清单的 steps-editor 说了算，
+ * 这里只把它的结论渲染成 disabled。
+ */
+function StepMoveButtons({
+	canMoveDown,
+	canMoveUp,
+	onMoveDown,
+	onMoveUp,
+	position,
+}: StepMoveButtonsProps) {
+	return (
+		<>
+			<Button
+				aria-label={`第 ${position} 步上移`}
+				disabled={!canMoveUp}
+				onClick={onMoveUp}
+				size="icon-xs"
+				type="button"
+				variant="ghost"
+			>
+				<ArrowUpIcon />
+			</Button>
+			<Button
+				aria-label={`第 ${position} 步下移`}
+				disabled={!canMoveDown}
+				onClick={onMoveDown}
+				size="icon-xs"
+				type="button"
+				variant="ghost"
+			>
+				<ArrowDownIcon />
+			</Button>
+		</>
+	);
+}
+
 interface StepRowActionsProps {
 	canMoveDown: boolean;
 	canMoveUp: boolean;
@@ -55,26 +104,13 @@ export function StepRowActions(props: StepRowActionsProps) {
 			>
 				{props.previewOpen ? <EyeOffIcon /> : <EyeIcon />}
 			</Button>
-			<Button
-				aria-label={`第 ${position} 步上移`}
-				disabled={!props.canMoveUp}
-				onClick={props.onMoveUp}
-				size="icon-xs"
-				type="button"
-				variant="ghost"
-			>
-				<ArrowUpIcon />
-			</Button>
-			<Button
-				aria-label={`第 ${position} 步下移`}
-				disabled={!props.canMoveDown}
-				onClick={props.onMoveDown}
-				size="icon-xs"
-				type="button"
-				variant="ghost"
-			>
-				<ArrowDownIcon />
-			</Button>
+			<StepMoveButtons
+				canMoveDown={props.canMoveDown}
+				canMoveUp={props.canMoveUp}
+				onMoveDown={props.onMoveDown}
+				onMoveUp={props.onMoveUp}
+				position={position}
+			/>
 			<Button
 				aria-label={`删除第 ${position} 步`}
 				onClick={props.onRemove}

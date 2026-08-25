@@ -84,17 +84,12 @@ export interface TestRunDetail {
 }
 
 /**
- * 测试任务详情：任务本身 + 用例清单。
+ * 任务头：任务本身 + 创建人 / 提交人两个署名，一条 SQL 一次取齐。
  *
- * 用例内容走 `innerJoin test_cases`（内连接是安全的：`caseId` 是
- * `onDelete: restrict` 外键，被引用的用例不可能被删掉），因此详情页看到的
- * 永远是用例的最新内容。这也让「别人改了用例，测试任务页面自动刷新」这件事
- * 零成本成立——第一期已有的 `case` 失效事件就够了（plan §4.2）。
+ * 两个署名**不另外发查询**：它们与任务行是一对一的，各查一次只是把
+ * 一次往返变成三次，换不来任何东西。
  */
-export async function getTestRunDetail(
-	runId: string
-): Promise<TestRunDetail | null> {
-	await settleAutoSubmitForRun(runId);
+async function loadRunHeader(runId: string) {
 	// 同一张 users 表要 join 两次（创建人 / 提交人），必须各起一个别名，
 	// 否则两个 join 指向同一个 FROM 项，第二个条件会把第一个覆盖掉。
 	const creator = alias(users, "creator");
@@ -112,12 +107,22 @@ export async function getTestRunDetail(
 		.leftJoin(submitter, eq(submitter.id, testRuns.submittedBy))
 		.where(eq(testRuns.id, runId))
 		.limit(1);
-	if (!row) {
-		return null;
-	}
+	return row ?? null;
+}
+
+/**
+ * 用例清单：`test_run_cases` 的全部列 + 实时 join 出来的用例内容 + 执行人名字。
+ *
+ * ⚠️ **整份清单只发这一条 SQL，不许改成「先查行、再逐行补内容」**。
+ * 一个回归任务动辄几百条用例，逐行补就是几百次往返；而这里要的东西
+ * （用例内容、模块名、执行人名）全都是一对一的，join 进来零代价。
+ * 排序也必须留在 SQL 里：`sortOrder` 有并列，靠 `createdAt` 破平，
+ * 挪到内存里排会让「两次打开顺序不一样」这种事偶发出现。
+ */
+async function loadRunCaseRows(runId: string) {
 	// 第三个 users 别名：用例行上的执行人。与上面两个同理，同表多次 join 必须各起别名。
 	const executor = alias(users, "executor");
-	const rows = await db
+	return await db
 		.select({
 			...getTableColumns(testRunCases),
 			caseCurrentVersion: testCases.currentVersion,
@@ -137,40 +142,77 @@ export async function getTestRunDetail(
 		.leftJoin(executor, eq(executor.id, testRunCases.executedBy))
 		.where(eq(testRunCases.runId, runId))
 		.orderBy(asc(testRunCases.sortOrder), asc(testRunCases.createdAt));
-	const cases = rows.map(
-		({
-			caseCurrentVersion,
-			caseModuleId,
-			caseModuleName,
-			caseName,
-			casePreconditions,
-			casePriority,
-			caseStatus,
-			caseSteps,
-			executedByName,
-			...runCase
-		}) => ({
-			executedByName,
-			runCase,
-			testCase: {
-				currentVersion: caseCurrentVersion,
-				id: runCase.caseId,
-				moduleId: caseModuleId,
-				moduleName: caseModuleName,
-				name: caseName,
-				preconditions: casePreconditions,
-				priority: casePriority,
-				status: caseStatus,
-				steps: caseSteps,
-			},
-		})
-	);
+}
+
+/**
+ * 行类型从查询本身推导，不手写第二份。
+ *
+ * 上面那个 select 的列清单一改，这里跟着变，`toRunCaseDetail` 的解构立刻
+ * 编译不过——手抄一份 interface 则只会在运行时静默少一个字段。
+ */
+type TestRunCaseRow = Awaited<ReturnType<typeof loadRunCaseRows>>[number];
+
+/**
+ * 一行扁平结果 → 「执行记录 / 用例内容」两段。
+ *
+ * 用 rest 解构把 `case*` 前缀的列摘出去，剩下的就恰好是 `test_run_cases`
+ * 的全部列——于是将来给那张表加一列，这里一个字都不用改。
+ */
+function toRunCaseDetail({
+	caseCurrentVersion,
+	caseModuleId,
+	caseModuleName,
+	caseName,
+	casePreconditions,
+	casePriority,
+	caseStatus,
+	caseSteps,
+	executedByName,
+	...runCase
+}: TestRunCaseRow): TestRunCaseDetail {
+	return {
+		executedByName,
+		runCase,
+		testCase: {
+			currentVersion: caseCurrentVersion,
+			id: runCase.caseId,
+			moduleId: caseModuleId,
+			moduleName: caseModuleName,
+			name: caseName,
+			preconditions: casePreconditions,
+			priority: casePriority,
+			status: caseStatus,
+			steps: caseSteps,
+		},
+	};
+}
+
+/**
+ * 测试任务详情：任务本身 + 用例清单。
+ *
+ * 用例内容走 `innerJoin test_cases`（内连接是安全的：`caseId` 是
+ * `onDelete: restrict` 外键，被引用的用例不可能被删掉），因此详情页看到的
+ * 永远是用例的最新内容。这也让「别人改了用例，测试任务页面自动刷新」这件事
+ * 零成本成立——第一期已有的 `case` 失效事件就够了（plan §4.2）。
+ *
+ * 任务头查不到就**立刻返回，不再发第二条 SQL**：清单查询对一个不存在的
+ * runId 只会拿到空数组，白跑一次往返。
+ */
+export async function getTestRunDetail(
+	runId: string
+): Promise<TestRunDetail | null> {
+	await settleAutoSubmitForRun(runId);
+	const header = await loadRunHeader(runId);
+	if (header === null) {
+		return null;
+	}
+	const rows = await loadRunCaseRows(runId);
 	// `run` 原样返回：`createdBy` / `submittedBy` 两个 uuid 一个都不撤。
 	// 加名字是为了少一次查询，不是为了替换 id——判定、跳转、权限都还得靠 id。
 	return {
-		cases,
-		createdByName: row.createdByName,
-		run: row.run,
-		submittedByName: row.submittedByName,
+		cases: rows.map(toRunCaseDetail),
+		createdByName: header.createdByName,
+		run: header.run,
+		submittedByName: header.submittedByName,
 	};
 }

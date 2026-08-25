@@ -6,18 +6,13 @@ import {
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
-import { buildDefectDescription, buildDefectSummary } from "../lib/jira/adf";
-import {
-	buildRunUrl,
-	type DefectLinkView,
-	normalizeExternalUrl,
-	readFreshStatus,
-} from "../lib/jira/defect-link";
+import type { DefectLinkView } from "../lib/jira/defect-link";
 import { describeJiraFailure } from "../lib/jira/failure";
 import { resolveJiraClient } from "../lib/jira/get-client";
-import { parseIssueKey } from "../lib/jira/issue-key";
 import { publishInvalidate } from "../lib/realtime-publish";
 import { defectReferenceSchema } from "../schemas/jira";
+import { createDefectErrorMap, handleCreateDefect } from "./jira-defect-create";
+import { handleLinkDefect, linkDefectErrorMap } from "./jira-defect-link";
 
 const runCaseIdSchema = z.object({ runCaseId: z.uuid() });
 
@@ -72,99 +67,9 @@ export const jiraDefectProcedures = {
 	 * 全部由 `lib/jira/adf.ts` 组装成 ADF（v3 的 description 不收纯文本）。
 	 */
 	createDefect: protectedProcedure
-		.errors({
-			BAD_GATEWAY: {},
-			CONFLICT: {},
-			NOT_FOUND: {},
-			PRECONDITION_FAILED: {},
-		})
+		.errors(createDefectErrorMap)
 		.input(runCaseIdSchema)
-		.handler(async ({ context, errors, input }): Promise<DefectLinkView> => {
-			const defect = await getDefectContext(input.runCaseId);
-			if (defect === null) {
-				throw errors.NOT_FOUND({ message: "用例执行记录不存在" });
-			}
-			// 这不是权威守卫（权威守卫在 setRunCaseDefect 的事务里），只是不想在
-			// 必定被拒的路径上先去 Jira 建一个没人关联的孤儿 issue——
-			// 外部副作用不可回滚。理由详见 jira-repository 的 DefectContext 注释。
-			if (defect.submittedAt !== null) {
-				throw errors.CONFLICT({ message: "该测试任务已提交并锁定，不可修改" });
-			}
-			if (defect.defectKey !== null) {
-				throw errors.CONFLICT({
-					message: `该用例已关联 ${defect.defectKey}，请先解除关联再创建新的 issue`,
-				});
-			}
-			const resolution = await resolveJiraClient(defect.projectId);
-			if (resolution.kind !== "ok") {
-				throw errors.PRECONDITION_FAILED({
-					message:
-						resolution.kind === "unconfigured"
-							? "本项目未配置 Jira，请在项目设置里配置后再试，或直接手填缺陷链接"
-							: "Jira 凭据当前不可用，请在项目设置里重新填写 API Token",
-				});
-			}
-			const { client } = resolution;
-			const summary = buildDefectSummary({
-				caseName: defect.caseName,
-				runName: defect.runName,
-			});
-			// 附件：**故意只写数量 + 一条回平台的链接，不写 R2 链接**，这不是漏了。
-			// R2 是预签名 URL，15 分钟就过期；写进 issue 描述里的链接第二天必然是
-			// 死链，dev 点开打不开会以为是我们平台坏了——比不写更糟。
-			//
-			// 正确做法是把截图传成**真正的 Jira 附件**
-			// （`POST /rest/api/3/issue/{key}/attachments`，带 `X-Atlassian-Token: no-check`），
-			// 字节从 R2 取、经服务端转发。本期不做：这么一转，字节就要过我们的
-			// 服务器，正好抵消掉 R2 预签名直传「不过应用服务器」的设计目的，
-			// 20MB 量级的录屏尤其难受。
-			//
-			// 将来要做的话，边界已经定了：**只传图片类附件**（截图小，而且正是
-			// dev 最需要的东西），录屏与日志一律仍旧只给回平台的链接。
-			const created = await client.createIssue({
-				description: buildDefectDescription({
-					attachmentCount: defect.attachmentCount,
-					caseName: defect.caseName,
-					comment: defect.comment,
-					preconditions: defect.casePreconditions,
-					runName: defect.runName,
-					runUrl: buildRunUrl(defect.projectId, defect.runId),
-					steps: defect.caseSteps,
-				}),
-				issueType: client.defaultIssueType,
-				summary,
-			});
-			if (!created.ok) {
-				throw errors.BAD_GATEWAY({
-					message: describeJiraFailure(created.failure),
-				});
-			}
-			const view: DefectLinkView = {
-				defectKey: created.value.key,
-				defectStatus: await readFreshStatus(client, created.value.key),
-				defectTitle: summary,
-				defectUrl: created.value.url,
-			};
-			const written = await setRunCaseDefect(input.runCaseId, view);
-			if (written.kind !== "ok") {
-				// issue 已经建出来了但关联不上（竞态窗口里测试任务刚被提交，或记录刚被删）。
-				// 把 key 报给用户，否则那个 issue 就成了没人知道的孤儿。
-				throw errors.CONFLICT({
-					message:
-						written.kind === "locked"
-							? `该测试任务已提交并锁定，不可修改；刚创建的 ${created.value.key} 需要手工处理`
-							: `用例执行记录已不存在；刚创建的 ${created.value.key} 需要手工处理`,
-				});
-			}
-			publishInvalidate({
-				action: "update",
-				context,
-				entity: "testRun",
-				ids: [defect.runId],
-				projectId: defect.projectId,
-			});
-			return view;
-		}),
+		.handler((options): Promise<DefectLinkView> => handleCreateDefect(options)),
 
 	/**
 	 * 反向关联：用户粘贴已有 issue 的链接或编号，校验存在后关联并回填状态。
@@ -173,81 +78,14 @@ export const jiraDefectProcedures = {
 	 * （D9）。这条降级路径必须先于任何 Jira 调用判断。
 	 */
 	linkDefect: protectedProcedure
-		.errors({
-			BAD_GATEWAY: {},
-			BAD_REQUEST: {},
-			CONFLICT: {},
-			NOT_FOUND: {},
-		})
+		.errors(linkDefectErrorMap)
 		.input(
 			z.object({
 				reference: defectReferenceSchema,
 				runCaseId: z.uuid(),
 			})
 		)
-		.handler(async ({ context, errors, input }): Promise<DefectLinkView> => {
-			const defect = await getDefectContext(input.runCaseId);
-			if (defect === null) {
-				throw errors.NOT_FOUND({ message: "用例执行记录不存在" });
-			}
-			if (defect.submittedAt !== null) {
-				throw errors.CONFLICT({ message: "该测试任务已提交并锁定，不可修改" });
-			}
-			const resolution = await resolveJiraClient(defect.projectId);
-			let view: DefectLinkView;
-			if (resolution.kind === "ok") {
-				const issueKey = parseIssueKey(input.reference);
-				if (issueKey === null) {
-					throw errors.BAD_REQUEST({
-						message:
-							"认不出 issue 编号，请粘贴 issue 链接或形如 PAY-123 的编号",
-					});
-				}
-				const issue = await resolution.client.getIssue(issueKey);
-				if (!issue.ok) {
-					const message = describeJiraFailure(issue.failure);
-					if (issue.failure.kind === "not-found") {
-						throw errors.NOT_FOUND({ message: `Jira 上没有 ${issueKey}` });
-					}
-					throw errors.BAD_GATEWAY({ message });
-				}
-				view = {
-					defectKey: issue.value.key,
-					defectStatus: issue.value.status,
-					defectTitle: issue.value.summary,
-					defectUrl: issue.value.url,
-				};
-			} else {
-				// 降级：只存 URL 原文。`defectKey` 保持 null——它的语义是
-				// 「Jira 侧的 issue」，未配置的项目没有可校验的 Jira，
-				// 存进去只会让后续的状态同步以为有得可同步。
-				const url = normalizeExternalUrl(input.reference);
-				if (url === null) {
-					throw errors.BAD_REQUEST({
-						message:
-							"本项目未配置 Jira，请粘贴完整的缺陷链接（以 http:// 或 https:// 开头）",
-					});
-				}
-				view = {
-					defectKey: null,
-					defectStatus: null,
-					defectTitle: null,
-					defectUrl: url,
-				};
-			}
-			const written = await setRunCaseDefect(input.runCaseId, view);
-			if (written.kind !== "ok") {
-				throw errors.CONFLICT({ message: "该测试任务已提交并锁定，不可修改" });
-			}
-			publishInvalidate({
-				action: "update",
-				context,
-				entity: "testRun",
-				ids: [defect.runId],
-				projectId: defect.projectId,
-			});
-			return view;
-		}),
+		.handler((options): Promise<DefectLinkView> => handleLinkDefect(options)),
 
 	/**
 	 * 主动拉一次 issue 状态：webhook 的兜底（plan §5.2）。
