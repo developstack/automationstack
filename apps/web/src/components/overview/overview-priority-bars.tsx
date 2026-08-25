@@ -1,125 +1,36 @@
-import type { CasePriority } from "@automationstack/db/schema/test-cases";
-import {
-	type ChartConfig,
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent,
-} from "@automationstack/ui/components/chart";
-import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
-
-import { PRIORITY_VALUES } from "@/components/cases/case-meta";
-import {
-	CHART_ANIMATION,
-	CHART_SEAM,
-	useChartAnimation,
-} from "@/components/overview/overview-chart";
-
 /**
- * 优先级是有序量，配色走「石板蓝」单色明度阶（--priority-0..3）而不是四个「并列」的
- * 颜色：P0 最深、P3 最浅，深浅方向与优先级高低同向。不用红——红=失败已被结论色
- * 占用，柱图画的是用例数，红柱会被读成「挂了」；蓝不参与结论色语言（绿/红/黄/灰），
- * 专职「维度色」，与同页的结论环并排时分工清晰：彩=结论、蓝=分档。暗色段镜像
- * 反转：P0 最亮。它是冗余编码——真正区分四根柱子的是 Y 轴上写着的 P0..P3，
- * 色阶只是让「哪一档更重」不用读字也能看出来。
- * 刻意不复用 case-meta 的 PRIORITY_BADGE_VARIANTS（实心危险色→无填充那一套）：
- * 那是徽章的填充强度，不是给图形元素测过 3:1 的色阶。
- */
-const PRIORITY_COLORS: Record<CasePriority, string> = {
-	P0: "var(--priority-0)",
-	P1: "var(--priority-1)",
-	P2: "var(--priority-2)",
-	P3: "var(--priority-3)",
-};
-
-const CHART_CONFIG: ChartConfig = { count: { label: "用例数" } };
-const BAR_MARGIN = { bottom: 0, left: 0, right: 0, top: 0 };
-/** 柱高；四档在 h-32（128px）里各占 32px 带宽，柱居中，上下各留 8px。 */
-const BAR_SIZE = 16;
-const BAR_RADIUS = 4;
-/** Y 轴留给 "P0" 这类刻度文字的宽度（含 tickMargin 4px）。 */
-const AXIS_WIDTH = 28;
-const TICK_MARGIN = 4;
-
-/**
- * 类目轴（Y 轴）的固定配置。提到模块作用域是为了让下面的图表只剩「画什么」：
- * 这几项从来不随 props 变，写在 JSX 里只会把柱子的配置挤到看不见的地方。
- * 不画轴线与刻度线，轴上只留 P0..P3 这四个文字——它们才是区分柱子的信息本体。
- */
-const Y_AXIS_PROPS = {
-	axisLine: false,
-	dataKey: "priority",
-	tickLine: false,
-	tickMargin: TICK_MARGIN,
-	type: "category",
-	width: AXIS_WIDTH,
-} as const;
-
-/** 按 P0..P3 的固定次序摊平成 recharts 要的行，缺档不会静默消失。 */
-function buildRows(counts: Record<CasePriority, number>) {
-	return PRIORITY_VALUES.map((priority) => ({
-		count: counts[priority],
-		priority,
-	}));
-}
-
-interface OverviewPriorityBarsProps {
-	counts: Record<CasePriority, number>;
-	total: number;
-}
-
-/**
- * 优先级分布条形图（横向）。
+ * 优先级条形图的懒加载壳，真身在 overview-priority-bars-chart.tsx。
  *
- * 横向而不是纵向：四个类目名是固定的两字符标签，放在 Y 轴上永远不需要旋转或截断，
- * 而概览页最窄时是单列全宽、最宽时是三列中的一列——横向柱子的长度方向跟着列宽伸缩，
- * 类目方向不变，窄列里也不会挤成一片。
+ * 为什么要这一层、以及 SSR 下为何只用 Suspense 不加 ClientOnly，见
+ * overview-donut.tsx 的头注释——那边写的是同一件事，两张图共用一套结论。
  *
- * 整块 aria-hidden，理由同 overview-donut.tsx：读数由卡片正文里的徽章图例给出；
- * BarChart 上的 role="presentation" tabIndex={-1} 同样是配套，见那边的注释。
+ * 占位与真身等高（OVERVIEW_BARS_BOX 两边共用），理由见 chart-box.ts。
  */
-export function OverviewPriorityBars({
-	counts,
-	total,
-}: OverviewPriorityBarsProps) {
-	const animate = useChartAnimation();
-	const rows = buildRows(counts);
+import { lazy, Suspense } from "react";
 
+import { OVERVIEW_BARS_BOX } from "@/components/overview/chart-box";
+import type { OverviewPriorityBarsProps } from "@/components/overview/overview-priority-bars-chart";
+
+const LazyOverviewPriorityBarsChart = lazy(async () => {
+	const chartModule = await import(
+		"@/components/overview/overview-priority-bars-chart"
+	);
+	return { default: chartModule.OverviewPriorityBarsChart };
+});
+
+/**
+ * chunk 到达前的占位：与图区等高的一块空白。
+ *
+ * 刻意不在这里复刻 overview-skeleton.tsx 里那套「四条灰条」——那一份是**数据**还没到
+ * 时的骨架，这一份是数据已经在手上、只差画图的 chunk。两者叠着出现会让同一张卡连着
+ * 换两次样子（灰条 → 另一种灰条 → 真图）。空白只补高度，不多说一句话。
+ */
+const BARS_FALLBACK = <div aria-hidden="true" className={OVERVIEW_BARS_BOX} />;
+
+export function OverviewPriorityBars(props: OverviewPriorityBarsProps) {
 	return (
-		<ChartContainer
-			aria-hidden="true"
-			className="aspect-auto h-32 w-full"
-			config={CHART_CONFIG}
-		>
-			<BarChart
-				data={rows}
-				layout="vertical"
-				margin={BAR_MARGIN}
-				role="presentation"
-				tabIndex={-1}
-			>
-				{/*
-				 * 轴域钉在 [0, 总数] 而不是让 recharts 按最大值自适应：这样柱长直接就是
-				 * 占比，和背景槽一起读出「这一档占全部用例的多少」，而不只是四根柱子
-				 * 互相比长短。槽走 --chart-1——它压卡片 1.48:1，本来就只配当垫底。
-				 */}
-				<XAxis domain={[0, total]} hide type="number" />
-				<YAxis {...Y_AXIS_PROPS} />
-				<ChartTooltip content={<ChartTooltipContent />} cursor={false} />
-				<Bar
-					{...CHART_ANIMATION}
-					background={{ fill: "var(--chart-1)", radius: BAR_RADIUS }}
-					barSize={BAR_SIZE}
-					dataKey="count"
-					isAnimationActive={animate}
-					radius={BAR_RADIUS}
-					stroke={CHART_SEAM.stroke}
-					strokeWidth={CHART_SEAM.strokeWidth}
-				>
-					{rows.map((row) => (
-						<Cell fill={PRIORITY_COLORS[row.priority]} key={row.priority} />
-					))}
-				</Bar>
-			</BarChart>
-		</ChartContainer>
+		<Suspense fallback={BARS_FALLBACK}>
+			<LazyOverviewPriorityBarsChart {...props} />
+		</Suspense>
 	);
 }

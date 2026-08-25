@@ -1,4 +1,3 @@
-import type { CasePriority } from "@automationstack/db/schema/test-cases";
 import { Badge } from "@automationstack/ui/components/badge";
 import {
 	Card,
@@ -7,10 +6,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@automationstack/ui/components/card";
-import {
-	type ChartConfig,
-	ChartContainer,
-} from "@automationstack/ui/components/chart";
 import {
 	Table,
 	TableBody,
@@ -24,94 +19,48 @@ import {
 	CircleHelpIcon,
 	TriangleAlertIcon,
 } from "lucide-react";
-import { Bar, BarChart, Cell, XAxis, YAxis } from "recharts";
+import { lazy, Suspense } from "react";
 
 import { PRIORITY_BADGE_VARIANTS } from "@/components/cases/case-meta";
 import {
-	CHART_ANIMATION,
-	CHART_SEAM,
-	useChartAnimation,
-} from "@/components/overview/overview-chart";
+	REPORT_BARS_BOX,
+	reportPriorityHeightPx,
+} from "@/components/overview/chart-box";
 import { formatRate, RATE_UNKNOWN } from "@/components/test-runs/rate-format";
 import type { ReportPriorityStat } from "@/components/test-runs/report-meta";
+import type { ReportPriorityBarsProps } from "@/components/test-runs/report-priority-bars-chart";
 
 /**
- * 与 overview-priority-bars.tsx 同一套「石板蓝」单色明度阶（--priority-0..3）：
- * 序数编码，P0 最深 → P3 最浅，暗色镜像反转、P0 最亮。蓝是「维度色」，与本页
- * 彩色的结论色（--result-*）并排时分工清晰：彩=结论、蓝=分档——柱图画的是通过率，
- * 蓝柱不会被读成成败，也不会拿红色预判某一档「挂了」。
- * 那边刻意没导出这张表，这里照抄一份而不是把它挪成公共常量：跨页共享一个
- * 「顺手能用」的取色表，会让两页的图在其中一页改需求时被迫一起动。
- * 它是冗余编码——真正区分四根柱子的是 Y 轴上写着的 P0..P3。
+ * 柱图真身走动态 import：它静态引用 recharts，而这张卡本身（P0 结论 + 表格）是首屏
+ * 就该有的东西，不该为了它把 gzip 103KB 的 recharts 一起拖进入口 chunk。
+ * 完整来龙去脉见 overview-donut.tsx 的头注释，SSR 下为何只用 Suspense 不加 ClientOnly
+ * 也在那里。
  */
-const PRIORITY_COLORS: Record<CasePriority, string> = {
-	P0: "var(--priority-0)",
-	P1: "var(--priority-1)",
-	P2: "var(--priority-2)",
-	P3: "var(--priority-3)",
-};
-
-const CHART_CONFIG: ChartConfig = { passRate: { label: "通过率" } };
-const BAR_MARGIN = { bottom: 0, left: 0, right: 0, top: 0 };
-const BAR_SIZE = 16;
-const BAR_RADIUS = 4;
-const ROW_HEIGHT_PX = 32;
-const AXIS_WIDTH = 28;
-/** 通过率是 0–1 的比值，轴域钉死，柱长直接就是通过率本身。 */
-const RATE_DOMAIN = [0, 1] as const;
-
-const Y_AXIS_PROPS = {
-	axisLine: false,
-	dataKey: "priority",
-	tickLine: false,
-	tickMargin: 4,
-	type: "category",
-	width: AXIS_WIDTH,
-} as const;
-
-interface PriorityBarsProps {
-	/** 只含 `passRate !== null` 的档，理由见 ReportPriorityCard。 */
-	rows: readonly { passRate: number; priority: CasePriority }[];
-}
+const LazyReportPriorityBarsChart = lazy(async () => {
+	const chartModule = await import(
+		"@/components/test-runs/report-priority-bars-chart"
+	);
+	return { default: chartModule.ReportPriorityBarsChart };
+});
 
 /**
- * 按优先级的通过率横向柱状。整块 aria-hidden，读数由下面的表格给出
- * （同 overview-priority-bars.tsx 的头注释）。
+ * 高度在这一层算：占位与真身读的是同一个 reportPriorityHeightPx，图区不会先塌成
+ * 0 高再弹回来（理由见 chart-box.ts）。真身拿它当 style 上的 height。
  */
-function PriorityBars({ rows }: PriorityBarsProps) {
-	const animate = useChartAnimation();
+function PriorityBars({ rows }: Pick<ReportPriorityBarsProps, "rows">) {
+	const heightPx = reportPriorityHeightPx(rows.length);
 	return (
-		<ChartContainer
-			aria-hidden="true"
-			className="aspect-auto w-full"
-			config={CHART_CONFIG}
-			style={{ height: `${rows.length * ROW_HEIGHT_PX}px` }}
+		<Suspense
+			fallback={
+				<div
+					aria-hidden="true"
+					className={REPORT_BARS_BOX}
+					style={{ height: `${heightPx}px` }}
+				/>
+			}
 		>
-			<BarChart
-				data={[...rows]}
-				layout="vertical"
-				margin={BAR_MARGIN}
-				role="presentation"
-				tabIndex={-1}
-			>
-				<XAxis domain={[...RATE_DOMAIN]} hide type="number" />
-				<YAxis {...Y_AXIS_PROPS} />
-				<Bar
-					{...CHART_ANIMATION}
-					background={{ fill: "var(--chart-1)", radius: BAR_RADIUS }}
-					barSize={BAR_SIZE}
-					dataKey="passRate"
-					isAnimationActive={animate}
-					radius={BAR_RADIUS}
-					stroke={CHART_SEAM.stroke}
-					strokeWidth={CHART_SEAM.strokeWidth}
-				>
-					{rows.map((row) => (
-						<Cell fill={PRIORITY_COLORS[row.priority]} key={row.priority} />
-					))}
-				</Bar>
-			</BarChart>
-		</ChartContainer>
+			<LazyReportPriorityBarsChart heightPx={heightPx} rows={rows} />
+		</Suspense>
 	);
 }
 

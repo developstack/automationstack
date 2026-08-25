@@ -5,7 +5,7 @@ import {
 } from "@automationstack/ui/components/card";
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { cn } from "@automationstack/ui/lib/utils";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 /**
  * 概览页首屏骨架：六张卡逐张按真实内容折算高度。
@@ -33,6 +33,36 @@ import type { ReactNode } from "react";
  * 恒等；这里按「行高逐行对齐、条数取中间值 4」处理——行高对上了，数据到达时也只是
  * 这一张卡自己伸缩，栅格是 auto-rows-min，不会把同行别的卡一起顶动。
  */
+
+let chartChunkRequested = false;
+
+/**
+ * 骨架一挂上就把图表 chunk 预取下来。
+ *
+ * 这里是**这一页唯一一段真正在等的时间**：骨架摆着，说明六条统计的 loader 正在飞，
+ * 而两张图的 chunk（recharts，gzip 103KB）与那几个请求互不阻塞，正好并行。等数据
+ * 到达再由 lazy() 去取，图区就会先摆一帧空占位——那一帧本来可以不存在。
+ *
+ * 走动态 import 而不是在文件顶上 import：这个骨架是路由的 pendingComponent，
+ * 它自己必须留在首屏 chunk 里。一旦静态引用图表模块，recharts 就跟着回到首屏，
+ * 整轮懒加载正好被这一个文件抵消掉——预取要的是「早一点下载」，不是「重新变成
+ * 首屏依赖」，两者差的就是这一行是 import() 还是 import。
+ *
+ * 三张环形卡与优先级卡各取各的 chunk，两个都预。失败不管：真正要画时 lazy()
+ * 会自己再试一次（同 use-markdown-field-activation.ts 的处理）。
+ */
+function preloadChartChunks() {
+	if (chartChunkRequested) {
+		return;
+	}
+	chartChunkRequested = true;
+	Promise.all([
+		import("@/components/overview/overview-donut-chart"),
+		import("@/components/overview/overview-priority-bars-chart"),
+	]).catch(() => {
+		chartChunkRequested = false;
+	});
+}
 
 const STATUS_ROW_KEYS = ["active", "draft", "deprecated"] as const;
 const PRIORITY_KEYS = ["p0", "p1", "p2", "p3"] as const;
@@ -187,6 +217,8 @@ function ChangesCardSkeleton() {
  * output 带 sr-only，脱离文档流，不占栅格里的一格。
  */
 export function OverviewSkeleton() {
+	useEffect(() => preloadChartChunks(), []);
+
 	return (
 		<>
 			<output aria-busy="true" className="sr-only">
