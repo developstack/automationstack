@@ -14,6 +14,22 @@ import { getClientId } from "@/realtime/identity";
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
 const QUERY_STALE_TIME_MS = SECONDS_PER_MINUTE * MS_PER_SECOND;
+/*
+ * 缓存驻留时长必须显著大于 staleTime，否则 staleTime 说的话没人执行。
+ *
+ * gcTime 的默认值是 5 分钟，比上面那一分钟的新鲜期只长四分钟：离开某一页
+ * 五分钟再回来，那份数据已经被回收，路由 loader 的 ensureQueryData 只能重新
+ * 发一次请求，整页退回 pendingComponent——而「切走一会儿再切回来」恰恰是这个
+ * 工具里最常见的动作（去看一眼别的模块、开个对话框、切到别的项目再回来）。
+ *
+ * staleTime 决定的是「要不要在后台重新验证」，gcTime 决定的是「还有没有东西
+ * 可以先拿来渲染」。后者短于前者的量级时，过期重验这条快路径根本没机会走到：
+ * 每次回来都是冷启动。30 分钟覆盖住一个正常的工作时段，代价只是多留一份
+ * 已经取过的 JSON 在内存里。
+ */
+const QUERY_GC_TIME_MINUTES = 30;
+const QUERY_GC_TIME_MS =
+	QUERY_GC_TIME_MINUTES * SECONDS_PER_MINUTE * MS_PER_SECOND;
 
 declare module "@tanstack/react-query" {
 	interface Register {
@@ -30,7 +46,12 @@ declare module "@tanstack/react-query" {
 
 export function createQueryClient() {
 	return new QueryClient({
-		defaultOptions: { queries: { staleTime: QUERY_STALE_TIME_MS } },
+		defaultOptions: {
+			queries: {
+				gcTime: QUERY_GC_TIME_MS,
+				staleTime: QUERY_STALE_TIME_MS,
+			},
+		},
 		mutationCache: new MutationCache({
 			onError: (error, _variables, _context, mutation) => {
 				if (mutation.meta?.suppressErrorToast) {

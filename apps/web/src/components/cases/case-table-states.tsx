@@ -11,21 +11,48 @@ import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { cn } from "@automationstack/ui/lib/utils";
 import { ClipboardListIcon, FilterXIcon } from "lucide-react";
 
-const SKELETON_ROW_KEYS = ["r1", "r2", "r3", "r4", "r5", "r6"] as const;
+import { CASE_PAGE_SIZE } from "@/components/cases/case-list-query";
+
+/*
+ * 骨架行的 key。在模块作用域一次性生成，而不是在 JSX 里拿 map 的下标当 key：
+ * 行数是变量，写成 key={index} 既过不了 lint，语义上也不对。
+ */
+function skeletonRowKeys(rows: number): string[] {
+	return Array.from({ length: rows }, (_, index) => `skeleton-row-${index}`);
+}
+
+interface CaseTableSkeletonProps {
+	/**
+	 * 骨架行数。默认取 CASE_PAGE_SIZE——调用方都是在等一页用例，
+	 * 一页就是这么多行。
+	 */
+	rows?: number;
+}
 
 /**
  * 列表首屏骨架：高度按真实表格逐行折算，避免加载完成时的跳动。
  * 表头 = TableHead 的 h-10（40px）+ TableHeader 的 border-b 1px（mb-px）= 41px；
  * 数据行 = TableCell 的 p-2（16px）+ Badge 的 h-5（20px）= 36px（h-9）
  * + TableRow 的 border-b 1px（mt-px）= 37px。
- * 末行同样带边框、不做例外，所以 6 条骨架行一律加 mt-px。
- * 核对：真实 41 + 6×37 = 263px，骨架 41 + 6×37 = 263px，两边相等，
- * 数据到达时下方隔着 gap-3 的分页条不会上下跳。
+ * 末行同样带边框、不做例外，所以骨架行一律加 mt-px。
+ *
+ * 行数必须跟着**页大小**走，不能钉死一个小常数。原先固定 6 行，而
+ * case-list-query.ts 的 CASE_PAGE_SIZE 是 20：满页真身 41 + 20×37 = 781px，
+ * 骨架只有 41 + 6×37 = 263px，数据到达那一帧下方的分页条要往下掉 518px。
+ * （原先这里的核对写的是「真实 41 + 6×37 = 骨架 41 + 6×37」——那是拿 6 行骨架
+ * 比 6 行真身，前提根本不成立，等于把不等式写成了恒等式。）
+ *
+ * 折算按满页算，不按「平均有多少条」算：不满一页时骨架比真身高，多出来的空白
+ * 是往下收，分页条**上移**；而按小数取值时只要来了满页就会整块下坠。两者都动，
+ * 但前者的最大位移被一页封顶且只在末页出现，后者是常态。
+ *
  * 覆盖成 rounded-none：Skeleton 默认 rounded-md，但表格行本身是方角的，
  * 骨架带圆角既不像它要替代的东西，贴合堆叠时行与行之间还会露出一串缺口。
  * 折算的真身在 case-table.tsx 的 CaseRow / COLUMNS，那边改行高要回来对齐这里。
  */
-export function CaseTableSkeleton() {
+export function CaseTableSkeleton({
+	rows = CASE_PAGE_SIZE,
+}: CaseTableSkeletonProps) {
 	return (
 		<output
 			aria-busy="true"
@@ -33,7 +60,7 @@ export function CaseTableSkeleton() {
 			className="flex flex-col"
 		>
 			<Skeleton className="mb-px h-10 w-full rounded-none" />
-			{SKELETON_ROW_KEYS.map((key) => (
+			{skeletonRowKeys(rows).map((key) => (
 				<Skeleton className="mt-px h-9 w-full rounded-none" key={key} />
 			))}
 		</output>

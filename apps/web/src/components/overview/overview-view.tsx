@@ -1,3 +1,4 @@
+import { StaggerItem } from "@/components/layout/page-stagger";
 import { PageTransition } from "@/components/layout/page-transition";
 import { OverviewAiCard } from "@/components/overview/overview-ai-card";
 import { OverviewChangesCard } from "@/components/overview/overview-changes-card";
@@ -40,16 +41,40 @@ interface OverviewViewProps {
  * phase="ready" 写死：本组件只有一个调用方，就是 /projects/$projectId/overview
  * 的就绪态（同路由的 pendingComponent 标的是 "pending"）。两端成对标注，才不会
  * 在骨架换成真内容那一帧再播一次进场。
+ *
+ * StaggerItem 的 index 就是上面那个阅读顺序：进场时六张卡按这个次序错开出现，
+ * 每张差 40ms，最后一张迟 200ms 起步——仍落在 <main> 那 300ms 主进场之内，
+ * 读起来是一页在依次落位，不是六张卡各自播一遍。
+ *
+ * 错不错开完全由 PageTransition 的判定决定（见 page-stagger.tsx）：刷新、
+ * 骨架换真内容、以及任何 pathname 没变的页内操作都不会错开，这一页因此不会在
+ * 数据刷新时抖成六段。
+ *
+ * index 手写而不是靠数组下标：这六张卡是写死的排布，摊成数组只是为了拿个序号，
+ * 反而把「顺序即阅读顺序」这件事藏进了一次 map。栅格类名不用管——这一页没有
+ * col-span，六张卡各占一格；将来若有，类名要写在 StaggerItem 上而不是卡上。
  */
 export function OverviewView({ projectId }: OverviewViewProps) {
 	return (
 		<PageTransition className={OVERVIEW_MAIN} phase="ready">
-			<OverviewTotalsCard projectId={projectId} />
-			<OverviewPriorityCard projectId={projectId} />
-			<OverviewAiCard projectId={projectId} />
-			<OverviewCoverageCard projectId={projectId} />
-			<OverviewStaleCard projectId={projectId} />
-			<OverviewChangesCard projectId={projectId} />
+			<StaggerItem index={0}>
+				<OverviewTotalsCard projectId={projectId} />
+			</StaggerItem>
+			<StaggerItem index={1}>
+				<OverviewPriorityCard projectId={projectId} />
+			</StaggerItem>
+			<StaggerItem index={2}>
+				<OverviewAiCard projectId={projectId} />
+			</StaggerItem>
+			<StaggerItem index={3}>
+				<OverviewCoverageCard projectId={projectId} />
+			</StaggerItem>
+			<StaggerItem index={4}>
+				<OverviewStaleCard projectId={projectId} />
+			</StaggerItem>
+			<StaggerItem index={5}>
+				<OverviewChangesCard projectId={projectId} />
+			</StaggerItem>
 		</PageTransition>
 	);
 }

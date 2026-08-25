@@ -83,6 +83,25 @@ export const getRouter = () => {
 		defaultPendingComponent: () => <Loader />,
 		defaultPendingMinMs: PENDING_MIN_MS,
 		defaultPendingMs: PENDING_DELAY_MS,
+		/*
+		 * 悬停即预取。下面那行 defaultPreloadStaleTime 本来就是给预加载配套的，
+		 * 但它自己不开启任何预取——defaultPreload 默认是 false，缺了这一半等于
+		 * 那行配置一直在给一个从没发生过的动作调参。
+		 *
+		 * 补上之后，鼠标停在链接上 50ms（defaultPreloadDelay 默认值）就开始跑
+		 * loader，等真的点下去时数据多半已经在缓存里，导航根本进不了上面
+		 * PENDING_DELAY_MS 那 200ms 的阈值，也就不会闪一下骨架——各路由的
+		 * pendingComponent 是给冷路径兜底的，不该是常态。
+		 *
+		 * 取 "intent" 而不是 "viewport"：侧栏和表格里同屏可见的链接动辄几十条，
+		 * 进视口就预取会把一整屏的 loader 一次性打出去，为了省几次点击反而把
+		 * 首屏之后的带宽占满。
+		 */
+		defaultPreload: "intent",
+		/*
+		 * 预取结果的新鲜度一律交给 React Query 自己的 staleTime 判断
+		 * （utils/orpc.ts 里那份），不让 router 再加一层各自为政的过期判定。
+		 */
 		defaultPreloadStaleTime: 0,
 		routeTree,
 		scrollRestoration: true,

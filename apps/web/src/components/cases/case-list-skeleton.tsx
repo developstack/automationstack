@@ -1,5 +1,6 @@
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 
+import { CASE_PAGE_SIZE } from "@/components/cases/case-list-query";
 import { CaseTableSkeleton } from "@/components/cases/case-table-states";
 
 /**
@@ -49,7 +50,12 @@ export function CaseListSkeleton() {
 	return (
 		<>
 			<CaseListToolbarSkeleton />
-			<CaseTableSkeleton />
+			{/*
+			 * 显式写出 CASE_PAGE_SIZE 而不是吃默认值：这里是页面级骨架，等的就是
+			 * 整整一页用例，行数与页大小是同一个事实，摆在调用点上那边改了这边
+			 * 不会漏。
+			 */}
+			<CaseTableSkeleton rows={CASE_PAGE_SIZE} />
 		</>
 	);
 }
