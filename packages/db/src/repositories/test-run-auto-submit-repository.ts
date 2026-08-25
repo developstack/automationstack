@@ -84,6 +84,10 @@ export function settleAutoSubmitForRun(runId: string): Promise<string[]> {
 /**
  * 全局结算入口：pg-boss 每日扫描调用（plan 011 D1），无 scope 全表扫一遍。
  * 判定条件在执行时从当前数据现算，重测退回 / 改天数天然免疫，无需取消逻辑。
+ *
+ * 索引：`test_runs` 上现有的 `(project_id, status)` 在这里用不上（本入口不带
+ * project_id 谓词），每天一次全表扫描。当前数据量下无所谓；真扫不动的时候
+ * 加一条 `status` 上的部分索引（`where submitted_at is null`）即可。
  */
 export function settleAutoSubmitAll(): Promise<string[]> {
 	return db.transaction((tx) => settleAutoSubmit(tx, sql`true`));

@@ -23,6 +23,24 @@ function isValidSecretEncryptionKey(value: string): boolean {
 	}
 }
 
+/**
+ * 时区在这里就校验，而不是等 pg-boss 注册调度时才炸：写错时区不会让服务起不来，
+ * 只会让 `boss.schedule()` 抛在 `startJobs()` 的 catch 里被吞掉——后果是每日
+ * 自动提交扫描**从此永远不跑**，而接口全绿、看不出任何异常（读路径惰性结算还在，
+ * 连数据都不会明显不对，只是「零访问」的盲区悄悄回来了）。
+ *
+ * 用 `Intl.DateTimeFormat` 试解而不是 `Intl.supportedValuesOf`：后者只给规范名，
+ * 会误杀 `US/Pacific` 这类合法别名，而 pg-boss 那边是认的。
+ */
+function isValidTimeZone(value: string): boolean {
+	try {
+		Intl.DateTimeFormat(undefined, { timeZone: value });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 export const env = createEnv({
 	emptyStringAsUndefined: true,
 	runtimeEnv: process.env,
@@ -37,9 +55,24 @@ export const env = createEnv({
 		AUTO_SUBMIT_SCAN_CRON: z.string().min(1).default("0 3 * * *"),
 		/**
 		 * 上一项 cron 的时区，需为 IANA 时区名（pg-boss 要求），如
-		 * `Asia/Shanghai`；不能用 `UTC+8` 这类缩写写法。
+		 * `Asia/Shanghai`；不能用 `UTC+8` 这类缩写写法——所以这里当场校验。
+		 *
+		 * cron 表达式本身没在这里校验（env 包不该为了认一行 cron 把解析器拖进
+		 * 依赖图）：它由 pg-boss 在注册时解析，**认不出来**的写法会让后台任务启动
+		 * 失败，表现为 `GET /health` 的 `jobs` 变成 `"failed"`。
+		 *
+		 * 注意这兜不住「少写一个字段」：pg-boss 用的是非严格模式，`0 3 * *` 能解析
+		 * 通过、只是排出来的时刻和你想的不是一回事。改完对着 `pgboss.schedule` 表
+		 * 看一眼实际落库的 cron 最稳。
 		 */
-		AUTO_SUBMIT_SCAN_TZ: z.string().min(1).default("Asia/Shanghai"),
+		AUTO_SUBMIT_SCAN_TZ: z
+			.string()
+			.min(1)
+			.refine(
+				isValidTimeZone,
+				"AUTO_SUBMIT_SCAN_TZ 必须是 IANA 时区名，如 Asia/Shanghai"
+			)
+			.default("Asia/Shanghai"),
 		CORS_ORIGIN: z.url(),
 		DATABASE_URL: z.string().min(1),
 		NODE_ENV: z

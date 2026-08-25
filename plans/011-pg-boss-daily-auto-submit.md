@@ -80,7 +80,9 @@
 - `const JOB_NAME = "test-run-auto-submit-scan"`。
 - handler：`const ids = await settleAutoSubmitAll();`，命中时
   `console.log` 数量与 id 列表（跟随 index.ts 现有日志风格），返回。
-  handler **不得抛出**：捕获后记日志，pg-boss 会按其重试策略处理。
+  handler **不得抛出**：捕获后记日志即可。注意这意味着 pg-boss 的重试策略
+  完全不参与（每次 job 在队列侧都是 completed）——兜底靠的是「条件累积式，
+  次日扫描自然重试」，不是队列重试。失败只在日志里可见。
 - 调度注册：`boss.schedule(JOB_NAME, env.AUTO_SUBMIT_SCAN_CRON, undefined, { tz: env.AUTO_SUBMIT_SCAN_TZ })`
   （同名重复 schedule 是幂等更新，每次启动都注册）。随后 `boss.work(JOB_NAME, handler)`。
 - 导入路径：`@automationstack/db/repositories/test-run-auto-submit-repository`。
