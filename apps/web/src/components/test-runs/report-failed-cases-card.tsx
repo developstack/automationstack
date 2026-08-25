@@ -21,6 +21,7 @@ import {
 	PRIORITY_BADGE_VARIANTS,
 } from "@/components/cases/case-meta";
 import { AttachmentCell } from "@/components/test-runs/report-attachment-cell";
+import { ReportCommitLink } from "@/components/test-runs/report-commit-link";
 import {
 	isSafeHttpUrl,
 	type ReportFailedCase,
@@ -65,6 +66,46 @@ function DefectCell({ row }: { row: ReportFailedCase }) {
 	);
 }
 
+/**
+ * 「怎么复现」那一小行（plan §6.2）。
+ *
+ * 读报告的人看到一条 failed，第一个问题永远是「能重现吗」。李四手工测出来的失败，
+ * 「李四 + 周三 15:20 + 说明」就够了；张三脚本报的失败，光有这些无从下手——
+ * 三天后要复现，得知道**哪个分支、哪个 commit**，还要能点回 CI。
+ *
+ * 只在 `executedVia === "automation"` 时出现。**不给 null 编故事**：那一列的 null
+ * 是「不知道」（未测的行，以及第二期写下的历史结论），不等于「手工」。
+ *
+ * `executedVia` 是脚本、`automationExecution` 却是 null，是一种真实且正常的状态：
+ * 执行记录被运维清理时外键是 `set null`（见 schema 注释），结论仍然是脚本打的，
+ * 只是那条 CI 链接没了。这时仍要出脚本标记，把「没有记录可点」说出来，
+ * 而不是让这条失败看起来像人测的。
+ */
+function SourceCell({ row }: { row: ReportFailedCase }) {
+	if (row.executedVia !== "automation") {
+		return null;
+	}
+	const execution = row.automationExecution;
+	return (
+		<span className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
+			<Badge variant="secondary">脚本</Badge>
+			{execution === null ? (
+				<span className="text-muted-foreground">执行记录已清理</span>
+			) : (
+				<>
+					<span className="text-muted-foreground">
+						{execution.branch ?? "未记录分支"}
+					</span>
+					<ReportCommitLink
+						ciUrl={execution.ciUrl}
+						commitSha={execution.commitSha}
+					/>
+				</>
+			)}
+		</span>
+	);
+}
+
 function FailedCaseRow({ row }: { row: ReportFailedCase }) {
 	return (
 		<TableRow>
@@ -84,6 +125,7 @@ function FailedCaseRow({ row }: { row: ReportFailedCase }) {
 						{formatDateTime(row.executedAt)}
 					</span>
 				)}
+				<SourceCell row={row} />
 			</TableCell>
 			{/*
 			 * 失败原因是执行时手写的多行文本，whitespace-pre-wrap 保住换行；
@@ -172,7 +214,7 @@ export function ReportFailedCasesCard({
 									<TableHead>用例名</TableHead>
 									<TableHead>模块</TableHead>
 									<TableHead>优先级</TableHead>
-									<TableHead>执行人</TableHead>
+									<TableHead>执行人 / 来源</TableHead>
 									<TableHead>失败原因</TableHead>
 									<TableHead>截图</TableHead>
 									<TableHead>Jira</TableHead>

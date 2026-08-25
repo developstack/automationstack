@@ -432,6 +432,7 @@ AS_PROJECT  = <projectId>   项目 id
 GET  /ingest/runs?projectId=            → 该项目当前所有未提交任务（可选的预检 / 白名单取值）
 POST /ingest/executions                 → 上报一次执行的全部结果
 POST /ingest/attachments/presign        → 换一批预签名 PUT URL
+POST /ingest/attachments/register       → 直传完成后登记附件元数据
 ```
 
 **没有 `/ingest/target`，也没有任何地方接受 `runId` 作为「往哪写」的输入。**

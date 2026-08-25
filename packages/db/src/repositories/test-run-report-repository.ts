@@ -1,9 +1,8 @@
-import { and, asc, count, desc, eq, type SQL, sql } from "drizzle-orm";
+import { asc, count, desc, eq, type SQL, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import { modules } from "../schema/modules";
 import { type CasePriority, testCases } from "../schema/test-cases";
-import { testRunAttachments } from "../schema/test-run-attachments";
 import {
 	type TestRun,
 	type TestRunCaseResult,
@@ -17,7 +16,34 @@ import {
 	computeCompletionRate,
 	computePassRate,
 } from "./test-run-metrics-core";
+import {
+	loadAutomationExecutions,
+	type TestRunAutomationExecution,
+} from "./test-run-report-automation";
+import {
+	loadFailedCases,
+	type TestRunFailedCase,
+} from "./test-run-report-failed-cases";
+import {
+	loadOutOfScopeCases,
+	type TestRunOutOfScopeCase,
+} from "./test-run-report-out-of-scope";
 import type { TestRunResultCounts } from "./test-runs-repository";
+
+/*
+ * 报告页的三块取数各在自己的兄弟模块里：失败清单（含 §6.2 新增的 `executedVia`
+ * 与 `automationExecution`）在 `test-run-report-failed-cases.ts`，执行记录块在
+ * `test-run-report-automation.ts`，越界清单在 `test-run-report-out-of-scope.ts`
+ * ——拆分只为让每个文件留在 300 行以内，口径一个字没改。
+ *
+ * 类型在这里原样 re-export：`TestRunFailedCase` 此前从本模块能取到，仍然能取到。
+ */
+export type { TestRunAutomationExecution } from "./test-run-report-automation";
+export type {
+	TestRunFailedCase,
+	TestRunFailedCaseAutomation,
+} from "./test-run-report-failed-cases";
+export type { TestRunOutOfScopeCase } from "./test-run-report-out-of-scope";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -55,33 +81,17 @@ export interface TestRunPriorityStat {
 	total: number;
 }
 
-/** 报告页真正要交出去的东西：失败清单（plan §7.4）。 */
-export interface TestRunFailedCase {
-	/**
-	 * 这条失败用例挂了几个附件。
-	 *
-	 * **只给计数，不给 URL**：签名 URL 是 15 分钟有效期的，而报告页可能被开着
-	 * 一下午；一张 40 行的失败清单预签一遍就是 40 次签名，绝大多数还没人点。
-	 * 有了计数，列表上「哪几行有截图」一眼可见，缩略图仍由前端按需
-	 * 调 `testRunAttachments.list` 拉——那是点开时才发生的一次。
-	 */
-	attachmentCount: number;
-	caseId: string;
-	/** 失败原因。 */
-	comment: string | null;
-	defectKey: string | null;
-	defectStatus: string | null;
-	defectTitle: string | null;
-	defectUrl: string | null;
-	executedAt: Date | null;
-	executedByName: string | null;
-	moduleName: string;
-	name: string;
-	priority: CasePriority;
-	runCaseId: string;
-}
-
 export interface TestRunReport {
+	/**
+	 * 本任务里由脚本打下结论的条数（§6.1 顶部那行灰字「其中 N 条由脚本执行」）。
+	 *
+	 * **只是一行灰字**：不出卡片、不单独算率、头条数字不分栏（D26）。
+	 * 它也不参与任何率的分子分母——通过率的分母仍然不含阻塞与跳过，
+	 * 算法一个字没改（口径仍在 `test-run-metrics-core.ts`）。
+	 */
+	automatedCount: number;
+	/** 自动化执行记录块（§6.3）。位置在失败清单**之后**：它是解释性材料，不是结论。 */
+	automationExecutions: TestRunAutomationExecution[];
 	/** 生效的自动提交天数（项目未配置时为兜底默认值）。 */
 	autoSubmitAfterCompletedDays: number;
 	/**
@@ -93,6 +103,11 @@ export interface TestRunReport {
 	counts: TestRunResultCounts;
 	failedCases: TestRunFailedCase[];
 	modules: TestRunModuleStat[];
+	/**
+	 * 脚本报了、却不在任何未提交任务里的用例（§5.1.1 的 `outOfScope`）。
+	 * **平台不会自动把它们追加进来**（§9），这里只把事实摆出来，追加由人点。
+	 */
+	outOfScopeCases: TestRunOutOfScopeCase[];
 	passRate: number | null;
 	priorities: TestRunPriorityStat[];
 	run: TestRun;
@@ -109,21 +124,41 @@ export interface TestRunReport {
 	submittedByName: string | null;
 }
 
-async function loadCounts(runId: string): Promise<TestRunResultCounts> {
+const EMPTY_COUNTS: TestRunResultCounts = {
+	blocked: 0,
+	failed: 0,
+	passed: 0,
+	skipped: 0,
+	total: 0,
+	untested: 0,
+};
+
+/**
+ * 「其中 N 条由脚本执行」那行灰字的分子（§6.1）。
+ *
+ * 与四个大数字**同一条查询**出——它就是同一批行按来源的另一种切法，
+ * 单开一条 SQL 属于本文件顶上那条禁令针对的写法。
+ *
+ * `executedVia` 为 null 的行（未测，以及第二期写下的历史结论）不计入：
+ * 那一列的 null 是「不知道」而不是「手工」，见 schema 上的注释。
+ */
+const AUTOMATED_COUNT =
+	sql<number>`count(*) filter (where ${testRunCases.executedVia} = 'automation')`.mapWith(
+		Number
+	);
+
+async function loadCounts(
+	runId: string
+): Promise<{ automatedCount: number; counts: TestRunResultCounts }> {
 	const [row] = await db
-		.select(COUNT_COLUMNS)
+		.select({ ...COUNT_COLUMNS, automated: AUTOMATED_COUNT })
 		.from(testRunCases)
 		.where(eq(testRunCases.runId, runId));
-	return (
-		row ?? {
-			blocked: 0,
-			failed: 0,
-			passed: 0,
-			skipped: 0,
-			total: 0,
-			untested: 0,
-		}
-	);
+	if (!row) {
+		return { automatedCount: 0, counts: EMPTY_COUNTS };
+	}
+	const { automated, ...counts } = row;
+	return { automatedCount: automated, counts };
 }
 
 /** 按模块的分布：失败多的排前面，报告页第一眼就该看到「哪个模块最烂」。 */
@@ -165,52 +200,6 @@ async function loadPriorityStats(
 	return rows.map((row) => ({ ...row, passRate: computePassRate(row) }));
 }
 
-/**
- * 失败清单。附件数走**同一条查询**里的 `count(...) + group by`，
- * 不是每条失败用例再查一次——失败用例可能有几十条，那就是几十次往返，
- * 而它们只是同一批行的另一种切法（与本文件其余聚合同一条原则）。
- *
- * `count(test_run_attachments.id)` 而不是 `count(*)`：左连接下没有附件的用例
- * 会产生一行全 null 的连接结果，`count(*)` 会把它算成 1，于是每条失败用例
- * 看起来都「有 1 个附件」。
- */
-function loadFailedCases(runId: string): Promise<TestRunFailedCase[]> {
-	return (
-		db
-			.select({
-				attachmentCount: count(testRunAttachments.id),
-				caseId: testCases.id,
-				comment: testRunCases.comment,
-				defectKey: testRunCases.defectKey,
-				defectStatus: testRunCases.defectStatus,
-				defectTitle: testRunCases.defectTitle,
-				defectUrl: testRunCases.defectUrl,
-				executedAt: testRunCases.executedAt,
-				executedByName: users.username,
-				moduleName: modules.name,
-				name: testCases.name,
-				priority: testCases.priority,
-				runCaseId: testRunCases.id,
-			})
-			.from(testRunCases)
-			.innerJoin(testCases, eq(testCases.id, testRunCases.caseId))
-			.innerJoin(modules, eq(modules.id, testCases.moduleId))
-			.leftJoin(users, eq(users.id, testRunCases.executedBy))
-			.leftJoin(
-				testRunAttachments,
-				eq(testRunAttachments.runCaseId, testRunCases.id)
-			)
-			.where(
-				and(eq(testRunCases.runId, runId), eq(testRunCases.result, "failed"))
-			)
-			// 分组只列四张表的主键，其余被 select 的列全靠 Postgres 的函数依赖推断
-			// 放行。列成 `modules.name` / `users.username` 那样的具体列也能跑，
-			// 但每加一个展示字段就得回来补一个 group by 项，迟早漏。
-			.groupBy(testRunCases.id, testCases.id, modules.id, users.id)
-			.orderBy(asc(testCases.priority), asc(testRunCases.sortOrder))
-	);
-}
-
 function computeAutoSubmitAt(run: TestRun, days: number): Date | null {
 	if (run.submittedAt !== null || run.completedAt === null) {
 		return null;
@@ -226,6 +215,43 @@ function computeAutoSubmitAt(run: TestRun, days: number): Date | null {
  * 入口第一件事是惰性结算超时自动提交——报告页本身就是最主要的访问点，
  * 用户看到的永远是已结算后的状态（plan §2.5）。
  */
+/**
+ * 一次并发拉齐报告的全部切面。
+ *
+ * 七条查询各自一条 SQL，**条数与用例条数、失败条数、执行轮数都无关**：
+ * 本期新增的执行记录块与越界清单也是常数条（各一条），不是「每行再查一次」。
+ * 失败清单新增的 `executedVia` / `automationExecution` 更是一条都没多加——
+ * 它们走的是失败清单原本那条查询（§6.2 明写「走同一条查询」）。
+ */
+async function loadReportParts(run: TestRun) {
+	const [
+		countsRow,
+		moduleStats,
+		priorities,
+		failedCases,
+		automationExecutions,
+		outOfScopeCases,
+		settings,
+	] = await Promise.all([
+		loadCounts(run.id),
+		loadModuleStats(run.id),
+		loadPriorityStats(run.id),
+		loadFailedCases(run.id),
+		loadAutomationExecutions(run.id, run.name),
+		loadOutOfScopeCases(run.id),
+		getProjectSettings(run.projectId),
+	]);
+	return {
+		automationExecutions,
+		countsRow,
+		failedCases,
+		moduleStats,
+		outOfScopeCases,
+		priorities,
+		settings,
+	};
+}
+
 export async function getTestRunReport(
 	runId: string
 ): Promise<TestRunReport | null> {
@@ -239,26 +265,21 @@ export async function getTestRunReport(
 	if (!row) {
 		return null;
 	}
-	const [counts, moduleStats, priorities, failedCases, settings] =
-		await Promise.all([
-			loadCounts(runId),
-			loadModuleStats(runId),
-			loadPriorityStats(runId),
-			loadFailedCases(runId),
-			getProjectSettings(row.run.projectId),
-		]);
+	const parts = await loadReportParts(row.run);
+	const { automatedCount, counts } = parts.countsRow;
+	const { autoSubmitAfterCompletedDays } = parts.settings;
 	return {
-		autoSubmitAfterCompletedDays: settings.autoSubmitAfterCompletedDays,
-		autoSubmitAt: computeAutoSubmitAt(
-			row.run,
-			settings.autoSubmitAfterCompletedDays
-		),
+		automatedCount,
+		automationExecutions: parts.automationExecutions,
+		autoSubmitAfterCompletedDays,
+		autoSubmitAt: computeAutoSubmitAt(row.run, autoSubmitAfterCompletedDays),
 		completionRate: computeCompletionRate(counts),
 		counts,
-		failedCases,
-		modules: moduleStats,
+		failedCases: parts.failedCases,
+		modules: parts.moduleStats,
+		outOfScopeCases: parts.outOfScopeCases,
 		passRate: computePassRate(counts),
-		priorities,
+		priorities: parts.priorities,
 		run: row.run,
 		submittedByName: row.submittedByName,
 	};

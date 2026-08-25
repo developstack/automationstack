@@ -112,6 +112,27 @@ export const ingestAttachmentPresignRequestSchema = z.object({
 	runIds: z.array(z.uuid()).nullable().default(null),
 });
 
+/**
+ * `storageKey` 的长度上限，取 **255**——与同文件 `fileName` 那一档同一个数、
+ * 同一个理由：这是「一段文件路径」该有的量级，超过它的输入不可能是我们签出去的
+ * 那条 key，只可能是畸形请求。
+ *
+ * 有依据地说，服务端能生成的最长 key 是 **173 字符**，按
+ * `buildAttachmentStorageKey` 的规则逐段算出来的：
+ * `test-runs/`（10）+ uuid（36）+ `/` + uuid（36）+ `/` + uuid（36）+ `/` = 121，
+ * 加上文件名段 `screenshot`（最长的 kind，10）+ `-` + uuid（36）+ `.` +
+ * `webp`（最长的扩展名，4）= 52。255 盖住它还留了 82 字符余量，
+ * 于是**凡是我们自己签出去的 key 都不可能先撞上这条 400**
+ * （与 `MAX_INGEST_ATTACHMENT_BODY_BYTES` 那条 413 的取舍逐字相同）。
+ *
+ * 为什么不干脆按 173 卡死：那等于把 key 规则的实现细节冻进线上契约，
+ * 以后 kind 词汇表多一个更长的词、或者换一种扩展名，先炸的是上报方的 400。
+ * 真正判定「这条 key 是不是我们签的」是 `isAttachmentKeyOwnedBy`
+ * （必须落在这条用例行的前缀下、且不含 `..`），本条只是让一个几 MB 长的
+ * 字符串在碰到那道判定与数据库之前就拿到一条指着字段名的 400。
+ */
+export const MAX_INGEST_STORAGE_KEY_LENGTH = 255;
+
 export const ingestAttachmentRegisterItemSchema = z.object({
 	/** 展示用的原始文件名，**只登记时收**——object key 规则刻意不含文件名。 */
 	fileName: z.string().min(1).max(255),
@@ -134,7 +155,13 @@ export const ingestAttachmentRegisterItemSchema = z.object({
 	 * 不在这个任务里而被逐条拒绝，编不出一个能过校验的组合。
 	 */
 	runId: z.uuid(),
-	storageKey: z.string().min(1),
+	storageKey: z
+		.string()
+		.min(1)
+		.max(
+			MAX_INGEST_STORAGE_KEY_LENGTH,
+			`storageKey 最长 ${MAX_INGEST_STORAGE_KEY_LENGTH} 字符；请原样回传 presign 返回的那一条，不要自己拼`
+		),
 });
 
 export const ingestAttachmentRegisterRequestSchema = z.object({

@@ -52,6 +52,19 @@ export default defineConfig({
 				},
 			},
 			{
+				// ingest 的 HTTP 搬运层（`apps/server/src/ingest`）：四条端点的状态码
+				// 映射、413 闸门、JSON 解析。测试用 `vi.mock` 把 api 侧的 handler
+				// 整个换掉，所以这条链路上一行 db 都不 import，同样不需要
+				// `DATABASE_URL`。server 里其余部分（连库、起 WS）没有测试，
+				// 这个 project 目前只收 ingest 那几个文件。
+				test: {
+					environment: "node",
+					include: ["src/**/*.test.ts"],
+					name: "server",
+					root: resolveFromRoot("./apps/server"),
+				},
+			},
+			{
 				// 只跑 repositories 里的纯函数（如快照 no-op 判定）。它们不 import
 				// `../index`（那才是真正连库的地方），所以这里不需要 DATABASE_URL。
 				test: {
@@ -59,6 +72,18 @@ export default defineConfig({
 					include: ["src/**/*.test.ts"],
 					name: "db",
 					root: resolveFromRoot("./packages/db"),
+				},
+			},
+			{
+				// 上报 SDK。零运行时依赖、HTTP 全靠注进去的假 fetch，所以既不连库
+				// 也不连网。root 落在 `packages` 而不是具体某个包：SDK 只有
+				// `sdk-node` 一个包，但 `sdk-*` 这个 include 让以后再加一个
+				// （比如一个只发 CJS 的兼容包）不必再动这份根配置。
+				test: {
+					environment: "node",
+					include: ["sdk-*/src/**/*.test.ts"],
+					name: "sdk",
+					root: resolveFromRoot("./packages"),
 				},
 			},
 		],

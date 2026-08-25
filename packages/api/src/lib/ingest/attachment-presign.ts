@@ -23,6 +23,7 @@ import {
 	buildGroupRejections,
 	describeRunCaseVanished,
 	describeRunUnwritable,
+	type PlannedAttachmentUploads,
 	planAttachmentUploads,
 	REASON_STORAGE_UNCONFIGURED,
 } from "./attachment-reconcile";
@@ -56,18 +57,41 @@ export type IngestAttachmentPresignOutcome =
 	| { kind: "project-not-found" }
 	| { kind: "unauthorized" };
 
-/** 存储未配置时的降级对账单：一条 URL 都不发，但逐条说明原因。 */
+/**
+ * 存储未配置时的降级对账单：一条 URL 都不发，但逐条说明原因。
+ *
+ * ⚠️ 入参是**折算之后**的结果，不是原始请求——短路点为什么放在折算之后，
+ * 见 `presignParsed` 里那段注释。折算已经判过的那些（用例不存在、不在任何
+ * 未提交任务里、被 `runIds` 白名单排除、待评审、配额用完）原样保留它们
+ * 各自的理由；只有「本来签得出来」的那些才换成「存储未配置」。
+ *
+ * 这些换掉的条目 `runName` 一律为 null、且一个 `index` 只发一条，
+ * 哪怕它落在三个任务上：存储未配置是**全局事实**，不是某个任务拒了它
+ * （契约里 `runName` 那段注释正是这么写的），按任务各发一条只会让同一件事
+ * 在对账单里出现三遍。
+ */
 function unconfiguredPresignReceipt(
-	request: IngestAttachmentPresignRequest
+	planned: PlannedAttachmentUploads
 ): IngestAttachmentPresignReceipt {
-	return {
-		expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
-		rejected: request.attachments.map((attachment, index) => ({
+	const sourceRefByIndex = new Map<number, string>();
+	for (const group of planned.groups) {
+		for (const item of group.items) {
+			sourceRefByIndex.set(item.index, item.sourceRef);
+		}
+	}
+	const rejected = [
+		...planned.rejected,
+		...[...sourceRefByIndex].map(([index, sourceRef]) => ({
 			index,
 			reason: REASON_STORAGE_UNCONFIGURED,
 			runName: null,
-			sourceRef: attachment.sourceRef,
+			sourceRef,
 		})),
+	];
+	return {
+		expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+		// 按 `index` 排，SDK 才能顺着自己那份文件清单逐行核对（同 `sortByIndex`）。
+		rejected: rejected.sort((left, right) => left.index - right.index),
 		storageConfigured: false,
 		uploads: [],
 	};
@@ -173,10 +197,6 @@ export async function presignParsed(
 	if (!(await projectExists(request.projectId))) {
 		return { kind: "project-not-found" };
 	}
-	const storage = getR2Storage();
-	if (storage === null) {
-		return { kind: "ok", receipt: unconfiguredPresignReceipt(request) };
-	}
 	// D36 / §3.8：**在选候选任务之前**结算一次超时自动提交，与结论那一侧同因。
 	// 少了它，一个早该自动提交的任务会被当成候选，脚本的附件就挂进了一个
 	// 本该锁死的任务里——而报告事后被改是第二期明令要杜绝的事。
@@ -197,6 +217,31 @@ export async function presignParsed(
 		rows,
 		runIds: request.runIds,
 	});
+	/**
+	 * ⚠️ 存储未配置的短路**刻意排在折算之后**，不在函数开头。
+	 *
+	 * 排在开头的写法（这里从前就是那样）会让每条附件都只拿到一句「存储未配置」，
+	 * 于是白名单排除、待评审、「项目里没有这个 sourceRef 的用例」这些
+	 * 指名道姓的理由在**整个未配置 R2 的部署上永远不可达**——那些理由是专门为
+	 * 「不能静默丢弃」造的，一整类部署看不到它们，等于那部分代码在那些部署上不存在。
+	 * 而人拿到「存储未配置」去把 R2 配好之后，才发现这条附件本来也没有任务收，
+	 * 白跑一趟。
+	 *
+	 * 代价说清楚：未配置时也要多跑一次 `settleAutoSubmitForProject`（写）
+	 * 加一次 `resolveAutomationTargets`（查）才能回话。两点让这个代价可接受：
+	 * 一是本函数开头的 `projectExists` 已经是同一个取舍——先花一次查询，
+	 * 换一句「你的 projectId 根本不对」，而不是拿存储没配把它盖掉；
+	 * 二是真正贵的那部分（每组一个 `FOR UPDATE` 事务 + 逐条签名）仍然跳过，
+	 * 下面的循环一次都不会跑。
+	 *
+	 * 结算不能省：省了它，「在任务 X 范围内」这句诊断本身就是错的——那个任务
+	 * 可能早该自动提交了（D36 / §3.8）。要么按规矩诊断，要么别诊断，
+	 * 半路截断只会给出一句自信的假话。
+	 */
+	const storage = getR2Storage();
+	if (storage === null) {
+		return { kind: "ok", receipt: unconfiguredPresignReceipt(planned) };
+	}
 	const rejected = [...planned.rejected];
 	const uploads: IngestAttachmentUpload[] = [];
 	for (const group of planned.groups) {

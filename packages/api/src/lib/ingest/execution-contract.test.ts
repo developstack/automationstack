@@ -70,6 +70,17 @@ test("durationMs 收下但不落库；schema 不因它拒绝请求", () => {
 	expect(parsed.results[0]?.durationMs).toBe(1820);
 });
 
+test("durationMs 声明了就要校验：负数是 400，而不是被静默 strip 掉", () => {
+	expect(
+		ingestExecutionRequestSchema.safeParse({
+			...MINIMAL,
+			results: [
+				{ durationMs: -1, result: "passed" as const, sourceRef: "PAY-001" },
+			],
+		}).success
+	).toBe(false);
+});
+
 test("D31：runIds 只有复数白名单，空数组与 null 是两回事", () => {
 	expect(
 		ingestExecutionRequestSchema.parse({ ...MINIMAL, runIds: [] }).runIds

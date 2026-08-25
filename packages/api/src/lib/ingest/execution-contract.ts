@@ -85,12 +85,23 @@ const isoTimestampSchema = z.iso
 
 export const ingestExecutionResultSchema = z.object({
 	/**
-	 * ⚠️ **本期不落库，是已知缺口而不是遗漏。** SDK 会发这个字段（三家都发），
-	 * schema 收下它是为了不让上报方拿到一条「多余字段」的 400；但库里
-	 * **没有任何一列存单条用例的耗时**——`test_run_cases` 没有，
-	 * `automation_executions` 只有整轮的 `startedAt` / `finishedAt`。
-	 * 加列要动 migration，不在 `packages/api` 的范围内。
-	 * 在这里默默丢掉它比不收它更诚实：不收会让 SDK 作者以为字段名写错了。
+	 * ⚠️ **收下但本期不落库。结论：保留声明，既不删也不存**，逐条核对过的依据如下。
+	 *
+	 * 1. **存不进去**：库里没有任何一列放单条用例的耗时——`test_run_cases`
+	 *    的全部列里没有（只有 `executedAt` 这个时间点），`automation_executions`
+	 *    只有整轮的 `startedAt` / `finishedAt`。要存就得加列 + migration，
+	 *    那是 `packages/db` 的范围，不是这里能顺手做的事。
+	 * 2. **不能从契约里删**：plan §5.1.1 的请求体样例里逐字写着这个字段，
+	 *    三家 SDK 照那段样例发包；删掉声明契约就与计划文档打架了。
+	 * 3. **声明它本身有作用**，不只是文档：本 schema 刻意不是 strict（见下面
+	 *    `runId` 那段的最后一句），未声明的键会被 zod **静默 strip**。声明之后
+	 *    `durationMs: "1820"` 或 `-1` 拿到的是一条指着字段名的 400，而不是被
+	 *    悄悄抹掉——「收下」与「收下且校验」是两件事，这里要的是后者。
+	 *
+	 * 于是它在服务端唯一的去向就是被丢弃。真要落库，唯一的落点是
+	 * `test_run_cases` 加一列（连同 `applyAutomationVerdicts` 的写入路径），
+	 * 不是往 `automation_executions.receipt` 那个 jsonb 里塞——对账单是
+	 * 「当时说过的话」（§5.2），不是给数据找地方藏的口袋。
 	 */
 	durationMs: z.int().nonnegative().nullable().optional(),
 	/**
