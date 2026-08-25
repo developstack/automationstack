@@ -36,16 +36,19 @@ import { formatRate, RATE_UNKNOWN } from "@/components/test-runs/rate-format";
 import type { ReportPriorityStat } from "@/components/test-runs/report-meta";
 
 /**
- * 与 overview-priority-bars.tsx 同一套单调色阶（P0 最深 → P3 最浅）。
+ * 与 overview-priority-bars.tsx 同一套「石板蓝」单色明度阶（--priority-0..3）：
+ * 序数编码，P0 最深 → P3 最浅，暗色镜像反转、P0 最亮。蓝是「维度色」，与本页
+ * 彩色的结论色（--result-*）并排时分工清晰：彩=结论、蓝=分档——柱图画的是通过率，
+ * 蓝柱不会被读成成败，也不会拿红色预判某一档「挂了」。
  * 那边刻意没导出这张表，这里照抄一份而不是把它挪成公共常量：跨页共享一个
  * 「顺手能用」的取色表，会让两页的图在其中一页改需求时被迫一起动。
  * 它是冗余编码——真正区分四根柱子的是 Y 轴上写着的 P0..P3。
  */
 const PRIORITY_COLORS: Record<CasePriority, string> = {
-	P0: "var(--chart-5)",
-	P1: "var(--chart-4)",
-	P2: "var(--chart-3)",
-	P3: "var(--chart-2)",
+	P0: "var(--priority-0)",
+	P1: "var(--priority-1)",
+	P2: "var(--priority-2)",
+	P3: "var(--priority-3)",
 };
 
 const CHART_CONFIG: ChartConfig = { passRate: { label: "通过率" } };

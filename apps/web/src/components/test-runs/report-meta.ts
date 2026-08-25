@@ -48,23 +48,27 @@ export const CONCLUDED_RESULTS: readonly TestRunCaseResult[] = [
 /**
  * 结论在图上的取色，以及图例里那枚色块的对应类。
  *
- * 主题的 `--chart-*` 是一套纯灰色阶（C=0），相邻两档互比只有 1.33~1.65:1
- * （实测值见 packages/ui/src/styles/theme.css），**颜色在这一页不承载任何信息**：
- * 四个结论都要上色，2..5 四档正好用尽，没有「隔一档取色」的余地。真正区分它们的
- * 是紧邻的中文标签与数字，色块只是让图与图例能对上号的冗余编码。
- * 这也是本页每张图都必须配一份文字/表格等价物的直接原因。
+ * 四色是产品决策指定的语义色（用户指定 hex，取代了此前「纯灰阶」的设计）：
+ * passed 绿 / failed 红 / blocked 黄 / skipped 浅灰，取值在 theme.css 的
+ * --result-* 四支，亮暗同值（对比度实测与「为什么不镜像」见彼处注释）。
  *
- * `untested` 走 `--chart-1`：它压卡片只有 1.48:1，达不到 WCAG 1.4.11 的 3:1，
- * 只能当「整圆有多大」的轨道，不能承载数据系列——而「未测」恰好就是那段轨道。
+ * 但主编码没变：紧邻的中文标签与数字仍是第一信源，色块/图标只是冗余编码——
+ * 亮底上黄（1.39:1）与浅灰（1.78:1）压卡面不到 WCAG 1.4.11 的 3:1，
+ * 色弱用户也不丢信息；相邻扇区另有 CHART_SEAM 描缝兜底。这也是本页每张图
+ * 都必须配一份文字/表格等价物的直接原因。
+ *
+ * `untested` 仍走 `--chart-1`：它不是一种结论，而是「还没测」——在环形图上
+ * 它是轨道段，而 --chart-1 压卡片只有 1.48:1、本就只能当轨道不能承载
+ * 数据系列（见 theme.css），「未测」恰好就是那段轨道。
  */
 export const RESULT_CHART_COLORS: Record<
 	TestRunCaseResult,
 	{ color: string; swatch: string }
 > = {
-	blocked: { color: "var(--chart-3)", swatch: "bg-chart-3" },
-	failed: { color: "var(--chart-4)", swatch: "bg-chart-4" },
-	passed: { color: "var(--chart-5)", swatch: "bg-chart-5" },
-	skipped: { color: "var(--chart-2)", swatch: "bg-chart-2" },
+	blocked: { color: "var(--result-blocked)", swatch: "bg-result-blocked" },
+	failed: { color: "var(--result-failed)", swatch: "bg-result-failed" },
+	passed: { color: "var(--result-passed)", swatch: "bg-result-passed" },
+	skipped: { color: "var(--result-skipped)", swatch: "bg-result-skipped" },
 	untested: { color: "var(--chart-1)", swatch: "bg-chart-1" },
 };
 

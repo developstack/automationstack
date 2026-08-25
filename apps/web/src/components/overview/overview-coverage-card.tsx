@@ -84,28 +84,32 @@ function GapCountRow({ count, label, swatch }: GapCountRowProps) {
 /**
  * 环上三段的配色与图例文案，顺时针顺序 = 下面三行计数行的上下顺序。
  *
- * 深浅按「覆盖健康度」排：有生效用例最深、只有用例没生效居中、零用例最浅，
- * 与用例总数卡的「生效最深」是同一条规矩，两张环读起来是一套东西。
- * 同样只取 --chart-2/3/5，跳过 4 多留一点色差；--chart-1 不进数据系列。
+ * 015 起按「覆盖健康度」借报告页的结论色（--result-* 三支）：有生效用例=通过绿、
+ * 有用例但无生效=阻塞黄、零用例=跳过灰。这与用例总数卡那张状态环是同一条规矩
+ * （生效=绿、无生效=黄、空=灰），两张环在新色彩空间里仍是一套东西。
+ *
+ * 对比度立场同 014：亮底黄 1.39:1、灰 1.78:1 压卡面不足 WCAG 1.4.11 的 3:1，
+ * 主编码是紧邻的文字标签，相邻扇区另有 CHART_SEAM 描缝兜底。轨道仍走
+ * OverviewDonut 内置的 --chart-1，不进数据系列。
  */
 const COVERAGE_SLICES = [
 	{
-		color: "var(--chart-5)",
+		color: "var(--result-passed)",
 		key: "covered",
 		label: "有生效用例",
-		swatch: "bg-chart-5",
+		swatch: "bg-result-passed",
 	},
 	{
-		color: "var(--chart-3)",
+		color: "var(--result-blocked)",
 		key: "no-active",
 		label: "有用例但无生效用例",
-		swatch: "bg-chart-3",
+		swatch: "bg-result-blocked",
 	},
 	{
-		color: "var(--chart-2)",
+		color: "var(--result-skipped)",
 		key: "empty",
 		label: "零用例",
-		swatch: "bg-chart-2",
+		swatch: "bg-result-skipped",
 	},
 ] as const;
 

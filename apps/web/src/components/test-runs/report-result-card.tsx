@@ -36,12 +36,13 @@ interface LegendRowProps {
  *
  * 图标既是形状线索也是色块：它用的就是这一段圆弧的颜色，读者才能把某段弧
  * 对上某一行（同 overview-totals-card.tsx 里那条「图例色必须等于扇区色」的约定）。
- * 于是这里刻意**不用** `RESULT_TEXT_CLASSES` 那套语义色（绿/红/琥珀）——
- * 那套色在执行台上表示「好/坏」，搬到这张图上会让「通过」在环上是深灰、
- * 在图例里是绿色，两处对不上号。
+ * 取色因此仍走 `RESULT_CHART_COLORS`（--result-* 四支），不借执行台的
+ * `RESULT_TEXT_CLASSES`——那套是 text-success / text-amber-600 等另一组取值，
+ * 混用会让环上的绿和图例里的绿是两种绿，又对不上号了。
  *
  * 形状（对勾 / 叉 / 斜杠 / 减号 / 空心虚线）本身就区分五态，
- * 这很重要：环上那套灰阶相邻档只差 1.33~1.65:1，单凭深浅认不出哪段是哪段。
+ * 这很重要：四色里的黄与浅灰在亮底压卡面只有 1.39:1 / 1.78:1（实测见
+ * theme.css），单凭颜色认不出哪段是哪段——文字标签与数字才是主编码。
  */
 function LegendRow({ count, result, total }: LegendRowProps) {
 	const Icon = RESULT_ICONS[result];

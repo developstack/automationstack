@@ -6,8 +6,9 @@
    一律 C=0 纯灰，语义色只剩 destructive；.dark 的 --sidebar-primary 是官方默认里唯一
    残留的彩色。--chart-1..5 已接入（概览页图表用），亮色照抄官方、暗色重解，见各自注释。
 
-   例外有两类。其一是四个 shadcn 没有、仓库自有的令牌：--secondary-hover、
-   --destructive-foreground、--success、--success-foreground。其二是两处「官方有、本仓库
+   例外有两类。其一是 shadcn 没有、仓库自有的令牌：--secondary-hover、
+   --destructive-foreground、--success、--success-foreground，以及用户指定的测试结论四色
+   --result-passed/failed/blocked/skipped（报告页图表用，见 --chart-5 后那段）。其二是两处「官方有、本仓库
    仍改掉」的中性令牌：.dark 的 --muted-foreground（官方原值在暗底上连非正文门槛都不到）
    与 .dark 的 --chart-1..5（官方 neutral 预设明暗共用同一组灰，搬到暗色下有三档低于 3:1），
    理由各写在令牌处。这些都按 APCA / WCAG 实测过，注释里的数字是实测结果。
@@ -70,6 +71,31 @@
 	--chart-3: oklch(0.439 0 0);
 	--chart-4: oklch(0.371 0 0);
 	--chart-5: oklch(0.269 0 0);
+	/* 测试结论的语义四色（报告页结果环 / 模块柱 / 图例），产品决策指定的颜色，
+	   原 hex 照抄：passed #2A835F / failed #DF301C / blocked #FFD758 / skipped #C5C1C1。
+	   另立四支而不复用 --chart-2..5：那套灰阶被概览页与优先级图共用，语义色不能回头
+	   改它们的取值。亮底（压 background / card）实测 blocked 1.39:1、skipped 1.78:1，
+	   达不到 WCAG 1.4.11 对图形要求的 3:1（passed / failed 两底均达标）；弱的两支照用
+	   原值：本页既有立场是文字/表格才是主编码、色块只是冗余线索，相邻扇区另有
+	   CHART_SEAM 描缝兜底，色弱用户不丢信息。 */
+	--result-passed: oklch(0.548 0.102 162.5); /* #2A835F */
+	--result-failed: oklch(0.588 0.213 30.6); /* #DF301C */
+	--result-blocked: oklch(0.891 0.149 91.5); /* #FFD758 */
+	--result-skipped: oklch(0.814 0.004 17.2); /* #C5C1C1 */
+	/* 优先级四档的「石板蓝」单色明度阶（概览优先级柱 / 报告优先级柱用），仓库自有。
+	   编码理由：优先级是同一维度的序数强度，正确编码是单色相明度阶，不是四个并列的
+	   类别色；也不用红——红=失败已被 --result-failed 占用，柱图画的是数量/通过率，
+	   红柱会被读成「挂了」。蓝在结论色语言（绿/红/黄/灰）里空缺，专职「维度色」：
+	   不评判只分档，与结论色并排时分工清晰（彩=结论、蓝=维度）。色相 255 靠近
+	   sidebar-primary（264）的蓝紫家族；C 压在 0.045~0.05，保持「蓝调灰」的克制观感。
+	   L 逐档同亮色 --chart-5/4/3/2（0.269/0.371/0.439/0.556），对比度与既有灰阶逐档
+	   等价：L 同值、C 微量，实测压底面比值逐档只动 0.2% 以内。实测压 background /
+	   card（同白底）：P0 15.12:1、P1 10.38:1、P2 7.79:1、P3 4.72:1，全部过
+	   WCAG 1.4.11 的 3:1。 */
+	--priority-0: oklch(0.269 0.05 255); /* P0 最深 */
+	--priority-1: oklch(0.371 0.05 255);
+	--priority-2: oklch(0.439 0.05 255);
+	--priority-3: oklch(0.556 0.045 255); /* P3 最浅 */
 	--sidebar: oklch(0.985 0 0);
 	--sidebar-foreground: oklch(0.145 0 0);
 	--sidebar-primary: oklch(0.205 0 0);
@@ -154,6 +180,25 @@
 	--chart-3: oklch(0.741 0 0);
 	--chart-4: oklch(0.824 0 0);
 	--chart-5: oklch(0.942 0 0);
+	/* 测试结论语义四色，与 :root **同值、不镜像**——--chart-* 段那种「逐档反解出
+	   对比度等价的 L」在这里没有对应物：这四色压 L=0.205 的 card 实测全部 ≥3.58:1，
+	   本就过 WCAG 1.4.11 的 3:1，没有需要靠调值修复的档；亮底那两支弱色
+	   （blocked 1.39:1、skipped 1.78:1，实测与兜底立场见 :root 段）也不该由暗色段
+	   代调。用户指定的是一组值不是两组，不发明暗色变体。 */
+	--result-passed: oklch(0.548 0.102 162.5);
+	--result-failed: oklch(0.588 0.213 30.6);
+	--result-blocked: oklch(0.891 0.149 91.5);
+	--result-skipped: oklch(0.814 0.004 17.2);
+	/* 优先级石板蓝，暗色段：L 逐档同暗色 --chart-5/4/3/2（0.942/0.824/0.741/0.61），
+	   最高对比给 P0——反转成最亮，与暗色 chart 灰阶同一镜像逻辑。C 相对亮色段略降
+	   （0.03/0.028 对 0.05/0.045，刻意不统一）：高 L 下同 C 会显得更艳，压一档
+	   才保得住「蓝调灰」的观感。实测压 background / card：P0 16.73/15.14、
+	   P1 11.51/10.42、P2 8.63/7.81、P3 5.23/4.73，与暗色 chart 灰阶逐档差 0.2%
+	   以内，全部过 WCAG 1.4.11 的 3:1。 */
+	--priority-0: oklch(0.942 0.03 255); /* P0 最亮 */
+	--priority-1: oklch(0.824 0.03 255);
+	--priority-2: oklch(0.741 0.03 255);
+	--priority-3: oklch(0.61 0.028 255);
 	--sidebar: oklch(0.205 0 0);
 	--sidebar-foreground: oklch(0.985 0 0);
 	/* 官方默认里唯一残留的彩色（其余全部 C=0）：user-menu 的头像底走的就是这一支。
@@ -187,6 +232,16 @@
 	--color-chart-3: var(--chart-3);
 	--color-chart-2: var(--chart-2);
 	--color-chart-1: var(--chart-1);
+	/* bg-result-* 工具类由此生成：RESULT_CHART_COLORS 的 swatch（图例色块）用。 */
+	--color-result-passed: var(--result-passed);
+	--color-result-failed: var(--result-failed);
+	--color-result-blocked: var(--result-blocked);
+	--color-result-skipped: var(--result-skipped);
+	/* 优先级单色阶同上注册（bg-priority-* / text-priority-* 工具类由此生成）。 */
+	--color-priority-0: var(--priority-0);
+	--color-priority-1: var(--priority-1);
+	--color-priority-2: var(--priority-2);
+	--color-priority-3: var(--priority-3);
 	--color-ring: var(--ring);
 	--color-input: var(--input);
 	--color-border: var(--border);

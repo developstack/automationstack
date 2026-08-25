@@ -23,21 +23,27 @@ const STATUS_ORDER: readonly CaseStatus[] = ["active", "draft", "deprecated"];
 /**
  * 三态在环上的取色，以及下面计数行里那枚色块的对应类。
  *
- * 顺序按 STATUS_ORDER 顺时针排，深浅跟着生命周期走：生效最深（这张卡问的是
- * 「现在有多少可用资产」，生效是主角）、草稿居中、废弃最浅。
- * 只用 --chart-2/3/5，跳过 4：相邻档互比只有 1.33~1.65:1，能隔一档就隔一档，
- * 分缝之外再多留一点色差。--chart-1 一律不进数据系列（压卡片 1.48:1）。
+ * 015 起是语义色，映射由用户指定：生效=通过色（绿）、草稿=阻塞色（黄）、
+ * 废弃=跳过色（灰）。直接复用 014 为报告页立的 --result-* 三支，不另立令牌、
+ * 不改值；failed 没有对应的状态，不出现。
  *
- * ⚠️ 这里刻意**不再**复用 case-table 那套 STATUS_DOT_CLASSES（bg-success /
- * bg-muted-foreground/50 / 空心圈）。原因是这三行现在就是环形图的图例，图例色块
- * 与扇区颜色必须是同一个色，否则「生效」在图上是深灰、在下面是绿点，读者无从
- * 把哪一段圆弧对上哪一行。跨页面那枚状态点的一致性输给「图例必须对得上它的图」——
- * 何况两处真正认人的都是紧邻的文字标签，色块只是冗余编码。
+ * 环上顺时针仍按 STATUS_ORDER 的生命周期排，但「深浅跟着生命周期走」的旧论证
+ * 已不成立——换语义色后草稿（黄，L=0.891）反而比废弃（灰，L=0.814）浅。
+ * 层次来自语义（绿是主角、黄是未定、灰是终点），不再来自灰阶深浅。
+ *
+ * 对比度立场同 014：亮底黄 1.39:1、灰 1.78:1 压卡面不足 WCAG 1.4.11 的 3:1，
+ * 主编码是紧邻的文字标签，相邻扇区另有 OverviewDonut 的 CHART_SEAM 描缝兜底。
+ *
+ * ⚠️ 这里仍刻意**不**复用 case-table 那套 STATUS_DOT_CLASSES。这三行就是环形图
+ * 的图例，图例色块与扇区颜色必须同色，读者才能把哪段圆弧对上哪一行。如今两边
+ * 的「生效」倒都是绿系（case-table 用 bg-success），语义方向一致了，但令牌仍
+ * 不同源——跨页一致性照旧让位于「图例=扇区同色」，何况两处真正认人的都是紧邻
+ * 的文字标签，色块只是冗余编码。
  */
 const STATUS_SLICES: Record<CaseStatus, { color: string; swatch: string }> = {
-	active: { color: "var(--chart-5)", swatch: "bg-chart-5" },
-	deprecated: { color: "var(--chart-2)", swatch: "bg-chart-2" },
-	draft: { color: "var(--chart-3)", swatch: "bg-chart-3" },
+	active: { color: "var(--result-passed)", swatch: "bg-result-passed" },
+	deprecated: { color: "var(--result-skipped)", swatch: "bg-result-skipped" },
+	draft: { color: "var(--result-blocked)", swatch: "bg-result-blocked" },
 };
 
 interface StatusRowProps {
