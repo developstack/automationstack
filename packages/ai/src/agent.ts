@@ -118,7 +118,7 @@ export async function* runGenerationAgent(
 
 	let model: LanguageModel;
 	try {
-		model = options.model ?? (await createGenerationModel());
+		model = options.model ?? createGenerationModel();
 	} catch (error) {
 		yield toErrorEvent(error, options.abortSignal);
 		return;

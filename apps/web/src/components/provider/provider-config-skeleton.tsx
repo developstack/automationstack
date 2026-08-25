@@ -1,74 +1,35 @@
 /**
- * 加载态骨架。尺寸逐项按真实内容折算，数据到达时不该有任何位移：
- * - 小标题 = text-sm（20px 行高）→ h-5；
- * - 字段标签与说明行 = text-xs（16px 行高）→ h-4；
- * - Input / SelectTrigger 与 case-filters.tsx 顶部的控件高度约定同档 = 32px → h-8；
- * - provider / model 两格各有「搜索框 + 下拉」两个控件，base URL 与 API Key 各一个。
+ * 登记表首屏骨架，尺寸逐项按真实表格折算（对齐 case-table-states.tsx 的惯例）：
+ * 表头 = TableHead 的 h-10 + TableHeader 的 border-b 1px；数据行 = TableCell 的
+ * p-2 + 行内内容 20px = h-9，行线 1px。行数取满一页（PROVIDER_PAGE_SIZE），
+ * 不满页时骨架比真身高，多出来的空白往下收，最大位移被一页封顶。
+ *
+ * 圆角覆盖成 rounded-none：Skeleton 默认 rounded-md，表格行是方角的，
+ * 替身要跟真身同形。
  */
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 
-/** 当前配置那 6 项元信息：provider / model / base URL / API Key / 更新时间 / 更新人。 */
-const META_KEYS = [
-	"provider",
-	"model",
-	"base-url",
-	"api-key",
-	"updated-at",
-	"updated-by",
-] as const;
+import { PROVIDER_PAGE_SIZE } from "@/components/provider/provider-config-query";
 
-/** 带搜索框的两格。 */
-const PICKER_KEYS = ["provider", "model"] as const;
-/** 单个输入框的两格。 */
-const INPUT_KEYS = ["base-url", "api-key"] as const;
-
-function MetaSkeleton() {
-	return (
-		<div className="grid gap-4 sm:grid-cols-2">
-			{META_KEYS.map((key) => (
-				<div className="flex flex-col gap-1" key={key}>
-					<Skeleton className="h-4 w-16" />
-					<Skeleton className="h-4 w-40" />
-				</div>
-			))}
-		</div>
-	);
+function skeletonRowKeys(rows: number): string[] {
+	return Array.from({ length: rows }, (_, index) => `skeleton-row-${index}`);
 }
 
-function FieldSkeleton({ controls }: { controls: 1 | 2 }) {
-	return (
-		<div className="flex flex-col gap-2">
-			<Skeleton className="h-4 w-16" />
-			<Skeleton className="h-8 w-full" />
-			{controls === 2 ? <Skeleton className="h-8 w-full" /> : null}
-			<Skeleton className="h-4 w-64" />
-		</div>
-	);
-}
-
-export function ProviderConfigSkeleton() {
+export function ProviderConfigTableSkeleton({
+	rows = PROVIDER_PAGE_SIZE,
+}: {
+	rows?: number;
+}) {
 	return (
 		<output
 			aria-busy="true"
-			aria-label="AI 配置加载中"
-			className="flex flex-col gap-8"
+			aria-label="Provider 登记列表加载中"
+			className="flex flex-col"
 		>
-			<div className="flex flex-col gap-4">
-				<Skeleton className="h-5 w-20" />
-				<MetaSkeleton />
-			</div>
-			<div className="flex flex-col gap-4">
-				<Skeleton className="h-5 w-20" />
-				{PICKER_KEYS.map((key) => (
-					<FieldSkeleton controls={2} key={key} />
-				))}
-				{INPUT_KEYS.map((key) => (
-					<FieldSkeleton controls={1} key={key} />
-				))}
-			</div>
-			<div className="flex justify-end">
-				<Skeleton className="h-8 w-24" />
-			</div>
+			<Skeleton className="mb-px h-10 w-full rounded-none" />
+			{skeletonRowKeys(rows).map((key) => (
+				<Skeleton className="mt-px h-9 w-full rounded-none" key={key} />
+			))}
 		</output>
 	);
 }

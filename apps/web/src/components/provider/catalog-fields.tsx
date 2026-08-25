@@ -54,8 +54,9 @@ function CatalogHeader({
 }) {
 	return (
 		<div className="flex items-center justify-between gap-2">
+			{/* 新建与编辑共用这一份表单，标题说字段本身而不是说动作 */}
 			<h2 className="font-medium text-sm" id={CATALOG_HEADING_ID}>
-				修改配置
+				Provider / Model
 			</h2>
 			{forced ? (
 				<p className="text-muted-foreground text-xs">

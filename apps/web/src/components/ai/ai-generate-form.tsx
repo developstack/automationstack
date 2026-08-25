@@ -2,15 +2,15 @@
  * 输入阶段：目标模块 + 需求描述（≤4000 字，带计数）。
  * AI 未配置时这里给引导文案，而不是抛红色报错。
  *
- * 这段引导刻意不再点名 AI_BASE_URL 那几个环境变量：配置的真相已经搬到数据库，
- * 环境变量只剩兜底，且服务端的 SERVICE_UNAVAILABLE 里已经带着确切原因
- * （没配 / 主密钥缺失 / 主密钥被换过）。这里只有一个 unavailable 布尔量，
- * 拿不到那句原文——要把它显示出来得让 ai-generation-state 把 message 留住，
- * 那是这次改动范围之外的事。
+ * 生效口径（见 packages/ai/src/config-store.ts）：生成入口只读
+ * AI_BASE_URL / AI_API_KEY / AI_MODEL 环境变量；/ai-provider 那张登记表
+ * 是给 agent 侧配置预备的，登记了也不会立刻改变生成行为。所以这段引导
+ * 同时指两条路：现在就要用 → 配环境变量；提前备案 → 去登记页登记。
  */
 import { Button } from "@automationstack/ui/components/button";
 import { Label } from "@automationstack/ui/components/label";
 import { Textarea } from "@automationstack/ui/components/textarea";
+import { Link } from "@tanstack/react-router";
 import { SparklesIcon } from "lucide-react";
 import { type ChangeEvent, useCallback } from "react";
 
@@ -25,8 +25,14 @@ function AiUnavailableNotice() {
 		<div className="flex flex-col gap-1 rounded-lg border border-dashed p-3 text-xs">
 			<p className="font-medium">AI 未配置</p>
 			<p className="text-muted-foreground">
-				平台的 AI provider / model / base URL / API Key 还没配好。管理员可在
-				「AI 配置」页填写，保存后立即生效，不需要重启服务。
+				生成入口目前只读取服务端环境变量（AI_BASE_URL / AI_API_KEY /
+				AI_MODEL）。管理员可以先在
+				{/* 正文里的链接必须自带下划线：只靠颜色区分不够 */}
+				<Link className="underline underline-offset-4" to="/ai-provider">
+					AI 配置登记页
+				</Link>
+				登记 Provider，待 agent
+				侧配置上线后即可选用；在此之前请配置上述环境变量。
 			</p>
 		</div>
 	);

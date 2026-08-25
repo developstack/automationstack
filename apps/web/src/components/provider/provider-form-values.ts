@@ -1,11 +1,11 @@
 /**
- * 配置表单的值、校验与提交载荷。
+ * 登记表单（新建/编辑共用）的值、校验与提交载荷。
  *
  * 单独拆出来是因为「apiKey 三态」这件事值得集中说清楚：
  * 省略 = 保持库里的 Key 不动、`clearApiKey` = 显式清空，两者同时给服务端会 400。
  * 空字符串一律按「没填」处理——一个失焦就把线上的 Key 抹掉是不可接受的。
  */
-import type { AiProviderConfigState } from "@automationstack/api/routers/ai-provider-config";
+import type { AiProviderConfigView } from "@automationstack/api/routers/ai-provider-config";
 
 export interface ProviderFormValues {
 	/** 只活在内存里的一次性输入：保存成功后立刻清空，永不落任何持久化介质。 */
@@ -29,16 +29,16 @@ export interface ProviderSaveInput {
 }
 
 export function initialFormValues(
-	state: AiProviderConfigState
+	config: AiProviderConfigView | null
 ): ProviderFormValues {
 	return {
 		apiKey: "",
-		baseUrl: state.config?.baseUrl ?? "",
+		baseUrl: config?.baseUrl ?? "",
 		clearApiKey: false,
 		manual: false,
-		modelId: state.config?.modelId ?? "",
+		modelId: config?.modelId ?? "",
 		modelKeyword: "",
-		providerId: state.config?.providerId ?? "",
+		providerId: config?.providerId ?? "",
 		providerKeyword: "",
 	};
 }

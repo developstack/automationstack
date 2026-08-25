@@ -70,9 +70,9 @@ export const aiRouter = {
 		.errors({ SERVICE_UNAVAILABLE: {} })
 		.input(generateSchema)
 		.handler(async ({ errors, input, signal }) => {
-			// 一次读库同时拿到「能不能跑」和「跑不了为什么」：不可用原因区分
-			// 「没配」「主密钥缺失」「主密钥被换过」，管理员据此才知道该改哪里。
-			const status = await readAiConfigStatus();
+			// 一次拿到「能不能跑」和「跑不了为什么」：生效口径只看环境变量
+			//（登记表不是生效决策点，见 config-store.ts），没配齐就引导去补。
+			const status = readAiConfigStatus();
 			if (status.problem !== null) {
 				throw errors.SERVICE_UNAVAILABLE({ message: status.problem });
 			}

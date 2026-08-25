@@ -1,14 +1,11 @@
 /**
- * 配置表单的状态与保存动作。
+ * 登记表单（新建/编辑共用）的状态与保存动作。
  *
- * 初值只在挂载那一次从服务端状态取（组件由 suspense 查询喂进来，数据一定已就绪），
- * 之后不再跟着服务端回填：保存后重新拉到的配置若倒灌进输入框，管理员正在改的
- * 半截内容就会被冲掉。
+ * 初值只在挂载那一次取：编辑时来自那一行视图，新建时全空。挂载之后不再跟着
+ * 服务端回填：保存后重新拉到的列表若倒灌进输入框，管理员正在改的半截内容就
+ * 会被冲掉。抽屉按目标 key 重新挂载本表单，换一行编辑自然换一份初值。
  */
-import type {
-	AiProviderConfigState,
-	AiProviderConfigView,
-} from "@automationstack/api/routers/ai-provider-config";
+import type { AiProviderConfigView } from "@automationstack/api/routers/ai-provider-config";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +15,7 @@ import {
 	initialFormValues,
 	isFormValid,
 	type ProviderFormValues,
+	type ProviderSaveInput,
 	toSaveInput,
 } from "@/components/provider/provider-form-values";
 import { orpc } from "@/utils/orpc";
@@ -27,14 +25,14 @@ export interface ProviderConfigForm {
 	patch: (next: Partial<ProviderFormValues>) => void;
 	pending: boolean;
 	selectProvider: (option: ProviderOption | undefined, value: string) => void;
-	/** 提交过一次之后才对空字段报错：一进页面就标红等于劈头指责。 */
+	/** 提交过一次之后才对空字段报错：一进表单就标红等于劈头指责。 */
 	submitted: boolean;
 	values: ProviderFormValues;
 }
 
-function useFormValues(state: AiProviderConfigState) {
+function useFormValues(config: AiProviderConfigView | null) {
 	const [values, setValues] = useState<ProviderFormValues>(() =>
-		initialFormValues(state)
+		initialFormValues(config)
 	);
 
 	const patch = useCallback(
@@ -61,41 +59,60 @@ function useFormValues(state: AiProviderConfigState) {
 	);
 
 	/*
-	 * 保存成功后立刻把 Key 从内存里抹掉：它已经进了数据库，输入框再留着它
-	 * 只会让下一次「顺手改个 model」把同一段明文重新发一遍。
+	 * 保存成功后抽屉即关、本组件卸载，内存里的明文随 useState 一起消失——
+	 * 不需要旧页面那套「保存后手动抹 Key」：那套是为了表单常驻页面时
+	 * 防止「顺手改个 model」把同一段明文重新发一遍，抽屉结构天然避免了它。
 	 */
-	const forgetSecret = useCallback(
-		() =>
-			setValues((current) => ({ ...current, apiKey: "", clearApiKey: false })),
-		[]
-	);
-
-	return { forgetSecret, patch, selectProvider, values };
+	return { patch, selectProvider, values };
 }
 
-function useSaveConfig(onSaved: () => void) {
+/**
+ * 新建与更新是两个过程（输入只差一个 id），但成功后的动作完全一样：
+ * 失效列表查询、报一句 toast、关抽屉（表单随卸载销毁，内存里的明文一并消失）。
+ * 两个 useMutation 都无条件调用（hooks 规则），按 config 挑一个用。
+ */
+function useSaveConfig(
+	config: AiProviderConfigView | null,
+	onSaved: () => void
+) {
 	const queryClient = useQueryClient();
-	return useMutation(
-		orpc.aiProviderConfig.save.mutationOptions({
-			// 失败不抑制全局 toast：那条 toast 就是 sonner，且 PRECONDITION_FAILED
-			// 的原文（缺 SECRET_ENCRYPTION_KEY）本身就是管理员要看的话
-			onSuccess: (config: AiProviderConfigView) => {
-				queryClient.invalidateQueries({
-					queryKey: orpc.aiProviderConfig.get.key(),
-				});
-				toast.success(`已保存：${config.providerId} / ${config.modelId}`);
-				onSaved();
-			},
-		})
+	const onSuccess = useCallback(
+		(view: AiProviderConfigView) => {
+			queryClient.invalidateQueries({
+				queryKey: orpc.aiProviderConfig.list.key(),
+			});
+			toast.success(
+				`${config === null ? "已登记" : "已保存"}：${view.providerId} / ${view.modelId}`
+			);
+			onSaved();
+		},
+		[config, onSaved, queryClient]
 	);
+	const create = useMutation(
+		orpc.aiProviderConfig.create.mutationOptions({ onSuccess })
+	);
+	const update = useMutation(
+		orpc.aiProviderConfig.update.mutationOptions({ onSuccess })
+	);
+	return config === null
+		? {
+				mutate: (input: ProviderSaveInput) => create.mutate(input),
+				pending: create.isPending,
+			}
+		: {
+				mutate: (input: ProviderSaveInput) =>
+					update.mutate({ ...input, id: config.id }),
+				pending: update.isPending,
+			};
 }
 
 export function useProviderConfigForm(
-	state: AiProviderConfigState
+	config: AiProviderConfigView | null,
+	onSaved: () => void
 ): ProviderConfigForm {
-	const { forgetSecret, patch, selectProvider, values } = useFormValues(state);
+	const { patch, selectProvider, values } = useFormValues(config);
 	const [submitted, setSubmitted] = useState(false);
-	const save = useSaveConfig(forgetSecret);
+	const save = useSaveConfig(config, onSaved);
 
 	const handleSubmit = useCallback(
 		(event: FormEvent<HTMLFormElement>) => {
@@ -112,7 +129,7 @@ export function useProviderConfigForm(
 	return {
 		handleSubmit,
 		patch,
-		pending: save.isPending,
+		pending: save.pending,
 		selectProvider,
 		submitted,
 		values,

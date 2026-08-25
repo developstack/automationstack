@@ -1,17 +1,20 @@
 /**
- * AI provider 配置的读写口子：数据库那份（加密存 API Key）优先，读不到再回落到
- * `AI_BASE_URL` / `AI_API_KEY` / `AI_MODEL` 三个环境变量。
+ * AI provider 配置的两个口子：
  *
- * 回落只在「数据库里压根没有一份可用配置」时发生。如果库里明明存了密文却解不开，
- * 这里返回可判别的失败而**不**回落——静默改用环境变量里的另一套凭据，会让管理员
- * 以为自己配的 Key 生效了，账单和调用记录却出现在另一个 provider 上。
+ * 1. 生成入口的**生效**配置：只读 `AI_BASE_URL` / `AI_API_KEY` / `AI_MODEL`
+ *    三个环境变量。数据库里的 `ai_provider_config` 是给 agent 侧配置预备的
+ *    登记表，**不是**生效决策点——agent 侧配置上线前，登记表里有多少行都
+ *    不隐式挑任何一行来用（挑了等于替管理员做了他没拍板的事）。等 agent 侧
+ *    配置上线，这里会重新接上「读哪份登记」的逻辑。
+ * 2. 登记表的写入口（create/update）：加密 API Key 后交给 db 仓库落盘，
+ *    本包不碰明文以外的任何持久化。
  */
 import {
-	getAiProviderConfig,
-	saveAiProviderConfig,
+	insertAiProviderConfig,
+	updateAiProviderConfig,
 } from "@automationstack/db/repositories/ai-provider-config-repository";
 import type { AiProviderConfig } from "@automationstack/db/schema/ai";
-import { decryptSecret, encryptSecret } from "@automationstack/db/secret-box";
+import { encryptSecret } from "@automationstack/db/secret-box";
 import { env } from "@automationstack/env/server";
 
 export interface AiRuntimeConfig {
@@ -20,23 +23,22 @@ export interface AiRuntimeConfig {
 	model: string;
 }
 
-export type AiConfigSource = "database" | "environment";
-
 /**
- * 解析结果。三种失败刻意分开，因为处置完全不同：
- * - `unconfigured`：谁都没配 —— 让管理员去配置页填；
- * - `master-key-missing`：库里有密文但 SECRET_ENCRYPTION_KEY 没配（或不是 32
- *   字节）—— 运维补环境变量即可，数据没坏；
- * - `undecryptable`：密钥在，但 GCM 认证失败 —— **主密钥被换过了**，旧密文找不
- *   回来，只能让管理员重填一次 API Key。
+ * 生效配置的解析结果。只有两种：
+ * - `ok`：三个环境变量都配齐了；
+ * - `unconfigured`：缺了至少一个——让管理员去补，而不是挑登记表里的某行顶上。
  */
 export type AiConfigResolution =
-	| { kind: "master-key-missing" }
-	| { kind: "ok"; config: AiRuntimeConfig; source: AiConfigSource }
-	| { kind: "unconfigured" }
-	| { kind: "undecryptable" };
+	| { kind: "ok"; config: AiRuntimeConfig }
+	| { kind: "unconfigured" };
 
-function resolveFromEnv(): AiConfigResolution {
+/**
+ * 解析当前生效的 provider 配置（只读环境变量）。
+ *
+ * 刻意保持同步：这里不再有读库分支，也就没有理由让两个调用方
+ * （`provider.ts` 的 createGenerationModel / readAiConfigStatus）多 await 一次。
+ */
+export function resolveAiConfig(): AiConfigResolution {
 	const apiKey = env.AI_API_KEY;
 	const baseURL = env.AI_BASE_URL;
 	const model = env.AI_MODEL;
@@ -46,49 +48,7 @@ function resolveFromEnv(): AiConfigResolution {
 	return {
 		config: { apiKey, baseURL, model },
 		kind: "ok",
-		source: "environment",
 	};
-}
-
-async function resolveFromRow(
-	row: AiProviderConfig,
-	ciphertext: string
-): Promise<AiConfigResolution> {
-	const masterKey = env.SECRET_ENCRYPTION_KEY;
-	if (!masterKey) {
-		return { kind: "master-key-missing" };
-	}
-	const decrypted = await decryptSecret(ciphertext, masterKey);
-	if (decrypted.kind === "invalid-key") {
-		return { kind: "master-key-missing" };
-	}
-	if (decrypted.kind !== "ok") {
-		return { kind: "undecryptable" };
-	}
-	return {
-		config: {
-			apiKey: decrypted.value,
-			baseURL: row.baseUrl,
-			model: row.modelId,
-		},
-		kind: "ok",
-		source: "database",
-	};
-}
-
-/**
- * 解析当前生效的 provider 配置。
- *
- * 库里那行缺 API Key（从没填过或被显式清空）时视为「没有可用配置」并回落到环境
- * 变量：没有凭据的 provider 配置本来就调不通，把它当成半成品比让生成整体失败好。
- */
-export async function resolveAiConfig(): Promise<AiConfigResolution> {
-	const row = await getAiProviderConfig();
-	const ciphertext = row?.apiKeyCiphertext;
-	if (row && ciphertext) {
-		return await resolveFromRow(row, ciphertext);
-	}
-	return resolveFromEnv();
 }
 
 /** 写入时对 API Key 的三种意图，`keep` 与 `clear` 必须能区分开。 */
@@ -107,6 +67,11 @@ export interface StoreAiProviderConfigInput {
 
 export type StoreAiProviderConfigResult =
 	| { kind: "master-key-missing" }
+	| { kind: "ok"; row: AiProviderConfig };
+
+export type UpdateAiProviderConfigResult =
+	| { kind: "master-key-missing" }
+	| { kind: "not-found" }
 	| { kind: "ok"; row: AiProviderConfig };
 
 async function encodeApiKey(
@@ -129,16 +94,16 @@ async function encodeApiKey(
 	return { ciphertext: encrypted.box, ok: true };
 }
 
-/** 加密 API Key 并写入全局唯一那一行。 */
-export async function storeAiProviderConfig(
+/** 新增一行登记。`keep` 在创建时没有可保持的东西，等价于不存 Key。 */
+export async function createAiProviderConfig(
 	input: StoreAiProviderConfigInput
 ): Promise<StoreAiProviderConfigResult> {
 	const encoded = await encodeApiKey(input.apiKey);
 	if (!encoded.ok) {
 		return { kind: "master-key-missing" };
 	}
-	const row = await saveAiProviderConfig({
-		apiKeyCiphertext: encoded.ciphertext,
+	const row = await insertAiProviderConfig({
+		apiKeyCiphertext: encoded.ciphertext ?? null,
 		baseUrl: input.baseUrl,
 		modelId: input.modelId,
 		providerId: input.providerId,
@@ -147,7 +112,28 @@ export async function storeAiProviderConfig(
 	return { kind: "ok", row };
 }
 
-/** 主密钥是否已配置；配置页据此提示「未配主密钥，无法保存 API Key」。 */
+/** 按 id 改一行登记；行不存在（别人先删了）返回 not-found。 */
+export async function updateAiProviderConfigById(
+	id: string,
+	input: StoreAiProviderConfigInput
+): Promise<UpdateAiProviderConfigResult> {
+	const encoded = await encodeApiKey(input.apiKey);
+	if (!encoded.ok) {
+		return { kind: "master-key-missing" };
+	}
+	const row = await updateAiProviderConfig(id, {
+		// keep = 键不出现，SET 子句完全不碰密文列；encoded.ciphertext 的三态
+		// （undefined/null/字符串）正是仓库层 UpdateInput 认的那三态
+		apiKeyCiphertext: encoded.ciphertext,
+		baseUrl: input.baseUrl,
+		modelId: input.modelId,
+		providerId: input.providerId,
+		updatedBy: input.updatedBy,
+	});
+	return row === null ? { kind: "not-found" } : { kind: "ok", row };
+}
+
+/** 主密钥是否已配置；登记页据此提示「未配主密钥，无法保存 API Key」。 */
 export function isSecretStorageAvailable(): boolean {
 	return env.SECRET_ENCRYPTION_KEY !== undefined;
 }
