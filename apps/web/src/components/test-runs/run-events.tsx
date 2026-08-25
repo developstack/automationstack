@@ -17,10 +17,42 @@ import { ChevronDownIcon } from "lucide-react";
 
 import { formatDateTime } from "@/components/cases/case-meta";
 import { RUN_STATUS_LABELS } from "@/components/test-runs/test-run-meta";
-import { orpc } from "@/utils/orpc";
+import { type client, orpc } from "@/utils/orpc";
 
 /** 系统自动提交的那条事件没有 actor（D16），显示成「系统」而不是空白。 */
 const SYSTEM_ACTOR = "系统";
+
+/** 列表行的形状直接取过程返回值本身（先例：mindmap-tree-input 的 MindmapTreeData）。 */
+type RunEventEntry = Awaited<
+	ReturnType<typeof client.testRuns.listEvents>
+>[number];
+
+/**
+ * 时间线列表。从 RunEvents 里拆出来不是因为复用（只在这里用），是因为加上
+ * 开合动画之后触发器与内层容器把那个函数撑过了 max-lines-per-function。
+ */
+function RunEventList({ entries }: { entries: RunEventEntry[] }) {
+	return (
+		<ol className="flex flex-col gap-1.5">
+			{entries.map(({ actorName, event }) => (
+				<li className="flex flex-wrap gap-x-2 text-sm" key={event.id}>
+					<span className="text-muted-foreground tabular-nums">
+						{formatDateTime(event.createdAt)}
+					</span>
+					<span>{actorName ?? SYSTEM_ACTOR}</span>
+					<span>
+						{event.fromStatus === null
+							? `创建为「${RUN_STATUS_LABELS[event.toStatus]}」`
+							: `${RUN_STATUS_LABELS[event.fromStatus]} → ${RUN_STATUS_LABELS[event.toStatus]}`}
+					</span>
+					{event.reason !== null && (
+						<span className="text-muted-foreground">（{event.reason}）</span>
+					)}
+				</li>
+			))}
+		</ol>
+	);
+}
 
 export function RunEvents({ runId }: { runId: string }) {
 	const eventsQuery = useQuery(
@@ -28,7 +60,7 @@ export function RunEvents({ runId }: { runId: string }) {
 	);
 
 	return (
-		<Collapsible className="border-t">
+		<Collapsible className="group/run-events border-t">
 			<CollapsibleTrigger
 				render={
 					<Button
@@ -36,36 +68,29 @@ export function RunEvents({ runId }: { runId: string }) {
 						type="button"
 						variant="ghost"
 					>
-						<ChevronDownIcon aria-hidden="true" data-icon="inline-start" />
+						{/* 箭头随开合旋转，写法同 ai-proposal-item 的先例：group 挂在
+						    Collapsible 根上（data-open 打在那里），箭头用具名 group 变体。 */}
+						<ChevronDownIcon
+							aria-hidden="true"
+							className="transition-transform group-data-open/run-events:rotate-180"
+							data-icon="inline-start"
+						/>
 						变更历史
 					</Button>
 				}
 			/>
-			<CollapsibleContent className="px-4 pb-4">
-				{eventsQuery.isPending ? <Skeleton className="h-16 w-full" /> : null}
-				{eventsQuery.data?.length === 0 && (
-					<p className="text-muted-foreground text-sm">暂无状态变更。</p>
-				)}
-				<ol className="flex flex-col gap-1.5">
-					{eventsQuery.data?.map(({ actorName, event }) => (
-						<li className="flex flex-wrap gap-x-2 text-sm" key={event.id}>
-							<span className="text-muted-foreground tabular-nums">
-								{formatDateTime(event.createdAt)}
-							</span>
-							<span>{actorName ?? SYSTEM_ACTOR}</span>
-							<span>
-								{event.fromStatus === null
-									? `创建为「${RUN_STATUS_LABELS[event.toStatus]}」`
-									: `${RUN_STATUS_LABELS[event.fromStatus]} → ${RUN_STATUS_LABELS[event.toStatus]}`}
-							</span>
-							{event.reason !== null && (
-								<span className="text-muted-foreground">
-									（{event.reason}）
-								</span>
-							)}
-						</li>
-					))}
-				</ol>
+			{/* padding 内移到内层容器：height: 0 压不住 padding，留在面板上会在
+			    收起过程中露出一条空白带。 */}
+			<CollapsibleContent className="collapsible-panel">
+				<div className="px-4 pb-4">
+					{eventsQuery.isPending ? <Skeleton className="h-16 w-full" /> : null}
+					{eventsQuery.data?.length === 0 && (
+						<p className="text-muted-foreground text-sm">暂无状态变更。</p>
+					)}
+					{eventsQuery.data ? (
+						<RunEventList entries={eventsQuery.data} />
+					) : null}
+				</div>
 			</CollapsibleContent>
 		</Collapsible>
 	);

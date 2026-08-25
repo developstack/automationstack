@@ -135,6 +135,43 @@
 	}
 }
 
+/* 折叠面板的开合（Base UI 的 Collapsible.Panel 是零样式透传，动画全靠这一段；
+   等价于 transition-[height] + duration-150 ease-out + data-starting-style:h-0 +
+   data-ending-style:h-0）。变量与属性名已对照实际安装的 @base-ui/react@1.7.0 源码
+   核实（collapsible/panel/ 的 CollapsiblePanelCssVars 与 DataAttributes、
+   useCollapsiblePanel.js、docs/react/components/collapsible.md）。
+
+   基态取 height: var(--collapsible-panel-height) 而不是计划里记的 data-open /
+   data-closed 切换：Base UI 把测量好的高度以内联样式写进这个变量（动画结束后
+   回落 auto），但 data-open 在挂载首帧就存在、变量那拍还是 auto——若拿它当选
+   选择器，首帧就是 auto→px 的不可插值跳变，进场动画根本不会发生。官方形状是
+   首帧靠 data-starting-style 钉在 height: 0，下一帧属性移除，浏览器才有 0 → var()
+   的过渡可跑；关侧由 data-ending-style 对称收零（关闭那一帧 Base UI 特意延迟一拍
+   再打它，好让浏览器登记从当前高度出发的过渡）。收起完成后面板整体卸载，
+   不存在「关着的面板」这个静止态。
+
+   用 transition 而不是 keyframes：height 始终从当前值插值，中途反向不跳帧；
+   关侧 Base UI 等 getAnimations()（含 CSS transition，不止 animation）全部结束
+   才卸载面板（useCollapsiblePanel → setMounted(false)），transition 退场成立。
+
+   与 013 计划记忆的两处出入，按源码实情调整：
+   1. 不写 &[data-instant]——1.7.0 里该属性只有弹层族（menu/popover/tooltip 等）
+      会打，Collapsible 从不打，写了就是死选择器；
+   2. 不另写 prefers-reduced-motion 分支——文件末尾那条无层的全局规则已把一切
+      过渡压到 0.01ms，@layer utilities 里的类盖不过它（见该处的层叠说明）；
+      0.01ms 仍会触发 transitionend，面板照常卸载，正是退场需要的语义。 */
+@utility collapsible-panel {
+	height: var(--collapsible-panel-height);
+	overflow: hidden;
+	transition-timing-function: ease-out;
+	transition-duration: 150ms;
+	transition-property: height;
+
+	&:is([data-starting-style], [data-ending-style]) {
+		height: 0;
+	}
+}
+
 /* 卡片内边距刻度（等价于 [--card-spacing:--spacing(4)] / [--card-spacing:--spacing(3)]）。 */
 @utility card-spacing {
 	--card-spacing: calc(var(--spacing) * 4);

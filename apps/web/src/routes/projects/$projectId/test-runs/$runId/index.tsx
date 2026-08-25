@@ -23,7 +23,11 @@ const runDetailSearchSchema = z.object({
 	runCaseId: z.string().optional(),
 });
 
-const EXECUTION_MAIN = "flex min-h-0 flex-col";
+/* lg 起才 h-full：lg 下这一列处在固定高度的滚动容器里，填满它，执行台内部
+   min-h-0 / flex-1 / overflow-y-auto 的链路才生效，变更历史钉在视口底部而不是
+   拽出一大片空白；<lg 的堆叠布局每行自适应内容、本就没有 stretch 空白，加
+   h-full 反而会让两行内容溢出被裁，所以只在 lg 起。 */
+const EXECUTION_MAIN = "flex min-h-0 flex-col lg:h-full";
 
 interface RunDetailLoaderData {
 	projectName: string;

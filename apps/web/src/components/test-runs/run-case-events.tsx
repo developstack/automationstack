@@ -27,7 +27,7 @@ import { ChevronDownIcon } from "lucide-react";
 
 import { formatDateTime } from "@/components/cases/case-meta";
 import { RESULT_LABELS } from "@/components/test-runs/test-run-meta";
-import { orpc } from "@/utils/orpc";
+import { type client, orpc } from "@/utils/orpc";
 
 /**
  * 操作人名字为空时的兜底。
@@ -71,6 +71,36 @@ export function RunCaseLastVerdict({
 	);
 }
 
+/** 列表行的形状直接取过程返回值本身（先例：mindmap-tree-input 的 MindmapTreeData）。 */
+type RunCaseEventEntry = Awaited<
+	ReturnType<typeof client.testRuns.listCaseEvents>
+>[number];
+
+/**
+ * 时间线列表。从 RunCaseEvents 里拆出来不是因为复用（只在这里用），是因为加上
+ * 开合动画之后触发器与内层容器把那个函数撑过了 max-lines-per-function。
+ */
+function RunCaseEventList({ entries }: { entries: RunCaseEventEntry[] }) {
+	return (
+		<ol className="flex flex-col gap-1.5">
+			{entries.map(({ actorName, event }) => (
+				<li className="flex flex-wrap gap-x-2 text-sm" key={event.id}>
+					<span className="text-muted-foreground tabular-nums">
+						{formatDateTime(event.createdAt)}
+					</span>
+					<span>{actorName ?? DELETED_ACTOR}</span>
+					<span>
+						{`${RESULT_LABELS[event.fromResult]} → ${RESULT_LABELS[event.toResult]}`}
+					</span>
+					{event.comment !== null && (
+						<span className="text-muted-foreground">（{event.comment}）</span>
+					)}
+				</li>
+			))}
+		</ol>
+	);
+}
+
 /**
  * 完整时间线，默认折叠。观感与 `run-events.tsx` 一致（同一种列表），
  * 差别只在流转用 `RESULT_LABELS[fromResult] → RESULT_LABELS[toResult]`、
@@ -90,7 +120,7 @@ export function RunCaseEvents({ runCaseId }: { runCaseId: string }) {
 	);
 
 	return (
-		<Collapsible className="border-t pt-2">
+		<Collapsible className="group/run-case-events border-t pt-2">
 			<CollapsibleTrigger
 				render={
 					<Button
@@ -98,36 +128,31 @@ export function RunCaseEvents({ runCaseId }: { runCaseId: string }) {
 						type="button"
 						variant="ghost"
 					>
-						<ChevronDownIcon aria-hidden="true" data-icon="inline-start" />
+						{/* 箭头随开合旋转，写法同 ai-proposal-item 的先例：group 挂在
+						    Collapsible 根上（data-open 打在那里），箭头用具名 group 变体。 */}
+						<ChevronDownIcon
+							aria-hidden="true"
+							className="transition-transform group-data-open/run-case-events:rotate-180"
+							data-icon="inline-start"
+						/>
 						判定记录
 					</Button>
 				}
 			/>
-			<CollapsibleContent className="pb-2">
-				{eventsQuery.isPending ? <Skeleton className="h-16 w-full" /> : null}
-				{eventsQuery.data?.length === 0 && (
-					<p className="text-muted-foreground text-sm">
-						这条用例还没有人判过结论。
-					</p>
-				)}
-				<ol className="flex flex-col gap-1.5">
-					{eventsQuery.data?.map(({ actorName, event }) => (
-						<li className="flex flex-wrap gap-x-2 text-sm" key={event.id}>
-							<span className="text-muted-foreground tabular-nums">
-								{formatDateTime(event.createdAt)}
-							</span>
-							<span>{actorName ?? DELETED_ACTOR}</span>
-							<span>
-								{`${RESULT_LABELS[event.fromResult]} → ${RESULT_LABELS[event.toResult]}`}
-							</span>
-							{event.comment !== null && (
-								<span className="text-muted-foreground">
-									（{event.comment}）
-								</span>
-							)}
-						</li>
-					))}
-				</ol>
+			{/* padding 内移到内层容器：height: 0 压不住 padding，留在面板上会在
+			    收起过程中露出一条空白带。 */}
+			<CollapsibleContent className="collapsible-panel">
+				<div className="pb-2">
+					{eventsQuery.isPending ? <Skeleton className="h-16 w-full" /> : null}
+					{eventsQuery.data?.length === 0 && (
+						<p className="text-muted-foreground text-sm">
+							这条用例还没有人判过结论。
+						</p>
+					)}
+					{eventsQuery.data ? (
+						<RunCaseEventList entries={eventsQuery.data} />
+					) : null}
+				</div>
 			</CollapsibleContent>
 		</Collapsible>
 	);
