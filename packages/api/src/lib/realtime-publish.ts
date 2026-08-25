@@ -34,12 +34,41 @@ export interface PublishInvalidateOptions {
  * 属于架构改动，不在本期范围。
  */
 export function publishInvalidate(options: PublishInvalidateOptions): void {
+	publishInvalidateAs({
+		action: options.action,
+		actor: options.context.actor ?? SYSTEM_ACTOR,
+		entity: options.entity,
+		ids: options.ids,
+		moduleId: options.moduleId,
+		projectId: options.projectId,
+	});
+}
+
+export interface PublishInvalidateAsOptions {
+	action: InvalidateAction;
+	actor: RealtimeActor;
+	entity: InvalidateEntity;
+	ids: string[];
+	moduleId?: string;
+	projectId: string;
+}
+
+/**
+ * 同一件事，但**自带 actor**：给没有 oRPC `Context` 的裸 HTTP 端点用
+ * （ingest 上报、Jira webhook 这类外部无会话请求）。
+ *
+ * 为什么不让那些端点自己 `realtimeBus.publish`：事件的形状（哪些字段、
+ * ids 为空时不发）只该有一处定义。为什么不让它们伪造一个 `Context`：
+ * `Context` 还挂着 `cookies` / `secure` 这些只对会话有意义的字段，
+ * 造一个假的等于让「这是不是一次会话请求」这件事在类型上不再可信。
+ */
+export function publishInvalidateAs(options: PublishInvalidateAsOptions): void {
 	if (options.ids.length === 0) {
 		return;
 	}
 	realtimeBus.publish(options.projectId, {
 		action: options.action,
-		actor: options.context.actor ?? SYSTEM_ACTOR,
+		actor: options.actor,
 		entity: options.entity,
 		ids: options.ids,
 		moduleId: options.moduleId,

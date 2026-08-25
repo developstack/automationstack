@@ -1,7 +1,6 @@
 import {
 	Sidebar,
 	SidebarContent,
-	SidebarGroup,
 	SidebarHeader,
 	SidebarRail,
 	SidebarTrigger,
@@ -12,25 +11,12 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@automationstack/ui/components/sidebar-menu";
-import { Link, useRouterState } from "@tanstack/react-router";
-import {
-	BotIcon,
-	FlaskConicalIcon,
-	FolderKanbanIcon,
-	PanelLeftOpenIcon,
-	SettingsIcon,
-	UsersIcon,
-} from "lucide-react";
+import { FlaskConicalIcon, PanelLeftOpenIcon } from "lucide-react";
 
-import { useCurrentUser } from "@/components/auth/use-session";
+import { GlobalNavGroup } from "@/components/layout/global-nav-group";
 import { SidebarUser } from "@/components/layout/sidebar-user";
 
 const BRAND_NAME = "测试用例平台";
-
-const PROJECTS_PATH = "/projects";
-const MEMBERS_PATH = "/members";
-const AI_PROVIDER_PATH = "/ai-provider";
-const SETTINGS_PATH = "/settings";
 
 /**
  * 展开态的品牌行：左边是标识，右边是那颗常驻的收起按钮。
@@ -117,112 +103,6 @@ function SidebarBrand() {
 				</SidebarMenuItem>
 			</SidebarMenu>
 		</SidebarHeader>
-	);
-}
-
-/** 只取 pathname：整个 location 拿来比较的话，search/hash 一变侧栏就白重画一次。 */
-const selectPathname = (state: { location: { pathname: string } }) =>
-	state.location.pathname;
-
-/*
- * 「项目管理」按前缀算，进到 /projects/<id> 里面之后也保持高亮。
- *
- * 这里曾经要求精确匹配，理由是「它恰恰是离开当前项目的出口，高亮会让人以为
- * 自己在项目列表页」。那条论证把两件事混成了一件：待在 /projects/<id>/cases 时,
- * 「我在项目这一块」为真，「我在项目列表页」为假——前者是视觉高亮该说的,
- * 后者是 aria-current="page" 该说的。精确匹配同时关掉了两者，代价是一级侧栏
- * 在整个项目内部全程无高亮，看着像高亮「跳」进了二级面板。
- *
- * 两个通道在这个组件里本来就是两个 prop：isActive 走 data-active（纯视觉），
- * Link 的 activeOptions 走 aria-current（读屏语义）。所以分开给：
- * 视觉按前缀亮，aria-current="page" 仍旧只在精确匹配时出现。
- *
- * 两栏回答的是不同的问题——一级说「在应用的哪一块」，二级说「在项目的哪个模块 /
- * 哪个视图」——它们是正交的，本就该同时亮着。
- */
-const isInProjectsSection = (pathname: string) =>
-	pathname.startsWith(PROJECTS_PATH);
-
-/**
- * 这一层唯一的导航组：全站的一级去处（管理员比成员多出两个管理入口）。
- *
- * 不加组标题——全组至多四项，且再没有第二组要跟它区分，标题除了占掉一行
- * 什么也没说。也不 mt-auto 顶到底部：那种排法是给「上面还有一组视图入口」
- * 准备的，如今它紧接品牌行，再钉到底部只会让上半截空出一大片。
- */
-function GlobalNavGroup() {
-	const user = useCurrentUser();
-	const pathname = useRouterState({ select: selectPathname });
-	return (
-		<SidebarGroup>
-			<SidebarMenu>
-				<SidebarMenuItem>
-					<SidebarMenuButton
-						aria-label="项目管理"
-						isActive={isInProjectsSection(pathname)}
-						/*
-						 * activeOptions.exact 不能省，而且它与上面的 isActive 刻意不同步：
-						 * Link 默认按前缀判定活动态，于是待在某个项目里时它会挂上
-						 * aria-current="page"，读屏据此播报「当前页」——可那时人在项目
-						 * 内部，不在项目列表页，这句播报是假的。视觉高亮按前缀（见
-						 * isInProjectsSection 的注释），语义只在精确匹配时给。
-						 */
-						render={<Link activeOptions={{ exact: true }} to="/projects" />}
-						tooltip="项目管理"
-					>
-						<FolderKanbanIcon aria-hidden="true" />
-						<span>项目管理</span>
-					</SidebarMenuButton>
-				</SidebarMenuItem>
-				{/* 只对管理员出现：非管理员点进去只会拿到 FORBIDDEN */}
-				{user.role === "admin" ? (
-					<SidebarMenuItem>
-						<SidebarMenuButton
-							aria-label="成员管理"
-							// 这一项可以按前缀算：/members 底下若再长出子路由，人仍然在成员管理里
-							isActive={pathname.startsWith(MEMBERS_PATH)}
-							render={<Link to="/members" />}
-							tooltip="成员管理"
-						>
-							<UsersIcon aria-hidden="true" />
-							<span>成员管理</span>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-				) : null}
-				{/* 同样只对管理员出现：AI 配置那几个过程都是 adminProcedure */}
-				{user.role === "admin" ? (
-					<SidebarMenuItem>
-						<SidebarMenuButton
-							aria-label="AI 配置"
-							// 同样可以按前缀算：这一项底下若再长出子路由，人仍然在 AI 配置里
-							isActive={pathname.startsWith(AI_PROVIDER_PATH)}
-							render={<Link to="/ai-provider" />}
-							tooltip="AI 配置"
-						>
-							<BotIcon aria-hidden="true" />
-							<span>AI 配置</span>
-						</SidebarMenuButton>
-					</SidebarMenuItem>
-				) : null}
-				{/*
-				 * 不按角色收起：projectSettings 与 jira 那几个过程都是
-				 * protectedProcedure（不是 adminProcedure），普通成员点进去拿得到
-				 * 数据也存得下去，藏起来反而是前端擅自加了一道后端没有的权限。
-				 */}
-				<SidebarMenuItem>
-					<SidebarMenuButton
-						aria-label="设置"
-						// 按前缀算：这一项底下若再长出子路由，人仍然在设置里
-						isActive={pathname.startsWith(SETTINGS_PATH)}
-						render={<Link to="/settings" />}
-						tooltip="设置"
-					>
-						<SettingsIcon aria-hidden="true" />
-						<span>设置</span>
-					</SidebarMenuButton>
-				</SidebarMenuItem>
-			</SidebarMenu>
-		</SidebarGroup>
 	);
 }
 

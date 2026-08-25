@@ -1,19 +1,15 @@
-import { eq, inArray, type SQL, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 import { db } from "../index";
-import { testCases } from "../schema/test-cases";
-import { testRunCaseEvents } from "../schema/test-run-case-events";
 import {
 	type TestRun,
 	type TestRunCase,
 	type TestRunCaseResult,
+	type TestRunExecutedVia,
 	testRunCases,
 } from "../schema/test-runs";
 import type { DbTransaction } from "./repository-types";
-import {
-	type BuildRunCaseEventRowsInput,
-	buildRunCaseEventRows,
-} from "./test-run-case-events-core";
+import { insertRunCaseEvents } from "./test-run-case-event-writes";
 import {
 	dedupe,
 	findMissingRunCaseIds,
@@ -26,95 +22,68 @@ import {
 	applyRunStatusDerivation,
 	ensureRunWritable,
 } from "./test-run-status-repository";
+import { buildResultPatch } from "./test-run-verdict-patch";
 
 /**
  * **打结论**：执行台上最高频的那类写操作（单条与批量）。
  *
- * 单独成文件的核心是 `buildResultPatch`——回退成 `untested` 要连带清掉哪些字段、
- * 非 untested 时 `comment` 为什么只在显式给值时才写，这些判断只在打结论这条
- * 路径上成立，混进范围管理里会被当成通用逻辑复用出错。
+ * 本文件留的是**手工**两条路径。同一条写路径的第三个入口——自动化上报——
+ * 在 `test-run-automation-verdicts.ts`，它与这里共用同样的四道守卫
+ * （`ensureRunWritable`、「待评审」拒收、`applyRunStatusDerivation`、
+ * `buildRunCaseEventRows` + 一条 INSERT），只是 UPDATE 的写法不同；
+ * 那个文件的导出在下面原样 re-export，
+ * `@automationstack/db/repositories/test-run-verdicts-repository` 这条路径上
+ * 此前能取到的每一个符号仍然在原处。
+ *
+ * 另外两块被摘出去的东西：结论字段的 patch 构造在 `test-run-verdict-patch.ts`，
+ * 审计流水的写侧原语在 `test-run-case-event-writes.ts`——两者都由手工与自动化
+ * 三条路径共用，理由分别写在那两个文件的文件头。
  */
 
-interface ResultPatchInput {
-	actorId: string | null;
-	comment?: string | null;
-	result: TestRunCaseResult;
-}
-
-/** `caseVersion` 走相关子查询，因此这里要能放 SQL 片段而不只是数字。 */
-interface RunCaseResultPatch {
-	caseVersion?: SQL | null;
-	comment?: string | null;
-	executedAt?: Date | null;
-	executedBy?: string | null;
-	result: TestRunCaseResult;
-}
-
-/**
- * 结论字段的写入内容。
- *
- * 回退成 `untested` 时把 `executedAt` / `executedBy` / `caseVersion` 一并抹掉：
- * 这三个字段的含义都是「这条结论是谁、什么时候、对着哪一版用例打的」，
- * 结论都撤了还留着执行痕迹，用例详情页的跨测试任务执行历史里就会出现
- * 一条「测过但没有结论」的幽灵记录。
- *
- * `comment` 也跟着一起清：一条标着「未测」却挂着「支付超时，订单状态没回滚」
- * 的行，在报告和执行台上都会被当成活的结论读，比丢掉一段文字危险得多。
- * 「环境挂了，想留着说明待会儿重测」有专门的出口——`blocked`（plan §2.4 的逃生口）；
- * 回退到未测的语义是「我刚才标错了」，标错的结论不该留下它的理由。
- *
- * 非 untested 时，`comment` 只在调用方显式给了值时才写（含显式写 null 表示清空）：
- * 「一键全部通过」不带 comment，不该把别人写的失败原因静默抹掉。
- */
-function buildResultPatch(input: ResultPatchInput): RunCaseResultPatch {
-	const patch: RunCaseResultPatch = { result: input.result };
-	if (input.comment !== undefined) {
-		patch.comment = input.comment;
-	}
-	if (input.result === "untested") {
-		patch.caseVersion = null;
-		patch.comment = null;
-		patch.executedAt = null;
-		patch.executedBy = null;
-		return patch;
-	}
-	patch.executedAt = new Date();
-	patch.executedBy = input.actorId;
-	// 打结论那一刻的用例版本号（plan §3.3）。用相关子查询就地取，
-	// 而不是先 select 再回填：中间隔一次往返，别人正好保存了新版本，
-	// 记下的就会是一个这条结论从没见过的版本号。
-	patch.caseVersion = sql`(select ${testCases.currentVersion} from ${testCases} where ${testCases.id} = ${testRunCases.caseId})`;
-	return patch;
-}
-
-/**
- * 落审计流水：**一条多行 INSERT**，且没有可记的行时一条 SQL 都不发。
- *
- * 单条与批量两条路径共用它，是为了让「什么时候不记、说明记哪一段」
- * 只有 `buildRunCaseEventRows` 一处判定；两边各写各的迟早会漂成两套语义。
- */
-async function insertRunCaseEvents(
-	tx: DbTransaction,
-	input: BuildRunCaseEventRowsInput
-): Promise<void> {
-	const rows = buildRunCaseEventRows(input);
-	if (rows.length === 0) {
-		return;
-	}
-	await tx.insert(testRunCaseEvents).values(rows);
-}
+export type {
+	ApplyAutomationVerdictsInput,
+	ApplyAutomationVerdictsOutcome,
+	AutomationVerdictItem,
+} from "./test-run-automation-verdicts";
+// biome-ignore lint/performance/noBarrelFile: 兼容性 re-export，不是 barrel——自动化上报那条路径本来就定义在本文件里，拆去 test-run-automation-verdicts.ts 只为行数与函数长度上限，调用方的导入路径必须保持不变
+export { applyAutomationVerdicts } from "./test-run-automation-verdicts";
 
 export interface SetRunCaseResultInput {
 	actorId: string | null;
 	comment?: string | null;
 	result: TestRunCaseResult;
 	runCaseId: string;
+	/** 必填，理由见 `ResultPatchInput.via`。手工路径显式传 `"manual"`。 */
+	via: TestRunExecutedVia;
 }
 
 export type SetRunCaseResultOutcome =
 	| RunCaseWriteRejection
 	| RunReviewPending
 	| { kind: "ok"; run: TestRun; runCase: TestRunCase };
+
+/**
+ * 单条路径的旧值快照。
+ *
+ * 这一条 SELECT 顺带把旧结论与旧说明取回来（**必须在 UPDATE 之前**）：
+ * 它们是审计流水里 `fromResult` 与说明快照的唯一来源，多带两列不多一次往返。
+ * `runId` 一并带回，`setRunCaseResult` 据此反查归属（见那边的注释）。
+ */
+async function selectRunCaseVerdictTarget(
+	tx: DbTransaction,
+	runCaseId: string
+) {
+	const [target] = await tx
+		.select({
+			comment: testRunCases.comment,
+			result: testRunCases.result,
+			runId: testRunCases.runId,
+		})
+		.from(testRunCases)
+		.where(eq(testRunCases.id, runCaseId))
+		.limit(1);
+	return target ?? null;
+}
 
 /**
  * 打（或回退）单条结论——执行台上最高频的写操作。
@@ -126,17 +95,7 @@ export function setRunCaseResult(
 	input: SetRunCaseResultInput
 ): Promise<SetRunCaseResultOutcome> {
 	return db.transaction(async (tx) => {
-		// 这一条 SELECT 顺带把旧结论与旧说明取回来（**必须在 UPDATE 之前**）：
-		// 它们是审计流水里 `fromResult` 与说明快照的唯一来源，多带两列不多一次往返。
-		const [target] = await tx
-			.select({
-				comment: testRunCases.comment,
-				result: testRunCases.result,
-				runId: testRunCases.runId,
-			})
-			.from(testRunCases)
-			.where(eq(testRunCases.id, input.runCaseId))
-			.limit(1);
+		const target = await selectRunCaseVerdictTarget(tx, input.runCaseId);
 		if (!target) {
 			return { kind: "not-found" as const };
 		}
@@ -163,11 +122,7 @@ export function setRunCaseResult(
 			actorId: input.actorId,
 			comment: input.comment,
 			snapshots: [
-				{
-					comment: target.comment,
-					id: input.runCaseId,
-					result: target.result,
-				},
+				{ comment: target.comment, id: input.runCaseId, result: target.result },
 			],
 			toResult: input.result,
 		});
@@ -185,6 +140,8 @@ export interface BulkSetRunCaseResultInput {
 	runCaseIds: string[];
 	/** 必传，理由同 `AssignRunCasesInput.runId`（避免跨测试任务批量的有序加锁）。 */
 	runId: string;
+	/** 必填，理由见 `ResultPatchInput.via`。 */
+	via: TestRunExecutedVia;
 }
 
 export type BulkSetRunCaseResultOutcome =

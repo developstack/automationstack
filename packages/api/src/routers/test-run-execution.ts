@@ -129,6 +129,7 @@ export const testRunExecutionProcedures = {
 				result: input.result,
 				runCaseIds: input.runCaseIds,
 				runId: input.runId,
+				via: "manual",
 			});
 			if (result.kind === "invalid-run-cases") {
 				rejectInvalidRunCases(result.invalidRunCaseIds, errors);
@@ -178,6 +179,7 @@ export const testRunExecutionProcedures = {
 				comment: input.comment,
 				result: input.result,
 				runCaseId: input.runCaseId,
+				via: "manual",
 			});
 			if (result.kind === "review-pending") {
 				throw errors.CONFLICT({ message: REVIEW_PENDING_MESSAGE });

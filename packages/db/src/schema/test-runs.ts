@@ -3,7 +3,6 @@ import {
 	check,
 	index,
 	integer,
-	pgEnum,
 	pgTable,
 	text,
 	timestamp,
@@ -11,84 +10,38 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 
+import { automationExecutions } from "./automation-executions";
 import { projects } from "./projects";
 import { testCases } from "./test-cases";
+import {
+	testRunCaseResultEnum,
+	testRunExecutedViaEnum,
+	testRunStatusEnum,
+} from "./test-run-enums";
 import { users } from "./users";
 
+export type {
+	TestRunAttachmentKind,
+	TestRunCaseResult,
+	TestRunExecutedVia,
+	TestRunStatus,
+} from "./test-run-enums";
 /**
- * 测试任务状态机（plan §2）。
+ * 测试任务链路的两张主表：`test_runs`（任务本身）与 `test_run_cases`
+ * （范围与结果合一的用例行）。
  *
- * ```
- * pending_review ⇄ ready ──> in_progress ⇄ completed ──> submitted（终态，锁死）
- * ```
- *
- * 枚举顺序即业务顺序，新状态必须追加在语义上的正确位置而不是数组末尾。
- *
- * `in_progress` 与 `completed` 都由 repository 在打结论的同一事务里自动推进，
- * 不给用户手动改状态的入口——手动状态和结果统计一旦能各走各的，就必然对不上。
- * 只有 `pending_review → ready` 和 `completed → submitted` 是人工的：
- * 评审在线下开会完成（D4），平台无从判断会开完了没有；提交则是人对报告的确认。
- *
- * **`completed` 不是终态，也不是只读**：`completed` 的测试任务仍然可以直接改结论，
- * 没有「重新打开」这个动作要先点——用户要的是无阻力地改。任何让任务里重新出现
- * `untested` 行的操作都在同一事务里把任务退回 `in_progress` 并把 `completedAt`
- * 置 null，改完最后一条又自动回到 `completed`。把状态做成「结果的函数」而不是
- * 一个要人维护的开关，是这两个状态之间唯一不会对不上账的做法。
- * 反过来 `in_progress → ready` 不可退——`startedAt` 已经记下「曾经开测」
- * 这个事实，抹掉它就是伪造历史。
- * 这条往返正是 `test_run_events` 存在的理由（见文件末尾）。
- *
- * **`submitted` 是唯一终态，进入后不可逆**：结论、说明、附件、人工填的
- * `defectUrl` 全部冻结，要改只能新建重测任务（D11）。
- * 「完成前完全自由、提交后绝对冻结」这两件事必须同时成立，才既不会因为
- * 怕改不了而不敢完成，也不会让交出去的报告事后被人悄悄改数。
- *
- * 冻结有且只有一个例外：`test_run_cases.defectStatus` 仍可由 Jira webhook 更新。
- * 那是外部系统的**当前事实**，不是报告内容。三个月后打开一个已提交的测试任务，
- * 需要看到当时失败的 8 条里有 6 条 Jira 已经解决，才能判断「可以开重测任务了」；
- * 把它一起冻住会让这个测试任务变成一份没人再打开的死数据。
+ * 四个跨包共享的 pgEnum 及其字面量类型拆去了 `schema/test-run-enums.ts`
+ * ——纯粹为了让本文件回到 300 行以内，分组语义一个字没改——并在下面原样
+ * re-export：`@automationstack/db/schema/test-runs` 这条导入路径上此前能取到的
+ * 每一个符号仍然在原处，`apps/web` 与 `packages/api` 的十几处 import 一处都不用动。
  */
-export const testRunStatusEnum = pgEnum("test_run_status", [
-	"pending_review",
-	"ready",
-	"in_progress",
-	"completed",
-	"submitted",
-]);
-
-/**
- * 单条用例在测试任务里的结论（D5）。
- *
- * `blocked` / `skipped` 是逃生口：环境挂了、依赖没就绪的用例必须能标记，
- * 否则测试任务永远关不掉，最后大家会乱打 `passed` 把它糊过去，数据就废了。
- * 也正因为它们不代表「测过并且合格」，通过率的分母只算 passed + failed（plan §2）。
- */
-export const testRunCaseResultEnum = pgEnum("test_run_case_result", [
-	"untested",
-	"passed",
-	"failed",
-	"blocked",
-	"skipped",
-]);
-
-/**
- * 附件分类。表本身在 `schema/test-run-attachments.ts`（叶子表，单独成文件），
- * 枚举留在这里与另外两个 pgEnum 一起充当跨包共享的词汇表：
- * `apps/web` 与 `packages/api` 都从 `@automationstack/db/schema/test-runs`
- * 取 `TestRunAttachmentKind`。
- */
-export const testRunAttachmentKindEnum = pgEnum("test_run_attachment_kind", [
-	"screenshot",
-	"video",
-	"log",
-	"other",
-]);
-
-export type TestRunStatus = (typeof testRunStatusEnum.enumValues)[number];
-export type TestRunCaseResult =
-	(typeof testRunCaseResultEnum.enumValues)[number];
-export type TestRunAttachmentKind =
-	(typeof testRunAttachmentKindEnum.enumValues)[number];
+// biome-ignore lint/performance/noBarrelFile: 兼容性 re-export，不是 barrel——这四个枚举本来就定义在本文件里，拆去 test-run-enums.ts 只为行数上限，导入路径必须保持不变
+export {
+	testRunAttachmentKindEnum,
+	testRunCaseResultEnum,
+	testRunExecutedViaEnum,
+	testRunStatusEnum,
+} from "./test-run-enums";
 
 export const testRuns = pgTable(
 	"test_runs",
@@ -247,7 +200,28 @@ export const testRunCases = pgTable(
 		executedBy: uuid("executed_by").references(() => users.id, {
 			onDelete: "set null",
 		}),
+		/**
+		 * 这条结论是人打的还是脚本打的（plan §3.3）。
+		 *
+		 * **可空，且 null 有含义**：未测的行没有执行方式。所以分布上天然是三个桶——
+		 * 手工 / 自动化 / 未测，任何按来源的统计都必须显式处理第三个桶，
+		 * 而不是把 null 归进「手工」。
+		 */
+		executedVia: testRunExecutedViaEnum("executed_via"),
 		id: uuid("id").primaryKey().defaultRandom(),
+		/**
+		 * 最后一次写这条结论的自动化执行，报告里据此回链到 CI（§6.3）。
+		 *
+		 * `set null` 而不是 `restrict`：执行记录是辅助材料，将来清理老记录
+		 * 不该被结论行卡住——`restrict` 会让「删三个月前的执行记录」这种运维动作
+		 * 撞上一堆历史结论行而根本做不成。断了链接最多是失去一条 CI 链接，
+		 * 结论本身（result / comment / 附件）一个字都不动。
+		 * 这跟 `caseId` 那条 `restrict` 不冲突：那里断链会让统计数字静默改变。
+		 */
+		lastAutomationExecutionId: uuid("last_automation_execution_id").references(
+			() => automationExecutions.id,
+			{ onDelete: "set null" }
+		),
 		result: testRunCaseResultEnum("result").notNull().default("untested"),
 		runId: uuid("run_id")
 			.notNull()

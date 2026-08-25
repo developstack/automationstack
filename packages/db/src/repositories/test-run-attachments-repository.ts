@@ -5,8 +5,16 @@ import {
 	type TestRunAttachment,
 	testRunAttachments,
 } from "../schema/test-run-attachments";
-import { type TestRunAttachmentKind, testRunCases } from "../schema/test-runs";
-import type { DbTransaction, RepositoryNotFound } from "./repository-types";
+import {
+	type TestRunAttachmentKind,
+	type TestRunExecutedVia,
+	testRunCases,
+} from "../schema/test-runs";
+import type { RepositoryNotFound } from "./repository-types";
+import {
+	type AttachmentScope,
+	findRunIdInTx,
+} from "./test-run-attachment-scopes";
 import type { RunLocked } from "./test-run-status-core";
 import { ensureRunWritable } from "./test-run-status-repository";
 
@@ -19,68 +27,22 @@ import { ensureRunWritable } from "./test-run-status-repository";
  *
  * 所有写路径都要先过 `submitted` 守卫：已提交的测试任务是终态，
  * 传附件、删附件一律拒绝（plan §2.5 / D15）。
+ *
+ * 本文件留的是真正动 `test_run_attachments` 表的三条路径（登记 / 列表 / 删除）；
+ * presign 之前的归属解析与守卫在 `test-run-attachment-scopes.ts`，
+ * 拆分理由见那个文件的文件头。**那边的导出在下面原样 re-export**，
+ * 调用方的 import 路径一处都没变。
  */
 
-/** 附件挂靠的那条用例行，以及它所在的测试任务与项目——api 层拼 object key 要用。 */
-export interface AttachmentScope {
-	projectId: string;
-	runCaseId: string;
-	runId: string;
-}
-
-export type PrepareAttachmentUploadResult =
-	| RunLocked
-	| RepositoryNotFound
-	| { kind: "ok"; scope: AttachmentScope };
-
-/**
- * 查出用例行的归属并确认测试任务可写——**presign 之前**必须走这一遭。
- *
- * 为什么 presign 也要过 `submitted` 守卫：签名一发出去就是一张我们收不回的
- * 写入凭证，只在 `register` 拦等于让已提交的测试任务照样能被塞进新对象，
- * 拦下的只是「数据库里看不见」，bucket 里已经多了东西。
- *
- * `ensureRunWritable` 内部含 `SELECT ... FOR UPDATE`，所以查归属与判状态
- * 必须在**同一个事务**里：分两次查就是 TOCTOU——查完到用的这段时间里，
- * 别人完全可以把测试任务提交掉。
- */
-export function prepareAttachmentUpload(
-	runCaseId: string
-): Promise<PrepareAttachmentUploadResult> {
-	return db.transaction(async (tx) => {
-		const runId = await findRunIdInTx(tx, runCaseId);
-		if (runId === null) {
-			return { kind: "not-found" };
-		}
-		const writable = await ensureRunWritable(tx, runId);
-		if (writable.kind !== "ok") {
-			return writable;
-		}
-		return {
-			kind: "ok",
-			scope: { projectId: writable.run.projectId, runCaseId, runId },
-		};
-	});
-}
-
-/**
- * 用例行所属的测试任务 id。
- *
- * 这里只取 runId 而不顺手 join `test_runs` 拿 projectId：紧接着的
- * `ensureRunWritable` 会把那一行 `FOR UPDATE` 锁住并整行读出来，
- * projectId 从它的返回值上取即可，多 join 一次只是把同一行读两遍，
- * 还会让「哪一次读到的才算数」变成一个要想的问题。
- */
-async function findRunIdInTx(
-	tx: DbTransaction,
-	runCaseId: string
-): Promise<string | null> {
-	const [row] = await tx
-		.select({ runId: testRunCases.runId })
-		.from(testRunCases)
-		.where(eq(testRunCases.id, runCaseId));
-	return row?.runId ?? null;
-}
+// biome-ignore lint/performance/noBarrelFile: 兼容性 re-export，不是 barrel——presign 那几个函数本来就定义在本文件里，拆去 test-run-attachment-scopes.ts 只为行数上限，调用方的导入路径必须保持不变
+export {
+	type AttachmentScope,
+	type PrepareAttachmentUploadResult,
+	type PrepareRunAttachmentUploadsInput,
+	type PrepareRunAttachmentUploadsResult,
+	prepareAttachmentUpload,
+	prepareRunAttachmentUploads,
+} from "./test-run-attachment-scopes";
 
 export interface RegisterAttachmentInput {
 	/**
@@ -104,6 +66,18 @@ export interface RegisterAttachmentInput {
 	/** 同 `contentType`：`HeadObject` 读回的真实字节数。 */
 	sizeBytes: number;
 	storageKey: string;
+	/**
+	 * 这个附件是人传的还是脚本传的（plan §3.4 / §5.6）。
+	 *
+	 * **可选，且默认落 null**：手工上传路径（`routers/test-run-attachments.ts`）
+	 * 一个字节都不改，它此前写进去的就是 null，现在仍然是 null。
+	 * 「历史行没有这个信息」与「这一行是人传的」在这一列里本就同为 null
+	 * （见 schema 注释），在这里替手工路径补一个 `'manual'` 会让那两件事
+	 * 在同一列里变成三种取值，而没有任何读取方为此做好准备。
+	 *
+	 * 自动化通道显式传 `'automation'`——那是这一列存在的理由。
+	 */
+	uploadedVia?: TestRunExecutedVia;
 }
 
 export type RegisterAttachmentResult =
@@ -157,6 +131,9 @@ export function registerAttachment(
 				runCaseId: input.runCaseId,
 				sizeBytes: input.sizeBytes,
 				storageKey: input.storageKey,
+				// 显式 null 与「不写这一列」在库里完全等价（可空、无 default），
+				// 写出来是为了让手工路径落 null 这件事在代码里看得见。
+				uploadedVia: input.uploadedVia ?? null,
 			})
 			.returning();
 		if (!attachment) {

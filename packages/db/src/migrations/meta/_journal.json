@@ -50,6 +50,27 @@
       "when": 1787487449404,
       "tag": "0006_fair_lenny_balinger",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1787564721853,
+      "tag": "0007_nifty_living_tribunal",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787626081441,
+      "tag": "0008_silly_jackpot",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1787630794475,
+      "tag": "0009_parallel_preak",
+      "breakpoints": true
     }
   ]
 }

@@ -3,6 +3,7 @@ import type { RouterClient } from "@orpc/server";
 import { publicProcedure } from "../index";
 import { aiRouter } from "./ai";
 import { aiProviderConfigRouter } from "./ai-provider-config";
+import { apiTokensRouter } from "./api-tokens";
 import { authRouter } from "./auth";
 import { caseAttachmentsRouter } from "./case-attachments";
 import { casesRouter } from "./cases";
@@ -19,6 +20,7 @@ import { usersRouter } from "./users";
 export const appRouter = {
 	ai: aiRouter,
 	aiProviderConfig: aiProviderConfigRouter,
+	apiTokens: apiTokensRouter,
 	auth: authRouter,
 	caseAttachments: caseAttachmentsRouter,
 	cases: casesRouter,

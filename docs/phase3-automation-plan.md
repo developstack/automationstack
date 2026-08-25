@@ -338,11 +338,19 @@ sourceRef → caseId（项目内唯一，靠 test_cases_project_id_source_ref_uq
 第三期的脚本不满足，所以 ingest 要显式调一次——就这么一条，不是什么新机制。
 `WHERE submitted_at IS NULL` 让它天然幂等，并发调用只有一个事务会更新到行。
 
-**不加定时任务**（第二期 §2.5 的结论本期不翻案）：补上 ingest 这一次之后，
-所有写入路径与所有读取路径都会先结算，库里状态滞后就只发生在「完全没人碰这个项目」
-的时候，而那时它滞后没有任何可观测后果。
-真要加也很便宜（`apps/server/src/realtime/rooms.ts:189` 已有 `setInterval` 扫描的先例），
-但那是 phase2 的议题，本期不扩范围。
+**定时扫描后来加上了，但它替代不了这一次结算**（2026-08-24 修订本段）：
+写这份文档时「不加定时任务」还是有效结论，`plans/011` 之后不再成立——
+`apps/server/src/jobs/auto-submit-scan.ts` 每天 03:00 跑一次 `settleAutoSubmitAll()`，
+连完全没人碰的项目也会被兜底结算。
+
+但那是**天级**兜底，ingest 要的是**写入那一刻**的准确性。一个任务上午 10:00 到期，
+下一次扫描在次日 03:00，中间十七个小时里它照样是「已到期、未结算」，
+上面那张表的时间线原样成立——只是失效窗口从「没有上限」缩短成「不超过一天」。
+**缩短不等于消除**，ingest 写之前那一次显式结算不能省。
+
+三层防御各司其职（`plans/011` D3）：读路径惰性结算（秒级，有人看的时候）、
+ingest 写前结算（本节，写入那一刻）、每日扫描（天级，零访问兜底）。
+本节要的是第二层。
 
 ## 4. 认证：个人 API Token
 
@@ -549,10 +557,18 @@ select tc.source_ref, trc.run_id, trc.id
 `ensureRunWritable` 仍然要跑（它在行锁下判定，是唯一权威），但它拦下的应该只剩
 「选出候选之后、写入之前的那一瞬间被人提交了」这一种真正的竞态。
 
-### 5.4 ⚠️ 必须走 `bulkSetRunCaseResult`（D22，本期最不能让步的一条）
+### 5.4 ⚠️ 必须走 `test-run-verdicts-repository.ts`（D22，本期最不能让步的一条）
 
-ingest 端点只做三件事：**鉴权 → 解析 sourceRef → 调 `bulkSetRunCaseResult`**。
+ingest 端点只做三件事：**鉴权 → 解析 sourceRef → 调结论写入仓储**。
 **绝不另开一条 insert/update。**
+
+> **函数名修正（2026-08-24，实现时发现）**：本节原写「调 `bulkSetRunCaseResult`」，
+> 字面上做不到。那个函数的签名是「整批**一个** `result`、且没有 `comment`」，
+> 而一次上报里每条用例各有各的结论、失败的还各带一条 message 要落进 `comment`；
+> 照字面调只能退化成逐条循环，那恰恰是 §5.5 在拦的东西。
+> 实际落地的是同文件、同守卫的第二个入口 `applyAutomationVerdicts`
+> （每条各带 result/comment，整批仍只发一条 UPDATE + 一条 INSERT）。
+> 本节真正的红线从来不是「调哪个函数」，而是**别绕开下面这四道守卫**——这一条不变。
 
 这样四件事全是白拿的，一行新代码都不用写：
 
@@ -581,7 +597,9 @@ ingest 端点只做三件事：**鉴权 → 解析 sourceRef → 调 `bulkSetRun
 写入顺序：
 
 1. 先 upsert `automation_executions` 那一行（`completedAt = null`），它同时是幂等键的占位
-2. 按 runId 分组，每组一个事务：`bulkSetRunCaseResult` + 回填 `lastAutomationExecutionId`
+2. 按 runId 分组，每组一个事务：`applyAutomationVerdicts`
+   （`executedVia` / `lastAutomationExecutionId` 就在那条 UPDATE 里一起写掉，
+   本节原先列的「回填 `lastAutomationExecutionId`」不是单独一步）
 3. 全部成功后再写 `completedAt` 与两个冗余计数
 
 ⚠️ 中途失败会留下一行 `completedAt = null` 的执行记录，此时冗余计数是**不完整的**——
@@ -816,7 +834,7 @@ ingest 端点的 zod schema 直接产出 OpenAPI，**那份就是三个 SDK 共�
 W1  个人 API Token（全局前置）
      schema/api-tokens.ts + 迁移 + repository
      + Bearer 鉴权中间件（复用 context.ts 的 users 读库）
-     + 「设置」页的 token 管理 UI（创建/吊销/明文只显示一次）
+     + token 管理 UI：独立路由 `/api-tokens`（创建/吊销/明文只显示一次）
               │
               ▼
 W2  Ingest 契约 + 端点（第二个瓶颈，三个 SDK 都等它）
@@ -844,6 +862,12 @@ W2  Ingest 契约 + 端点（第二个瓶颈，三个 SDK 都等它）
 **W1 与 W2 是串行瓶颈**，各自完成并 review 通过后下游才能并行。
 W7 的**发布渠道申请与 W2 并行开始**，别等代码写完卡在流程上。
 
+> **W1 落点修正（2026-08-24）**：token 管理 UI 原计划挂在「设置」页，实现时改成了
+> 独立路由 `/api-tokens`。理由：`/settings` 是**项目维度**的页面，选定项目之前整页不渲染
+> 任何分区（`settings-page.tsx` 的 `NoProjectsNotice`），而个人 token 是**账号维度**的东西。
+> 挂在那里会有两个后果：一个项目都还没建的人拿不到自己的 token；每次切项目那个分区都会
+> 跟着 `key={projectId}` 白重挂一次。侧栏入口不设角色门槛——每个人都该能管自己的 token。
+
 ---
 
 ## 9. 验收要点
@@ -869,7 +893,9 @@ W7 的**发布渠道申请与 W2 并行开始**，别等代码写完卡在流程
 - [ ] 已提交的任务**不进候选**（选候选时就用 `submitted_at is null` 排除，不靠兜底）
 - [ ] **选出候选任务之前跑过自动提交结算**（D36 / §3.8）。回归用例：造一个 `completedAt`
       已超期、且**从未有人打开过任何页面**的任务，直接上报 → 该任务被自动提交且上报被拒，
-      而不是被写入。这条是本期唯一会打破第二期不变式的地方
+      而不是被写入。⚠️ `plans/011` 加了每日 03:00 的扫描，它会抢先把这种任务结算掉；
+      构造用例时必须让扫描来不及跑（当天 03:00 之后现造，或临时停掉那个 job），
+      否则验的是扫描不是 ingest。这条是本期唯一会打破第二期不变式的地方
 - [ ] 候选里有「待评审」任务时，**只有那个任务**被跳过并进 `outOfScope`，其余任务照常写入
 - [ ] 上报中途某个任务被人提交 → **只有那个任务**回滚，其余任务的结论完整保留
 - [ ] 一条用例都没匹配上 → `200` + `writtenTo: []` + 全量 `unmatchedCases`，不是 4xx

@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 
+import type { TestRunExecutedVia } from "../schema/test-runs";
 import { testRunCases } from "../schema/test-runs";
 import type { DbTransaction } from "./repository-types";
 import type { RunCaseVerdictSnapshot } from "./test-run-case-events-core";
@@ -67,6 +68,21 @@ export async function findInvalidRunCaseIds(
 }
 
 /**
+ * 快照行：`RunCaseVerdictSnapshot`（审计流水要的那三列）**加**一列 `executedVia`。
+ *
+ * 加在这里而不是去扩 `RunCaseVerdictSnapshot`，是因为 `executedVia` 与审计流水无关——
+ * 它只被自动化写路径用来判断「这行是不是人打的、能不能覆盖」（`applyAutomationVerdicts`
+ * 的 `overwriteManual`）。塞进流水那个类型里，`buildRunCaseEventRows` 那边就会多出
+ * 一个它永远不看的字段，下一个人会以为流水记了执行来源。
+ *
+ * 结构上是超集，因此这一列不会影响既有的手工路径：`buildRunCaseEventRows`
+ * 逐字段显式构造行，多带的列进不了 INSERT。
+ */
+export interface RunCaseVerdictSnapshotRow extends RunCaseVerdictSnapshot {
+	executedVia: TestRunExecutedVia | null;
+}
+
+/**
  * 与 `findInvalidRunCaseIds` **同一次查询、同一套 WHERE**，只是多带回旧结论与旧说明。
  *
  * 批量打结论既要拒绝不属于本测试任务的行，又要拿变更前的值去记审计流水
@@ -81,13 +97,14 @@ export async function selectRunCaseVerdictSnapshots(
 	tx: DbTransaction,
 	runId: string,
 	runCaseIds: string[]
-): Promise<RunCaseVerdictSnapshot[]> {
+): Promise<RunCaseVerdictSnapshotRow[]> {
 	if (runCaseIds.length === 0) {
 		return [];
 	}
 	return await tx
 		.select({
 			comment: testRunCases.comment,
+			executedVia: testRunCases.executedVia,
 			id: testRunCases.id,
 			result: testRunCases.result,
 		})

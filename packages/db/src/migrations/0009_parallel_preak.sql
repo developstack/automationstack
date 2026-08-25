@@ -1,0 +1,1 @@
+ALTER TABLE "automation_executions" ADD COLUMN "receipt" jsonb;

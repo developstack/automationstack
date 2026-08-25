@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AiProviderRouteImport } from './routes/ai-provider'
+import { Route as ApiTokensRouteImport } from './routes/api-tokens'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MembersRouteImport } from './routes/members'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const AiProviderRoute = AiProviderRouteImport.update({
   id: '/ai-provider',
   path: '/ai-provider',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTokensRoute = ApiTokensRouteImport.update({
+  id: '/api-tokens',
+  path: '/api-tokens',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -97,6 +103,7 @@ const ProjectsProjectIdTestRunsRunIdReportRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-provider': typeof AiProviderRoute
+  '/api-tokens': typeof ApiTokensRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-provider': typeof AiProviderRoute
+  '/api-tokens': typeof ApiTokensRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ai-provider': typeof AiProviderRoute
+  '/api-tokens': typeof ApiTokensRoute
   '/login': typeof LoginRoute
   '/members': typeof MembersRoute
   '/settings': typeof SettingsRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/ai-provider'
+    | '/api-tokens'
     | '/login'
     | '/members'
     | '/settings'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/ai-provider'
+    | '/api-tokens'
     | '/login'
     | '/members'
     | '/settings'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/ai-provider'
+    | '/api-tokens'
     | '/login'
     | '/members'
     | '/settings'
@@ -189,6 +201,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiProviderRoute: typeof AiProviderRoute
+  ApiTokensRoute: typeof ApiTokensRoute
   LoginRoute: typeof LoginRoute
   MembersRoute: typeof MembersRoute
   SettingsRoute: typeof SettingsRoute
@@ -210,6 +223,13 @@ declare module '@tanstack/react-router' {
       path: '/ai-provider'
       fullPath: '/ai-provider'
       preLoaderRoute: typeof AiProviderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api-tokens': {
+      id: '/api-tokens'
+      path: '/api-tokens'
+      fullPath: '/api-tokens'
+      preLoaderRoute: typeof ApiTokensRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -321,6 +341,7 @@ const ProjectsProjectIdRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiProviderRoute: AiProviderRoute,
+  ApiTokensRoute: ApiTokensRoute,
   LoginRoute: LoginRoute,
   MembersRoute: MembersRoute,
   SettingsRoute: SettingsRoute,

@@ -22,7 +22,11 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 
-import { testRunAttachmentKindEnum, testRunCases } from "./test-runs";
+import {
+	testRunAttachmentKindEnum,
+	testRunCases,
+	testRunExecutedViaEnum,
+} from "./test-runs";
 import { users } from "./users";
 
 export const testRunAttachments = pgTable(
@@ -66,6 +70,18 @@ export const testRunAttachments = pgTable(
 		 * 存下来的完整 URL 过几分钟就是死链，反而比没有更糟。
 		 */
 		storageKey: text("storage_key").notNull(),
+		/**
+		 * 这个附件是人传的还是脚本传的（plan §3.4）。
+		 *
+		 * 复用 `test_run_executed_via`，不另造枚举——问的是同一个问题。
+		 *
+		 * 它独立成列，而不是用时去 join `test_run_cases.executedVia`：
+		 * 上传方与结论来源可以不一致。李四给脚本报的那条失败补了张手工截图，
+		 * 结论仍是 `automation`，这张截图却是手工的；join 过去会把它标成脚本产出，
+		 * 从而抹掉「有人来看过这条失败」这个恰恰最值得看见的信号。
+		 * 可空的含义与 `executedVia` 一致：历史行没有这个信息。
+		 */
+		uploadedVia: testRunExecutedViaEnum("uploaded_via"),
 	},
 	// 附件永远是「某条执行结果的附件」，按 runCaseId 成组取。
 	(table) => [index("test_run_attachments_run_case_id_idx").on(table.runCaseId)]
