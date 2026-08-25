@@ -1,24 +1,29 @@
 /**
- * 一个「可搜索的候选选择器」。
+ * 一个「可搜索的候选选择器」：单个 combobox 输入框，击键即筛菜单项。
  *
- * 为什么是「搜索框 + 下拉」两个控件而不是一个 combobox：193 个 provider、
- * 单个 provider 下上千个 model，纯下拉根本翻不动；而 packages/ui 里没有
- * command / combobox 原件，本仓库的方针又是不自己新写组件。于是用现成的
- * Input + Select 拼：Input 把关键词交给服务端过滤，Select 只从过滤结果里挑一个。
+ * 形态：Base UI Combobox 原语（packages/ui/combobox.tsx 薄封装）+ 服务端过滤。
+ * 输入框自己就是触发器：非聚焦时显示已选项的 label，聚焦输入变成关键词，
+ * 清空则取消选中并回到全量列表。防抖不在这一层——UI 只把击键交给 keyword
+ * （onKeywordChange），真正的 300ms 防抖在 provider-catalog-queries 的
+ * useDebouncedValue 里，与请求节奏解耦是既有设计。
+ *
+ * 客户端不过滤：Root 挂 filter={null} 关掉内置 collator 匹配，候选永远以
+ * 服务端返回为准（否则选中后输入框里填的完整 label 会被当成查询词把菜单清空）。
  *
  * 另一半是降级：目录抓不到时 `manual` 打开，同一个字段原地变成自由输入框，
  * 管理员照样能把 provider / model 填进去，而不是被卡死在一个空下拉上。
  */
+import {
+	Combobox,
+	type ComboboxChangeEventDetails,
+	ComboboxContent,
+	ComboboxEmpty,
+	ComboboxInput,
+	ComboboxItem,
+} from "@automationstack/ui/components/combobox";
 import { Input } from "@automationstack/ui/components/input";
 import { Label } from "@automationstack/ui/components/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@automationstack/ui/components/select";
-import { type ChangeEvent, useCallback } from "react";
+import { type ChangeEvent, useCallback, useMemo } from "react";
 
 import type {
 	CatalogOption,
@@ -62,8 +67,10 @@ function hintText(
 }
 
 /**
- * 关键词一变，已选中的那一项往往就不在候选里了。不补回去的话触发器会显示空白，
- * 看上去像是「刚才选的东西被搜索清掉了」。补进来的那条没有名称，只能退化成 id。
+ * 关键词一变，已选中的那一项往往就不在候选里了。不补回去的话：菜单里看不到
+ * 选中项的勾标，输入框也丢了双语 label、退化显示裸 id（itemToStringLabel
+ * 兑底到 value 本身），看上去像「刚才选的东西被搜索清掉了」。补回的那条
+ * 没有名称，label 只能等于 id——两种情况都退化，但至少选中态是完整的。
  */
 function withSelected(
 	options: CatalogOption[],
@@ -127,78 +134,115 @@ function ManualField(props: CatalogPickerProps) {
 	);
 }
 
-interface CandidateSelectProps {
+/* 表单里存的是 id；输入框要展示的是目录里那条的 label（含双语段）。
+ * 用 itemToStringLabel 交给 Base UI 换算，而不是把裸 id 塞给用户；候选里
+ * 找不到时退化成 id 本身（与 withSelected 的兑底条目间一行为）。 */
+function labelOf(options: CatalogOption[]): (value: string) => string {
+	return (value) =>
+		options.find((option) => option.value === value)?.label ?? value;
+}
+
+interface CandidateComboboxProps {
 	disabled: boolean;
+	emptyHint: string;
 	hintId: string;
 	id: string;
 	invalid: boolean;
+	/** 关键词请求在飞：空列表的 Empty 要说「正在加载」而不是误导性的「没有匹配」。 */
+	keywordLoading: boolean;
+	onKeywordChange: (keyword: string) => void;
 	onValueChange: (value: string) => void;
 	options: CatalogOption[];
+	searchLabel: string;
 	value: string;
 }
 
-function CandidateSelect(props: CandidateSelectProps) {
-	const { onValueChange } = props;
+/* 弹层里的候选列表：选项 + 空态。从 CandidateCombobox 拆出来纯粹是为了
+ * 过 max-lines-per-function，两者总是一起用。 */
+function CandidateList(props: { emptyText: string; options: CatalogOption[] }) {
+	return (
+		<ComboboxContent>
+			{props.options.map((option) => (
+				<ComboboxItem key={option.value} value={option.value}>
+					{option.label}
+				</ComboboxItem>
+			))}
+			<ComboboxEmpty>{props.emptyText}</ComboboxEmpty>
+		</ComboboxContent>
+	);
+}
+
+function CandidateCombobox(props: CandidateComboboxProps) {
+	const { onKeywordChange, onValueChange } = props;
+
 	// Base UI 的清空动作会给 null；把它翻译成「没选」而不是塞个假值进去
 	const handleValue = useCallback(
 		(next: string | null) => onValueChange(next ?? ""),
 		[onValueChange]
 	);
+	// onInputValueChange 对每次 setInputValue 都发（包括选中后自动填 label、
+	// 关弹层时回同步），不过滤 reason 的话完整 label 串会变成服务端查询词。
+	const handleInputValue = useCallback(
+		(inputValue: string, eventDetails: ComboboxChangeEventDetails) => {
+			if (
+				eventDetails.reason === "input-change" ||
+				eventDetails.reason === "input-clear"
+			) {
+				onKeywordChange(inputValue);
+			}
+		},
+		[onKeywordChange]
+	);
+	const itemToStringLabel = useMemo(
+		() => labelOf(props.options),
+		[props.options]
+	);
 
 	return (
-		<Select
-			disabled={props.disabled}
+		<Combobox
+			// 客户端不过滤，见文件头注释；空关键词时服务端本来就返回全量。
+			filter={null}
 			items={props.options}
+			itemToStringLabel={itemToStringLabel}
+			onInputValueChange={handleInputValue}
 			onValueChange={handleValue}
 			value={props.value === "" ? null : props.value}
 		>
-			<SelectTrigger
+			{/* aria-label 与 placeholder 一致：语音控制用户念的是屏幕上看得见的字 */}
+			<ComboboxInput
 				aria-describedby={props.hintId}
 				aria-invalid={props.invalid}
-				className="w-full"
+				aria-label={props.searchLabel}
+				autoComplete="off"
+				disabled={props.disabled}
 				id={props.id}
-			>
-				<SelectValue placeholder="尚未选择" />
-			</SelectTrigger>
-			<SelectContent>
-				{props.options.map((option) => (
-					<SelectItem key={option.value} value={option.value}>
-						{option.label}
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
+				placeholder={props.searchLabel}
+			/>
+			<CandidateList
+				emptyText={props.keywordLoading ? "正在加载候选…" : props.emptyHint}
+				options={props.options}
+			/>
+		</Combobox>
 	);
 }
 
-function SearchableSelect(props: CatalogPickerProps) {
-	const { onKeywordChange } = props;
-	const handleKeyword = useCallback(
-		(event: ChangeEvent<HTMLInputElement>) =>
-			onKeywordChange(event.target.value),
-		[onKeywordChange]
-	);
+function SearchableCombobox(props: CatalogPickerProps) {
 	const hintId = `${props.id}-hint`;
 
 	return (
 		<div className="flex flex-col gap-2">
 			<Label htmlFor={props.id}>{props.label}</Label>
-			{/* aria-label 与 placeholder 一致：语音控制用户念的是屏幕上看得见的字 */}
-			<Input
-				aria-label={props.searchLabel}
-				autoComplete="off"
+			<CandidateCombobox
 				disabled={props.disabled}
-				onChange={handleKeyword}
-				placeholder={props.searchLabel}
-				value={props.keyword}
-			/>
-			<CandidateSelect
-				disabled={props.disabled}
+				emptyHint={props.emptyHint}
 				hintId={hintId}
 				id={props.id}
 				invalid={props.error !== null}
+				keywordLoading={props.query.loading}
+				onKeywordChange={props.onKeywordChange}
 				onValueChange={props.onValueChange}
 				options={withSelected(props.query.options, props.value)}
+				searchLabel={props.searchLabel}
 				value={props.value}
 			/>
 			<HintLine
@@ -214,5 +258,5 @@ export function CatalogPicker(props: CatalogPickerProps) {
 	if (props.manual) {
 		return <ManualField {...props} />;
 	}
-	return <SearchableSelect {...props} />;
+	return <SearchableCombobox {...props} />;
 }

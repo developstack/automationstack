@@ -14,6 +14,11 @@ import { orpc } from "@/utils/orpc";
 /** 与 case-filters.tsx 的搜索框同一个节奏：全站击键防抖只有这一个数。 */
 const KEYWORD_DEBOUNCE_MS = 300;
 
+/** 前端单次请求显式要满额：空关键词时服务端本就全量返回，但默认只给 50 条，
+ * 而 provider 目录共 193 项、单 provider 的 model 也远不到 200——按 catalog-query
+ * 的 MAX_CATALOG_RESULTS 上限要满，下拉里就是「全部」，不用再翻页。 */
+const CATALOG_REQUEST_LIMIT = 200;
+
 /** 关键词跟着击键走，请求跟着这个值走。 */
 export function useDebouncedValue(value: string): string {
 	const [debounced, setDebounced] = useState(value);
@@ -57,7 +62,7 @@ export function useProviderOptions(
 	const debounced = useDebouncedValue(keyword);
 	const query = useQuery(
 		orpc.aiProviderConfig.listProviders.queryOptions({
-			input: { keyword: debounced },
+			input: { keyword: debounced, limit: CATALOG_REQUEST_LIMIT },
 		})
 	);
 	const { data } = query;
@@ -89,7 +94,11 @@ export function useModelOptions(
 	const debounced = useDebouncedValue(keyword);
 	const query = useQuery({
 		...orpc.aiProviderConfig.listModels.queryOptions({
-			input: { keyword: debounced, providerId },
+			input: {
+				keyword: debounced,
+				limit: CATALOG_REQUEST_LIMIT,
+				providerId,
+			},
 		}),
 		// provider 还没选定时这条查询没有意义，空串也过不了服务端的 min(1)
 		enabled: providerId !== "",
