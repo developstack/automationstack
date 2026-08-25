@@ -3,6 +3,8 @@ import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { PageEnterProvider } from "@/components/layout/page-stagger";
+
 /**
  * 路由级页面过渡：全站唯一使用 motion 的地方。
  *
@@ -239,6 +241,14 @@ function PageTransitionFrame({
 		 * style 属性，注水时报不一致。
 		 *
 		 * tabIndex=-1：「跳到主要内容」把焦点真正落进 main，否则 Tab 会从页首继续。
+		 *
+		 * PageEnterProvider 只是把上面这两个判定原样发给愿意接的子元素
+		 * （见 page-stagger.tsx 的 StaggerItem）：想让子元素依次出现的页面，
+		 * 与「这次该不该播进场」必须是同一个答案，否则改筛选那种页内操作会退化成
+		 * 每一项各自淡入一遍。它不渲染任何 DOM，上面那条高度链不受影响。
+		 *
+		 * useReducedMotion() 在服务端与首帧可能是 null，这里收敛成 false：
+		 * 那两种时刻 skipEnter 恒为 true，子元素本来就不动，取值影响不到任何输出。
 		 */
 		<motion.main
 			animate={ENTER_TO}
@@ -248,7 +258,12 @@ function PageTransitionFrame({
 			tabIndex={-1}
 			transition={shouldReduceMotion ? REDUCED_TRANSITION : ENTER_TRANSITION}
 		>
-			{children}
+			<PageEnterProvider
+				reduceMotion={shouldReduceMotion ?? false}
+				skipEnter={skipEnter}
+			>
+				{children}
+			</PageEnterProvider>
 		</motion.main>
 	);
 }

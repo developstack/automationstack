@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { PageTransition } from "@/components/layout/page-transition";
-import { TestRunListSkeleton } from "@/components/test-runs/test-run-list-skeleton";
+import { TestRunListPageSkeleton } from "@/components/test-runs/test-run-list-skeleton";
 import {
 	TEST_RUN_LIST_MAIN,
 	TestRunListView,
@@ -101,11 +101,15 @@ export const Route = createFileRoute("/projects/$projectId/test-runs/")({
  * phase="pending" 与就绪态的 phase="ready" 配对，避免骨架淡入一次、数据到达再
  * 淡入一次（详见 routes/projects/$projectId/index.tsx 里那段注释）。
  * 类名共用同一个 TEST_RUN_LIST_MAIN，两处差一点就会在数据到达那一帧跳动。
+ *
+ * 用 TestRunListPageSkeleton 而不是 TestRunListSkeleton：后者只画表格，这一层
+ * 连工具栏和表头上方那段说明都还没有，只画表格会让数据到达时整张表往上跳 72px
+ * （折算过程见 test-run-list-skeleton.tsx）。
  */
 function TestRunListPending() {
 	return (
 		<PageTransition className={TEST_RUN_LIST_MAIN} phase="pending">
-			<TestRunListSkeleton />
+			<TestRunListPageSkeleton />
 		</PageTransition>
 	);
 }

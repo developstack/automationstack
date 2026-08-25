@@ -81,66 +81,117 @@ function TableRowsSkeleton({ keys }: { keys: readonly string[] }) {
 	);
 }
 
+/*
+ * 下面每张卡各自一个组件，纯粹是为了给 ReportSkeleton 腾出 eslint
+ * `max-lines-per-function`（上限 50 行）的额度：骨架每对齐一张真卡就多几行 JSX，
+ * 而这几段彼此之间没有任何条件或数据往来，搬走它们不改变渲染结果。
+ * 同文件内拆子组件是本目录既有的写法（见 report-view.tsx 里的 ReportHeader，
+ * 那处拆分的理由与这里逐字相同）。
+ *
+ * ⚠️ 搬动时高度与宽度类名**一个字符都不许改**：文件头那张换算表是逐个控件
+ * 核算出来的，与就绪态严丝合缝。改一个 h-* 就等于让数据到达那一帧整页跳一下，
+ * 而这正是这个文件存在的唯一理由。下面每个组件对齐 report-view.tsx 里同名的
+ * 那张卡，**顺序也必须与那边一致**——栅格按源码顺序排位，错位了对不上的
+ * 不只是高度，还有左右两列。
+ */
+
+/** 对齐 ReportHeader：面包屑(h-5) + 标题(h-6)，跨整行同它。 */
+function HeadingSkeleton() {
+	return (
+		<div className="flex items-center gap-3 xl:col-span-3">
+			<Skeleton className="h-5 w-24" />
+			<Skeleton className="h-6 w-48" />
+		</div>
+	);
+}
+
+/** 对齐 ReportSummaryCard：四个计数读数 + 分隔线 + 两个比率读数。 */
+function SummaryCardSkeleton() {
+	return (
+		<CardSkeleton
+			className="xl:col-span-3"
+			descriptionWidth="w-96"
+			titleWidth="w-24"
+		>
+			<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+				{SUMMARY_STAT_KEYS.map((key) => (
+					<StatSkeleton key={key} />
+				))}
+			</div>
+			<Skeleton className="h-px w-full" />
+			<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				{RATE_KEYS.map((key) => (
+					<StatSkeleton key={key} />
+				))}
+			</div>
+		</CardSkeleton>
+	);
+}
+
+/** 对齐 ReportPriorityCard：P0 结论条 + 优先级表，与它同为两列宽。 */
+function PriorityCardSkeleton() {
+	return (
+		<CardSkeleton
+			className="xl:col-span-2"
+			descriptionWidth="w-80"
+			titleWidth="w-36"
+		>
+			{/* P0 结论条：px-3 py-2 + text-sm 一行 ≈ 37px */}
+			<Skeleton className="h-9 w-full" />
+			<TableRowsSkeleton keys={PRIORITY_ROW_KEYS} />
+		</CardSkeleton>
+	);
+}
+
+/** 对齐 ReportResultCard：环形图 + 图例。这是同一行里唯一的单列卡。 */
+function ResultCardSkeleton() {
+	return (
+		<CardSkeleton descriptionWidth="w-56" titleWidth="w-20">
+			<Skeleton className="mx-auto size-40 rounded-full" />
+			<div className="flex flex-col gap-1.5">
+				{LEGEND_ROW_KEYS.map((key) => (
+					<Skeleton className="h-5 w-full" key={key} />
+				))}
+			</div>
+		</CardSkeleton>
+	);
+}
+
+/** 对齐 ReportModuleCard：模块表，条数取中间值（理由见文件头）。 */
+function ModuleCardSkeleton() {
+	return (
+		<CardSkeleton
+			className="xl:col-span-3"
+			descriptionWidth="w-72"
+			titleWidth="w-40"
+		>
+			<TableRowsSkeleton keys={MODULE_ROW_KEYS} />
+		</CardSkeleton>
+	);
+}
+
+/** 对齐 ReportFailedCasesCard：失败清单表，条数同样取中间值。 */
+function FailedCasesCardSkeleton() {
+	return (
+		<CardSkeleton
+			className="xl:col-span-3"
+			descriptionWidth="w-96"
+			titleWidth="w-28"
+		>
+			<TableRowsSkeleton keys={FAILED_ROW_KEYS} />
+		</CardSkeleton>
+	);
+}
+
 export function ReportSkeleton() {
 	return (
 		<>
-			<div className="flex items-center gap-3 xl:col-span-3">
-				<Skeleton className="h-5 w-24" />
-				<Skeleton className="h-6 w-48" />
-			</div>
-
-			<CardSkeleton
-				className="xl:col-span-3"
-				descriptionWidth="w-96"
-				titleWidth="w-24"
-			>
-				<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-					{SUMMARY_STAT_KEYS.map((key) => (
-						<StatSkeleton key={key} />
-					))}
-				</div>
-				<Skeleton className="h-px w-full" />
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-					{RATE_KEYS.map((key) => (
-						<StatSkeleton key={key} />
-					))}
-				</div>
-			</CardSkeleton>
-
-			<CardSkeleton
-				className="xl:col-span-2"
-				descriptionWidth="w-80"
-				titleWidth="w-36"
-			>
-				{/* P0 结论条：px-3 py-2 + text-sm 一行 ≈ 37px */}
-				<Skeleton className="h-9 w-full" />
-				<TableRowsSkeleton keys={PRIORITY_ROW_KEYS} />
-			</CardSkeleton>
-
-			<CardSkeleton descriptionWidth="w-56" titleWidth="w-20">
-				<Skeleton className="mx-auto size-40 rounded-full" />
-				<div className="flex flex-col gap-1.5">
-					{LEGEND_ROW_KEYS.map((key) => (
-						<Skeleton className="h-5 w-full" key={key} />
-					))}
-				</div>
-			</CardSkeleton>
-
-			<CardSkeleton
-				className="xl:col-span-3"
-				descriptionWidth="w-72"
-				titleWidth="w-40"
-			>
-				<TableRowsSkeleton keys={MODULE_ROW_KEYS} />
-			</CardSkeleton>
-
-			<CardSkeleton
-				className="xl:col-span-3"
-				descriptionWidth="w-96"
-				titleWidth="w-28"
-			>
-				<TableRowsSkeleton keys={FAILED_ROW_KEYS} />
-			</CardSkeleton>
+			<HeadingSkeleton />
+			<SummaryCardSkeleton />
+			<PriorityCardSkeleton />
+			<ResultCardSkeleton />
+			<ModuleCardSkeleton />
+			<FailedCasesCardSkeleton />
 		</>
 	);
 }

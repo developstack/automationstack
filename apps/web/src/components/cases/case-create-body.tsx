@@ -19,29 +19,25 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@automationstack/ui/components/sheet";
-import { useCallback, useEffect, useMemo } from "react";
-import { toast } from "sonner";
+import { useEffect, useMemo } from "react";
 
 import { CaseAttachmentProvider } from "@/components/cases/case-attachment-context";
 import { CaseDraftNotice } from "@/components/cases/case-draft-notice";
 import { CaseDraftPicker } from "@/components/cases/case-draft-picker";
 import { CaseForm } from "@/components/cases/case-form";
 import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
+import { emptyCaseFormValues } from "@/components/cases/case-meta";
 import {
-	emptyCaseFormValues,
-	formValuesToContent,
-} from "@/components/cases/case-meta";
+	type CaseCreateDraft,
+	useCaseCreateDraft,
+} from "@/components/cases/use-case-create-draft";
 import {
-	hasUnfinishedCaseUploads,
-	referencedCaseAttachments,
-} from "@/components/cases/case-submit-checks";
-import { useCaseCreateDraft } from "@/components/cases/use-case-create-draft";
-import { useCreateCase } from "@/components/cases/use-case-mutations";
+	useCaseCreateMutation,
+	useCaseCreateSubmit,
+} from "@/components/cases/use-case-create-submit";
 
 /** 与详情抽屉一致：表单本体在 <form> 里，提交按钮在标题栏，靠 id 关联。 */
 const CASE_CREATE_FORM_ID = "case-create-form";
-
-const UPLOADING_MESSAGE = "还有图片正在上传，等它传完再创建。";
 
 interface CaseCreateHeaderProps {
 	disabled: boolean;
@@ -81,6 +77,77 @@ function CaseCreateHeader({
 	);
 }
 
+interface CaseCreateContentProps {
+	/** 一次草稿会话的全部句柄（表单值、附件、caseId、放弃草稿）。 */
+	draft: CaseCreateDraft;
+	moduleId: string;
+	onCancel: () => void;
+	onSubmit: () => void;
+	/** 创建请求在飞：按钮变灰、文案换成「创建中…」。 */
+	pending: boolean;
+	projectId: string;
+}
+
+/**
+ * 抽屉主体渲染出来的那一整棵：标题栏 + 两条提示 + 表单。
+ *
+ * 单独一个**模块顶层**组件，而不是主体里的一段 JSX 或内嵌组件：内嵌写法每次
+ * 重渲都是一个新的组件类型，React 会把整棵子树拆掉重建——正在打字的输入框会
+ * 当场丢焦点，活着的 markdown 编辑器实例也会连同光标位置一起没掉。
+ *
+ * 这里一个 hook 都不调：所有状态都留在 <CaseCreateBody> 上，本组件只是把它们
+ * 摆出来。
+ */
+function CaseCreateContent({
+	draft,
+	moduleId,
+	onCancel,
+	onSubmit,
+	pending,
+	projectId,
+}: CaseCreateContentProps) {
+	const { attachments, caseId, discard, setValues, values } = draft;
+
+	// 缓存还没读完（挂载后的第一帧）：此时 caseId 还没定，贴图无处归属。
+	// 抽屉本身正在滑入动画里，这一帧看不出区别。
+	if (caseId === null) {
+		return null;
+	}
+
+	const disabled =
+		pending || attachments.uploading || values.name.trim() === "";
+
+	return (
+		<CaseAttachmentProvider value={attachments}>
+			<CaseCreateHeader
+				disabled={disabled}
+				onCancel={onCancel}
+				pending={pending}
+				uploading={attachments.uploading}
+			/>
+			<CaseDraftNotice
+				missing={draft.missing}
+				onDiscard={discard}
+				restoredAt={draft.restoredAt}
+			/>
+			<CaseDraftPicker
+				currentCaseId={caseId}
+				moduleId={moduleId}
+				projectId={projectId}
+			/>
+			<Separator />
+			<div className="min-h-0 flex-1 overflow-y-auto p-4">
+				<CaseForm
+					formId={CASE_CREATE_FORM_ID}
+					onChange={setValues}
+					onSubmit={onSubmit}
+					values={values}
+				/>
+			</div>
+		</CaseAttachmentProvider>
+	);
+}
+
 export interface CaseCreateBodyProps {
 	/** URL 上 `?draft=` 指名要恢复的草稿；不带就是一张空表单。 */
 	draftId: string | undefined;
@@ -106,25 +173,9 @@ export function CaseCreateBody(props: CaseCreateBodyProps) {
 	} = props;
 	const baseline = useMemo(() => emptyCaseFormValues(), []);
 	const draft = useCaseCreateDraft(projectId, moduleId, draftId);
-	const { attachments, caseId, discard, forget, setValues, values } = draft;
+	const { attachments, caseId, forget, values } = draft;
 
-	const handleCreated = useCallback(
-		(newCaseId: string) => {
-			forget();
-			onCreated(newCaseId);
-		},
-		[forget, onCreated]
-	);
-	const handleDuplicate = useCallback(() => {
-		// 这条用例已经在库里了，草稿再留着只会被反复提交。清掉并把抽屉收起来，
-		// 让用户回到列表——那条用例就在列表里。
-		forget();
-		onClose();
-	}, [forget, onClose]);
-	const create = useCreateCase({
-		onCreated: handleCreated,
-		onDuplicate: handleDuplicate,
-	});
+	const create = useCaseCreateMutation({ forget, onClose, onCreated });
 
 	// 与详情抽屉同一个约定：dirty 由主体算、报给外壳，卸载时归零。
 	const dirty = isCaseFormDirty(values, baseline);
@@ -133,66 +184,23 @@ export function CaseCreateBody(props: CaseCreateBodyProps) {
 		return () => onDirtyChange(false);
 	}, [dirty, onDirtyChange]);
 
-	const handleSubmit = useCallback(() => {
-		if (caseId === null || values.name.trim() === "") {
-			return;
-		}
-		/**
-		 * 第二道防线。按钮在上传期间是禁用的，但表单里任意输入框按回车都会提交，
-		 * 那条路绕过按钮。带着 `![](uploading:<token>)` 提交的后果是不可逆的：
-		 * 抽屉一关，上传回来时既找不到编辑器也找不到这份表单值，正文里会永久
-		 * 留下一处渲染成「图片上传中…」的死引用，还会被冻进 v1 的版本快照。
-		 */
-		if (hasUnfinishedCaseUploads(values)) {
-			toast.error(UPLOADING_MESSAGE);
-			return;
-		}
-		create.mutate({
-			...formValuesToContent(values),
-			// 只提交正文里**仍然**被引用的那些：贴了图又把那段删掉的，不登记。
-			attachments: referencedCaseAttachments(values, attachments.pending),
-			id: caseId,
-			moduleId,
-			projectId,
-		});
-	}, [attachments.pending, caseId, create, moduleId, projectId, values]);
-
-	// 缓存还没读完（挂载后的第一帧）：此时 caseId 还没定，贴图无处归属。
-	// 抽屉本身正在滑入动画里，这一帧看不出区别。
-	if (caseId === null) {
-		return null;
-	}
-
-	const disabled =
-		create.isPending || attachments.uploading || values.name.trim() === "";
+	const handleSubmit = useCaseCreateSubmit({
+		attachments,
+		caseId,
+		create,
+		moduleId,
+		projectId,
+		values,
+	});
 
 	return (
-		<CaseAttachmentProvider value={attachments}>
-			<CaseCreateHeader
-				disabled={disabled}
-				onCancel={onCancel}
-				pending={create.isPending}
-				uploading={attachments.uploading}
-			/>
-			<CaseDraftNotice
-				missing={draft.missing}
-				onDiscard={discard}
-				restoredAt={draft.restoredAt}
-			/>
-			<CaseDraftPicker
-				currentCaseId={caseId}
-				moduleId={moduleId}
-				projectId={projectId}
-			/>
-			<Separator />
-			<div className="min-h-0 flex-1 overflow-y-auto p-4">
-				<CaseForm
-					formId={CASE_CREATE_FORM_ID}
-					onChange={setValues}
-					onSubmit={handleSubmit}
-					values={values}
-				/>
-			</div>
-		</CaseAttachmentProvider>
+		<CaseCreateContent
+			draft={draft}
+			moduleId={moduleId}
+			onCancel={onCancel}
+			onSubmit={handleSubmit}
+			pending={create.isPending}
+			projectId={projectId}
+		/>
 	);
 }

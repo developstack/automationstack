@@ -116,6 +116,30 @@ function useLocalImageUrls() {
 }
 
 /**
+ * 挑出这一批里能上传的，并当场把本地预览挂上（`![](uploading:<token>)` 用的就是
+ * 这个 token）。预检不过的直接 toast 掉，不占一个 job。
+ *
+ * 预检放在插占位**之前**：不然一张 30MB 的原图会先在预览里闪出来再被删掉。
+ * 上传层还会再检一次，但这里已经拦下的根本走不到那儿，不存在重复 toast。
+ *
+ * 超出 `CASE_IMAGE_BATCH_LIMIT` 的部分静默丢掉——与上传层同一个口径。
+ */
+function takePasteJobs(files: File[], actions: LocalUrlActions): PasteJob[] {
+	const jobs: PasteJob[] = [];
+	for (const file of files.slice(0, CASE_IMAGE_BATCH_LIMIT)) {
+		const precheck = precheckCaseImage(file);
+		if (precheck.ok) {
+			const token = crypto.randomUUID();
+			actions.register(token, URL.createObjectURL(file));
+			jobs.push({ file, token });
+		} else {
+			toast.error(`${file.name || FALLBACK_FILE_NAME}：${precheck.reason}`);
+		}
+	}
+	return jobs;
+}
+
+/**
  * 串行跑完这一批。
  *
  * 每张单独调一次 `upload([file])` 而不是一次塞进去一批：批量接口只返回成功的
@@ -225,20 +249,7 @@ export function useCasePasteUpload(
 
 	const uploadPasted = useCallback(
 		(files: File[], target: CasePasteTarget) => {
-			const jobs: PasteJob[] = [];
-			for (const file of files.slice(0, CASE_IMAGE_BATCH_LIMIT)) {
-				// 预检放在插占位**之前**：不然一张 30MB 的原图会先在预览里闪出来
-				// 再被删掉。上传层还会再检一次，但这里已经拦下的不会走到那儿，
-				// 不存在重复 toast。
-				const precheck = precheckCaseImage(file);
-				if (precheck.ok) {
-					const token = crypto.randomUUID();
-					actions.register(token, URL.createObjectURL(file));
-					jobs.push({ file, token });
-				} else {
-					toast.error(`${file.name || FALLBACK_FILE_NAME}：${precheck.reason}`);
-				}
-			}
+			const jobs = takePasteJobs(files, actions);
 			if (jobs.length === 0) {
 				return;
 			}

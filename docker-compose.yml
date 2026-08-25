@@ -6,6 +6,9 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
+        # VITE_SERVER_URL 在构建期就被 Vite 烘进前端产物里，运行时再改环境变量
+        # 对已经发到浏览器的那份 JS 毫无影响——换域名等于重新 build，不是重启。
+        # 默认值与 .github/workflows/ci.yml 的 build-args 保持一致，两处都要改。
         VITE_SERVER_URL: http://localhost:3000
     init: true
     ports:
@@ -14,6 +17,9 @@ services:
       - path: apps/web/.env
         required: false
     environment:
+      # 只作用于 SSR 那一侧（apps/web/src/utils/orpc.ts 里 window === undefined 的分支）：
+      # 容器内直接走 compose 网络找 server，不必绕回宿主机的 localhost:3000。
+      # 浏览器侧仍然用上面那个构建期烘进去的 VITE_SERVER_URL。
       SERVER_URL: http://server:3000
     depends_on:
       server:
@@ -29,10 +35,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      # Nitro 的 SSR 入口冷启动要把整棵 server bundle 读进来，10s 在冷镜像或低配
+      # 机器上会在服务真正起来之前就判死。start_period 期间的失败不会把容器标成
+      # unhealthy，放宽它只推迟「判死」，不推迟「判活」——成功一次就立刻转 healthy。
+      start_period: 30s
     restart: unless-stopped
 
   server:
+    # 显式给 tag：下面的 migrate 直接引用同一个名字复用这份镜像，
+    # 保证跑迁移的二进制和跑服务的二进制永远出自同一次构建。
+    image: automationstack-server:local
     build:
       context: .
       dockerfile: apps/server/Dockerfile
@@ -40,10 +52,19 @@ services:
     ports:
       - "3000:3000"
     env_file:
+      # SESSION_SECRET 这类必需变量从这里来，变量清单见 apps/server/.env.example。
+      # required: false 是为了让「只想起个 postgres」的人不被拦住；代价是文件缺失时
+      # server 会在 env 校验处直接退出，日志里会点名是哪个变量没给。
       - path: apps/server/.env
         required: false
     environment:
+      # 以下两项覆盖 env_file 里的同名值（compose 中 environment 优先级高于 env_file）。
+      #
+      # 部署到真实域名时 CORS_ORIGIN 要改成「浏览器访问 web 的那个 origin」，
+      # 并且必须和 web 的 VITE_SERVER_URL 成对地改：前者填错是浏览器报 CORS，
+      # 后者填错是前端根本请求不到后端，两种症状完全不同但根因是同一处没对齐。
       CORS_ORIGIN: http://localhost:3001
+      # 容器之间走服务名 + 容器内端口 5432，与下面把宿主端口挪到 5433 无关。
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/automationstack
     healthcheck:
       test:
@@ -56,11 +77,54 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      # 启动路径里还有 pg-boss 的 schema 初始化（第一次起会建一整套 pgboss.* 表），
+      # 那一步比 Node 自身的冷启动慢得多，10s 明显偏紧。
+      start_period: 30s
     depends_on:
+      # 迁移跑完再起服务，否则第一批请求会打在一个没有表的库上。
+      migrate:
+        condition: service_completed_successfully
+      # 这一条在 migrate 之后是冗余的，但刻意保留：depends_on 的传递性只保证
+      # 「migrate 启动那一刻 postgres 是健康的」，把门槛写在 server 自己身上，
+      # 读的人不用跳到 migrate 才能推出 server 的前置条件。
       postgres:
         condition: service_healthy
     restart: unless-stopped
+
+  # 一次性迁移任务。仓库里没有任何地方会自动跑迁移——server 的启动路径、两个
+  # Dockerfile、CI 全都不跑——所以少了这个服务，compose 起来就是一个空库。
+  migrate:
+    # 只写 image 不写 build，复用 server 那次构建的产物。
+    # 两边各写一份 build 段会得到两个 tag、两份内容相同的镜像，而且哪天构建参数
+    # 漂了就会出现「迁移用 A 镜像、服务用 B 镜像」这种最难查的不一致。
+    # 代价：单独 `docker compose up migrate` 要求镜像已存在，先跑一次
+    # `docker compose build server` 即可；`docker compose up` 会自动先构建。
+    image: automationstack-server:local
+    init: true
+    # drizzle-kit 从 cwd 找 drizzle.config.ts，而那份配置里的 out 又是相对路径
+    # ./src/migrations，所以必须站在 packages/db 目录里跑，不能用镜像默认的
+    # /app/apps/server。
+    working_dir: /app/packages/db
+    # 不能写 `pnpm db:migrate`：server 的 Dockerfile runner 阶段是
+    # `COPY --from=builder /app /app`，只搬了 /app，builder 里 `npm install -g pnpm`
+    # 装进 /usr/local 的那份并没有跟过来。直接调 node_modules 里的 bin 才存在。
+    # （drizzle-kit 是 packages/db 的 devDependency，但 Dockerfile 里 pnpm install
+    # 不带 --prod、且 ENV NODE_ENV=production 写在 install 之后，devDeps 会被装上。）
+    command: ["/app/packages/db/node_modules/.bin/drizzle-kit", "migrate"]
+    environment:
+      # drizzle.config.ts 里那句 dotenv.config({ path: "../../apps/server/.env" })
+      # 没有传 override，dotenv 17 的默认行为就是「已存在的 process.env 一律不覆盖」，
+      # 所以这里注入的值一定胜出。何况 .dockerignore 把 **/.env 挡在镜像之外，
+      # 容器里根本没有那个文件，dotenv 只会 ENOENT 静默返回——DATABASE_URL
+      # 有且只有这一个来源。
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/automationstack
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # 引号不能省：YAML 里裸的 no 会被解析成布尔 false，compose 只接受字符串 "no"。
+    # 迁移是一次性任务，跑完就该退出；被重启策略反复拉起来既无意义，也会让
+    # 上面 server 依赖的 service_completed_successfully 永远等不到。
+    restart: "no"
 
   postgres:
     image: postgres:18
@@ -68,10 +132,23 @@ services:
     environment:
       POSTGRES_DB: automationstack
       POSTGRES_USER: postgres
+      # ⚠️ 生产环境必须在仓库根目录的 .env 里给 POSTGRES_PASSWORD 一个真实值。
+      # 这里的 password 只是让本地 `docker compose up` 开箱即用的兜底。
+      # 注意它同时被拼进 server 和 migrate 的 DATABASE_URL，靠的是同一个
+      # ${POSTGRES_PASSWORD} 展开，所以只改根 .env 一处就够，别去改字面量。
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
     ports:
-      - "5432:5432"
+      # 宿主机映射到 5433 而不是 5432：开发机上 Homebrew 装的 Postgres 常年占着
+      # 5432，撞上去要么容器起不来，要么你以为连的是容器、其实连的是本机那个库。
+      # 容器内仍然监听 5432，server / migrate 走 postgres:5432 完全不受影响；
+      # 只有宿主机上的 psql、drizzle studio、apps/server/.env 要连容器库时用 5433。
+      - "5433:5432"
     volumes:
+      # postgres:18 起 PGDATA 改成了版本化路径 /var/lib/postgresql/18/docker，
+      # 官方镜像的 VOLUME 声明也随之挪到父目录 /var/lib/postgresql。
+      # 所以这里挂父目录是对的：沿用 17 及以前那套 /var/lib/postgresql/data
+      # 在 18 上会挂到一个 PGDATA 之外的空目录，数据一次都不会持久化，
+      # 而且现象是「容器重建后库是空的」，不会有任何报错提示你挂错了。
       - automationstack_postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]

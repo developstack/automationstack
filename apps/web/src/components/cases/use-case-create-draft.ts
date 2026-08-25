@@ -15,17 +15,14 @@
  * 现在只有 URL 上带着 `?draft=<caseId>`（侧栏清单/抽屉顶部提示里的「继续编辑」）
  * 才恢复那一份，其余情况一律是一张空表单 + 一个全新的 caseId。
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type {
-	CaseDraft,
-	CaseDraftAttachment,
-} from "@/components/cases/case-draft-parse";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-	clearCaseDraft,
-	readCaseDraft,
-	writeCaseDraft,
-} from "@/components/cases/case-draft-storage";
-import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
+	type DraftSession,
+	freshSession,
+	openDraftSession,
+} from "@/components/cases/case-create-draft-session";
+import type { CaseDraftAttachment } from "@/components/cases/case-draft-parse";
+import { clearCaseDraft } from "@/components/cases/case-draft-storage";
 import {
 	type CaseFormValues,
 	emptyCaseFormValues,
@@ -34,98 +31,19 @@ import {
 	type CaseDraftAttachments,
 	useCaseDraftAttachments,
 } from "@/components/cases/use-case-draft-attachments";
-
-/**
- * 回写的防抖窗口。取 500ms 而不是更短：正文是一个字一个字打出来的，
- * 每次按键都 `JSON.stringify` 整份草稿再写一次 localStorage，
- * 会在长正文上把主线程按秒卡住（localStorage 的写是同步的）。
- */
-const DRAFT_WRITE_DEBOUNCE_MS = 500;
+import { useDraftWrite } from "@/components/cases/use-case-draft-write";
 
 /** 模块级常量：空清单要保持同一个引用，否则每次渲染都算「换了一份草稿」。 */
 const NO_ATTACHMENTS: readonly CaseDraftAttachment[] = [];
 
-/** 这一刻该对 localStorage 做的事。 */
-type DraftWrite =
-	| { draft: Omit<CaseDraft, "savedAt">; kind: "write" }
-	/**
-	 * 表单被清空了：主动删掉那条记录，别留一份「恢复出来什么都没有」的草稿。
-	 * 带上 caseId 是因为键按它算——键改成 `{projectId}.{caseId}` 之后，
-	 * 光有 projectId 已经指不到任何一条记录了。
-	 */
-	| { caseId: string; kind: "clear" }
-	/** caseId 还没就绪，或已经保存成功——这条路上不该再碰存储。 */
-	| { kind: "idle" };
-
 /**
- * `{ kind: "idle" }` 的指纹。防抖 effect 只以指纹为输入（理由见 `useDraftPersist`），
- * 于是「要不要排计时器」也从指纹上读，而不是再去看一眼 `write` 那个每渲染都新的对象。
- * 万一将来 idle 变体多了字段、这个常量对不上了，后果也只是白排一个计时器——
- * `flush` 自己对 idle 是空操作。
+ * 清掉这次会话在缓存里的那条记录。caseId 还没就绪时（挂载后的第一帧）什么都
+ * 不做——键按 caseId 算，没有它就指不到任何一条记录，见 `case-draft-storage.ts`。
  */
-const IDLE_FINGERPRINT = JSON.stringify({ kind: "idle" });
-
-/**
- * 防抖回写 + **卸载前 flush**。
- *
- * flush 不是锦上添花：用户打完最后一个字就按 Esc 关抽屉，是个远比 500ms 短的
- * 动作。没有它，那句话就正好落在防抖窗口里被 clearTimeout 吃掉——
- * 而这恰恰是整个草稿缓存要救的场景。
- */
-function useDraftPersist(write: DraftWrite, projectId: string): void {
-	// 指纹用来当 effect 的依赖：`write` 每次渲染都是新对象，直接当依赖会让
-	// 防抖计时器在每一次无关重渲时重置，长时间打字反而一次都写不进去。
-	const fingerprint = JSON.stringify(write);
-	// 卸载时的 flush 读不到 state 的最新值，只能靠 ref 转发。
-	const latest = useRef({ projectId, write });
-	latest.current = { projectId, write };
-
-	const flush = useCallback(() => {
-		const { projectId: latestProjectId, write: latestWrite } = latest.current;
-		if (latestWrite.kind === "write") {
-			writeCaseDraft(latestProjectId, latestWrite.draft);
-		} else if (latestWrite.kind === "clear") {
-			clearCaseDraft(latestProjectId, latestWrite.caseId);
-		}
-	}, []);
-
-	useEffect(() => {
-		if (fingerprint === IDLE_FINGERPRINT) {
-			return;
-		}
-		const timer = window.setTimeout(flush, DRAFT_WRITE_DEBOUNCE_MS);
-		return () => window.clearTimeout(timer);
-	}, [fingerprint, flush]);
-
-	// 卸载 flush 单独一个 effect（依赖为空），否则内容一变就会连带触发一次。
-	useEffect(() => flush, [flush]);
-}
-
-interface DraftSession {
-	caseId: string;
-	/**
-	 * URL 上指名要恢复的那份草稿**没找到**（多半是在别处/别的标签页删掉了）。
-	 * 必须报出去让界面说一句：静默给一张空表单，用户会以为草稿丢了。
-	 */
-	missing: boolean;
-	/** 从缓存恢复出来的对照表；新草稿是空清单。 */
-	restored: readonly CaseDraftAttachment[];
-	/** 恢复自缓存时是那份草稿的写入时刻；全新草稿为 null。 */
-	restoredAt: number | null;
-}
-
-/**
- * `restored` 刻意每次都造一个**新数组**而不是复用 `NO_ATTACHMENTS`：
- * 下游按这个引用的变化来重置待登记清单，共用同一个常量会让
- * 「刚贴完图就点放弃草稿」那一次重置不发生，刚放弃掉的图仍然会被登记进库。
- */
-function freshSession(missing = false): DraftSession {
-	return {
-		caseId: crypto.randomUUID(),
-		missing,
-		restored: [],
-		restoredAt: null,
-	};
+function clearDraftIfAny(projectId: string, caseId: string | null): void {
+	if (caseId !== null) {
+		clearCaseDraft(projectId, caseId);
+	}
 }
 
 export interface CaseCreateDraft {
@@ -141,6 +59,23 @@ export interface CaseCreateDraft {
 	restoredAt: number | null;
 	setValues: (values: CaseFormValues) => void;
 	values: CaseFormValues;
+}
+
+/**
+ * 会话上那三个对外可见的字段，连同「会话还没就绪」时各自的兜底值。
+ *
+ * 挑出来单独一个函数，是因为它们其实是同一件事（这次会话是哪一份）的三个投影：
+ * 三行 `session?.x ?? y` 摊在 return 里，会把这个 hook 的主线——读缓存 → 防抖
+ * 回写 → 放弃/保存——淹在兜底表达式中间。
+ */
+function sessionFields(
+	session: DraftSession | null
+): Pick<CaseCreateDraft, "caseId" | "missing" | "restoredAt"> {
+	return {
+		caseId: session?.caseId ?? null,
+		missing: session?.missing ?? false,
+		restoredAt: session?.restoredAt ?? null,
+	};
 }
 
 export function useCaseCreateDraft(
@@ -164,61 +99,35 @@ export function useCaseCreateDraft(
 	 * 就是「每次打开抽屉跑一次」。
 	 */
 	useEffect(() => {
-		if (draftId === undefined) {
-			setSession(freshSession());
-			return;
+		const opened = openDraftSession(projectId, draftId);
+		setSession(opened.session);
+		// 只有真恢复出一份草稿时才动表单，另外两条路必须让空表单保持原样，
+		// 理由见 `case-create-draft-session.ts` 里 OpenedDraft 那段。
+		if (opened.values !== null) {
+			setValues(opened.values);
 		}
-		const stored = readCaseDraft(projectId, draftId);
-		if (stored === null) {
-			setSession(freshSession(true));
-			return;
-		}
-		setSession({
-			caseId: stored.caseId,
-			missing: false,
-			restored: stored.attachments,
-			restoredAt: stored.savedAt,
-		});
-		setValues(stored.values);
 	}, [draftId, projectId]);
 
+	const currentCaseId = session?.caseId ?? null;
+
 	const attachments = useCaseDraftAttachments({
-		caseId: session?.caseId ?? null,
+		caseId: currentCaseId,
 		projectId,
 		restored: session?.restored ?? NO_ATTACHMENTS,
 	});
 
-	const write = useMemo<DraftWrite>(() => {
-		if (session === null || saved) {
-			return { kind: "idle" };
-		}
-		// 一个字没改、一张图没贴：别占着一条记录。否则用户每开一次新建抽屉
-		// 就在侧栏的「未完成草稿」里多攒一条空垃圾。
-		if (
-			!isCaseFormDirty(values, baseline) &&
-			attachments.pending.length === 0
-		) {
-			return { caseId: session.caseId, kind: "clear" };
-		}
-		return {
-			draft: {
-				attachments: [...attachments.pending],
-				caseId: session.caseId,
-				moduleId,
-				values,
-			},
-			kind: "write",
-		};
-	}, [attachments.pending, baseline, moduleId, saved, session, values]);
-
-	useDraftPersist(write, projectId);
-
-	const currentCaseId = session?.caseId ?? null;
+	useDraftWrite({
+		baseline,
+		moduleId,
+		pending: attachments.pending,
+		projectId,
+		saved,
+		session,
+		values,
+	});
 
 	const discard = useCallback(() => {
-		if (currentCaseId !== null) {
-			clearCaseDraft(projectId, currentCaseId);
-		}
+		clearDraftIfAny(projectId, currentCaseId);
 		setValues(emptyCaseFormValues());
 		// 换一个全新的 caseId：旧 id 的那批图已经不再被任何正文引用，
 		// 继续沿用只会让它们混进下一次保存的待登记清单里。
@@ -227,19 +136,15 @@ export function useCaseCreateDraft(
 
 	const forget = useCallback(() => {
 		setSaved(true);
-		if (currentCaseId !== null) {
-			clearCaseDraft(projectId, currentCaseId);
-		}
+		clearDraftIfAny(projectId, currentCaseId);
 	}, [currentCaseId, projectId]);
 
 	return {
 		attachments,
-		caseId: currentCaseId,
 		discard,
 		forget,
-		missing: session?.missing ?? false,
-		restoredAt: session?.restoredAt ?? null,
 		setValues,
 		values,
+		...sessionFields(session),
 	};
 }

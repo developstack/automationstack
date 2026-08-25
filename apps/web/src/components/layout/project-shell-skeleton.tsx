@@ -152,6 +152,14 @@ export function ProjectShellSkeleton() {
 							{/* p-4 / gap-3 与 CaseListView 的 main 同款，内容到达时首行不位移 */}
 							<div className="flex min-h-0 flex-col gap-3 p-4">
 								<CaseToolbarSkeleton />
+								{/*
+								 * 吃默认行数（= CASE_PAGE_SIZE），刻意与页面级那份
+								 * case-list-skeleton.tsx 保持同值：冷启动进项目时先显示这份
+								 * 父路由骨架、紧接着才轮到子路由那份，两份行数不同的话灰条会
+								 * 原地跳一次——这正是本文件与那份「尺寸刻意保持一致」的约定。
+								 * 20 行溢出可视区也不要紧：外层那道 overflow-hidden 会按内容区
+								 * 边界裁掉，反而比 6 行下面留一大片空白更像一张真表。
+								 */}
 								<CaseTableSkeleton />
 							</div>
 						</div>

@@ -68,15 +68,20 @@ export async function findInvalidRunCaseIds(
 }
 
 /**
- * 快照行：`RunCaseVerdictSnapshot`（审计流水要的那三列）**加**一列 `executedVia`。
+ * 快照行：`RunCaseVerdictSnapshot`**加**一列 `executedVia`，且这一列**必有**。
  *
- * 加在这里而不是去扩 `RunCaseVerdictSnapshot`，是因为 `executedVia` 与审计流水无关——
- * 它只被自动化写路径用来判断「这行是不是人打的、能不能覆盖」（`applyAutomationVerdicts`
- * 的 `overwriteManual`）。塞进流水那个类型里，`buildRunCaseEventRows` 那边就会多出
- * 一个它永远不看的字段，下一个人会以为流水记了执行来源。
+ * 这条 SELECT 查回来的 `executedVia` 有两个读者，都在自动化写路径上：D23 的覆盖
+ * 判据（「这行是不是人打的、能不能覆盖」，见 `partitionAutomationTargets`），
+ * 以及审计流水里那条唯一的例外（结论没变但来源从 `manual` 翻成 `automation` 时
+ * 照记一行，见 `buildRunCaseEventRows` 的 `automationTakeover`）。
  *
- * 结构上是超集，因此这一列不会影响既有的手工路径：`buildRunCaseEventRows`
- * 逐字段显式构造行，多带的列进不了 INSERT。
+ * 流水那个类型里的 `executedVia` 是**可选**的——手工单条路径不查这一列——
+ * 而本类型把它收紧成必有：自动化路径两处判据都指望它有值，漏了不会报错，
+ * 只会静默地少跳过一行、或者少记一条流水。
+ *
+ * 结构上仍是超集，因此这一列不会影响既有的手工路径：`buildRunCaseEventRows`
+ * 逐字段显式构造行，多带的列进不了 INSERT；而那条例外要靠调用点显式打开开关，
+ * 光是快照里带着这一列不会让手工批量的流水语义变样。
  */
 export interface RunCaseVerdictSnapshotRow extends RunCaseVerdictSnapshot {
 	executedVia: TestRunExecutedVia | null;

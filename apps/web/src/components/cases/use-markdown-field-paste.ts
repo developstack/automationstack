@@ -108,6 +108,60 @@ function replaceRef(
 	}
 }
 
+/**
+ * 上传编排层看到的那两个口子（`CasePasteTarget`）。
+ *
+ * 收的是 `viewRef` 而不是某一个 view：一次上传要几百毫秒到几秒，这期间编辑器
+ * 完全可能被销毁再重建，每次写入都得现问一次「此刻活着的是哪个视图」，
+ * 理由见文件头那两段。
+ */
+function pasteTarget(
+	viewRef: RefObject<EditorView | null>,
+	textareaRef: RefObject<HTMLTextAreaElement | null>,
+	writer: FieldWriter
+): CasePasteTarget {
+	return {
+		insert: (text) =>
+			insertAtCaret(viewRef.current, textareaRef.current, writer, text),
+		replace: (from, to) => replaceRef(viewRef.current, writer, from, to),
+	};
+}
+
+/**
+ * 这次粘贴里真正要接管的那些图。
+ *
+ * 粘一段纯文本、或粘一个 zip，`clipboardData.files` 里要么是空的要么不是图——
+ * 那时必须原样交回浏览器默认行为，否则用户会发现「在这个框里 Ctrl+V 粘不进
+ * 任何东西」。
+ */
+function pastedImages(files: File[]): File[] {
+	return files.filter((file) => file.type.startsWith(IMAGE_MIME_PREFIX));
+}
+
+/**
+ * 字段的写入通道。
+ *
+ * 刻意**不**判「字段是否还挂着」：上传回来时这个字段可能已经没了（抽屉关了、
+ * 这一步被删了），但那两种情况下 `onChange` 本身就是安全的空操作——React 19
+ * 对已卸载组件的 setState 不再告警，而「按 id 改某一步」在那一步已被删掉时
+ * 匹配不到任何一行。加一个 mounted ref 反而要在渲染期维护一份生命周期状态。
+ *
+ * 两个参数都是 ref 而不是值：这份通道整个会话只造一次（见调用处的空依赖），
+ * 直接闭包住 `value` / `onChange` 会让它永远停在第一帧那两个。
+ */
+function fieldWriter(
+	textRef: RefObject<FieldText>,
+	changeRef: RefObject<(value: string) => void>
+): FieldWriter {
+	return {
+		current: () => textRef.current.pending ?? textRef.current.seen,
+		write: (next) => {
+			textRef.current.pending = next;
+			changeRef.current(next);
+		},
+	};
+}
+
 export interface MarkdownFieldPasteOptions {
 	onChange: (value: string) => void;
 	/** 未聚焦态那个原生 textarea，用来读插入位置。 */
@@ -142,29 +196,15 @@ export function useMarkdownFieldPaste(
 		textRef.current = { pending: null, seen: value };
 	}
 
-	/**
-	 * 刻意**不**判「字段是否还挂着」：上传回来时这个字段可能已经没了（抽屉关了、
-	 * 这一步被删了），但那两种情况下 `onChange` 本身就是安全的空操作——React 19
-	 * 对已卸载组件的 setState 不再告警，而「按 id 改某一步」在那一步已被删掉时
-	 * 匹配不到任何一行。加一个 mounted ref 反而要在渲染期维护一份生命周期状态。
-	 */
+	// 只造一次：`target` 和所有已经在飞的上传都捏着这一份，换个引用等于让它们
+	// 往一条过期的通道里写。两个 ref 的身份本来就恒定，空依赖是对的。
 	const writer = useMemo<FieldWriter>(
-		() => ({
-			current: () => textRef.current.pending ?? textRef.current.seen,
-			write: (next) => {
-				textRef.current.pending = next;
-				changeRef.current(next);
-			},
-		}),
+		() => fieldWriter(textRef, changeRef),
 		[]
 	);
 
 	const target = useMemo<CasePasteTarget>(
-		() => ({
-			insert: (text) =>
-				insertAtCaret(viewRef.current, textareaRef.current, writer, text),
-			replace: (from, to) => replaceRef(viewRef.current, writer, from, to),
-		}),
+		() => pasteTarget(viewRef, textareaRef, writer),
 		[textareaRef, writer]
 	);
 
@@ -173,11 +213,7 @@ export function useMarkdownFieldPaste(
 			if (uploadPasted === null) {
 				return false;
 			}
-			// 只在真的有图片时接管。粘一段纯文本、或粘一个 zip，clipboardData.files
-			// 里要么是空的要么不是图，这次粘贴原样交回浏览器。
-			const images = files.filter((file) =>
-				file.type.startsWith(IMAGE_MIME_PREFIX)
-			);
+			const images = pastedImages(files);
 			if (images.length === 0) {
 				return false;
 			}

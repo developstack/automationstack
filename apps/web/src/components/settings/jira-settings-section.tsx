@@ -5,9 +5,13 @@
  * 空表单，不报错、不出现异常态、也不影响页面其它任何部分。服务端为此把
  * 「没配」与「配了但解不开」在类型上分成了两件事，这里照着分开渲染——
  * 把前者也画成红条，等于告诉每一个没接 Jira 的团队他们坏了。
+ *
+ * 六格字段本身在 `jira-settings-fields.tsx`；留在这里的是表单的骨架与它的
+ * 两个 hook 调用。两个 hook 必须在这一层、按这个顺序调用：`useFieldHandlers`
+ * 吃的是 `useJiraConfigForm` 给出的 `patch`，把它们中的任何一个挪进子组件，
+ * 表单实例就会跟着子树的挂载/卸载走，正在输入的内容会在重挂时整份丢掉。
  */
 import type { JiraConfigState } from "@automationstack/api/routers/jira";
-import { env } from "@automationstack/env/web";
 import { Button } from "@automationstack/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { TriangleAlertIcon } from "lucide-react";
@@ -15,15 +19,9 @@ import { useCallback } from "react";
 
 import { JiraConnectionResult } from "@/components/settings/jira-connection-result";
 import {
-	JiraSecretField,
-	JiraTextField,
-} from "@/components/settings/jira-fields";
-import {
-	buildJiraWebhookUrl,
-	type JiraFormValues,
-	MASKED_SECRET_PLACEHOLDER,
-} from "@/components/settings/jira-form-values";
-import { JiraWebhookUrl } from "@/components/settings/jira-webhook-url";
+	JiraConfigFields,
+	useFieldHandlers,
+} from "@/components/settings/jira-settings-fields";
 import {
 	SettingsFieldsSkeleton,
 	SettingsSection,
@@ -39,13 +37,6 @@ const SECTION_DESCRIPTION =
 
 /** 骨架占位：站点 / 邮箱 / Token / project key / issue 类型。 */
 const FIELD_COUNT = 5;
-
-const SITE_URL_ID = "settings-jira-site-url";
-const EMAIL_ID = "settings-jira-email";
-const API_TOKEN_ID = "settings-jira-api-token";
-const PROJECT_KEY_ID = "settings-jira-project-key";
-const ISSUE_TYPE_ID = "settings-jira-issue-type";
-const WEBHOOK_SECRET_ID = "settings-jira-webhook-secret";
 
 function CredentialProblemNotice({ reason }: { reason: string }) {
 	const detail =
@@ -71,45 +62,37 @@ function CredentialProblemNotice({ reason }: { reason: string }) {
 	);
 }
 
-/** 五个 onChange 都要稳定引用：JSX 上现造闭包会让每次输入都重挂控件。 */
-function useFieldHandlers(patch: (next: Partial<JiraFormValues>) => void) {
-	return {
-		apiToken: useCallback((apiToken: string) => patch({ apiToken }), [patch]),
-		defaultIssueType: useCallback(
-			(defaultIssueType: string) => patch({ defaultIssueType }),
-			[patch]
-		),
-		email: useCallback((email: string) => patch({ email }), [patch]),
-		projectKey: useCallback(
-			(projectKey: string) => patch({ projectKey }),
-			[patch]
-		),
-		siteUrl: useCallback((siteUrl: string) => patch({ siteUrl }), [patch]),
-		webhookSecret: useCallback(
-			(webhookSecret: string) => patch({ webhookSecret }),
-			[patch]
-		),
-	};
-}
-
-function apiTokenHint(state: JiraConfigState): string {
-	if (!state.secretStorageAvailable) {
-		return "服务端未配置 SECRET_ENCRYPTION_KEY，API Token 无法加密落盘，因此这里暂时不能填写；请先在服务端设置该密钥（openssl rand -base64 32）后刷新本页。";
-	}
-	if (state.config?.hasApiToken === true) {
-		return "已存有 API Token，内容不会回显。留空保存即保持当前 Token 不变。";
-	}
-	return "首次接入必须填写。在 Atlassian 账号的「安全」设置里创建 API Token。";
-}
-
-function webhookSecretHint(state: JiraConfigState, cleared: boolean): string {
-	if (cleared) {
-		return "保存后将清空密钥，issue 状态同步随即停止工作（webhook 端点会拒绝所有请求）。";
-	}
-	if (state.config?.hasWebhookSecret === true) {
-		return "已存有密钥，内容不会回显。留空保存即保持不变。";
-	}
-	return "没有密钥时 webhook 端点会拒绝一切请求，状态同步不工作。填一段随机串，并在 Jira 的 webhook 配置里填同一串。";
+/**
+ * 「测试连接」与「保存」并排在表单末尾。
+ *
+ * 两颗按钮的禁用条件不对称，是有意的：保存进行中连测试也一并禁掉，因为保存
+ * 改的正是自检要读的那份配置，此时再发一次自检，回来的结果说的是改之前还是
+ * 改之后都讲不清；反过来自检是只读的，测试进行中不挡保存。
+ */
+function JiraConfigFormActions({
+	onTest,
+	pending,
+	testPending,
+}: {
+	onTest: () => void;
+	pending: boolean;
+	testPending: boolean;
+}) {
+	return (
+		<div className="flex justify-end gap-2">
+			<Button
+				disabled={pending || testPending}
+				onClick={onTest}
+				type="button"
+				variant="outline"
+			>
+				{testPending ? "测试中…" : "测试连接"}
+			</Button>
+			<Button disabled={pending} type="submit">
+				{pending ? "保存中…" : "保存"}
+			</Button>
+		</div>
+	);
 }
 
 function JiraConfigFormView({
@@ -122,9 +105,6 @@ function JiraConfigFormView({
 	const form = useJiraConfigForm(projectId, state);
 	const handlers = useFieldHandlers(form.patch);
 	const { errors, submitted, values } = form;
-	// 提交过一次之后才标红；之前只做校验不显示
-	const shown = (message: string | null) => (submitted ? message : null);
-	const blocked = !state.secretStorageAvailable;
 
 	return (
 		// noValidate：原生校验气泡是英文的，跟这里的中文内联提示对不上
@@ -136,106 +116,23 @@ function JiraConfigFormView({
 			{state.credentialProblem === null ? null : (
 				<CredentialProblemNotice reason={state.credentialProblem} />
 			)}
-			<JiraTextField
-				error={shown(errors.siteUrl)}
-				id={SITE_URL_ID}
-				label="站点 URL"
-				onValueChange={handlers.siteUrl}
+			<JiraConfigFields
+				errors={errors}
+				handlers={handlers}
+				onToggleClear={form.toggleClearWebhookSecret}
 				pending={form.pending}
-				placeholder="https://your-team.atlassian.net"
-				type="url"
-				value={values.siteUrl}
-			/>
-			<JiraTextField
-				error={shown(errors.email)}
-				id={EMAIL_ID}
-				label="邮箱"
-				onValueChange={handlers.email}
-				pending={form.pending}
-				placeholder="you@example.com"
-				type="email"
-				value={values.email}
-			/>
-			<JiraSecretField
-				error={shown(errors.apiToken)}
-				hint={apiTokenHint(state)}
-				id={API_TOKEN_ID}
-				label="API Token"
-				onValueChange={handlers.apiToken}
-				pending={form.pending}
-				placeholder={
-					state.config?.hasApiToken === true
-						? MASKED_SECRET_PLACEHOLDER
-						: "粘贴 Atlassian 签发的 API Token"
-				}
-				storageBlocked={blocked}
-				value={values.apiToken}
-			/>
-			<JiraTextField
-				error={shown(errors.projectKey)}
-				id={PROJECT_KEY_ID}
-				label="project key"
-				onValueChange={handlers.projectKey}
-				pending={form.pending}
-				placeholder="PAY"
-				type="text"
-				value={values.projectKey}
-			/>
-			<JiraTextField
-				error={shown(errors.defaultIssueType)}
-				id={ISSUE_TYPE_ID}
-				label="默认 issue 类型"
-				onValueChange={handlers.defaultIssueType}
-				pending={form.pending}
-				placeholder="Bug"
-				type="text"
-				value={values.defaultIssueType}
-			/>
-			{state.config === null ? null : (
-				<JiraWebhookUrl
-					url={buildJiraWebhookUrl(
-						env.VITE_SERVER_URL,
-						state.config.webhookPath
-					)}
-				/>
-			)}
-			<JiraSecretField
-				clearRequested={values.clearWebhookSecret}
-				error={null}
-				hint={webhookSecretHint(state, values.clearWebhookSecret)}
-				id={WEBHOOK_SECRET_ID}
-				label="Webhook 密钥"
-				onToggleClear={
-					state.config?.hasWebhookSecret === true
-						? form.toggleClearWebhookSecret
-						: undefined
-				}
-				onValueChange={handlers.webhookSecret}
-				pending={form.pending}
-				placeholder={
-					state.config?.hasWebhookSecret === true
-						? MASKED_SECRET_PLACEHOLDER
-						: "自己生成一段随机串"
-				}
-				storageBlocked={false}
-				value={values.webhookSecret}
+				state={state}
+				submitted={submitted}
+				values={values}
 			/>
 			{form.testResult === null ? null : (
 				<JiraConnectionResult result={form.testResult} />
 			)}
-			<div className="flex justify-end gap-2">
-				<Button
-					disabled={form.pending || form.testPending}
-					onClick={form.handleTest}
-					type="button"
-					variant="outline"
-				>
-					{form.testPending ? "测试中…" : "测试连接"}
-				</Button>
-				<Button disabled={form.pending} type="submit">
-					{form.pending ? "保存中…" : "保存"}
-				</Button>
-			</div>
+			<JiraConfigFormActions
+				onTest={form.handleTest}
+				pending={form.pending}
+				testPending={form.testPending}
+			/>
 		</form>
 	);
 }

@@ -13,6 +13,8 @@
  * 已经在测试任务里的用例仍会出现在选择器里——后端 `addCases` 对重复项是幂等的
  * （`onConflictDoNothing`），而把它们过滤掉需要在这里再维护一份「已存在集合」，
  * 用户反而会疑惑「我明明记得有这条，怎么找不到了」。
+ *
+ * 选中集、守卫与提交在 `add-run-cases-draft.ts`（见 eslint 的 50 行函数上限）。
  */
 import { Button } from "@automationstack/ui/components/button";
 import { Separator } from "@automationstack/ui/components/separator";
@@ -23,19 +25,13 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@automationstack/ui/components/sheet";
-import { useCallback, useState } from "react";
 
+import { useAddRunCasesDraft } from "@/components/test-runs/add-run-cases-draft";
 import { CasePicker } from "@/components/test-runs/case-picker";
-import { isTestRunDraftDirty } from "@/components/test-runs/test-run-draft";
-import { useAddRunCases } from "@/components/test-runs/use-test-run-mutations";
 import {
 	UnsavedChangesDialog,
-	useUnsavedCloseGuard,
 	WIDE_SHEET_CONTENT_CLASS,
 } from "@/components/wide-sheet-shell";
-
-/** 这个抽屉只挑用例，名称与说明恒为空，复用同一份草稿判定。 */
-const NO_TEXT_FIELDS = { description: "", name: "" };
 
 interface AddCasesHeaderProps {
 	blocked: boolean;
@@ -86,47 +82,19 @@ export function AddRunCasesSheet({
 	projectId,
 	runId,
 }: AddRunCasesSheetProps) {
-	/*
-	 * 选中集留在抽屉组件里（内容仍按 open 卸载）：守卫要在关闭**之前**知道
-	 * 有没有勾过东西，挑了半天的一批用例不能被一次误点抹掉。
-	 */
-	const [caseIds, setCaseIds] = useState<string[]>([]);
-
-	const close = useCallback(() => {
-		setCaseIds([]);
-		onClose();
-	}, [onClose]);
-	const add = useAddRunCases(close);
-	const guard = useUnsavedCloseGuard(
-		isTestRunDraftDirty(
-			{ ...NO_TEXT_FIELDS, caseIds },
-			{ ...NO_TEXT_FIELDS, caseIds: [] }
-		),
-		close
-	);
-	const requestClose = useCallback(
-		() => guard.handleOpenChange(false),
-		[guard.handleOpenChange]
-	);
-
-	const blocked = caseIds.length === 0 || add.isPending;
-	const handleSubmit = useCallback(() => {
-		if (!blocked) {
-			add.mutate({ caseIds, runId });
-		}
-	}, [add, blocked, caseIds, runId]);
+	const draft = useAddRunCasesDraft({ onClose, runId });
 
 	return (
 		<>
-			<Sheet onOpenChange={guard.handleOpenChange} open={open}>
+			<Sheet onOpenChange={draft.guard.handleOpenChange} open={open}>
 				<SheetContent className={WIDE_SHEET_CONTENT_CLASS} side="right">
 					{open ? (
 						<>
 							<AddCasesHeader
-								blocked={blocked}
-								onCancel={requestClose}
-								onSubmit={handleSubmit}
-								pending={add.isPending}
+								blocked={draft.blocked}
+								onCancel={draft.requestClose}
+								onSubmit={draft.handleSubmit}
+								pending={draft.pending}
 							/>
 							<Separator />
 							{/*
@@ -135,9 +103,9 @@ export function AddRunCasesSheet({
 							 */}
 							<div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
 								<CasePicker
-									onChange={setCaseIds}
+									onChange={draft.setCaseIds}
 									projectId={projectId}
-									selectedIds={caseIds}
+									selectedIds={draft.caseIds}
 								/>
 							</div>
 						</>
@@ -147,9 +115,9 @@ export function AddRunCasesSheet({
 			<UnsavedChangesDialog
 				confirmLabel="放弃并关闭"
 				description="这个抽屉里勾中的用例还没有追加进去，关掉就要重新挑一遍。"
-				onCancel={guard.cancelClose}
-				onConfirm={guard.confirmClose}
-				open={guard.confirming}
+				onCancel={draft.guard.cancelClose}
+				onConfirm={draft.guard.confirmClose}
+				open={draft.guard.confirming}
 				title="放弃已勾选的用例？"
 			/>
 		</>

@@ -20,43 +20,22 @@
 import { Label } from "@automationstack/ui/components/label";
 import { Textarea } from "@automationstack/ui/components/textarea";
 import { ClientOnly } from "@tanstack/react-router";
-import {
-	type ChangeEvent,
-	lazy,
-	type FocusEvent as ReactFocusEvent,
-	type MouseEvent as ReactMouseEvent,
-	Suspense,
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
-
+import { type ChangeEvent, lazy, Suspense, useCallback, useState } from "react";
 import { useFocusOut } from "@/components/cases/markdown-field-focus";
 import { MarkdownPreviewPane } from "@/components/cases/markdown-preview-pane";
-import { useMarkdownFieldPaste } from "@/components/cases/use-markdown-field-paste";
+import {
+	type FieldActivation,
+	useFieldActivation,
+} from "@/components/cases/use-markdown-field-activation";
+import {
+	type MarkdownFieldPaste,
+	useMarkdownFieldPaste,
+} from "@/components/cases/use-markdown-field-paste";
 
 const LazyMarkdownCodeEditor = lazy(async () => {
 	const editorModule = await import("@/components/cases/markdown-code-editor");
 	return { default: editorModule.MarkdownCodeEditor };
 });
-
-let chunkRequested = false;
-
-/**
- * 字段一挂载就把编辑器 chunk 预取下来。等到用户点进输入框才开始下载的话，
- * 中间那一帧会看到 Suspense 兜底、焦点也会掉；预取后聚焦切换是同步的。
- */
-function preloadEditorChunk() {
-	if (chunkRequested) {
-		return;
-	}
-	chunkRequested = true;
-	import("@/components/cases/markdown-code-editor").catch(() => {
-		// 预取失败无所谓：真正聚焦时 lazy() 会自己再试一次。
-		chunkRequested = false;
-	});
-}
 
 /** 编辑器就位前的占位：与编辑器同样的外框，避免高度塌陷。 */
 const EDITOR_FALLBACK = (
@@ -117,67 +96,71 @@ interface MarkdownFieldProps extends MarkdownFieldControlProps {
 	label?: string;
 }
 
+interface MarkdownFieldInputProps {
+	activation: FieldActivation;
+	ariaLabel: string;
+	id?: string;
+	/** 交给编辑器的写回口；textarea 那一路走 onTextareaChange。 */
+	onChange: (value: string) => void;
+	onTextareaChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+	paste: MarkdownFieldPaste;
+	placeholder: string;
+	value: string;
+}
+
 /**
- * 字段的三态。用状态机而不是「一个 editing 布尔 + 一个抑制标志的 ref」：
- * Esc 退出后要把焦点还给 textarea，而那次 focus() 不能又把编辑器拉起来，
- * 所以「刚按过 Esc」本身就是一个态。
+ * 输入控件本体：编辑器 ⇄ textarea 的那次切换。
+ *
+ * ⚠️ 必须定义在**模块顶层**。写成 <MarkdownFieldControl> 里的内嵌组件，
+ * 每次重渲都是一个新的函数引用，React 会把它当成另一种元素整棵拆掉重建——
+ * 打字触发的每一次重渲都会销毁 CodeMirror 再新建一个，焦点和光标当场就没了。
+ *
+ * 它自己是一个**类型固定**的元素，容器那层因此可以随预览开关自由改 className、
+ * 加减后面那个兄弟节点，都不会碰到这棵子树（理由见 <MarkdownFieldControl>
+ * 返回值上方那段注释）。
  */
-type FieldMode = "editing" | "escaped" | "idle";
-
-/** textarea ⇄ 编辑器的切换状态机。 */
-function useFieldActivation() {
-	const [mode, setMode] = useState<FieldMode>("idle");
-	const caretRef = useRef(0);
-	const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-
-	useEffect(() => preloadEditorChunk(), []);
-
-	useEffect(() => {
-		if (mode === "escaped") {
-			textareaRef.current?.focus();
-		}
-	}, [mode]);
-
-	const handleFocus = useCallback(
-		(event: ReactFocusEvent<HTMLTextAreaElement>) => {
-			if (mode === "escaped") {
-				return;
-			}
-			caretRef.current =
-				event.target.selectionStart ?? event.target.value.length;
-			setMode("editing");
-		},
-		[mode]
+function MarkdownFieldInput({
+	activation,
+	ariaLabel,
+	id,
+	onChange,
+	onTextareaChange,
+	paste,
+	placeholder,
+	value,
+}: MarkdownFieldInputProps) {
+	if (activation.editing) {
+		return (
+			<ClientOnly fallback={EDITOR_FALLBACK}>
+				<Suspense fallback={EDITOR_FALLBACK}>
+					<LazyMarkdownCodeEditor
+						ariaLabel={ariaLabel}
+						initialCaret={activation.caretRef.current}
+						onChange={onChange}
+						onEscape={activation.handleEscape}
+						onPasteFiles={paste.handlePasteFiles}
+						onView={paste.setView}
+						placeholder={placeholder}
+						value={value}
+					/>
+				</Suspense>
+			</ClientOnly>
+		);
+	}
+	return (
+		<Textarea
+			aria-label={id === undefined ? ariaLabel : undefined}
+			className={TEXTAREA_CLASS}
+			id={id}
+			onChange={onTextareaChange}
+			onClick={activation.handleClick}
+			onFocus={activation.handleFocus}
+			onPaste={paste.handleTextareaPaste}
+			placeholder={placeholder}
+			ref={activation.textareaRef}
+			value={value}
+		/>
 	);
-
-	/**
-	 * 按过 Esc 之后焦点还在 textarea 上，再点它不会触发 focus 事件，
-	 * 光靠 handleFocus 就再也回不到编辑器了。所以点击也能重新拉起编辑器。
-	 */
-	const handleClick = useCallback(
-		(event: ReactMouseEvent<HTMLTextAreaElement>) => {
-			if (mode !== "escaped") {
-				return;
-			}
-			const target = event.currentTarget;
-			caretRef.current = target.selectionStart ?? target.value.length;
-			setMode("editing");
-		},
-		[mode]
-	);
-
-	const handleFocusOut = useCallback(() => setMode("idle"), []);
-	const handleEscape = useCallback(() => setMode("escaped"), []);
-
-	return {
-		caretRef,
-		editing: mode === "editing",
-		handleClick,
-		handleEscape,
-		handleFocus,
-		handleFocusOut,
-		textareaRef,
-	};
 }
 
 /**
@@ -219,35 +202,16 @@ function MarkdownFieldControl({
 		 * 子树，CodeMirror 实例、焦点和光标位置全都留在原地。
 		 */
 		<div className={layoutClass(preview, previewVisible)} ref={setContainer}>
-			{activation.editing ? (
-				<ClientOnly fallback={EDITOR_FALLBACK}>
-					<Suspense fallback={EDITOR_FALLBACK}>
-						<LazyMarkdownCodeEditor
-							ariaLabel={ariaLabel}
-							initialCaret={activation.caretRef.current}
-							onChange={onChange}
-							onEscape={activation.handleEscape}
-							onPasteFiles={paste.handlePasteFiles}
-							onView={paste.setView}
-							placeholder={placeholder}
-							value={value}
-						/>
-					</Suspense>
-				</ClientOnly>
-			) : (
-				<Textarea
-					aria-label={id === undefined ? ariaLabel : undefined}
-					className={TEXTAREA_CLASS}
-					id={id}
-					onChange={handleTextareaChange}
-					onClick={activation.handleClick}
-					onFocus={activation.handleFocus}
-					onPaste={paste.handleTextareaPaste}
-					placeholder={placeholder}
-					ref={activation.textareaRef}
-					value={value}
-				/>
-			)}
+			<MarkdownFieldInput
+				activation={activation}
+				ariaLabel={ariaLabel}
+				id={id}
+				onChange={onChange}
+				onTextareaChange={handleTextareaChange}
+				paste={paste}
+				placeholder={placeholder}
+				value={value}
+			/>
 			{previewVisible ? <MarkdownPreviewPane text={value} /> : null}
 		</div>
 	);
