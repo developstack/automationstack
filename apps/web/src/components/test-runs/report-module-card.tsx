@@ -9,6 +9,8 @@ import {
 import {
 	type ChartConfig,
 	ChartContainer,
+	ChartTooltip,
+	ChartTooltipContent,
 } from "@automationstack/ui/components/chart";
 import {
 	Table,
@@ -50,14 +52,20 @@ const CHART_CONFIG: ChartConfig = {
 } satisfies ChartConfig;
 
 const BAR_MARGIN = { bottom: 0, left: 0, right: 0, top: 0 };
+/**
+ * 每根柱子的最大宽度（maxBarSize）：竖柱按可用宽度分组自适应，钉死 barSize
+ * 会在窄屏把 X 轴标签挤没。宽裕时就是 10px，窄了才收。
+ */
 const BAR_SIZE = 10;
 const BAR_RADIUS = 3;
-/** 一个模块两根柱子，行高要装得下 2×BAR_SIZE 再留出组间距。 */
-const ROW_HEIGHT_PX = 44;
-const AXIS_WIDTH = 96;
+/** 每个模块分到的竖柱绘图高度，X 轴标签带另算。 */
+const MODULE_PLOT_HEIGHT_PX = 40;
+const X_AXIS_LABEL_BAND_PX = 24;
+const MIN_CHART_HEIGHT_PX = 160;
+const MAX_CHART_HEIGHT_PX = 320;
 const MAX_TICK_CHARS = 7;
 
-/** Y 轴放不下整个模块名，超长截断；完整名字在下面的表格里。 */
+/** X 轴放不下整个模块名，超长截断；完整名字在下面的表格里。 */
 function truncateModuleName(value: string): string {
 	if (value.length <= MAX_TICK_CHARS) {
 		return value;
@@ -65,20 +73,40 @@ function truncateModuleName(value: string): string {
 	return `${value.slice(0, MAX_TICK_CHARS)}…`;
 }
 
-const Y_AXIS_PROPS = {
+const X_AXIS_PROPS = {
 	axisLine: false,
 	dataKey: "moduleName",
 	tickFormatter: truncateModuleName,
 	tickLine: false,
 	tickMargin: 4,
 	type: "category",
-	width: AXIS_WIDTH,
+} as const;
+
+/** 计数轴只画整数刻度——2.5 条用例这种小数刻度没有意义。 */
+const Y_AXIS_PROPS = {
+	allowDecimals: false,
+	axisLine: false,
+	tickLine: false,
+	tickMargin: 4,
+	type: "number",
 } as const;
 
 /**
- * 通过 / 失败两根并排的柱子。整块 aria-hidden，读数由下面的表格给出。
+ * 竖柱高度随模块数伸缩（每模块 MODULE_PLOT_HEIGHT_PX，再垫一条 X 轴标签带），
+ * 夹在 [MIN_CHART_HEIGHT_PX, MAX_CHART_HEIGHT_PX]：模块少时不塌成一条线，
+ * 模块多（至多 MAX_CHART_MODULES 个）时也不把卡片无限拉长。
+ */
+function chartHeightPx(moduleCount: number): number {
+	const fitted = moduleCount * MODULE_PLOT_HEIGHT_PX + X_AXIS_LABEL_BAND_PX;
+	return Math.min(MAX_CHART_HEIGHT_PX, Math.max(MIN_CHART_HEIGHT_PX, fitted));
+}
+
+/**
+ * 通过 / 失败两根并排的竖柱。整块 aria-hidden：完整读数通道始终是下面的
+ * 表格，图只是它的可视化；hover tooltip 是给用鼠标的人加的即时读数，
+ * 不是无障碍通道，所以 aria-hidden 立场不变。
  *
- * **不堆叠**：堆叠柱的总长是「通过+失败」，两个模块的柱子一样长可能是
+ * **不堆叠**：堆叠柱的总高是「通过+失败」，两个模块的柱子一样高可能是
  * 10 通过 0 失败，也可能是 0 通过 10 失败。这张图要一眼看出哪个模块失败多，
  * 那就得让「失败」自己有一根从同一条基线出发的柱子。
  */
@@ -89,33 +117,33 @@ function ModuleBars({ rows }: { rows: readonly ReportModuleStat[] }) {
 			aria-hidden="true"
 			className="aspect-auto w-full"
 			config={CHART_CONFIG}
-			style={{ height: `${rows.length * ROW_HEIGHT_PX}px` }}
+			style={{ height: `${chartHeightPx(rows.length)}px` }}
 		>
 			<BarChart
 				data={[...rows]}
-				layout="vertical"
 				margin={BAR_MARGIN}
 				role="presentation"
 				tabIndex={-1}
 			>
-				<XAxis hide type="number" />
+				<XAxis {...X_AXIS_PROPS} />
 				<YAxis {...Y_AXIS_PROPS} />
+				<ChartTooltip content={<ChartTooltipContent />} cursor={false} />
 				<Bar
 					{...CHART_ANIMATION}
-					barSize={BAR_SIZE}
 					dataKey="passed"
 					fill={RESULT_CHART_COLORS.passed.color}
 					isAnimationActive={animate}
+					maxBarSize={BAR_SIZE}
 					radius={BAR_RADIUS}
 					stroke={CHART_SEAM.stroke}
 					strokeWidth={CHART_SEAM.strokeWidth}
 				/>
 				<Bar
 					{...CHART_ANIMATION}
-					barSize={BAR_SIZE}
 					dataKey="failed"
 					fill={RESULT_CHART_COLORS.failed.color}
 					isAnimationActive={animate}
+					maxBarSize={BAR_SIZE}
 					radius={BAR_RADIUS}
 					stroke={CHART_SEAM.stroke}
 					strokeWidth={CHART_SEAM.strokeWidth}
@@ -126,8 +154,9 @@ function ModuleBars({ rows }: { rows: readonly ReportModuleStat[] }) {
 }
 
 /**
- * 两根柱子各是谁。灰阶里 chart-4 与 chart-5 只差 1.45:1，光靠深浅分不出通过和失败，
- * 所以图例这枚标记用的是结论图标（对勾 / 叉），并染成与柱子相同的颜色。
+ * 两根柱子各是谁。柱子走语义色（通过绿 / 失败红，亮底均过 3:1，实测见
+ * theme.css），颜色本身已分得出；图例这枚标记仍用结论图标（对勾 / 叉）并染成
+ * 与柱子相同的颜色——形状是色弱读者的冗余线索，染色则守住图例色等于柱色。
  */
 function ModuleLegend() {
 	return (
