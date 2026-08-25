@@ -75,6 +75,15 @@ export function partitionAutomationTargets(
  * 判断必须永远只有 `buildRunCaseEventRows` 一处定义（重放同一批时全靠它把
  * `passed → passed` 剔干净）。它是纯函数、不发 SQL，调几十次没有成本；
  * 拼出来的行最后仍然只发一条 INSERT。
+ *
+ * **`automationTakeover: true` 只在这里传，而且是本仓库唯一的传入点。**
+ * 它让「结论没变就不记」多一个例外：结论没变、但 `executedVia` 从 `manual`
+ * 翻成 `automation`（也就是这次上报把一个人的判断顶掉了）时照记一行，
+ * 记的说明是**被覆盖掉的那一段**。判据与代价写在 `buildRunCaseEventRows` 那边；
+ * 开关摆在调用点而不是让它去嗅探快照，是因为同一个判据在手工批量路径上也会成立
+ * （「一键全部通过」扫过一批人工判过的行），那条路径必须一个字节都不变。
+ * 传得进这个开关的前提是 `snapshotById` 里带着 `executedVia`——它本来就在
+ * 那条 SELECT 里（D23 的覆盖判据要用），不为此多一次查询。
  */
 export function buildAutomationEventRows(
 	actorId: string | null,
@@ -109,6 +118,7 @@ export function buildAutomationEventRows(
 		rows.push(
 			...buildRunCaseEventRows({
 				actorId,
+				automationTakeover: true,
 				comment: first.comment,
 				snapshots,
 				toResult: first.result,
