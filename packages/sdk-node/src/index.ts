@@ -10,13 +10,13 @@ export {
 	AttachmentInputError,
 	loadAttachment,
 	loadAttachments,
-} from "./attachment-load";
+} from "./attachment-load.js";
 export {
 	type ReporterConfig,
 	ReporterConfigError,
 	type ReporterConfigInput,
 	resolveReporterConfig,
-} from "./config";
+} from "./config.js";
 export {
 	ATTACHMENTS_PER_BATCH,
 	MAX_INGEST_ATTACHMENTS_PER_REQUEST,
@@ -25,7 +25,7 @@ export {
 	MAX_INGEST_RESULTS_PER_REQUEST,
 	MAX_INGEST_SOURCE_REF_LENGTH,
 	RESULTS_PER_BATCH,
-} from "./contract-limits";
+} from "./contract-limits.js";
 export type {
 	AttachmentKind,
 	AutomationCaseResult,
@@ -34,39 +34,39 @@ export type {
 	IngestSkippedManualEntry,
 	IngestUnmatchedCaseEntry,
 	IngestWrittenToEntry,
-} from "./contract-types";
-export { IngestEmptyWriteError, IngestHttpError } from "./errors";
+} from "./contract-types.js";
+export { IngestEmptyWriteError, IngestHttpError } from "./errors.js";
 export {
 	buildExecutionRequests,
 	chunkResults,
 	type ExecutionWindow,
-} from "./execution-batches";
-export { type FetchLike, IngestHttpClient } from "./http-client";
+} from "./execution-batches.js";
+export { type FetchLike, IngestHttpClient } from "./http-client.js";
 export {
 	deriveBatchIdempotencyKey,
 	resolveRunIdempotencyKey,
-} from "./idempotency";
-export { hasNoWrites, mergeReceipts } from "./receipt-merge";
+} from "./idempotency.js";
+export { hasNoWrites, mergeReceipts } from "./receipt-merge.js";
 export {
 	formatAttachmentLines,
 	formatReceiptLines,
 	printReceipt,
 	type ReceiptSink,
-} from "./receipt-printer";
+} from "./receipt-printer.js";
 export {
 	AutomationStackReporter,
 	type ReporterClientOptions,
 	type RunOutcome,
-} from "./reporter-client";
+} from "./reporter-client.js";
 export type {
 	AttachmentInput,
 	AttachmentOutcome,
 	CaseResultInput,
 	LoadedAttachment,
-} from "./reporter-types";
+} from "./reporter-types.js";
 export {
 	INGEST_ATTACHMENTS_PRESIGN_ROUTE,
 	INGEST_ATTACHMENTS_REGISTER_ROUTE,
 	INGEST_EXECUTIONS_ROUTE,
 	INGEST_RUNS_ROUTE,
-} from "./route-paths";
+} from "./route-paths.js";

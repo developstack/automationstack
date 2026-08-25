@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	deriveBatchIdempotencyKey,
 	resolveRunIdempotencyKey,
-} from "./idempotency";
+} from "./idempotency.js";
 
 const UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

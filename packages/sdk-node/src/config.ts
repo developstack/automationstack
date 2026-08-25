@@ -1,4 +1,4 @@
-import { resolveRunIdempotencyKey } from "./idempotency";
+import { resolveRunIdempotencyKey } from "./idempotency.js";
 
 /**
  * SDK 配置（§5.1 / D31）。

@@ -7,6 +7,71 @@
 - **不认识任何测试框架。** `dependencies` / `peerDependencies` 里没有 wdio、playwright
   或别的框架。框架升级时改的是你仓库里那十几行搬运代码，不用等我们发版。
 
+## 安装
+
+本包发在 **GitHub Packages 的 npm registry**（`https://npm.pkg.github.com`），不在
+npmjs.org 上——仓库是私有的，包也是私有的。所以 `npm i @automationstack/sdk` 直接跑
+会 404：默认 registry 上没有这个名字。装之前要做两件事：**把 scope 指到 GitHub 的
+registry**，再**给它一个能读的 token**。
+
+在你自己的项目根放一份 `.npmrc`：
+
+```ini
+# 只把 @automationstack 这个 scope 指过去。不要写 registry=（不带 scope 的那种）：
+# 那会把你**所有**依赖都拿去 GitHub Packages 上找，而它并不镜像 npmjs.org。
+@automationstack:registry=https://npm.pkg.github.com
+
+# token 从环境变量读，不要把它写进这个文件——.npmrc 是要进版本库的。
+//npm.pkg.github.com/:_authToken=${GITHUB_PACKAGES_TOKEN}
+```
+
+token 用一个 **classic personal access token**，勾选 `read:packages` 一个权限就够
+（私有仓库的包还需要 `repo`）。GitHub Packages 的 npm registry 至今只认 classic PAT，
+细粒度 token 在这里是无效的。把它放进你本地的 shell profile 或 CI 的 secret：
+
+```sh
+export GITHUB_PACKAGES_TOKEN=ghp_你的token
+```
+
+然后照常装：
+
+```sh
+npm i @automationstack/sdk     # pnpm / yarn 同理，它们读同一份 .npmrc
+```
+
+### 在 CI 里装
+
+跑在 GitHub Actions 上的话**不需要建任何 PAT**——每个 job 自带的 `GITHUB_TOKEN`
+就能读同一个 org 下的包，前提是给 job 开 `packages: read`：
+
+```yaml
+permissions:
+  contents: read
+  packages: read
+
+steps:
+  - uses: actions/checkout@v5
+  - uses: actions/setup-node@v6
+    with:
+      node-version: "24"
+      registry-url: https://npm.pkg.github.com
+      scope: "@automationstack"
+  - run: npm ci
+    env:
+      # setup-node 已经写好 .npmrc，这里只要把 token 喂进去。
+      NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+跑在别处（GitLab CI、Jenkins、本地 runner）就还是走上面那个 PAT，把它设成
+`GITHUB_PACKAGES_TOKEN` 注进环境。
+
+### 发版（维护者）
+
+改 `package.json` 的 `version`，合进 main，然后打一个 `sdk-node-v<版本号>` 的 tag
+推上去，`.github/workflows/publish-sdk.yml` 会跑完类型检查与测试再发布。
+tag 里的版本号与 `package.json` 对不上时那条流水线会直接失败——npm 的版本号发出去
+就改不了，这道闸拦的是「Releases 页写着一个版本、registry 上躺着另一个」。
+
 ## 配置
 
 只有三样，全部跨迭代不变（§5.1 / D31）：

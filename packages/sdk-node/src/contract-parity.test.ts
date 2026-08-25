@@ -18,26 +18,26 @@ import {
 } from "@automationstack/api/lib/ingest/execution-contract";
 import { describe, expect, it } from "vitest";
 
-import { resolveReporterConfig } from "./config";
+import { resolveReporterConfig } from "./config.js";
 import {
 	MAX_INGEST_ATTACHMENTS_PER_REQUEST,
 	MAX_INGEST_COMMENT_LENGTH,
 	MAX_INGEST_MESSAGE_LENGTH,
 	MAX_INGEST_RESULTS_PER_REQUEST,
 	MAX_INGEST_SOURCE_REF_LENGTH,
-} from "./contract-limits";
+} from "./contract-limits.js";
 import type {
 	IngestAttachmentPresignReceipt,
 	IngestExecutionReceipt,
 	IngestExecutionRequestWire,
-} from "./contract-types";
-import { buildExecutionRequests } from "./execution-batches";
+} from "./contract-types.js";
+import { buildExecutionRequests } from "./execution-batches.js";
 import {
 	INGEST_ATTACHMENTS_PRESIGN_ROUTE,
 	INGEST_ATTACHMENTS_REGISTER_ROUTE,
 	INGEST_EXECUTIONS_ROUTE,
 	INGEST_RUNS_ROUTE,
-} from "./route-paths";
+} from "./route-paths.js";
 
 /**
  * 契约副本的一致性兜底。

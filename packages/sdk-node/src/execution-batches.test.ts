@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveReporterConfig } from "./config";
+import { resolveReporterConfig } from "./config.js";
 import {
 	MAX_INGEST_COMMENT_LENGTH,
 	RESULTS_PER_BATCH,
-} from "./contract-limits";
-import { buildExecutionRequests, chunkResults } from "./execution-batches";
-import type { CaseResultInput } from "./reporter-types";
+} from "./contract-limits.js";
+import { buildExecutionRequests, chunkResults } from "./execution-batches.js";
+import type { CaseResultInput } from "./reporter-types.js";
 
 const RUN_KEY = "3f2a1b4c-5d6e-4f70-8912-a3b4c5d6e7f8";
 const config = resolveReporterConfig({

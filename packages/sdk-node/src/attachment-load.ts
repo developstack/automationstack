@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { basename, extname } from "node:path";
 
-import type { AttachmentKind } from "./contract-types";
-import type { AttachmentInput, LoadedAttachment } from "./reporter-types";
+import type { AttachmentKind } from "./contract-types.js";
+import type { AttachmentInput, LoadedAttachment } from "./reporter-types.js";
 
 /**
  * 把用户给的附件描述读成字节。**唯一碰文件系统的地方**——上传那一层只认

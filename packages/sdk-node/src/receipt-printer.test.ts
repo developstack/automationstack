@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import type { IngestExecutionReceipt } from "./contract-types";
-import { formatAttachmentLines, formatReceiptLines } from "./receipt-printer";
+import type { IngestExecutionReceipt } from "./contract-types.js";
+import {
+	formatAttachmentLines,
+	formatReceiptLines,
+} from "./receipt-printer.js";
 
 const receipt: IngestExecutionReceipt = {
 	executionId: "exec-1",

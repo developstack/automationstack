@@ -1,14 +1,14 @@
-import type { ReporterConfig } from "./config";
+import type { ReporterConfig } from "./config.js";
 import {
 	MAX_INGEST_COMMENT_LENGTH,
 	RESULTS_PER_BATCH,
-} from "./contract-limits";
+} from "./contract-limits.js";
 import type {
 	IngestExecutionRequestWire,
 	IngestExecutionResultWire,
-} from "./contract-types";
-import { deriveBatchIdempotencyKey } from "./idempotency";
-import type { CaseResultInput } from "./reporter-types";
+} from "./contract-types.js";
+import { deriveBatchIdempotencyKey } from "./idempotency.js";
+import type { CaseResultInput } from "./reporter-types.js";
 
 /**
  * 把攒了一整轮的结果切成若干个请求体（§7.2 第 1 条「缓冲后批量提交」）。

@@ -1,4 +1,4 @@
-import type { IngestExecutionReceipt } from "./contract-types";
+import type { IngestExecutionReceipt } from "./contract-types.js";
 
 /**
  * `writtenTo` 为空时抛的错（§7.2 第 4 条）。

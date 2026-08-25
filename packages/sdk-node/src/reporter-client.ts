@@ -1,22 +1,22 @@
-import { assertAttachmentInput, loadAttachments } from "./attachment-load";
-import { uploadAttachments } from "./attachment-upload";
+import { assertAttachmentInput, loadAttachments } from "./attachment-load.js";
+import { uploadAttachments } from "./attachment-upload.js";
 import {
 	type ReporterConfig,
 	type ReporterConfigInput,
 	resolveReporterConfig,
-} from "./config";
-import type { IngestExecutionReceipt } from "./contract-types";
-import { IngestEmptyWriteError } from "./errors";
-import type { FetchLike } from "./http-client";
-import { IngestHttpClient } from "./http-client";
-import { hasNoWrites } from "./receipt-merge";
-import { printReceipt, type ReceiptSink } from "./receipt-printer";
+} from "./config.js";
+import type { IngestExecutionReceipt } from "./contract-types.js";
+import { IngestEmptyWriteError } from "./errors.js";
+import type { FetchLike } from "./http-client.js";
+import { IngestHttpClient } from "./http-client.js";
+import { hasNoWrites } from "./receipt-merge.js";
+import { printReceipt, type ReceiptSink } from "./receipt-printer.js";
 import type {
 	AttachmentInput,
 	AttachmentOutcome,
 	CaseResultInput,
-} from "./reporter-types";
-import { submitExecution } from "./submit-execution";
+} from "./reporter-types.js";
+import { submitExecution } from "./submit-execution.js";
 
 /**
  * SDK 的**唯一**形态：一个框架无关的编程式入口。

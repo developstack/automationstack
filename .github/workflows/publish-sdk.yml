@@ -1,0 +1,115 @@
+name: 发布 SDK
+
+# 发版由 **打 tag** 触发，不由 main 上的普通推送触发：
+# 上报 SDK 是给外部 CI 装的东西，什么时候出新版本必须是一个人明确按下的动作。
+#
+# tag 命名带 SDK 名前缀（`sdk-node-v0.1.0`），而不是裸的 `v0.1.0`：
+# W6/W7 还要再进来 Python 与 Java 两家，三家各自独立发版、版本号互不对齐，
+# 一个共用的 `v*` 前缀会让「这个 tag 是发哪个包的」变成靠记忆的事。
+#
+# ## 下一个 SDK 怎么加进来
+#
+# 1. 在下面的 `tags` 列表里加一行 `- "sdk-python-v*"`；
+# 2. 复制 `publish-node` 这个 job，改名为 `publish-python`，把它的
+#    `if:` 换成对应前缀，工具链换成 uv/twine。
+#
+# 现有的 job 已经带了 `if: startsWith(...)` 前缀守卫——**不是多余的**：
+# 有了它，加第二个 SDK 是纯粹的「加行」，不需要回头改任何已有的行；
+# 没有它，推 `sdk-python-v1.0.0` 会顺手把 Node 包又发一遍。
+on:
+  push:
+    tags:
+      - "sdk-node-v*"
+
+# 用内置的 GITHUB_TOKEN 发到本仓库 owner 名下的 GitHub Packages，
+# 不需要任何人去仓库设置里配 secret（配了就会有人忘了轮换）。
+# contents:read 是 checkout 用的，packages:write 是 npm publish 用的。
+permissions:
+  contents: read
+  packages: write
+
+env:
+  # 与 .github/workflows/ci.yml、根 package.json 的 packageManager、
+  # 两个 Dockerfile 的 node:24-slim 保持一致。
+  NODE_VERSION: "24"
+
+jobs:
+  publish-node:
+    name: "@automationstack/sdk → GitHub Packages"
+    # 前缀守卫，理由见文件头的「下一个 SDK 怎么加进来」。
+    if: startsWith(github.ref_name, 'sdk-node-v')
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/sdk-node
+    steps:
+      - uses: actions/checkout@v5
+
+      # 不写 version：action 会读根 package.json 的 packageManager
+      # （pnpm@11.17.0），避免在两个地方各写一遍版本号。
+      - uses: pnpm/action-setup@v4
+        with:
+          # 显式写出来只为免于歧义：`defaults.run.working-directory` 只作用于
+          # `run:` 步骤，`uses:` 步骤一律从仓库根算起，所以这一行给的就是默认值。
+          # 留着它，是免得有人看到上面那个 working-directory 就以为这里也跟着变。
+          package_json_file: package.json
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          # 这两行让 setup-node 写出一份带 auth 的 .npmrc，后面的
+          # npm publish 直接吃它。
+          #
+          # scope 这里写死 `@automationstack` 是对的，和「不要写死 owner」
+          # 不冲突：它是**包名的 scope**，不是仓库 owner。GitHub Packages
+          # 要求两者相等，所以仓库转到 automationstack org 之后才发得出去；
+          # 在此之前（owner 还是个人账号）这一步会被 registry 拒绝，属预期。
+          registry-url: https://npm.pkg.github.com
+          scope: "@automationstack"
+
+      # lockfile 在仓库根，装依赖也必须在根：SDK 的 devDependencies 里有
+      # workspace: 协议的包，单独在子目录里装不出来。
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+        working-directory: .
+
+      # tag 与 package.json 的版本号必须一对一。
+      # 少了这道闸，推错 tag 的后果是「Releases 页面写着 0.2.0，registry 上
+      # 躺着的是 0.1.0」——而 npm 的版本号发出去就不能改，只能作废重发。
+      - name: 校验 tag 与 package.json 版本号一致
+        run: |
+          tag_version="${GITHUB_REF_NAME#sdk-node-v}"
+          pkg_version=$(node -p "require('./package.json').version")
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::tag 是 $GITHUB_REF_NAME（版本 $tag_version），但 package.json 里是 $pkg_version"
+            exit 1
+          fi
+          echo "版本一致：$pkg_version"
+
+      # 下面三步是发布前的闸门，一步都不能省——发出去的版本必须是测过的。
+      # CI 工作流只在 main 与 PR 上跑，tag 上不跑，所以这里不是重复劳动：
+      # 从 main 打 tag 到这里执行之间，仓库状态完全可能已经不是当初绿的那个。
+      - name: 类型检查（全仓）
+        run: pnpm check-types
+        working-directory: .
+
+      # 只跑 sdk 这个 project：另外几个 project 测的是 web/api/db/server，
+      # 它们红不红不该决定 SDK 能不能发。上面的 check-types 已经覆盖全仓类型。
+      - name: 单元测试（sdk）
+        run: pnpm vitest run --project sdk
+        working-directory: .
+
+      - name: 构建
+        run: pnpm build
+
+      # 用 npm 而不是 pnpm publish：auth 直接吃 setup-node 写出的那份 .npmrc，
+      # 中间不隔一层 pnpm 的 config 解析。
+      # package.json 里的 publishConfig.registry 决定发到哪个 registry。
+      #
+      # devDependencies 里的 `workspace:*` 会被原样发上去——无害：
+      # 装包的人只会拿到 dependencies（本包一个都没有），devDependencies 不参与安装。
+      - name: 发布
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

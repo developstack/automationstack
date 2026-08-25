@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { uploadAttachments } from "./attachment-upload";
-import { resolveReporterConfig } from "./config";
-import type { FetchLike } from "./http-client";
-import { IngestHttpClient } from "./http-client";
-import type { LoadedAttachment } from "./reporter-types";
+import { uploadAttachments } from "./attachment-upload.js";
+import { resolveReporterConfig } from "./config.js";
+import type { FetchLike } from "./http-client.js";
+import { IngestHttpClient } from "./http-client.js";
+import type { LoadedAttachment } from "./reporter-types.js";
 
 const config = resolveReporterConfig({
 	baseUrl: "https://qa.example.com",

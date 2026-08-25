@@ -3,12 +3,28 @@
   "version": "0.1.0",
   "description": "把一轮自动化测试结果批量上报到 automationstack 的 ingest 端点，并原样打印对账单",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/automationstack/automationstack.git",
+    "directory": "packages/sdk-node"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "default": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
     "check-types": "tsc --noEmit"
   },
   "devDependencies": {

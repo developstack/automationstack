@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ReporterConfigError, resolveReporterConfig } from "./config";
+import { ReporterConfigError, resolveReporterConfig } from "./config.js";
 
 const PROJECT_ID = "11111111-2222-4333-8444-555555555555";
 const MISSING_PROJECT_PATTERN = /AS_PROJECT/;

@@ -1,13 +1,13 @@
-import type { ReporterConfig } from "./config";
-import type { IngestExecutionReceipt } from "./contract-types";
+import type { ReporterConfig } from "./config.js";
+import type { IngestExecutionReceipt } from "./contract-types.js";
 import {
 	buildExecutionRequests,
 	type ExecutionWindow,
-} from "./execution-batches";
-import type { IngestHttpClient } from "./http-client";
-import { mergeReceipts } from "./receipt-merge";
-import type { CaseResultInput } from "./reporter-types";
-import { INGEST_EXECUTIONS_ROUTE } from "./route-paths";
+} from "./execution-batches.js";
+import type { IngestHttpClient } from "./http-client.js";
+import { mergeReceipts } from "./receipt-merge.js";
+import type { CaseResultInput } from "./reporter-types.js";
+import { INGEST_EXECUTIONS_ROUTE } from "./route-paths.js";
 
 /**
  * 正常路径上的**唯一一次**网络往返形态：`POST /ingest/executions`（§7.2 第 5 条）。

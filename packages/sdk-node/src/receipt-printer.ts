@@ -1,5 +1,5 @@
-import type { IngestExecutionReceipt } from "./contract-types";
-import type { AttachmentOutcome } from "./reporter-types";
+import type { IngestExecutionReceipt } from "./contract-types.js";
+import type { AttachmentOutcome } from "./reporter-types.js";
 
 /**
  * 对账单的渲染（§7.2 第 3 条）。**本包唯一往终端写东西的地方。**

@@ -1,4 +1,4 @@
-import { IngestHttpError } from "./errors";
+import { IngestHttpError } from "./errors.js";
 
 /**
  * 唯一的网络层。**只有 fetch，没有 S3 SDK**（§7.3 / D28）：附件走预签名 PUT，

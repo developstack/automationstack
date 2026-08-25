@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { IngestEmptyWriteError } from "./errors";
-import type { FetchLike } from "./http-client";
-import { AutomationStackReporter } from "./reporter-client";
-import { INGEST_RUNS_ROUTE } from "./route-paths";
+import { IngestEmptyWriteError } from "./errors.js";
+import type { FetchLike } from "./http-client.js";
+import { AutomationStackReporter } from "./reporter-client.js";
+import { INGEST_RUNS_ROUTE } from "./route-paths.js";
 
 const RUN_KEY = "3f2a1b4c-5d6e-4f70-8912-a3b4c5d6e7f8";
 const BASE_OPTIONS = {

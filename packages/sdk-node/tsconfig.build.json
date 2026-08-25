@@ -1,0 +1,40 @@
+{
+  // 发版专用的编译配置。`tsconfig.json` 那份留给 `check-types` 与编辑器，
+  // 两者的解析模式**必须**不同，原因如下。
+  //
+  // 全仓共用的 `@automationstack/config/tsconfig.base.json` 是
+  // `moduleResolution: "bundler"`——对 apps/web 与 apps/server 是对的（它们的
+  // 产物都过打包器），但对本包是致命的：bundler 模式允许相对 import 不带扩展名，
+  // 而 Node 的 ESM 解析器不认这种产物，装了包的人 `import` 进来会直接
+  // ERR_MODULE_NOT_FOUND。这正是本包此前发不出去的根因。
+  //
+  // 修法只能落在本包内部：base 被另外 7 个包 extends，改它会波及全仓。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // nodenext = 按 Node 自己的规则解析与 emit。它反过来**要求**相对 import
+    // 带 `.js` 扩展名（`./config` → `./config.js`），src 下已经全部补齐；
+    // 少补一个这里就编不过，这条约束是自带的守卫。
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+
+    // 消费方拿到的类型就是这些 `.d.ts`。不出 declarationMap / sourceMap：
+    // 它们指回 `src/`，而 `files` 只发 `dist`，发出去就是一堆断链。
+    "declaration": true,
+    "declarationMap": false,
+    "sourceMap": false,
+
+    "outDir": "dist",
+    // 钉死 rootDir，否则 tsc 会按「所有输入文件的公共父目录」推断，
+    // 排除测试之后目录结构一变，产物就可能从 dist/index.js 漂成 dist/src/index.js。
+    "rootDir": "src",
+
+    // base 没写 noEmit，但 `check-types` 是靠命令行 `--noEmit` 关掉输出的。
+    // 这里显式写 false，免得哪天有人把 noEmit 挪进 base 就让 build 静默空跑。
+    "noEmit": false
+  },
+  "include": ["src/**/*.ts"],
+  // 测试不进 tarball，更重要的是 `contract-parity.test.ts` 直接 import
+  // `@automationstack/api` 那份 zod schema——那个包是 private、永不发布的，
+  // 让它进编译输入会把一条解析不了的类型引用带进 `dist`。
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
+}

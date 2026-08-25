@@ -1,17 +1,17 @@
-import type { ReporterConfig } from "./config";
-import { ATTACHMENTS_PER_BATCH } from "./contract-limits";
+import type { ReporterConfig } from "./config.js";
+import { ATTACHMENTS_PER_BATCH } from "./contract-limits.js";
 import type {
 	IngestAttachmentPresignReceipt,
 	IngestAttachmentRegisterItemWire,
 	IngestAttachmentRegisterReceipt,
 	IngestAttachmentUpload,
-} from "./contract-types";
-import type { IngestHttpClient } from "./http-client";
-import type { AttachmentOutcome, LoadedAttachment } from "./reporter-types";
+} from "./contract-types.js";
+import type { IngestHttpClient } from "./http-client.js";
+import type { AttachmentOutcome, LoadedAttachment } from "./reporter-types.js";
 import {
 	INGEST_ATTACHMENTS_PRESIGN_ROUTE,
 	INGEST_ATTACHMENTS_REGISTER_ROUTE,
-} from "./route-paths";
+} from "./route-paths.js";
 
 /**
  * 附件三步：presign → 直传 → register（§5.6 / D28）。

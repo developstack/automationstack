@@ -1,7 +1,7 @@
 import type {
 	IngestExecutionReceipt,
 	IngestWrittenToEntry,
-} from "./contract-types";
+} from "./contract-types.js";
 
 /**
  * 多批的对账单合成一份给人看。

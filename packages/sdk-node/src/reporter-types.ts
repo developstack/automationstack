@@ -1,4 +1,4 @@
-import type { AttachmentKind, AutomationCaseResult } from "./contract-types";
+import type { AttachmentKind, AutomationCaseResult } from "./contract-types.js";
 
 /**
  * SDK 的**公开输入结构**。这是本包唯一认识的「一条结果长什么样」。

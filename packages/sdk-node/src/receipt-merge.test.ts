@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { IngestExecutionReceipt } from "./contract-types";
-import { hasNoWrites, mergeReceipts } from "./receipt-merge";
+import type { IngestExecutionReceipt } from "./contract-types.js";
+import { hasNoWrites, mergeReceipts } from "./receipt-merge.js";
 
 const emptyReceipt = (
 	overrides: Partial<IngestExecutionReceipt>
