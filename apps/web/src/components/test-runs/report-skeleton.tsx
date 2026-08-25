@@ -6,6 +6,8 @@ import {
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import type { ReactNode } from "react";
 
+import { StaggerItem } from "@/components/layout/page-stagger";
+
 /**
  * 报告页首屏骨架。
  *
@@ -37,20 +39,23 @@ const FAILED_ROW_KEYS = ["f1", "f2", "f3", "f4"] as const;
 
 interface CardSkeletonProps {
 	children: ReactNode;
-	className?: string;
 	/** 描述灰条的宽度类，按各卡描述的实际字数取。 */
 	descriptionWidth: string;
 	titleWidth: string;
 }
 
+/*
+ * 不再收 className：跨列类名整体上移到了 ReportSkeleton 里的 StaggerItem 上。
+ * 包了一层之后 grid item 是 StaggerItem 那层，`xl:col-span-*` 留在 <Card> 上会
+ * 落在非 grid item 身上，跨列当场失效（成因见 page-stagger.tsx 顶部）。
+ */
 function CardSkeleton({
 	children,
-	className,
 	descriptionWidth,
 	titleWidth,
 }: CardSkeletonProps) {
 	return (
-		<Card className={className}>
+		<Card>
 			<CardHeader>
 				<Skeleton className={`h-6 ${titleWidth}`} />
 				<Skeleton className={`h-5 ${descriptionWidth}`} />
@@ -95,10 +100,10 @@ function TableRowsSkeleton({ keys }: { keys: readonly string[] }) {
  * 不只是高度，还有左右两列。
  */
 
-/** 对齐 ReportHeader：面包屑(h-5) + 标题(h-6)，跨整行同它。 */
+/** 对齐 ReportHeader：面包屑(h-5) + 标题(h-6)。跨整行的类名在下面的 StaggerItem 上。 */
 function HeadingSkeleton() {
 	return (
-		<div className="flex items-center gap-3 xl:col-span-3">
+		<div className="flex items-center gap-3">
 			<Skeleton className="h-5 w-24" />
 			<Skeleton className="h-6 w-48" />
 		</div>
@@ -108,11 +113,7 @@ function HeadingSkeleton() {
 /** 对齐 ReportSummaryCard：四个计数读数 + 分隔线 + 两个比率读数。 */
 function SummaryCardSkeleton() {
 	return (
-		<CardSkeleton
-			className="xl:col-span-3"
-			descriptionWidth="w-96"
-			titleWidth="w-24"
-		>
+		<CardSkeleton descriptionWidth="w-96" titleWidth="w-24">
 			<div className="grid grid-cols-2 gap-4 md:grid-cols-4">
 				{SUMMARY_STAT_KEYS.map((key) => (
 					<StatSkeleton key={key} />
@@ -128,14 +129,10 @@ function SummaryCardSkeleton() {
 	);
 }
 
-/** 对齐 ReportPriorityCard：P0 结论条 + 优先级表，与它同为两列宽。 */
+/** 对齐 ReportPriorityCard：P0 结论条 + 优先级表（与它同为两列宽，见下面的 StaggerItem）。 */
 function PriorityCardSkeleton() {
 	return (
-		<CardSkeleton
-			className="xl:col-span-2"
-			descriptionWidth="w-80"
-			titleWidth="w-36"
-		>
+		<CardSkeleton descriptionWidth="w-80" titleWidth="w-36">
 			{/* P0 结论条：px-3 py-2 + text-sm 一行 ≈ 37px */}
 			<Skeleton className="h-9 w-full" />
 			<TableRowsSkeleton keys={PRIORITY_ROW_KEYS} />
@@ -160,11 +157,7 @@ function ResultCardSkeleton() {
 /** 对齐 ReportModuleCard：模块表，条数取中间值（理由见文件头）。 */
 function ModuleCardSkeleton() {
 	return (
-		<CardSkeleton
-			className="xl:col-span-3"
-			descriptionWidth="w-72"
-			titleWidth="w-40"
-		>
+		<CardSkeleton descriptionWidth="w-72" titleWidth="w-40">
 			<TableRowsSkeleton keys={MODULE_ROW_KEYS} />
 		</CardSkeleton>
 	);
@@ -173,25 +166,50 @@ function ModuleCardSkeleton() {
 /** 对齐 ReportFailedCasesCard：失败清单表，条数同样取中间值。 */
 function FailedCasesCardSkeleton() {
 	return (
-		<CardSkeleton
-			className="xl:col-span-3"
-			descriptionWidth="w-96"
-			titleWidth="w-28"
-		>
+		<CardSkeleton descriptionWidth="w-96" titleWidth="w-28">
 			<TableRowsSkeleton keys={FAILED_ROW_KEYS} />
 		</CardSkeleton>
 	);
 }
 
+/**
+ * 骨架为什么也要逐项错开，而不是整块淡入。
+ *
+ * 不包 StaggerItem 的话，慢加载这条路**一次错开都不会发生**：这一份骨架挂载时
+ * pathname 与上一页不同，PageTransition 判定要播进场，于是骨架整块淡入一次；等真身
+ * 就绪，pending 那格里存的已经是本页 pathname，就绪态被判成 followsSamePath，
+ * skipEnter 为真——report-view.tsx 那六个 StaggerItem 一个都不动，直接落在终态。
+ * 结果是 loader 快（<200ms，router.tsx 的 defaultPendingMs）时逐项错开，慢时整块
+ * 淡入，同一个页面两种观感。把错开挪到骨架这边，两条路看到的都是「一页在依次落位」。
+ *
+ * index 与 report-view.tsx 里逐个对齐，**包括 1 号那个空位**：那一格是提交条的，
+ * 而本文件刻意不画提交条（理由见文件头）。留号不重排，两处的排位表因此是同一张，
+ * 不需要任何换算——重排的话，「有提交条的就绪态」和「没有提交条的骨架」会给同一张
+ * 卡两个不同的序号，骨架换真身那一帧的错位就成了必然。
+ *
+ * 跨列类名统一写在 StaggerItem 上：包了一层之后它才是 grid item。
+ */
 export function ReportSkeleton() {
 	return (
 		<>
-			<HeadingSkeleton />
-			<SummaryCardSkeleton />
-			<PriorityCardSkeleton />
-			<ResultCardSkeleton />
-			<ModuleCardSkeleton />
-			<FailedCasesCardSkeleton />
+			<StaggerItem className="xl:col-span-3" index={0}>
+				<HeadingSkeleton />
+			</StaggerItem>
+			<StaggerItem className="xl:col-span-3" index={2}>
+				<SummaryCardSkeleton />
+			</StaggerItem>
+			<StaggerItem className="xl:col-span-2" index={3}>
+				<PriorityCardSkeleton />
+			</StaggerItem>
+			<StaggerItem index={4}>
+				<ResultCardSkeleton />
+			</StaggerItem>
+			<StaggerItem className="xl:col-span-3" index={5}>
+				<ModuleCardSkeleton />
+			</StaggerItem>
+			<StaggerItem className="xl:col-span-3" index={6}>
+				<FailedCasesCardSkeleton />
+			</StaggerItem>
 		</>
 	);
 }

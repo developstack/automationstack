@@ -12,6 +12,7 @@ import type { PageTransitionPhase } from "@/components/layout/page-transition";
 import { PageTransition } from "@/components/layout/page-transition";
 import { SettingsPage } from "@/components/settings/settings-page";
 import { settingsSearchSchema } from "@/components/settings/settings-search";
+import { SettingsSkeleton } from "@/components/settings/settings-skeleton";
 
 export const Route = createFileRoute("/settings")({
 	component: SettingsRoute,
@@ -66,9 +67,7 @@ function SettingsShell({
 function SettingsPending() {
 	return (
 		<SettingsShell phase="pending">
-			<output aria-busy="true" className="text-muted-foreground text-sm">
-				正在加载设置…
-			</output>
+			<SettingsSkeleton />
 		</SettingsShell>
 	);
 }
