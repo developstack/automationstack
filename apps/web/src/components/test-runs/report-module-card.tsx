@@ -7,12 +7,6 @@ import {
 	CardTitle,
 } from "@automationstack/ui/components/card";
 import {
-	type ChartConfig,
-	ChartContainer,
-	ChartTooltip,
-	ChartTooltipContent,
-} from "@automationstack/ui/components/chart";
-import {
 	Table,
 	TableBody,
 	TableCell,
@@ -20,13 +14,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@automationstack/ui/components/table";
-import { Bar, BarChart, XAxis, YAxis } from "recharts";
+import { lazy, Suspense } from "react";
 
 import {
-	CHART_ANIMATION,
-	CHART_SEAM,
-	useChartAnimation,
-} from "@/components/overview/overview-chart";
+	REPORT_BARS_BOX,
+	reportModuleHeightPx,
+} from "@/components/overview/chart-box";
 import { formatRate } from "@/components/test-runs/rate-format";
 import {
 	RESULT_CHART_COLORS,
@@ -46,110 +39,37 @@ import {
  */
 const MAX_CHART_MODULES = 8;
 
-const CHART_CONFIG: ChartConfig = {
-	failed: { label: "失败" },
-	passed: { label: "通过" },
-} satisfies ChartConfig;
-
-const BAR_MARGIN = { bottom: 0, left: 0, right: 0, top: 0 };
 /**
- * 每根柱子的最大宽度（maxBarSize）：竖柱按可用宽度分组自适应，钉死 barSize
- * 会在窄屏把 X 轴标签挤没。宽裕时就是 10px，窄了才收。
+ * 柱图真身走动态 import：它静态引用 recharts，而这张卡的表格（阻塞/跳过/未测三列
+ * 只在表里有）是读数的完整通道，不该为了图把 gzip 103KB 的 recharts 拖进入口 chunk。
+ * 完整来龙去脉见 overview-donut.tsx 的头注释，SSR 下为何只用 Suspense 不加 ClientOnly
+ * 也在那里。
  */
-const BAR_SIZE = 10;
-const BAR_RADIUS = 3;
-/** 每个模块分到的竖柱绘图高度，X 轴标签带另算。 */
-const MODULE_PLOT_HEIGHT_PX = 40;
-const X_AXIS_LABEL_BAND_PX = 24;
-const MIN_CHART_HEIGHT_PX = 160;
-const MAX_CHART_HEIGHT_PX = 320;
-const MAX_TICK_CHARS = 7;
-
-/** X 轴放不下整个模块名，超长截断；完整名字在下面的表格里。 */
-function truncateModuleName(value: string): string {
-	if (value.length <= MAX_TICK_CHARS) {
-		return value;
-	}
-	return `${value.slice(0, MAX_TICK_CHARS)}…`;
-}
-
-const X_AXIS_PROPS = {
-	axisLine: false,
-	dataKey: "moduleName",
-	tickFormatter: truncateModuleName,
-	tickLine: false,
-	tickMargin: 4,
-	type: "category",
-} as const;
-
-/** 计数轴只画整数刻度——2.5 条用例这种小数刻度没有意义。 */
-const Y_AXIS_PROPS = {
-	allowDecimals: false,
-	axisLine: false,
-	tickLine: false,
-	tickMargin: 4,
-	type: "number",
-} as const;
+const LazyReportModuleBarsChart = lazy(async () => {
+	const chartModule = await import(
+		"@/components/test-runs/report-module-bars-chart"
+	);
+	return { default: chartModule.ReportModuleBarsChart };
+});
 
 /**
- * 竖柱高度随模块数伸缩（每模块 MODULE_PLOT_HEIGHT_PX，再垫一条 X 轴标签带），
- * 夹在 [MIN_CHART_HEIGHT_PX, MAX_CHART_HEIGHT_PX]：模块少时不塌成一条线，
- * 模块多（至多 MAX_CHART_MODULES 个）时也不把卡片无限拉长。
- */
-function chartHeightPx(moduleCount: number): number {
-	const fitted = moduleCount * MODULE_PLOT_HEIGHT_PX + X_AXIS_LABEL_BAND_PX;
-	return Math.min(MAX_CHART_HEIGHT_PX, Math.max(MIN_CHART_HEIGHT_PX, fitted));
-}
-
-/**
- * 通过 / 失败两根并排的竖柱。整块 aria-hidden：完整读数通道始终是下面的
- * 表格，图只是它的可视化；hover tooltip 是给用鼠标的人加的即时读数，
- * 不是无障碍通道，所以 aria-hidden 立场不变。
- *
- * **不堆叠**：堆叠柱的总高是「通过+失败」，两个模块的柱子一样高可能是
- * 10 通过 0 失败，也可能是 0 通过 10 失败。这张图要一眼看出哪个模块失败多，
- * 那就得让「失败」自己有一根从同一条基线出发的柱子。
+ * 高度在这一层算：占位与真身读的是同一个 reportModuleHeightPx，图区不会先塌成
+ * 0 高再弹回来（理由见 chart-box.ts）。真身拿它当 style 上的 height。
  */
 function ModuleBars({ rows }: { rows: readonly ReportModuleStat[] }) {
-	const animate = useChartAnimation();
+	const heightPx = reportModuleHeightPx(rows.length);
 	return (
-		<ChartContainer
-			aria-hidden="true"
-			className="aspect-auto w-full"
-			config={CHART_CONFIG}
-			style={{ height: `${chartHeightPx(rows.length)}px` }}
+		<Suspense
+			fallback={
+				<div
+					aria-hidden="true"
+					className={REPORT_BARS_BOX}
+					style={{ height: `${heightPx}px` }}
+				/>
+			}
 		>
-			<BarChart
-				data={[...rows]}
-				margin={BAR_MARGIN}
-				role="presentation"
-				tabIndex={-1}
-			>
-				<XAxis {...X_AXIS_PROPS} />
-				<YAxis {...Y_AXIS_PROPS} />
-				<ChartTooltip content={<ChartTooltipContent />} cursor={false} />
-				<Bar
-					{...CHART_ANIMATION}
-					dataKey="passed"
-					fill={RESULT_CHART_COLORS.passed.color}
-					isAnimationActive={animate}
-					maxBarSize={BAR_SIZE}
-					radius={BAR_RADIUS}
-					stroke={CHART_SEAM.stroke}
-					strokeWidth={CHART_SEAM.strokeWidth}
-				/>
-				<Bar
-					{...CHART_ANIMATION}
-					dataKey="failed"
-					fill={RESULT_CHART_COLORS.failed.color}
-					isAnimationActive={animate}
-					maxBarSize={BAR_SIZE}
-					radius={BAR_RADIUS}
-					stroke={CHART_SEAM.stroke}
-					strokeWidth={CHART_SEAM.strokeWidth}
-				/>
-			</BarChart>
-		</ChartContainer>
+			<LazyReportModuleBarsChart heightPx={heightPx} rows={rows} />
+		</Suspense>
 	);
 }
 
