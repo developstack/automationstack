@@ -25,6 +25,7 @@ import {
 	moduleOptionsOf,
 	nextRunCaseId,
 	type RunCaseFilter,
+	shouldAutoAdvance,
 } from "@/components/test-runs/run-execution-meta";
 import { RunLockedBanner } from "@/components/test-runs/run-locked-banner";
 import {
@@ -137,16 +138,22 @@ export function RunExecutionView({
 	const removeCases = useRemoveRunCases();
 	const assign = useAssignRunCases();
 
-	/** 打结论后自动跳到（筛选后的）下一条；到末尾就停在原地。 */
+	/**
+	 * 打结论后的跳转规则（plan 012 D1）：通过 / 跳过自动跳到（筛选后的）下一条，
+	 * 到末尾就停在原地；失败 / 阻塞留在本条——那两种结论要填说明 / 附件 / 缺陷，
+	 * 跳走等于逼用户再点回来（与 handleReset 留在原地同理）。
+	 */
 	const handleVerdict = useCallback(
 		(result: TestRunCaseResult) => {
 			if (selected === null) {
 				return;
 			}
 			setResult.mutate({ result, runCaseId: selected.runCase.id });
-			const next = nextRunCaseId(visibleCases, selected.runCase.id);
-			if (next !== null) {
-				onSelectRunCase(next);
+			if (shouldAutoAdvance(result)) {
+				const next = nextRunCaseId(visibleCases, selected.runCase.id);
+				if (next !== null) {
+					onSelectRunCase(next);
+				}
 			}
 		},
 		[onSelectRunCase, selected, setResult, visibleCases]
@@ -242,7 +249,6 @@ export function RunExecutionView({
 			/>
 			<div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-run-execution">
 				<RunCaseList
-					allCases={cases}
 					canConclude={permissions.canConclude}
 					canEditCases={permissions.canEditCases}
 					cases={visibleCases}

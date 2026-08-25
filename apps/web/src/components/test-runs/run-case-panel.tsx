@@ -145,12 +145,14 @@ export function RunCasePanel({
 				<div className="flex flex-wrap items-baseline justify-between gap-2">
 					<h3 className="font-medium text-sm">执行结论</h3>
 					{canConclude ? (
-						// 快捷键提示常驻显示：每个按钮上有键面，这里再说一遍「打完自动跳下一条」，
+						// 快捷键提示常驻显示：每个按钮上有键面，这里再说一遍打完之后的跳转规则
+						// （通过/跳过跳下一条，失败/阻塞留原地，plan 012 D1），
 						// 否则用户会以为是自己点错了行。
 						<p className="text-muted-foreground text-xs">
 							快捷键 {VERDICT_SHORTCUT_KEYS.passed} /{" "}
 							{VERDICT_SHORTCUT_KEYS.failed} / {VERDICT_SHORTCUT_KEYS.blocked} /{" "}
-							{VERDICT_SHORTCUT_KEYS.skipped}，打完自动跳下一条
+							{VERDICT_SHORTCUT_KEYS.skipped}
+							，通过/跳过自动跳下一条，失败/阻塞留在本条填写说明
 						</p>
 					) : null}
 				</div>

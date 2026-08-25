@@ -6,6 +6,7 @@ import {
 	moduleOptionsOf,
 	nextRunCaseId,
 	type RunCaseDetail,
+	shouldAutoAdvance,
 } from "@/components/test-runs/run-execution-meta";
 
 interface RowSpec {
@@ -139,5 +140,18 @@ describe("nextRunCaseId", () => {
 
 	it("当前条被筛掉时不乱跳", () => {
 		expect(nextRunCaseId(ALL, "不存在")).toBeNull();
+	});
+});
+
+describe("shouldAutoAdvance", () => {
+	it("通过 / 跳过：打完自动跳下一条", () => {
+		expect(shouldAutoAdvance("passed")).toBe(true);
+		expect(shouldAutoAdvance("skipped")).toBe(true);
+	});
+
+	it("失败 / 阻塞：留在原地填说明与缺陷（plan 012 D1）", () => {
+		// 跳走等于逼用户再点回来——说明 / 附件 / 缺陷面板都在本条上。
+		expect(shouldAutoAdvance("failed")).toBe(false);
+		expect(shouldAutoAdvance("blocked")).toBe(false);
 	});
 });

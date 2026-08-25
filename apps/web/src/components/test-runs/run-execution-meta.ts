@@ -105,6 +105,16 @@ export function moduleOptionsOf(
 	return [...byId].map(([id, name]) => ({ id, name }));
 }
 
+/** 打完结论是否自动跳下一条（plan 012 D1）：失败/阻塞要留在原地填说明与缺陷。 */
+const AUTO_ADVANCE_RESULTS: ReadonlySet<TestRunCaseResult> = new Set([
+	"passed",
+	"skipped",
+]);
+
+export function shouldAutoAdvance(result: TestRunCaseResult): boolean {
+	return AUTO_ADVANCE_RESULTS.has(result);
+}
+
 /**
  * 打完结论后要跳到的下一条。
  *

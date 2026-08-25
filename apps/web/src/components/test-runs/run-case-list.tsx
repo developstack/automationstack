@@ -1,17 +1,19 @@
 /**
- * 执行台左栏：结论统计 + 筛选 + 批量工具条 + 用例清单。
+ * 执行台左栏：筛选 + 批量工具条 + 用例清单。
  *
- * 这个文件只负责把那四段拼起来、以及做「整栏才知道」的那几件事：全量结论计数、
- * 协作者表、能不能勾选。每一段各自的细节在各自的文件里：
- * - 三组筛选控件 → `run-case-filters.tsx`
+ * 这个文件只负责把那三段拼起来、以及做「整栏才知道」的那几件事：协作者表、
+ * 能不能勾选。每一段各自的细节在各自的文件里：
+ * - 一行三个筛选控件 → `run-case-filters.tsx`
  * - 批量操作条 → `run-case-bulk-toolbar.tsx`
  * - 清单里的一行 → `run-case-row.tsx`
+ *
+ * 段与段之间的垂直节奏全部由容器的 gap-2 提供，各段只带水平 px-2
+ * （plan 012 D3）；容器另加 pt-2，让首行不贴住 header 的 border-b。
  *
  * 拆分的直接原因是这份文件曾经 401 行、超过仓库 300 行的上限（scripts/
  * check-file-rules.js）。切法沿用这个目录里已有的做法——批量工具条早先就已经
  * 从本组件里抽成过一个函数，现在只是让文件边界跟那条已有的边界对齐。
  */
-import { useMemo } from "react";
 import { BulkToolbar } from "@/components/test-runs/run-case-bulk-toolbar";
 import { RunCaseFilters } from "@/components/test-runs/run-case-filters";
 import { RunCaseRow } from "@/components/test-runs/run-case-row";
@@ -20,12 +22,9 @@ import type {
 	RunCaseDetail,
 	RunCaseFilter,
 } from "@/components/test-runs/run-execution-meta";
-import { countResults } from "@/components/test-runs/test-run-meta";
 import { useCollaboratorsByCaseId } from "@/realtime/use-editing";
 
 export interface RunCaseListProps {
-	/** 统计恒定按**全量**算：筛选中还能看到全局还剩多少未测。 */
-	allCases: readonly RunCaseDetail[];
 	canConclude: boolean;
 	canEditCases: boolean;
 	/** 当前筛选后的清单，右栏与快捷键跳转都以它为准。 */
@@ -45,7 +44,6 @@ export interface RunCaseListProps {
 }
 
 export function RunCaseList({
-	allCases,
 	canConclude,
 	canEditCases,
 	cases,
@@ -64,18 +62,13 @@ export function RunCaseList({
 }: RunCaseListProps) {
 	// 协作者表在列表这一层算一次就够：放进行组件里意味着每一行都重建一遍整张表。
 	const collaboratorsByCaseId = useCollaboratorsByCaseId();
-	const counts = useMemo(
-		() => countResults(allCases.map((item) => item.runCase.result)),
-		[allCases]
-	);
 
 	const checkedCount = checkedIds.size;
 	const selectable = canConclude || canEditCases;
 
 	return (
-		<div className="flex min-h-0 flex-col gap-2 border-r">
+		<div className="flex min-h-0 flex-col gap-2 border-r pt-2">
 			<RunCaseFilters
-				counts={counts}
 				filter={filter}
 				moduleOptions={moduleOptions}
 				onFilterChange={onFilterChange}
