@@ -27,7 +27,16 @@ export interface RunExecutionLayoutProps extends RunExecutionState {
 export function RunExecutionLayout(props: RunExecutionLayoutProps) {
 	const { data } = props;
 	return (
-		<div className="flex min-h-0 flex-col">
+		/*
+		 * lg 起 flex-1：`main`（EXECUTION_MAIN）在 lg 下已经吃满了外层那个
+		 * absolute inset-0 overflow-y-auto 的滚动容器，但这个根 div 是它唯一的
+		 * 流内子元素，flex 子项默认 `flex: 0 1 auto`——不接住那段高度的话它只按
+		 * 内容高度收住，下面那个 `flex-1` 的两栏区没有剩余空间可分，整摞按内容
+		 * 高度停在半空，变更历史下面就露出一片空白（收起时最明显，那时内容最矮）。
+		 * 断点与 EXECUTION_MAIN 严格一致：<lg 是堆叠布局，每行自适应内容、由外层
+		 * 滚动容器整体滚，这时把高度钉死反而会把两行内容压得溢出被裁。
+		 */
+		<div className="flex min-h-0 flex-col lg:flex-1">
 			{data.permissions.locked && data.run.submittedAt !== null && (
 				/*
 				 * 三个值原样往下传：横幅要用 `submittedBy`（uuid）判「是不是系统

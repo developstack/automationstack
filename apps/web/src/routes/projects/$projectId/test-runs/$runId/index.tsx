@@ -23,9 +23,14 @@ const runDetailSearchSchema = z.object({
 	runCaseId: z.string().optional(),
 });
 
-/* lg 起才 h-full：lg 下这一列处在固定高度的滚动容器里，填满它，执行台内部
-   min-h-0 / flex-1 / overflow-y-auto 的链路才生效，变更历史钉在视口底部而不是
-   拽出一大片空白；<lg 的堆叠布局每行自适应内容、本就没有 stretch 空白，加
+/* lg 起才 h-full：这一层的父节点是 projects/$projectId/route.tsx 里那个
+   `absolute inset-0 overflow-y-auto` 的滚动容器，它的高度被 grid-rows-header-body
+   的 body 行锁死，h-full 就是吃满它。
+   但只有 main 吃满还不够：高度要一路传到两栏区，run-execution-layout.tsx 的根 div
+   必须同样在 lg 起 flex-1 把这段高度接下去，内部 min-h-0 / flex-1 / overflow-y-auto
+   的链路才真的有剩余空间可分，变更历史才钉在视口底部而不是拽出一大片空白。两处的
+   断点必须同进同退，改一处就得改另一处。
+   <lg 的堆叠布局每行自适应内容、由外层滚动容器整体滚，本就没有 stretch 空白，加
    h-full 反而会让两行内容溢出被裁，所以只在 lg 起。 */
 const EXECUTION_MAIN = "flex min-h-0 flex-col lg:h-full";
 
