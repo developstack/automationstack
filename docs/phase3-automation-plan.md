@@ -1,6 +1,13 @@
 # 第三期：自动化结果接入（SDK 上报）
 
-> 状态：**设计定稿，待开工**。
+> 状态：**主体已落地（W1–W7 全部完工）**，但**不等于「全部完成」**——三个 SDK
+> （Node / Python / Java）发布形态确定、测试全绿，`examples/` 三份示例都对着真服务端跑通过；
+> 但仍有三条**明确的未验证项**（Java 不进仓库门禁、附件真实上传那条路径从没跑过、
+> 分批在真实链路没跑过），分别记在 §9 的「全局」「附件」「上报」三组末尾。
+> 全文按「已实施」的时态读，唯独那三条别当成已验。
+> **状态续注（2026-08-25）**：本行原写「**设计定稿，待开工**」。那是 W1 开工之前的状态，
+> 到今天字面就是错的——照着它读会把整份文档当成一份尚未动工的设计稿，而 §3–§8 描述的东西
+> 大部分已经是仓库里的现状。这里就地改对，原字样留在本续注里备查。
 > 前置：第一期 `docs/phase1-testcase-platform-plan.md`、第二期 `docs/phase2-testmanagement-automation-plan.md`（本文件都不修改）。
 > 本期即第二期 §10 挂起的 Block B。原方案（automation_* 三表 / 两套报表 / 项目级机器身份）**已作废**，
 > 作废理由见 §3.5 与 §4.1，不要回头去参考它。
@@ -45,6 +52,12 @@ QA 在自己机器上跑脚本，SDK 把结果写进**第二期已经存在的�
 | D34 | 扩散的可见性 | 对账单里 `writtenTo` **按任务分组**列出。可选 `runIds` 白名单显式收窄 |
 | D35 | 候选 = 0 | 列进 `outOfScope`。不自动建任务、不做暂存区 |
 | D36 | 选出候选任务之前 | 先跑一次自动提交结算。补回第二期「写入方先结算」的不变式——脚本是第一个不经过浏览器的写入方。详见 §3.8 |
+
+> **D22 函数名修正（2026-08-25，实现时发现）**：D22 那格原写「必须走 `bulkSetRunCaseResult`」，
+> 实际落地走的是同文件、同守卫的第二个入口 `applyAutomationVerdicts`。`bulkSetRunCaseResult`
+> 的签名是「整批**一个** `result`、且没有 `comment`」，装不下「每条用例各有各的结论、失败的
+> 还各带一条 message」。**D22 的红线不是「调哪个函数」，而是「不许另开第二条写
+> `test_run_cases.result` 的路径」——这一条一个字不变。** 完整理由见 §5.4 那条修正说明。
 
 ---
 
@@ -811,9 +824,45 @@ ingest 端点的 zod schema 直接产出 OpenAPI，**那份就是三个 SDK 共�
 
 | 语言 | 形态 | 附件来源 |
 |---|---|---|
-| Node.js | wdio reporter + playwright reporter（同一个核心包，两层薄壳） | wdio/playwright 自带的截图与 trace |
-| Python | pytest plugin | `pytest-html` 那套 hook 里拿 |
-| Java | JUnit5 Extension + TestNG Listener | 用户自己在断言失败时塞 |
+| Node.js | **已落地**：`packages/sdk-node/`，发布名 `@automationstack/sdk`。框架无关的核心包，零运行时依赖，任何测试框架都能调 | 调用方自己给路径（截图 / 日志 / trace 都行） |
+| Python | **已落地**：`packages/sdk-python/` 核心包 `automationstack-sdk`（零运行时依赖、纯标准库、`requires-python = ">=3.9"`、不依赖 pytest）+ `packages/sdk-pytest/` 可选薄壳插件 `pytest-automationstack` | 核心包同 Node；薄壳里可从 `pytest-html` 那套 hook 拿 |
+| Java | **已落地**：`packages/sdk-java/`，坐标 `org.automationstack:sdk`。零运行时依赖（JSON 编解码手写），JUnit 5 薄壳**在同一个 artifact 内**，不另发 | 核心同 Node；`@ExtendWith` 里在断言失败时塞 |
+
+> **落地形态修正（2026-08-25，实现时发现）**：本表原写 Node.js =「wdio reporter + playwright
+> reporter（同一个核心包，两层薄壳）」、Python =「pytest plugin」、Java =「JUnit5 Extension +
+> TestNG Listener」——即三种语言各自绑死一到两个测试框架，核心包只藏在薄壳背后。
+> 这个设想被否决了：SDK 的主要功能无非是上报一份 report，绑框架换来的只是框架升级、
+> 版本适配和用户构建里多一堆依赖的负担。现在的形态是**核心包框架无关、薄壳可选**——
+> 薄壳是加分项，不是形态本身。
+> 落地状态（2026-08-25 核对 `packages/` 目录）：只有 `packages/sdk-node/` 真实存在，
+> `dependencies` 为空（零运行时依赖），**没有** wdio reporter 也没有 playwright reporter。
+> `packages/sdk-python/`、`packages/sdk-pytest/`、`packages/sdk-java/` 目录尚未建立，
+> 表里 Python / Java 两行写的是计划形态，不是已落地的事实。
+
+> **落地状态更新（2026-08-25 晚，W6 / W7 完工后复核）**：上一条末尾「`packages/sdk-python/`、
+> `packages/sdk-pytest/`、`packages/sdk-java/` 目录尚未建立」写于 W6 / W7 开工之前，**现已过期**；
+> 三个目录都已存在，表里 Python / Java 两行随之从「计划形态」就地改成「已落地」。
+> 上一条的其余部分（否决绑框架、核心包框架无关 + 薄壳可选）一个字不变，正是照它落的地。
+>
+> **W6 Python**：`packages/sdk-python/` 零运行时依赖（纯标准库）、`requires-python = ">=3.9"`，
+> 模块名与 `packages/sdk-node/` 逐一对应；78 条测试在 3.9.6 与 3.11.15 上都绿。
+> `packages/sdk-pytest/` 是只做注册与收集的薄壳，业务逻辑全在核心包，公开面只有
+> `add_attachment(config, attachment) -> bool` 一个函数，没加 `--automationstack` 时是安静的空操作；
+> 26 条测试绿。幂等键与 Node 版**逐字节核对过**，不是声称一致。
+>
+> **W7 Java**：`packages/sdk-java/`（main 50 文件 3140 行 / test 19 文件 1906 行 / `pom.xml` + README 401 行），
+> `mvn clean test` 跑出 BUILD SUCCESS、退出码 0，**119 条测试真跑真过**；
+> `pom.xml` 里 0 个 compile scope 依赖。三条与 Node / Python 不同的取舍记在这里，免得后人当成疏漏：
+>
+> - **JSON 编解码是手写的。** Java 生态里 Jackson / Gson 的版本冲突是「测试上报 SDK」最典型的坑：
+>   用户项目里已经有一个 Jackson，SDK 再钉死一个大版本，之后谁升级都得等对方。而 ingest 的报文
+>   形状完全已知，手写换掉这个风险划算。这跟「SDK 不绑定测试框架」是同一条理由。
+> - **库里绝不调 `System.exit()`。** §7.2 第 4 条要的是「`writtenTo` 为空 → 显式报错 + 退出码非零」，
+>   但 Java 没有 Node `process.exitCode` 那种软标记，唯一的现成手段会把宿主进程连同 Surefire
+>   报告一起掐掉。改成进程级的 `ExitSignal` 标记，**由入口点决定退出码**——契约不变，手段换了。
+> - **JUnit 5 薄壳放在同一个 artifact 里**，与 Python 拆成两个包的做法相反，不是不一致。
+>   `@ExtendWith` 是显式 opt-in，不用它就零成本；而 pytest 的 entry-point 插件装上就自动激活，
+>   那才需要分包。分不分包看的是「装上会不会自己动」，不是语言。
 
 **预签名 PUT（D28）在三语言下收益被放大**：三个 SDK 都只需要一个 HTTP 客户端，
 谁都不用引 AWS SDK——Java 引一个 S3 SDK 就是给用户的构建加十几兆依赖，还会撞版本。
@@ -826,6 +875,16 @@ ingest 端点的 zod schema 直接产出 OpenAPI，**那份就是三个 SDK 共�
 - pytest 次之，plugin 机制最轻。
 - JUnit 放最后，但**发布前置现在就要起**：Maven Central 要 sonatype 账号 + GPG 签名 + 域名验证，
   这套流程比写 SDK 本身久得多。npm 与 PyPI 没有这个问题。
+
+> **发布渠道修正（2026-08-25，决策已变）**：三个 SDK **全部只发 GitHub，不发 npm / PyPI /
+> Maven Central**。Node 走 GitHub Packages（`packages/sdk-node/package.json` 里的
+> `publishConfig.registry: https://npm.pkg.github.com` 已经落地）；GitHub Packages 不支持
+> Python，Python 走
+> `pip install "git+ssh://git@github.com/automationstack/automationstack@<tag>#subdirectory=packages/sdk-python"`；
+> Java 走 GitHub Packages Maven。
+> **因此上面那条「发布前置现在就要起」的建议整个作废**——sonatype 账号、GPG 签名、域名验证
+> 一样都不需要，**别去申请**。上面的 Node → pytest → JUnit 排序只剩「Node 在仓库内、是参考
+> 实现」这一个理由，JUnit 排最后不再有任何发布流程前置卡在前头。
 
 ---
 
@@ -849,19 +908,36 @@ W2  Ingest 契约 + 端点（第二个瓶颈，三个 SDK 都等它）
               │
    ┌──────────┴───────────┬────────────────────┐
   W3 附件               W4 报告与执行台        W5 Node SDK
-   token presign 路由     失败清单补出处         wdio + playwright
+   token presign 路由     失败清单补出处         框架无关的核心包
    + 单次执行配额         + 执行记录块（按本任务  （参考实现）
    + R2 未配置降级          聚合，§6.3 那条警告）
                          + 顶部灰字               │
                          + 越界用例一键追加       │
                                     ┌───────────┴──────────┐
-                                   W6 pytest plugin      W7 JUnit5 + TestNG
-                                                          （Maven Central 前置
-                                                            与 W2 并行起）
+                                   W6 Python SDK         W7 JUnit5 + TestNG
+                                    框架无关的核心包      （只发 GitHub Packages，
+                                    + 可选 pytest 薄壳      无发布前置）
 ```
 
 **W1 与 W2 是串行瓶颈**，各自完成并 review 通过后下游才能并行。
 W7 的**发布渠道申请与 W2 并行开始**，别等代码写完卡在流程上。
+
+> **W5 / W6 / W7 修正（2026-08-25，实现时发现）**：图里 W5 原写「wdio + playwright」，
+> 已按 §7.3 的修正改成「框架无关的核心包」——W5 交付的是零运行时依赖、不绑任何框架的核心包，
+> 不含 reporter 薄壳。W6 原写「pytest plugin」，是同一批绑框架的过期表述，已一并就地改成
+> 「W6 Python SDK ／ 框架无关的核心包 + 可选 pytest 薄壳」，即核心包与薄壳是两件东西，
+> 薄壳可选（§7.3 里 Python 那行的形态；两个目录当时都还没建）。
+> W7 原写「（Maven Central 前置与 W2 并行起）」，随 §7.4 的发布渠道变更一并作废：
+> 三个 SDK 都只发 GitHub，**没有任何发布渠道申请需要提前起**，
+> 上面那句「W7 的发布渠道申请与 W2 并行开始」不再适用。
+
+> **W6 / W7 交付状态（2026-08-25 晚）**：W6、W7 均已完工，图里这两格的描述与实现一致，因此**不动图**
+> （W6 那格「框架无关的核心包 + 可选 pytest 薄壳」上一条已经改对了，正是落地形态）。
+> 形态与测试数见 §7.3 那条「落地状态更新」。
+> 另外 `examples/nodejs`、`examples/python`、`examples/jdk` 三份示例都**对着真服务端跑通过**：
+> 真实对账单、`writtenTo` 为空时非零退出、幂等键复用都验过（详见 `examples/README.md`）。
+> ⚠️ 但 W7 落在**仓库门禁之外**，且三份示例有两条路径至今没在真实链路上验过——
+> 这三件事都是明确的后续项，分别记在 §9 的「全局」「附件」「上报」三组末尾，别当成已完成。
 
 > **W1 落点修正（2026-08-24）**：token 管理 UI 原计划挂在「设置」页，实现时改成了
 > 独立路由 `/api-tokens`。理由：`/settings` 是**项目维度**的页面，选定项目之前整页不渲染
@@ -906,7 +982,10 @@ W7 的**发布渠道申请与 W2 并行开始**，别等代码写完卡在流程
 
 **上报**
 
-- [ ] 上报走的是 `bulkSetRunCaseResult`，代码里没有第二条写 `test_run_cases.result` 的路径
+- [ ] 上报走的是 `applyAutomationVerdicts`，代码里没有第二条写 `test_run_cases.result` 的路径
+      （**函数名修正（2026-08-25，实现时发现）**：原文写的是 `bulkSetRunCaseResult`，照字面勾会勾错——
+      实际落地的是同文件、同守卫的第二个入口 `applyAutomationVerdicts`，理由见 §5.4。
+      「代码里没有第二条写路径」那半句仍然成立，才是这一条真正要验的东西）
 - [ ] 上报第一条结论 → 任务自动 `ready → in_progress`；上报补齐最后一条 → 自动 `completed`
 - [ ] 「待评审」的任务上报被拒，错误信息明确
 - [ ] `submitted` 的任务上报被拒，拒绝发生在 repository 事务内（非端点预检）
@@ -924,6 +1003,11 @@ W7 的**发布渠道申请与 W2 并行开始**，别等代码写完卡在流程
 - [ ] 200 条以上分批，服务端不出现逐条抢 `FOR UPDATE` 的串行往返
 - [ ] 候选任务数为 N 时，写入事务数为 N，**不是**逐条一个事务
 
+> **未验证项（2026-08-25）：分批在真实链路上一次都没跑过。** 上面「200 条以上分批」那条，
+> 以及「每批派生不同幂等键」，目前**只有单元测试覆盖**（假 transport）。三份示例每轮只发 5 条，
+> 远够不到 `RESULTS_PER_BATCH=200` 的门槛，所以真实服务端上从来没有走过第二批。
+> 这两条勾之前必须先造一次 >200 条的真实上报，别照着单测的绿就打勾。
+
 **数据完整性**
 
 - [ ] 回退结论到 `untested` 时，`executedVia` 与 `lastAutomationExecutionId` **一并清空**（§3.6）
@@ -937,6 +1021,12 @@ W7 的**发布渠道申请与 W2 并行开始**，别等代码写完卡在流程
 - [ ] 配额按单个任务计；横跨三个任务的执行不会让每个任务的配额缩水
 - [ ] 单次执行超过条数或总字节配额时被拒，且理由进对账单
 - [ ] R2 未配置时，结论照常上报成功，只有附件部分降级
+
+> **未验证项（2026-08-25）：附件真正上传成功那条路径，三份示例一次都没验过。**
+> 这台开发服务端的 R2 没配，`presign` 一律返回 `storageConfigured: false`，
+> 所以示例每次都只走到**降级分支**——上面最后那条（R2 未配置时降级）是唯一被真实验过的。
+> 预签名 PUT、`register` 回执、分块上传在真实服务端上**都没跑过**，
+> 只有单元测试里的假 transport 覆盖。本组前四条在配好 R2 之前不具备打勾条件。
 
 **报告**
 
@@ -963,3 +1053,12 @@ W7 的**发布渠道申请与 W2 并行开始**，别等代码写完卡在流程
 **全局**
 
 - [ ] `pnpm check-types` + `pnpm dlx ultracite check` 全绿
+
+> **后续项（2026-08-25）：Java SDK 是个 Maven 孤岛，仓库门禁覆盖不到它。**
+> `packages/sdk-java` 没有 `package.json`，所以它不在 pnpm 工作区里——
+> `pnpm test` / `turbo run test` **不会跑那 119 条 Java 测试**，CI 也不会；
+> 目前只有人手敲 `mvn clean test` 才会执行。
+> 这是**有意的决定，不是漏做**：`.github/workflows/ci.yml` 的 check job 里没有装 JDK 和 Maven
+> 的步骤，此刻加一个 shim `package.json` 只会让 `pnpm test` 在 CI 上直接炸。
+> **因此要把 Java 纳入门禁，必须同时改 CI 配置（加 setup-java + Maven 依赖缓存）与加 shim，
+> 两件事得一起做，单做任一件都比现状更糟。** 在那之前，上面这条「全绿」不覆盖 Java。
