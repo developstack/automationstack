@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.automationstack.example</groupId>
+  <artifactId>automationstack-example-jdk</artifactId>
+  <version>0.1.0</version>
+
+  <name>automationstack-example-jdk</name>
+  <description>Java + JUnit 5 接入 automationstack 的最小可跑工程。</description>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <junit.version>5.10.2</junit.version>
+    <exec.plugin.version>3.2.0</exec.plugin.version>
+  </properties>
+
+  <dependencies>
+    <!--
+      示例跟着仓库走：先 `mvn -f ../../packages/sdk-java/pom.xml install`，
+      这里就从本地仓库解析到刚构建的那一份。改了 SDK 立刻能在示例里看见效果，
+      不用先发一个 tag。你自己的项目请照 packages/sdk-java/README.md 从
+      GitHub Packages 装。
+    -->
+    <dependency>
+      <groupId>org.automationstack</groupId>
+      <artifactId>sdk</artifactId>
+      <version>0.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <argLine>-Dfile.encoding=UTF-8</argLine>
+          <!-- 一条用例故意失败，这是示例要演示的东西，不该让构建停在这儿。 -->
+          <testFailureIgnore>true</testFailureIgnore>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec.plugin.version}</version>
+      </plugin>
+    </plugins>
+  </build>
+</project>

@@ -1,0 +1,14 @@
+# 虚拟环境（uv venv --python 3.11 建的）。带 * 是因为并存多个解释器版本的环境很常见
+# （.venv39 用来验 3.9 兼容），少写一个通配符就会有人把几十兆的环境提交进来。
+.venv*/
+
+# 失败现场（截图 + 完整日志）由测试运行时生成，不进版本库
+artifacts/
+
+# Python 与 pytest 的运行产物
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# 真实 token 只存在于本机的 .env 里；示例只提交 .env.example
+.env

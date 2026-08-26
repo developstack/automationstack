@@ -1,0 +1,5 @@
+# 失败现场（截图 + 完整日志）由测试运行时生成，不进版本库
+artifacts/
+
+# 真实 token 只存在于本机的 .env 里；示例只提交 .env.example
+.env

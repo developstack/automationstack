@@ -1,6 +1,9 @@
 packages:
   - apps/*
   - packages/*
+  # 示例工程（examples/nodejs 等）：它们要用 workspace:* 引 SDK，
+  # 不进工作区就只能写相对路径 file: 依赖，那份 README 抄给用户就是错的。
+  - examples/*
 allowBuilds:
   esbuild: true
   sharp: true
