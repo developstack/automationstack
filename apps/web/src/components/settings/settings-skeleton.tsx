@@ -1,6 +1,7 @@
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { cn } from "@automationstack/ui/lib/utils";
 
+import { StaggerItem } from "@/components/layout/page-stagger";
 import { SettingsFieldsSkeleton } from "@/components/settings/settings-section";
 
 /**
@@ -61,11 +62,34 @@ import { SettingsFieldsSkeleton } from "@/components/settings/settings-section";
  * 可用宽 = max-w-3xl 768 − px-4 两侧 32 = 736px，桌面下是一行。视口窄到约 711px 以下时
  * 真身会折成两行、比骨架高 16px。骨架没法既是定高又跟着换行走，这里取常见的那一档。
  *
- * ## 为什么不错开（不包 StaggerItem）
+ * ## 逐项错开：序号与就绪态是同一张排位表
  *
- * 就绪态 SettingsPage 现在没有逐项进场，只跟着 <main> 整块淡入。只给骨架加错开，会让
- * 「慢加载比快加载更花哨」——恰好是 report-skeleton.tsx 那边要消除的那种快慢不一致，
- * 只是方向反过来。要错开就得两端一起改，而 settings-page.tsx 不在本轮改动范围内。
+ * 下面四格各包一层 StaggerItem，序号与 settings-page.tsx 里 SettingsPageBody 那一列
+ * 逐个对齐：
+ *
+ *   0  项目选择器一行
+ *   1  「测试评审和执行」分区
+ *   2  分隔线
+ *   3  「Jira 集成」分区
+ *
+ * 就绪态的 1 号位还兼着 MissingProjectNotice，那与分区互斥（判定见 SettingsPageBody
+ * 顶部），本骨架够不着那一态——loader 还没回来时连项目列表都没有，谈不上「URL 指的
+ * 项目查不到」——所以这边 1 号只画分区，两处并不冲突。
+ *
+ * 骨架这边非包不可，理由与 report-skeleton.tsx 顶部那段逐字同源：不包的话慢加载这条
+ * 路**一次错开都不会发生**。骨架挂载时 pathname 与上一页不同，PageTransition 判定要播
+ * 进场，于是骨架整块淡入一次；等 loader 回来，pending 那格里存的已经是本页 pathname，
+ * 就绪态被判成 followsSamePath，skipEnter 为真——settings-page.tsx 那几个 StaggerItem
+ * 一个都不动，直接落在终态。结果就是 loader 快（<200ms，router.tsx 的 defaultPendingMs，
+ * 骨架压根不上场）时逐项落位、慢时整块淡入，同一页两种观感。
+ *
+ * ## 包这一层不动上面那张折算表
+ *
+ * StaggerItem 渲染的是 `<motion.div className="grid">`（成因见 page-stagger.tsx 顶部）。
+ * 它在 `flex flex-col gap-6` 里只是接替原节点当那一格 flex item：格数没变，gap 的道数
+ * 也没变，24px 那几行照旧。而 grid 那层的行高取唯一子节点的内容高度，四格里唯一写死
+ * 高度的分隔线（h-px）不会被 grid 的 align stretch 拉高——stretch 只作用在高度为 auto
+ * 的项上，有明确 height 的项按自己的高度走。合计 713 仍然成立。
  */
 
 /**
@@ -134,22 +158,30 @@ export function SettingsSkeleton() {
 			</output>
 			<div aria-hidden="true" className="flex flex-col gap-6">
 				{/* 项目选择器：横排一行，与 settings-project-picker.tsx 同为 gap-3 */}
-				<div className="flex flex-wrap items-center gap-3">
-					<Skeleton className="h-4 w-7" />
-					<Skeleton className="h-8 w-56" />
-				</div>
-				<SectionSkeleton
-					descriptionWidth="w-80"
-					fields={TEST_RUN_FIELD_COUNT}
-					titleWidth="w-24"
-				/>
+				<StaggerItem index={0}>
+					<div className="flex flex-wrap items-center gap-3">
+						<Skeleton className="h-4 w-7" />
+						<Skeleton className="h-8 w-56" />
+					</div>
+				</StaggerItem>
+				<StaggerItem index={1}>
+					<SectionSkeleton
+						descriptionWidth="w-80"
+						fields={TEST_RUN_FIELD_COUNT}
+						titleWidth="w-24"
+					/>
+				</StaggerItem>
 				{/* 对齐两分区之间的 <Separator />：h-px 是它 data-horizontal 下的实际高度 */}
-				<Skeleton className="h-px w-full" />
-				<SectionSkeleton
-					descriptionWidth="w-full"
-					fields={JIRA_FIELD_COUNT}
-					titleWidth="w-16"
-				/>
+				<StaggerItem index={2}>
+					<Skeleton className="h-px w-full" />
+				</StaggerItem>
+				<StaggerItem index={3}>
+					<SectionSkeleton
+						descriptionWidth="w-full"
+						fields={JIRA_FIELD_COUNT}
+						titleWidth="w-16"
+					/>
+				</StaggerItem>
 			</div>
 		</>
 	);
