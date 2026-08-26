@@ -1,16 +1,6 @@
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyMedia,
-	EmptyTitle,
-} from "@automationstack/ui/components/empty";
-import {
-	createRouter as createTanStackRouter,
-	Link,
-} from "@tanstack/react-router";
+import { NotFoundGlitch } from "@automationstack/ui/components/motion/not-found/glitch";
+import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query";
-import { FileQuestionIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { PageTransition } from "./components/layout/page-transition";
@@ -45,20 +35,18 @@ function NotFoundPage() {
 
 	return (
 		<PageTransition className="container mx-auto flex max-w-5xl items-center px-4 py-6">
-			<Empty>
-				<EmptyHeader>
-					<EmptyMedia variant="icon">
-						<FileQuestionIcon />
-					</EmptyMedia>
-					<EmptyTitle>
-						<h1>页面不存在</h1>
-					</EmptyTitle>
-					<EmptyDescription>链接可能已失效或被删除。</EmptyDescription>
-					<Link className="text-sm underline underline-offset-4" to="/projects">
-						返回项目列表
-					</Link>
-				</EmptyHeader>
-			</Empty>
+			{/*
+			 * beUI 的 not-found-glitch（shadcn registry 引入，motion 驱动）：数字在
+			 * 入场时逐位乱码翻牌再落定，hover 时红/青色差重影。SSR 与首帧直接渲染
+			 * 真实 404，乱码是纯客户端增强，prefers-reduced-motion 下自动跳过——
+			 * 这些都由组件自己处理，这里只负责中文文案与路由出口。
+			 */}
+			<NotFoundGlitch
+				description="链接可能已失效或被删除。"
+				homeHref="/projects"
+				homeLabel="返回项目列表"
+				title="页面不存在"
+			/>
 		</PageTransition>
 	);
 }
