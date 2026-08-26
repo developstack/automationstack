@@ -1,0 +1,15 @@
+{
+  "name": "@automationstack/example-nodejs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "用 @automationstack/sdk 上报一轮 node:test 结果的最小示例（不绑任何测试框架）",
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "report": "node --env-file-if-exists=.env src/run-and-report.js",
+    "report:empty-write": "node --env-file-if-exists=.env src/report-empty-write.js"
+  },
+  "dependencies": {
+    "@automationstack/sdk": "workspace:*"
+  }
+}
