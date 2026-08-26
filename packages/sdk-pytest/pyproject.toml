@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytest-automationstack"
+version = "0.1.0"
+description = "pytest 插件：把一轮结果交给 automationstack-sdk 批量上报并打印对账单"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "UNLICENSED" }
+
+# 只有这两个。核心包扛业务逻辑，pytest 提供钩子——本包自己一个依赖都不需要。
+# 核心包**不**反过来依赖 pytest：不装 pytest 也能用它上报（§7.3）。
+dependencies = [
+  "automationstack-sdk",
+  "pytest>=7",
+]
+
+[project.urls]
+Repository = "https://github.com/automationstack/automationstack"
+
+# entry point 让 pytest 自动发现插件；真正上报仍然要显式加 `--automationstack`，
+# 装个包就偷偷往平台写东西是不能接受的。
+[project.entry-points.pytest11]
+automationstack = "pytest_automationstack.plugin"
+
+[dependency-groups]
+dev = ["pytest>=7"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pytest_automationstack"]
+
+[tool.hatch.metadata]
+# 核心包只从 git 装（本仓库的 SDK 一律不发 PyPI），装插件时要允许这种直接引用。
+allow-direct-references = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# 不写 .pytest_cache：这个包的测试全靠 pytester 起子进程/子会话，
+# 缓存目录只会在仓库里留垃圾，对结果没有任何影响。
+addopts = "-p no:cacheprovider"

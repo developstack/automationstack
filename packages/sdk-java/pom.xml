@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>org.automationstack</groupId>
+  <artifactId>sdk</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+
+  <name>automationstack-sdk</name>
+  <description>
+    把自动化测试结果批量上报到 automationstack 的框架无关 SDK。
+    与 packages/sdk-node、packages/sdk-python 是同一份规范的三份实现。
+  </description>
+
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <junit.version>5.10.2</junit.version>
+  </properties>
+
+  <dependencies>
+    <!--
+      ⚠️ 运行时依赖是**零**，这一节里一条 compile 作用域的依赖都没有，这是刻意的（§7.3 / D28）。
+
+      · JSON：不引 Jackson / Gson，自己手写（见 Json.java 与 JsonParser.java 顶部的长注释）。
+      · HTTP：用 JDK 内置的 java.net.http.HttpClient，不引 OkHttp / Apache HttpClient。
+      · 对象存储：附件走预签名 PUT，不引 AWS SDK——那一坨会给用户的构建加几十兆，
+        而它换来的能力这里一样都用不上。
+
+      下面两条依赖各自都不会进用户的运行时：
+      · junit-jupiter-api 是 provided：JUnit 5 薄壳编译要它，provided 作用域**不传递**，
+        不用 JUnit 的人拿到本包时 classpath 上不会多出任何东西；用 JUnit 的人自己本来
+        就有一份，版本由他决定，我们不去钉死。
+      · junit-jupiter 是 test：只有本包自己跑测试时用。
+    -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>${junit.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.5</version>
+        <configuration>
+          <!-- 源码与对账单里全是中文，编码不锁死的话在 CI 上会打成一堆问号。 -->
+          <argLine>-Dfile.encoding=UTF-8</argLine>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.4.1</version>
+      </plugin>
+    </plugins>
+  </build>
+
+  <distributionManagement>
+    <!--
+      **只发 GitHub Packages，不发 Maven Central。**
+      因此不需要 sonatype 账号、不需要 GPG 签名、不需要域名验证（见 README）。
+      认证走 ~/.m2/settings.xml 里 id 为 github 的 <server>，token 用 ${env.GITHUB_TOKEN}。
+    -->
+    <repository>
+      <id>github</id>
+      <name>GitHub Packages</name>
+      <url>https://maven.pkg.github.com/automationstack/automationstack</url>
+    </repository>
+  </distributionManagement>
+</project>
