@@ -3,8 +3,8 @@
  * 供 AI agent 的 list_modules 工具消费。不做任何数据访问。
  */
 
-import type { ModuleRow, ModuleTreeNode } from "./module-tree";
-import { buildModuleTree } from "./module-tree";
+import type { ModuleRow, ModuleTreeNode } from "../module-tree";
+import { buildModuleTree } from "../module-tree";
 
 const INDENT_UNIT = "  ";
 const EMPTY_OUTLINE = "（该项目暂无模块）";

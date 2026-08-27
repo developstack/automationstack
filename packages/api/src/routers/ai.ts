@@ -1,4 +1,4 @@
-import { readAiConfigStatus } from "@automationstack/ai/provider";
+import { readAiConfigStatus } from "@automationstack/ai/provider-config-store";
 import { acceptProposals } from "@automationstack/db/repositories/ai-acceptance-repository";
 import {
 	listCaseProposalsBySession,

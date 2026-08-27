@@ -2,7 +2,8 @@ import { and, asc, count, eq, inArray } from "drizzle-orm";
 
 import { db } from "../index";
 import type { AiCaseProposal, ProposedCase } from "../schema/ai";
-import { aiCaseProposals } from "../schema/ai";
+import { aiCaseProposals, aiGenerationSessions } from "../schema/ai";
+import type { AcceptanceProposalRow } from "./ai-acceptance-core";
 import type { DbTransaction } from "./repository-types";
 
 async function countProposals(sessionId: string): Promise<number> {
@@ -70,19 +71,35 @@ export function getCaseProposalsByIds(
  * 采纳事务内读取提案并对命中行加 `FOR UPDATE` 行锁。
  * 并发采纳同一批提案时，后到的事务会阻塞到先提交者结束，
  * 再读到的状态已是 `accepted`，从而落入 invalid-proposals 分支。
+ *
+ * join 会话表只为带出 `projectId`：调用方必须比对它与目标模块的项目，
+ * 否则光凭请求里的 id 就能把别的项目的提案采纳进来（见 ai-acceptance-core.ts）。
+ * 校验数据在同一条 SELECT 里取回，不额外多一次事务内往返。
+ *
+ * 锁限定 `of: aiCaseProposals`：不加这个限定，`FOR UPDATE` 会连 join 进来的
+ * 会话行一起锁住，把生成流收尾的 updateGenerationSessionStatus 堵在采纳事务后面。
  */
-export function getCaseProposalsByIdsInTx(
+export function getProposalsForAcceptanceInTx(
 	tx: DbTransaction,
 	ids: string[]
-): Promise<AiCaseProposal[]> {
+): Promise<AcceptanceProposalRow[]> {
 	if (ids.length === 0) {
 		return Promise.resolve([]);
 	}
 	return tx
-		.select()
+		.select({
+			id: aiCaseProposals.id,
+			proposal: aiCaseProposals.proposal,
+			sessionProjectId: aiGenerationSessions.projectId,
+			status: aiCaseProposals.status,
+		})
 		.from(aiCaseProposals)
+		.innerJoin(
+			aiGenerationSessions,
+			eq(aiCaseProposals.sessionId, aiGenerationSessions.id)
+		)
 		.where(inArray(aiCaseProposals.id, ids))
-		.for("update");
+		.for("update", { of: aiCaseProposals });
 }
 
 /**

@@ -13,11 +13,12 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@automationstack/agent": "workspace:*",
     "@automationstack/ai": "workspace:*",
     "@automationstack/db": "workspace:*",
     "@automationstack/env": "workspace:*",
-    "@aws-sdk/client-s3": "^3.1116.0",
-    "@aws-sdk/s3-request-presigner": "^3.1116.0",
+    "@aws-sdk/client-s3": "3.1116.0",
+    "@aws-sdk/s3-request-presigner": "3.1116.0",
     "@orpc/client": "catalog:",
     "@orpc/openapi": "catalog:",
     "@orpc/server": "catalog:",
