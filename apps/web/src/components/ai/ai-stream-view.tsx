@@ -12,7 +12,7 @@ import {
 	MessageGroup,
 } from "@automationstack/ui/components/message";
 import { cn } from "@automationstack/ui/lib/utils";
-import { Loader2Icon, WrenchIcon } from "lucide-react";
+import { Loader2Icon, TriangleAlertIcon, WrenchIcon } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
 import type { AiToolCall } from "@/components/ai/ai-generation-state";
@@ -51,6 +51,32 @@ function AiStreamText({ store }: { store: AiTextStore }) {
 	);
 }
 
+/**
+ * 工具报错是**警告**不是错误：本轮生成没有终止。所以它和成功的调用并排在
+ * 同一条活动日志里，只换成告警配色，原因进 title，不占用下方那行 destructive
+ * 文案（那是整轮失败才用的）。
+ *
+ * ⚠️ 文案只说「失败」，**不要写「正在重试」**：模型拿到错误后是否再试一次由它
+ * 自己决定——这一步可能正好是最后一步，也可能 `stopWhen` 的步数已经到顶。
+ * 许一个我们兑现不了的承诺，用户会守着一个不会再动的面板等下去。
+ */
+function AiToolCallBadge({ call }: { call: AiToolCall }) {
+	if (call.error === null) {
+		return (
+			<Badge variant="secondary">
+				<WrenchIcon data-icon="inline-start" />
+				{toolLabel(call.toolName)}
+			</Badge>
+		);
+	}
+	return (
+		<Badge title={call.error} variant="destructive">
+			<TriangleAlertIcon data-icon="inline-start" />
+			{`${toolLabel(call.toolName)}失败`}
+		</Badge>
+	);
+}
+
 function AiToolCalls({ toolCalls }: { toolCalls: AiToolCall[] }) {
 	if (toolCalls.length === 0) {
 		return null;
@@ -58,10 +84,7 @@ function AiToolCalls({ toolCalls }: { toolCalls: AiToolCall[] }) {
 	return (
 		<div className="flex flex-wrap items-center gap-1.5">
 			{toolCalls.map((call) => (
-				<Badge key={call.id} variant="secondary">
-					<WrenchIcon data-icon="inline-start" />
-					{toolLabel(call.toolName)}
-				</Badge>
+				<AiToolCallBadge call={call} key={call.id} />
 			))}
 		</div>
 	);

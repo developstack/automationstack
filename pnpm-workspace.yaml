@@ -9,6 +9,26 @@ allowBuilds:
   sharp: true
   lefthook: true
   unrs-resolver: true
+  # 下面两条随 @earendil-works/pi-ai 传进来，都是我们**永远不会加载**的 provider SDK 链上的：
+  # pi 把 google / aws / anthropic 三家的 SDK 藏在 `api/*.lazy.js` 的静态字符串 import() 后面，
+  # 我们只走 OpenAI 兼容端点，实测跑完一整轮 agent loop 只加载 10 个包，这两个一次都没进来。
+  # 但只要它们躺在 node_modules 里，不显式表态 pnpm 就 ERR_PNPM_IGNORED_BUILDS 让整个安装失败，
+  # 所以必须写在这儿。写 false 而不是 true：build 脚本产出的东西我们用不到，
+  # 少跑两个 install 期脚本就少两处供应链面。
+  '@google/genai': false
+  protobufjs: false
+  # 下面两条随 @wdio/cli 传进来（examples/nodejs 的 WebdriverIO 示例）。
+  # edgedriver 有 `install`、geckodriver 有 `postinstall`，都是 install 期脚本。
+  # 写 false：示例只驱动 Chrome，而 Chrome 的 driver 是 wdio 在**运行期**按需下载的
+  # （≥8.14 的自动驱动管理），不经过这两个包；实测示例四条路径全绿那几轮，
+  # 这两个 build 一次都没跑过，产物我们用不到，少跑两个脚本就少两处供应链面。
+  #
+  # ⚠️ 必须显式写在这里，否则 CI 必红：本机热状态（node_modules + .modules.yaml 都在）
+  # 装它们不会被点名，看起来毫无问题；但 CI 是冷检出 + `pnpm install --frozen-lockfile`。
+  # 2026-08-26 在独立克隆里做过冷装复现，原文是：
+  #   [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: edgedriver@6.3.0, geckodriver@6.1.1
+  edgedriver: false
+  geckodriver: false
 catalog:
   dotenv: 17.4.2
   zod: 4.4.3

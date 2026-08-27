@@ -34,6 +34,17 @@ export default defineConfig({
 				},
 			},
 			{
+				// 测试用例生成 agent。整个包零 db / 零 env 依赖，存储与模型配置
+				// 全部经端口注入，测试用 in-memory 假实现顶上：既不连库也不连网，
+				// 也就不需要任何环境变量。
+				test: {
+					environment: "node",
+					include: ["src/**/*.test.ts"],
+					name: "agent",
+					root: resolveFromRoot("./packages/agent"),
+				},
+			},
+			{
 				// models.dev 的解析与缓存层：纯函数 + 一个被 stub 掉的 fetch，
 				// 不连库也不连网，所以不需要任何环境变量。
 				test: {

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "3.0.31",
+    "@automationstack/agent": "workspace:*",
     "@automationstack/db": "workspace:*",
     "@automationstack/env": "workspace:*",
     "ai": "7.0.68",

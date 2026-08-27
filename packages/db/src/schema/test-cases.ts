@@ -1,3 +1,4 @@
+import type { CaseStep } from "@automationstack/agent/types";
 import { sql } from "drizzle-orm";
 import {
 	index,
@@ -41,11 +42,13 @@ export type CasePriority = (typeof casePriorityEnum.enumValues)[number];
 export type CaseType = (typeof caseTypeEnum.enumValues)[number];
 export type CaseStatus = (typeof caseStatusEnum.enumValues)[number];
 
-export interface CaseStep {
-	expected: string;
-	id: string;
-	step: string;
-}
+/**
+ * `CaseStep` 的定义已归 `@automationstack/agent`（agent 产出提案时就要描述
+ * 步骤，而那个包零 db 依赖，不能反过来 import 这里）。这里保留同名再导出：
+ * 全仓十余处 `from "@automationstack/db/schema/test-cases"` 的 import 路径
+ * 不必改，而定义只剩一份。纯类型再导出，不产生任何运行时依赖。
+ */
+export type { CaseStep } from "@automationstack/agent/types";
 
 export const testCases = pgTable(
 	"test_cases",

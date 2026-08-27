@@ -2,14 +2,30 @@
   "name": "@automationstack/example-nodejs",
   "version": "0.0.0",
   "private": true,
-  "description": "用 @automationstack/sdk 上报一轮 node:test 结果的最小示例（不绑任何测试框架）",
+  "description": "把 @automationstack/sdk 当「切面」接进 node:test / vitest / WebdriverIO 三个框架的示例：测试文件里一行 SDK 都没有",
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "report": "node --env-file-if-exists=.env src/run-and-report.js",
-    "report:empty-write": "node --env-file-if-exists=.env src/report-empty-write.js"
+    "test:node": "node --env-file-if-exists=.env --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./adapters/node-test-reporter.ts --test-reporter-destination=stdout tests/node/*.test.ts",
+    "test:vitest": "node --env-file-if-exists=.env ./node_modules/vitest/vitest.mjs run --config vitest.config.ts",
+    "test:wdio": "node --env-file-if-exists=.env ./node_modules/@wdio/cli/bin/wdio.js run ./wdio.config.ts",
+    "report:empty-write": "node --env-file-if-exists=.env --test --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./adapters/node-test-reporter.ts --test-reporter-destination=stdout tests/empty-write/*.test.ts",
+    "check-types": "tsc --noEmit"
   },
-  "dependencies": {
-    "@automationstack/sdk": "workspace:*"
+  "devDependencies": {
+    "@automationstack/sdk": "workspace:*",
+    "@types/mocha": "10.0.10",
+    "@types/node": "catalog:",
+    "@wdio/cli": "9.31.3",
+    "@wdio/globals": "9.31.3",
+    "@wdio/local-runner": "9.31.3",
+    "@wdio/mocha-framework": "9.31.2",
+    "@wdio/reporter": "9.31.2",
+    "@wdio/spec-reporter": "9.31.2",
+    "@wdio/types": "9.31.2",
+    "expect-webdriverio": "6.0.9",
+    "tsx": "4.23.12",
+    "typescript": "catalog:",
+    "vitest": "4.1.11",
+    "webdriverio": "9.31.3"
   }
 }

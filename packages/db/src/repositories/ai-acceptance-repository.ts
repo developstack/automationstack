@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "../index";
-import type { AiCaseProposal } from "../schema/ai";
 import { modules } from "../schema/modules";
+import type { AcceptanceProposalRow } from "./ai-acceptance-core";
+import { selectAcceptableProposals } from "./ai-acceptance-core";
 import {
-	getCaseProposalsByIdsInTx,
+	getProposalsForAcceptanceInTx,
 	markCaseProposalAcceptedInTx,
 	ProposalNotPendingError,
 } from "./ai-proposals-repository";
@@ -27,7 +28,10 @@ export type AcceptProposalsResult =
 	/** 成功时回带 projectId，便于调用方发布实时失效事件。 */
 	| { caseIds: string[]; kind: "ok"; projectId: string }
 	| { kind: "invalid-module" }
-	/** 存在不属于待评审状态或不存在的提案 id。 */
+	/**
+	 * 存在不存在、已被处理、或不属于本模块所在项目的提案 id。
+	 * 三种情形共用一个 kind 是刻意的，理由见 ai-acceptance-core.ts。
+	 */
 	| { kind: "invalid-proposals" };
 
 async function findModuleProjectId(
@@ -42,25 +46,8 @@ async function findModuleProjectId(
 	return row?.projectId ?? null;
 }
 
-/** 按入参 id 顺序返回提案；任一 id 缺失或已处理则返回 null。 */
-function orderPendingProposals(
-	rows: AiCaseProposal[],
-	ids: string[]
-): AiCaseProposal[] | null {
-	const byId = new Map(rows.map((row) => [row.id, row]));
-	const ordered: AiCaseProposal[] = [];
-	for (const id of ids) {
-		const row = byId.get(id);
-		if (row?.status !== "proposed") {
-			return null;
-		}
-		ordered.push(row);
-	}
-	return ordered;
-}
-
 function toCreateCaseInput(
-	proposal: AiCaseProposal,
+	proposal: AcceptanceProposalRow,
 	input: AcceptProposalsInput,
 	projectId: string
 ): CreateTestCaseInput {
@@ -88,8 +75,9 @@ async function acceptProposalsInTx(
 	if (!projectId) {
 		return { kind: "invalid-module" };
 	}
-	const rows = await getCaseProposalsByIdsInTx(tx, input.proposalIds);
-	const ordered = orderPendingProposals(rows, input.proposalIds);
+	const rows = await getProposalsForAcceptanceInTx(tx, input.proposalIds);
+	// 项目归属在这里合流：projectId 来自目标模块，提案的项目来自它所属会话。
+	const ordered = selectAcceptableProposals(rows, input.proposalIds, projectId);
 	if (!ordered) {
 		return { kind: "invalid-proposals" };
 	}
@@ -112,8 +100,8 @@ async function acceptProposalsInTx(
 /**
  * 采纳提案：单事务内为每条提案走 v1 快照管道创建 draft 用例，
  * 并把提案标记 accepted + 回填 acceptedCaseId。
- * 任一步骤失败则整体回滚；提案被并发抢先处理时回滚并转成
- * `invalid-proposals`，保持调用方的 typed 结果契约不变。
+ * 任一步骤失败则整体回滚；提案被并发抢先处理、或不属于目标模块所在项目时，
+ * 回滚并转成 `invalid-proposals`，保持调用方的 typed 结果契约不变。
  */
 export async function acceptProposals(
 	input: AcceptProposalsInput

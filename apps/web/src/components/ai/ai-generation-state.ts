@@ -20,6 +20,8 @@ export interface AiProposalEntry {
 }
 
 export interface AiToolCall {
+	/** 该次调用报错时的原因（非终止，模型多半会重试）；成功则为 null。 */
+	error: string | null;
 	id: string;
 	toolName: string;
 }
@@ -71,10 +73,15 @@ function upsertProposal(
 
 function withToolCall(
 	state: AiGenerationState,
-	toolName: string
+	toolName: string,
+	error: string | null
 ): AiGenerationState {
-	const id = `${state.toolCalls.length}-${toolName}`;
-	return { ...state, toolCalls: [...state.toolCalls, { id, toolName }] };
+	const suffix = error === null ? "call" : "error";
+	const id = `${state.toolCalls.length}-${toolName}-${suffix}`;
+	return {
+		...state,
+		toolCalls: [...state.toolCalls, { error, id, toolName }],
+	};
 }
 
 /** 生成失败时，若已经收到提案就直接进评审阶段，别把已有成果藏起来。 */
@@ -96,7 +103,12 @@ function applyAiEvent(
 		case "status":
 			return { ...state, status: event.message };
 		case "tool-call":
-			return withToolCall(state, event.toolName);
+			return withToolCall(state, event.toolName, null);
+		// 工具报错只在活动日志里多一行警告，不写 state.error、不改 phase：
+		// 它不终止本轮生成，模型拿到错误后往往会重试并成功，把面板打成
+		// 错误态会让一次自愈的中间步骤看起来像整轮失败。
+		case "tool-error":
+			return withToolCall(state, event.toolName, event.message);
 		case "proposal":
 			return {
 				...state,

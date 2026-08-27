@@ -1,11 +1,9 @@
 import { randomUUID } from "node:crypto";
-import type { ProposedCase } from "@automationstack/db/schema/ai";
-import type {
-	CasePriority,
-	CaseType,
-} from "@automationstack/db/schema/test-cases";
-import { tool } from "ai";
 import { z } from "zod";
+
+import type { AgentPorts } from "./ports";
+import type { CasePriority, CaseType, ProposedCase } from "./types";
+import { zodTool } from "./zod-tool";
 
 const CASE_NAME_MAX_LENGTH = 200;
 const MAX_PROPOSALS_PER_BATCH = 10;
@@ -31,7 +29,7 @@ const proposedStepSchema = z.object({
 	step: z.string().min(1).describe("单一操作步骤描述"),
 });
 
-const proposedCaseSchema = z.object({
+export const proposedCaseSchema = z.object({
 	caseType: z.enum(caseTypeValues).describe("用例类型"),
 	name: z
 		.string()
@@ -53,34 +51,7 @@ const proposedCaseSchema = z.object({
 
 type ProposedCaseInput = z.infer<typeof proposedCaseSchema>;
 
-/**
- * 已有用例摘要，由 deps.readExistingCases 返回，供 agent 去重参考。
- */
-export interface ExistingCaseSummary {
-	caseType: CaseType;
-	id: string;
-	name: string;
-	priority: CasePriority;
-	tags: string[];
-}
-
-/**
- * packages/ai 不直接操作数据库；全部数据访问经此接口注入，
- * 真实实现由 packages/api 的 ai router 基于 packages/db repository 提供。
- */
-export interface AgentDeps {
-	/** 返回项目的模块大纲（含模块 id 的缩进文本）。 */
-	listModulesOutline: (projectId: string) => Promise<string>;
-	/** 返回指定模块下已有用例的摘要列表。 */
-	readExistingCases: (moduleId: string) => Promise<ExistingCaseSummary[]>;
-	/** 增量持久化提案，按入参顺序返回提案 id 列表。 */
-	saveProposals: (
-		sessionId: string,
-		proposals: ProposedCase[]
-	) => Promise<string[]>;
-}
-
-/** 一条已持久化的提案（id 由 saveProposals 返回）。 */
+/** 一条已持久化的提案（id 由 `SessionStore.saveProposals` 返回）。 */
 export interface SavedProposal {
 	id: string;
 	proposal: ProposedCase;
@@ -125,21 +96,26 @@ function zipSavedProposals(
 
 /**
  * 以依赖注入方式创建 agent 的三个工具。
+ *
+ * 三个工具全部只经端口取数/落盘（`caseCatalog` 只读、`sessionStore` 只写），
+ * 本包因此不含任何 SQL、连接串或环境变量。
  */
-export function createAgentTools(deps: AgentDeps, context: AgentToolContext) {
+export function createAgentTools(ports: AgentPorts, context: AgentToolContext) {
 	return {
-		list_modules: tool({
+		list_modules: zodTool({
 			description:
 				"查看项目的模块树大纲（含模块 id），用于了解业务结构并选择目标模块。",
-			execute: () => deps.listModulesOutline(context.projectId),
+			execute: () => ports.caseCatalog.listModulesOutline(context.projectId),
 			inputSchema: z.object({}),
+			label: "查看模块大纲",
+			name: "list_modules",
 		}),
-		propose_cases: tool({
+		propose_cases: zodTool({
 			description:
 				"提交一批测试用例提案（每批最多 10 条），提案会持久化等待人工评审。可多次调用分批提交。",
 			execute: async ({ proposals }): Promise<ProposeCasesOutput> => {
 				const normalized = proposals.map(toProposedCase);
-				const proposalIds = await deps.saveProposals(
+				const proposalIds = await ports.sessionStore.saveProposals(
 					context.sessionId,
 					normalized
 				);
@@ -153,13 +129,17 @@ export function createAgentTools(deps: AgentDeps, context: AgentToolContext) {
 					.max(MAX_PROPOSALS_PER_BATCH)
 					.describe("本批提交的用例提案列表"),
 			}),
+			label: "提交用例提案",
+			name: "propose_cases",
 		}),
-		read_existing_cases: tool({
+		read_existing_cases: zodTool({
 			description: "读取指定模块下已有用例的摘要，用于避免生成重复用例。",
-			execute: ({ moduleId }) => deps.readExistingCases(moduleId),
+			execute: ({ moduleId }) => ports.caseCatalog.readExistingCases(moduleId),
 			inputSchema: z.object({
 				moduleId: z.string().min(1).describe("目标模块的 id"),
 			}),
+			label: "读取已有用例",
+			name: "read_existing_cases",
 		}),
 	};
 }

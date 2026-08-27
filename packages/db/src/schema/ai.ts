@@ -1,3 +1,9 @@
+import type {
+	CasePriority as AgentCasePriority,
+	CaseType as AgentCaseType,
+	GenerationSessionStatus as AgentSessionStatus,
+	ProposedCase,
+} from "@automationstack/agent/types";
 import {
 	index,
 	integer,
@@ -11,12 +17,7 @@ import {
 
 import { modules } from "./modules";
 import { projects } from "./projects";
-import {
-	type CasePriority,
-	type CaseStep,
-	type CaseType,
-	testCases,
-} from "./test-cases";
+import { type CasePriority, type CaseType, testCases } from "./test-cases";
 import { users } from "./users";
 
 export const aiSessionStatusEnum = pgEnum("ai_session_status", [
@@ -39,15 +40,13 @@ export type AiProposalStatus = (typeof aiProposalStatusEnum.enumValues)[number];
 /**
  * A test case proposed by the AI generation agent, stored in
  * ai_case_proposals.proposal until it is accepted into test_cases.
+ *
+ * 定义已归 `@automationstack/agent`（生产这个形状的是 agent，而那个包零 db
+ * 依赖、要能独立发布，不能反向 import 本文件）。这里只做同名再导出：
+ * 全仓既有的 `from "@automationstack/db/schema/ai"` 一处都不用改，
+ * 而 `jsonb().$type<ProposedCase>()` 存的就是 agent 定义的那一个类型本身。
  */
-export interface ProposedCase {
-	caseType: CaseType;
-	name: string;
-	preconditions: string | null;
-	priority: CasePriority;
-	steps: CaseStep[];
-	tags: string[];
-}
+export type { ProposedCase } from "@automationstack/agent/types";
 
 export const aiGenerationSessions = pgTable("ai_generation_sessions", {
 	createdAt: timestamp("created_at", { withTimezone: true })
@@ -148,3 +147,34 @@ export const aiProviderConfig = pgTable("ai_provider_config", {
 
 export type AiProviderConfig = typeof aiProviderConfig.$inferSelect;
 export type NewAiProviderConfig = typeof aiProviderConfig.$inferInsert;
+
+/**
+ * 编译期断言辅助：`Actual` 不能赋给 `Expected` 时，这里直接 tsc 报错。
+ * 只在类型层求值，不产出任何运行时代码。
+ */
+type AssertAssignable<Actual extends Expected, Expected> = Actual;
+
+/**
+ * 把「包定义、db 符合」这条边界钉在编译期。
+ *
+ * 为什么需要这三条断言：`ProposedCase` / `CaseStep` 现在是从
+ * `@automationstack/agent` 再导出的，两边天然是同一个类型；但
+ * `case_priority` / `case_type` / `ai_session_status` 三张 **pgEnum 仍然属于 db**
+ * （迁移和数据库约束由这里管），agent 包只是平行地写了一组同取值的字符串
+ * 联合——它不认识 drizzle，也不该为了几个字符串把 drizzle 拖进去。
+ *
+ * 平行定义的代价就是会悄悄漂移：给 pgEnum 加一个取值（比如新的用例类型）
+ * 而忘了同步 agent 包，运行时才会炸在「模型提了一个 db 不认的 caseType」上，
+ * 或者反过来 agent 生成了一个 pgEnum 装不下的值，落库时被 Postgres 拒掉。
+ * 双向断言让这种漂移在 `turbo run check-types` 就报出来，改动的人当场就知道
+ * 另一边也要跟着改。**这三条不是可有可无的装饰，删掉它们等于把编译期错误
+ * 换成生产事故。**
+ */
+export type AgentTypeContract = [
+	AssertAssignable<CasePriority, AgentCasePriority>,
+	AssertAssignable<AgentCasePriority, CasePriority>,
+	AssertAssignable<CaseType, AgentCaseType>,
+	AssertAssignable<AgentCaseType, CaseType>,
+	AssertAssignable<AiSessionStatus, AgentSessionStatus>,
+	AssertAssignable<AgentSessionStatus, AiSessionStatus>,
+];

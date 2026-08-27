@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@automationstack/config/tsconfig.base.json",
+  "compilerOptions": {
+    // nodenext 而不是 base 里的 bundler：这份示例没有打包器，四个入口
+    // （node --test / vitest / wdio / tsc）跑的都是 Node 的 ESM 解析，
+    // 用 bundler 会让 tsc 放过一些 Node 运行时其实解析不了的写法。
+    "module": "nodenext",
+    // DOM 是 wdio 那一轮**必须**加的：`browser.execute` 的返回类型里写着
+    // `T extends HTMLElement ? WebdriverIO.Element : ...`，没有 DOM 时
+    // `HTMLElement` 解析成 any，于是「任何返回值」都被判成元素句柄，
+    // 拿到手的 `string[]` 会被 tsc 说成 `Element`。
+    "lib": ["ESNext", "DOM"],
+    "moduleResolution": "nodenext",
+    // 相对 import 一律写成 `./foo.ts`：Node 24 的类型擦除只认带扩展名的说明符，
+    // 而这份示例是**直接跑源码**的（没有 build 步骤），所以扩展名必须是真的。
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strictNullChecks": true,
+    "types": ["node", "mocha", "@wdio/globals/types", "expect-webdriverio"]
+  },
+  "include": ["adapters", "src", "tests", "wdio.config.ts", "vitest.config.ts"]
+}

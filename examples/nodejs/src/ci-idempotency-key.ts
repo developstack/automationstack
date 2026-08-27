@@ -3,13 +3,15 @@
 /**
  * 把 CI 的 job/attempt 标识**确定性**地折成一个合法 UUID，喂给 `AS_IDEMPOTENCY_KEY`。
  *
- *   export AS_IDEMPOTENCY_KEY=$(node src/ci-idempotency-key.js "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT")
+ *   export AS_IDEMPOTENCY_KEY=$(node src/ci-idempotency-key.ts "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT")
  *
  * ## 为什么不能直接把 `12345-2` 塞进 AS_IDEMPOTENCY_KEY
  *
  * 服务端那个字段是 `z.uuid()`，不是 UUID 会当场 400。SDK 故意**不**在本地校验它
  * （见 sdk-node/src/idempotency.ts 的注释：服务端那条指着字段名的 400，
  * 比 SDK 自己编一句「格式不对」有用），所以这一步的转换得由调用方做。
+ * 这是**有意的分工**，不是缺口：转换放在调用方这一侧，SDK 的报错就永远只有
+ * 服务端那一条指着字段名的话，不会再多一句 SDK 自己的口径。
  *
  * ## 为什么是 UUIDv5 的形状，而不是随手拼一个
  *
@@ -32,10 +34,11 @@
  * 加上语言前缀，不撞就从巧合变成一条**写下来的**性质：三份示例喂给摘要的
  * 名字前缀各不相同，无论公式怎么演化都不会算出同一个键。
  *
- * 三份示例对同一个输入 `12345-2` 的实测值互不相同（node:/python:/java: 各一个）。
+ * `tests/node/idempotency-key.test.ts` 里有一条用例专门盯着这条性质。
  */
 
 import { createHash } from "node:crypto";
+import process from "node:process";
 
 const UUID_HEX_LENGTH = 32;
 const VERSION_NIBBLE_INDEX = 12;
@@ -46,9 +49,9 @@ const UUID_SEGMENT_ENDS = [8, 12, 16, 20, 32];
  * 见文件顶部：CI 给三种语言的 job 标识是同一个字符串，不加区分就可能算出同一个键，
  * 第二轮直接命中第一轮的缓存对账单、一条都写不进去还显示成功。
  */
-const LANGUAGE_TAG = "node:";
+export const LANGUAGE_TAG = "node:";
 
-export function deriveIdempotencyKey(name) {
+export function deriveIdempotencyKey(name: string): string {
 	const nibbles = [
 		...createHash("sha1")
 			.update(LANGUAGE_TAG + name)
@@ -60,13 +63,15 @@ export function deriveIdempotencyKey(name) {
 	nibbles[VARIANT_NIBBLE_INDEX] = "8";
 	const hex = nibbles.join("");
 	let cursor = 0;
-	const segments = [];
+	const segments: string[] = [];
 	for (const end of UUID_SEGMENT_ENDS) {
 		segments.push(hex.slice(cursor, end));
 		cursor = end;
 	}
 	return segments.join("-");
 }
+
+const USAGE_EXIT_CODE = 1;
 
 // 只在被直接跑起来时充当 CLI；被 import 时什么都不做。
 if (import.meta.main) {
@@ -75,8 +80,8 @@ if (import.meta.main) {
 		console.log(deriveIdempotencyKey(name));
 	} else {
 		console.error(
-			'用法：node src/ci-idempotency-key.js "<CI 的 job-attempt 标识>"'
+			'用法：node src/ci-idempotency-key.ts "<CI 的 job-attempt 标识>"'
 		);
-		process.exit(1);
+		process.exit(USAGE_EXIT_CODE);
 	}
 }

@@ -142,31 +142,85 @@ CI 的 retry 是**新进程**，「一次进程一个」在那里失效——把
 
 ### WebdriverIO
 
-`wdio.conf.ts` 里挂一个自定义 reporter（它自己的 `sourceRef` 从用例标题或
-自定义元数据里取——那是你的约定，我们不猜）：
+`wdio.config.ts` 里挂**两样东西**：一个跑在 worker 里的 reporter，一个跑在总控里的
+launcher service。只挂 reporter 是不够的，理由见下。
+
+⚠️ **wdio 把一轮测试拆进多个 worker 子进程（一个 spec 一个），进程间内存不通**，
+而 ingest 的契约是「一轮只收一次总提交，不支持追加」，同一个幂等键第二次提交会命中
+第一次的缓存对账单原样返回。所以**不能**在 reporter 里直接 `finish()`：那样第 2 个
+往后的 worker 一条都写不进去，却各自收到一份看起来成功的对账单——绿的，什么都没发生。
+
+正确的形状是**汇聚**：worker 只攒 + 落一份文件，总控在 `onComplete` 里回捡、拼成一轮、
+调唯一一次 `finish()`。完整可运行的版本在 `examples/nodejs/adapters/`。
 
 ```ts
-import WDIOReporter from "@wdio/reporter";
-import { AutomationStackReporter } from "@automationstack/sdk";
+// worker 侧：只攒 + 落盘，绝不 finish()
+import WDIOReporter, { type RunnerStats } from "@wdio/reporter";
+import { writeSpooledRunner } from "./wdio-spool.js";
 
 export default class AutomationStackWdioReporter extends WDIOReporter {
-	private readonly reporter = new AutomationStackReporter();
+	/** 未完成的落盘数。`isSynchronised` 就看它归没归零。 */
+	private pendingWrites = 0;
 
-	onTestEnd(test) {
-		const sourceRef = test.title.match(/\[([A-Z0-9-]+)\]/)?.[1];
-		if (!sourceRef) {
-			return; // 没标 sourceRef 的用例不上报，免得整批进 unmatchedCases
-		}
-		this.reporter.addResult({
-			durationMs: test._duration,
-			message: test.error?.message ?? null,
-			result: test.state === "passed" ? "passed" : test.state === "skipped" ? "skipped" : "failed",
-			sourceRef,
-		});
+	/**
+	 * ⚠️ **必须实现它。** wdio 文档原话：「The wdio testrunner will wait to kill
+	 * the runner process until every reporter has the `isSynchronised` property
+	 * set to `true`.」而 `onRunnerEnd` 的返回值是**被忽略的**（基类里就是
+	 * `this.onRunnerEnd(this.runnerStat)` 一句，没有 await），
+	 * 写成 `async onRunnerEnd()` 而不实现这个 getter，wdio 不会等——
+	 * 落盘写到一半进程就被杀，症状是这一轮少了某个 worker 的结果，**且没有报错**。
+	 */
+	get isSynchronised(): boolean {
+		return this.pendingWrites === 0;
 	}
 
-	async onRunnerEnd() {
-		await this.reporter.finish();
+	onRunnerEnd(runner: RunnerStats) {
+		// 从基类的 `this.tests` 里取，别自己在 onTestEnd 里攒：
+		// mocha 的 `it.skip` 不触发 test:start / test:end，只走 test:pending。
+		const results = Object.values(this.tests).flatMap((test) => {
+			const sourceRef = test.title.match(/\[([A-Z0-9-]+)\]/)?.[1];
+			if (!sourceRef) {
+				return []; // 没标 sourceRef 的用例不上报，免得整批进 unmatchedCases
+			}
+			return [{
+				// `duration` 是公开 getter，`_duration` 是它的私有底座，别抄那个
+				durationMs: Math.round(test.duration),
+				message: test.error?.message ?? null,
+				result:
+					test.state === "passed"
+						? "passed"
+						: test.state === "failed"
+							? "failed"
+							: "skipped",
+				sourceRef,
+			}];
+		});
+
+		// 同步加一，在任何 await 之前——否则 isSynchronised 可能先被问到 true
+		this.pendingWrites += 1;
+		writeSpooledRunner({ cid: runner.cid, results }).finally(() => {
+			this.pendingWrites -= 1;
+		});
+	}
+}
+```
+
+```ts
+// 总控侧：`services: [[AutomationStackLauncherService, {}]]`
+import { AutomationStackReporter } from "@automationstack/sdk";
+import { readSpooledRunners, resetSpool } from "./wdio-spool.js";
+
+export default class AutomationStackLauncherService {
+	async onPrepare() {
+		await resetSpool(); // 捡到上一轮的残留就等于凭空多报一批
+	}
+
+	/** wdio 会 await 这个 hook；整轮里**唯一**一次 finish()。 */
+	async onComplete() {
+		const spooled = await readSpooledRunners();
+		const reporter = new AutomationStackReporter();
+		reporter.addResults(spooled.flatMap((runner) => runner.results));
+		await reporter.finish();
 	}
 }
 ```
