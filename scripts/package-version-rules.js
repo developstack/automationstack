@@ -19,8 +19,20 @@
  * `"*"` 是通配段，匹配任意一段——packageExtensions 底下那一层是被扩展的
  * 包名（形如 `react-redux@1`），枚举不了。
  *
- * 刻意**不**收录 `pnpm.peerDependencyRules.allowedVersions`：
- * 那里写范围是它的正常用法，管它才是误报。
+ * **以下四个位置是查过之后决定不收的，不是漏的**（2026-08-27 逐个实测）。
+ * 这一段是给下一个来扩这张表的人看的：三个「结果对」如果不写下来，
+ * 就跟「决定对」长得一样，而下一个人很可能把它们加进去、造出三条假红——
+ * 这正是这道门禁一路在修的那个病，只是位置从代码挪到了注释。
+ *
+ *   pnpm.peerDependencyRules.allowedVersions
+ *     那里写范围是它的正常用法。
+ *   pnpm.allowedDeprecatedVersions
+ *     同上，值就是「哪些版本区间允许是 deprecated 的」。
+ *   pnpm.patchedDependencies
+ *     值是补丁文件路径（patches/foo@1.2.3.patch），压根不是版本号。
+ *   pnpm.packageExtensions.<包>.devDependencies
+ *     packageExtensions 不支持这个字段，pnpm 自己就忽略它。
+ *     它看起来最像该管的一个，所以最值得写下来。
  */
 const DEPENDENCY_SECTIONS = [
 	["dependencies"],
@@ -103,6 +115,15 @@ const WORKSPACE_PROTOCOL = "workspace:";
  * 这几种协议都不走 registry 解析，版本对仓里其余工具（catalog、发布检查）
  * 一概不可见。拒掉它们是把所有依赖留在其余工具看得懂的那一条解析路径上。
  * 将来真要用，让它红一次、显式改这里，比预留一个从没被验证过的口子安全。
+ *
+ * 已知的一条假红：`v1.2.3`。npm 收这种写法，它也确实是钉死的，但不是合法
+ * semver，这里判红。全仓 0 例。不放行的理由跟上面那段同源——**假红是可见的**，
+ * 撞上的人一眼看到「只允许以下四种写法」就知道该找谁改规矩；
+ * 为一个从没出现过的写法预先开口子，才是看不见的那种代价。
+ *
+ * 已知的一格过宽：`01.2.3`。前导零不是合法 semver，`\d+` 放行了它。
+ * 无害——它到不了 registry，`pnpm install` 会当场解析失败，
+ * 不值得为它加一层复杂度。
  */
 export function isAllowedVersion(version) {
 	if (EXACT_SEMVER.test(version)) {
