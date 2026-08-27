@@ -22,7 +22,7 @@ pre-commit:
       run: pnpm eslint --no-cache {staged_files}
 
     - name: package-json-rules
-      glob: "package.json"
+      glob: "*package.json"
       run: node scripts/check-package-json.js {staged_files}
 
     - name: tailwind-rules

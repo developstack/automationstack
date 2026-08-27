@@ -148,7 +148,7 @@ importers:
         specifier: 'catalog:'
         version: 4.13.2
       pg-boss:
-        specifier: ^12.27.0
+        specifier: 12.27.0
         version: 12.27.0
       ws:
         specifier: 8.21.3
