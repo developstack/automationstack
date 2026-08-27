@@ -19,119 +19,25 @@
  *   2. 实际检查数为 0 一律不算通过——「没查到东西」不等于「查过了没问题」
  *   3. 通过时必须打出检查数，让「这次到底跑没跑」在输出里可证
  *
+ * ⚠️ **`catalog:` 的真实版本不在这道门禁的射程内。** 全仓 166 处依赖条目里
+ * 59 条（36%）写的是 `catalog:`，它们的版本落在 `pnpm-workspace.yaml`，
+ * 而这个脚本只读传进来的 package.json，从不读那个文件。豁免 catalog 是必须的
+ * （否则 catalog 根本没法用），但代价要说清楚：
+ * 「✅ 检查通过（12 个文件，166 处依赖）」**不等于** 166 条的版本写法都被查过，
+ * 只等于其中 107 条被查过，另外 59 条被指到了一个没人检查的地方。
+ *
  * 另外把「没检查成」（文件读不到、JSON 坏了）与「检查不通过」（版本写法违规）
  * 分成了两个出口。混在一起时，一个 ENOENT 会长得和真违规一模一样：
  * 现在表现为吵闹的假红，而只要有人为了消噪加一句「文件不存在就跳过」，
  * 同一段代码立刻翻成假绿。
+ *
+ * 判定规则（位置匹配 + 值白名单）在 ./package-version-rules.js，拆出去只为
+ * 300 行上限；这个文件留的是 CLI：读文件、拼报错、决定退出码。
  */
 
 import { readFileSync } from "node:fs";
 
-/**
- * 哪些位置放的是「依赖名 → 版本」。
- *
- * 按**完整路径形状**匹配，而不是只看顶层键名：`pnpm.overrides` 埋在第二层，
- * 只看 path[0] 会漏掉它——而它强制覆盖整棵依赖树的解析结果，
- * 是全仓最该管版本写法的地方。按形状匹配同时挡住了误报：
- * `peerDependenciesMeta` 这类同前缀、但值不是版本号的字段不会命中。
- */
-const DEPENDENCY_SECTIONS = [
-	["dependencies"],
-	["devDependencies"],
-	["peerDependencies"],
-	["optionalDependencies"],
-	["resolutions"],
-];
-
-/**
- * overrides 家族的值允许再套一层（npm 的嵌套 overrides 写法），
- * 所以这两条用前缀匹配而不是等长匹配。
- */
-const NESTABLE_DEPENDENCY_SECTIONS = [["overrides"], ["pnpm", "overrides"]];
-
-function pathStartsWith(path, prefix) {
-	return (
-		path.length >= prefix.length &&
-		prefix.every((segment, index) => path[index] === segment)
-	);
-}
-
-/** currentPath 的最后一段是依赖名，它前面的才是 section。 */
-function isDependencyVersionPath(currentPath) {
-	const section = currentPath.slice(0, -1);
-	const exact = DEPENDENCY_SECTIONS.some(
-		(candidate) =>
-			candidate.length === section.length && pathStartsWith(section, candidate)
-	);
-	if (exact) {
-		return true;
-	}
-	return NESTABLE_DEPENDENCY_SECTIONS.some((candidate) =>
-		pathStartsWith(section, candidate)
-	);
-}
-
-function isDisallowedVersion(version) {
-	return (
-		version.startsWith("^") ||
-		version.startsWith("~") ||
-		version === "latest" ||
-		version === "*" ||
-		version.startsWith(">") ||
-		version.startsWith("<") ||
-		version.startsWith("=")
-	);
-}
-
-function checkDependencyVersions(obj, path = []) {
-	const issues = [];
-
-	for (const [key, value] of Object.entries(obj)) {
-		const currentPath = [...path, key];
-
-		if (typeof value === "object" && value !== null) {
-			// 递归检查嵌套对象
-			issues.push(...checkDependencyVersions(value, currentPath));
-		} else if (
-			typeof value === "string" &&
-			isDependencyVersionPath(currentPath) &&
-			isDisallowedVersion(value)
-		) {
-			issues.push({
-				dependency: key,
-				reason: getVersionErrorReason(value),
-				// 违规位置要带上 section，否则同名依赖出现在两处时看不出说的是哪一处
-				section: currentPath.slice(0, -1).join("."),
-				version: value,
-			});
-		}
-	}
-
-	return issues;
-}
-
-function getVersionErrorReason(version) {
-	if (version.startsWith("^")) {
-		return "使用 ^ 前缀";
-	}
-	if (version.startsWith("~")) {
-		return "使用 ~ 前缀";
-	}
-	if (version === "latest") {
-		return "使用 latest";
-	}
-	if (version === "*") {
-		return "使用 *";
-	}
-	if (
-		version.startsWith(">") ||
-		version.startsWith("<") ||
-		version.startsWith("=")
-	) {
-		return "使用范围版本";
-	}
-	return "版本格式不正确";
-}
+import { checkDependencyVersions } from "./package-version-rules.js";
 
 function reportIssues(filePath, issues) {
 	const lines = [
@@ -141,8 +47,11 @@ function reportIssues(filePath, issues) {
 			(issue) =>
 				`   - ${issue.section}.${issue.dependency}: "${issue.version}" (${issue.reason})`
 		),
-		'\n   正确格式: 使用固定版本号，如 "1.2.3"',
-		"   例外: workspace:* 和 catalog:* 可以使用\n",
+		"\n   只允许这四种写法:",
+		"     1.2.3                             精确版本（可带 -beta.1 / +build）",
+		"     workspace:* 或 workspace:1.2.3   工作区协议（不接受 ^ / ~）",
+		"     catalog: / catalog:名字            目录协议",
+		"     npm:pkg@1.2.3                     别名，版本段同样要精确\n",
 	];
 	// 整段一次输出：这个脚本的每个 console 调用都是一条 lint 警告，
 	// 拼好再打能把警告数压在改动前的水平以下。
@@ -153,7 +62,7 @@ function reportIssues(filePath, issues) {
  * 检查单个文件。返回 `"ok"` / `"violation"` / `"error"` 三态而不是布尔：
  * 后两者必须能被调用方区分开，理由见文件头。
  */
-function inspectPackageJson(filePath) {
+function inspectPackageJson(filePath, counter) {
 	let pkg;
 	try {
 		pkg = JSON.parse(readFileSync(filePath, "utf-8"));
@@ -162,7 +71,7 @@ function inspectPackageJson(filePath) {
 		return "error";
 	}
 
-	const issues = checkDependencyVersions(pkg);
+	const issues = checkDependencyVersions(pkg, [], counter);
 	if (issues.length > 0) {
 		reportIssues(filePath, issues);
 		return "violation";
@@ -211,8 +120,10 @@ function main() {
 
 	const violations = [];
 	const errors = [];
+	// 整批共用一个计数器：要的是「这次总共命中了多少处依赖」这一个数。
+	const counter = { checked: 0 };
 	for (const file of targets) {
-		const status = inspectPackageJson(file);
+		const status = inspectPackageJson(file, counter);
 		if (status === "violation") {
 			violations.push(file);
 		} else if (status === "error") {
@@ -225,8 +136,22 @@ function main() {
 		process.exit(1);
 	}
 
-	// 带上检查数：没有这个数，「通过」就无法和「什么都没查」区分开。
-	console.log(`✅ package.json 检查通过（检查了 ${targets.length} 个文件）`);
+	/*
+	 * 两个数都要打，因为它们各自能证伪一件不同的事：
+	 *   文件数——文件确实被打开了；
+	 *   依赖数——**路径匹配器确实命中过东西**。
+	 * 只打文件数的话，匹配器写坏成零命中时输出仍然是「✅ 通过（12 个文件）」，
+	 * 和全部合规一字不差——正是这道检查这次要修掉的那种假绿，只是降了一层。
+	 * 而且依赖数会随改动浮动，文件数几乎不变：会动的那个数才证明这次走过了那条路。
+	 */
+	/*
+	 * 命中 0 处**不**报错：只有 scripts / exports 的存根 package.json 是合法的，
+	 * 硬失败会把它变成假红。这里靠的是「0 处依赖」这行字与「166 处依赖」长得不一样——
+	 * 假绿的定义是输出无从分辨，不是数值不吉利。
+	 */
+	console.log(
+		`✅ package.json 检查通过（${targets.length} 个文件，${counter.checked} 处依赖）`
+	);
 	process.exit(0);
 }
 
