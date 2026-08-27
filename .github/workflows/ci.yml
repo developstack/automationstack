@@ -52,7 +52,25 @@ jobs:
       # ——函数行数、圈复杂度、consistent-return、no-non-null-assertion。
       # 本地 lefthook 的 eslint-rules 只跑暂存的文件，所以存量问题从不显形；
       # 这里对全仓跑一次，才是真正的那道网。
+      #
+      # ⚠️ 这一步需要显式抬堆，默认的不够。eslint 开了 projectService: true
+      # （全类型感知），typescript-eslint 会为每棵 tsconfig 建一份 program 并
+      # 同时持有。examples/nodejs 从 .js 改成 TS 之后多出第二份，而且它带着
+      # DOM + @wdio/globals/types + expect-webdriverio 这一大坨环境类型。
+      #
+      # 私有仓的 runner 是 7GB，Node 默认堆落在 ~2GB，于是 2026-08-26 这里
+      # 直接 `FATAL ERROR: ... JavaScript heap out of memory` + SIGABRT。
+      # 本机按同样上限量过，是**叠加**超标、不是哪一边单独超标：
+      #   2048MB 全仓（含 examples/nodejs） → OOM
+      #   2048MB 全仓（排除它）             → 通过，69 warnings
+      #   2048MB 只 lint examples/nodejs    → 通过，21 warnings
+      #   4096MB 全仓                       → 通过，90 warnings（69+21）
+      #
+      # 不走「砍掉 examples/nodejs 的 types 把类型图缩小」那条路：那几个 types
+      # 是 wdio 两个 spec 过 check-types 必需的，砍了会让 eslint 和 tsc 各说各话。
       - name: eslint（行数 / 复杂度）
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm eslint --no-cache .
 
       # 仓库自有的两条硬规则，本地由 lefthook 在提交前跑（只跑暂存的文件），
