@@ -54,8 +54,6 @@ minimumReleaseAgeExclude:
   # dist 与 src 里无 fetch/eval/child_process/process.env 等外联或动态执行。
   - blobatar@2.4.0
   - '@blobatar/react@2.4.0'
-  - '@ai-sdk/gateway@3.0.176 || 4.0.54'
-  - ai@6.0.258 || 7.0.68
   - '@hono/mcp@0.3.2'
   - '@vitest/expect@4.1.11'
   - '@vitest/mocker@4.1.11'
