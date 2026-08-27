@@ -3,3 +3,6 @@ artifacts/
 
 # 真实 token 只存在于本机的 .env 里；示例只提交 .env.example
 .env
+
+# wdio 各 worker 落的中转文件，总控 onComplete 回捡后就没用了
+.wdio-spool/

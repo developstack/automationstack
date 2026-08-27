@@ -1,131 +1,171 @@
-# Node.js 示例：一轮 node:test 结果的完整上报
+# Node 示例：把上报当「切面」，而不是当一层包装
 
-这份示例回答的是一个很具体的问题：**我的自动化测试已经在跑了，怎么让它的结论
-落进平台的测试任务里，并且我怎么知道到底落进去了没有。**
+这份示例回答的是一个很具体的问题：**怎么把 `@automationstack/sdk` 接进一个已经存在的测试仓库，而不去动那些测试。**
 
-它只有两个依赖：`@automationstack/sdk` 和 node 自带的 `node:test`。
-没有 playwright、没有 wdio、没有 jest/vitest —— SDK 不绑任何测试框架，
-把「事件流 → 结果数组」那三十行搬运代码留在你自己仓库里（见
-`src/collect-results.js`），换框架时要改的就只有它。
+判据只有一条，硬得没有商量：
+
+> **`tests/` 底下的文件里，一行 SDK 都不出现。**
+> 不 import `@automationstack/sdk` 的上报入口、不继承它的类、不包 wrapper、不写 try/catch 去存截图。
+
+上报只从**每个框架自己的官方扩展位**挂进去：
+
+| 框架 | 官方扩展位 | 这份示例里的实现 |
+| --- | --- | --- |
+| `node:test` | `--test-reporter=<file>` | `adapters/node-test-reporter.ts` |
+| vitest | `test.reporters[]` | `adapters/vitest-reporter.ts` |
+| WebdriverIO | `reporters[]` + `services[]` | `adapters/wdio-reporter.ts` + `adapters/wdio-service.ts` |
+
+三个扩展位长得完全不一样，这正是这份示例存在的理由——这段接线**注定要留在你自己的仓库里**，SDK 替不了你写。
+
+---
+
+## 跑起来
+
+前提：平台在本机跑着，种子数据已经灌好（`pnpm db:seed-automation-demo` 会打印下面三个值）。
+
+```bash
+cp .env.example .env    # 填 AS_BASE_URL / AS_PROJECT / AS_TOKEN
+pnpm install
+```
+
+`.env` 里是**真 token**，它已经在 `.gitignore` 里。示例读它的唯一方式是 `node --env-file-if-exists=.env`——代码里既不 `dotenv`，也不打印它。
+
+```bash
+pnpm test:node            # node:test
+pnpm test:vitest          # vitest
+pnpm test:wdio            # WebdriverIO + 真无头 Chrome，两个 worker 进程
+pnpm report:empty-write   # 「一条都没写进去 → 退出码 1」的演示
+```
+
+四条命令**都会以退出码 1 结束**，而且都是故意的：前三条各有一条设计成红的用例（见下），第四条演示的就是非零退出本身。
+
+---
 
 ## 目录
 
 ```
 examples/nodejs
-├── src/
-│   ├── run-and-report.js      # 主入口：跑测试 → 攒结果 → 一次上报 → 打对账单
-│   ├── report-empty-write.js  # 第二入口：演示「一条都没写进去」时的非零退出
-│   ├── collect-results.js     # node:test 事件流 → SDK 的 CaseResultInput[]
-│   ├── source-ref.js          # 从用例标题里取 [AUTO-XXX-000]
-│   ├── ci-idempotency-key.js  # 把 CI 的 job-attempt 折成合法 UUID
-│   └── artifacts.js           # 失败现场：截图 + 完整日志的落盘与回捡
-└── tests/
-    └── checkout.test.js       # 5 条用例：4 条跑（1 条故意失败）+ 1 条跳过
+├── adapters/                    ← 切面。三个框架各一份接线
+│   ├── node-test-reporter.ts
+│   ├── vitest-reporter.ts
+│   ├── wdio-reporter.ts         ← 跑在 worker 里：只攒 + 落盘
+│   └── wdio-service.ts          ← 跑在总控里：回捡 + 唯一一次 finish()
+├── src/                         ← 上报链路的公共部分
+│   ├── report-run.ts            ← 全仓唯一 new AutomationStackReporter() 的地方
+│   ├── failure-artifacts.ts     ← 失败现场（截图 + 日志）
+│   ├── source-ref.ts            ← 从用例标题里抠 [AUTO-XXX-NNN]
+│   ├── wdio-spool.ts            ← wdio 的跨进程汇聚通道
+│   ├── ci-idempotency-key.ts    ← 把 CI 的 job id 折成合法 UUID
+│   └── attachment-channel.ts    ← 附件通道三段探针（presign / 直传 / 登记）
+├── tests/                       ← 零 SDK 痕迹
+│   ├── node/                    ← 配置解析、幂等键派生、附件 presign
+│   ├── vitest/                  ← 对账单合并与渲染、附件直传
+│   ├── wdio/                    ← 请求体契约、路由存在性、附件登记（真浏览器打真服务）
+│   └── empty-write/             ← 「全绿但一条没写进去」的演示
+├── wdio.config.ts
+├── vitest.config.ts
+└── tsconfig.json
 ```
 
-## 跑之前
+TypeScript **不编译**：Node 24 的类型擦除直接跑源码，所以相对 import 一律写全 `./foo.ts`。`pnpm check-types` 只做 `tsc --noEmit`。
 
-先按 [`../README.md`](../README.md) 的「共同前置」把库起起来、迁移、种数据、
-起服务。种子脚本最后会打印一段可以直接抄进 `.env` 的内容：
+---
 
-```bash
-cp .env.example .env
-# 把 pnpm db:seed-automation-demo 打印的 AS_PROJECT / AS_TOKEN 填进去
-```
+## 被测的是什么
 
-**AS_TOKEN 的明文只在创建那一刻打印一次。** 库里存的是 SHA-256 哈希，
-没有任何接口能把明文取回来；丢了就重新生成一个。
+这份示例里没有假的「购物车」「登录页」，也没有 `assert.equal("耳机", "耳机")` 这种自说自话的用例。**被测对象是这个仓库里真实存在的代码**：
 
-## 跑
+- `resolveReporterConfig` —— 配置解析（末尾斜杠、显式参数优先、缺 token 立刻抛）
+- `deriveBatchIdempotencyKey` —— 分批幂等键派生，以及 node / python / java 三语言前缀的互不碰撞
+- `mergeReceipts` / `formatReceiptLines` —— 多批对账单的合并与渲染
+- `buildExecutionRequests` —— 请求体的截断与契约上限
+- `INGEST_*_ROUTE` 四条路由常量 —— 拿真浏览器打**此刻真跑着的服务**
+- `/ingest/attachments/{presign,register}` —— 附件通道的三段，打的是真服务端
 
-```bash
-pnpm --filter @automationstack/example-nodejs report
-```
+用例标题里的 `[AUTO-XXX-NNN]` 就是平台上的 sourceRef，切面靠它把结果归位。五条种子用例在每一轮里各自演一种服务端行为：
 
-你会依次看到：本轮用例结果（此时**一个请求都还没发**）、幂等键、失败用例带了
-几个附件，然后是服务端返回的**对账单**——`writtenTo` / `skippedManual` /
-`unmatchedCases` / `outOfScope` 四类，逐条列出，一条不省略。
+| sourceRef | 这一轮会发生什么 |
+| --- | --- |
+| `AUTO-LOGIN-001` | 通过，写进任务 |
+| `AUTO-CART-002` | **失败**，带截图 + 完整日志两个附件 |
+| `AUTO-PAY-003` | 跳过（理由写在用例上方，不是一句 TODO） |
+| `AUTO-REPORT-004` | 服务端判「已有人工结论 → 跳过」 |
+| `AUTO-SEARCH-005` | 服务端判「越界」 |
 
-种子数据是特意造成这样的：
+### 那条红是真的红，红在环境上
 
-| 用例 | 本轮结果 | 对账单里的去向 |
+红的用例只有一条 sourceRef：`AUTO-CART-002`，三个框架各认领**附件通道的一段**。
+
+| 框架 | 认领哪一段 | 此刻的结果 |
 | --- | --- | --- |
-| `AUTO-LOGIN-001` | 通过 | 写进「回归」和「冒烟」两个任务 |
-| `AUTO-CART-002` | **失败** | 写进「回归」，带截图 + 完整日志 |
-| `AUTO-PAY-003` | 跳过 | 写进「回归」（跳过是一种结论，不是「没跑」） |
-| `AUTO-REPORT-004` | 通过 | 写进「冒烟」；在「回归」里因为已有人工结论而被跳过 |
-| `AUTO-SEARCH-005` | 通过 | **越界**：项目里有这条用例，但没有任何未提交任务收着它 |
+| node:test | `presign` 能不能签出直传 URL | 红：`storageConfigured=false` |
+| vitest | 拿签好的 URL 真的 `PUT` 上去 | 红：卡在上一段，一件都没签出来 |
+| WebdriverIO | `register` 回执，附件行真的存在 | 红：同上 |
 
-最后一行「越界」是这份示例最想让你记住的地方：它和「未匹配」是**两件不同的事**，
-平台从不把它们合并成一句「上报失败」。越界 → 去把用例勾进测试任务；
-未匹配 → 去检查 `AS_PROJECT` 和 sourceRef 有没有写错。
+它们的期望——**「这套环境的附件通道此刻是通的」**——出处在 `docs/phase3-automation-plan.md` 的「附件」验收组：五条里四条至今是 `[ ]`，后面那段「未验证项（2026-08-25）」写得很直白：
 
-## 一条都没写进去的时候
+> 这台开发服务端的 R2 没配，`presign` 一律返回 `storageConfigured: false`，所以示例每次都只走到**降级分支**……预签名 PUT、`register` 回执、分块上传在真实服务端上**都没跑过**，只有单元测试里的假 transport 覆盖。
+
+所以这条红是**诚实的**：它不说 SDK 有 bug，它说的是「这几个勾还没资格打」。R2 一配好，三条自己会转绿，那几个 `[ ]` 也就有了依据。
+
+失败信息全程是服务端自己的原话（`附件存储（R2）未配置，本轮附件未上传；结论已照常写入`），一个字没替它改写。
+
+> **刻意没做的事**：不拿「SDK 不校验幂等键」「`mergeReceipts` 只留第一个 `executionId`」「`MAX_INGEST_SOURCE_REF_LENGTH` 不本地 clamp」去凑红——那三件在 `packages/sdk-node/src/` 的注释里都写明了取舍理由，断言它们「应该反过来」等于在示例里说自家 SDK 有三个 bug。**为了凑一条红去编一个假期望，比没有红更糟。**
+
+---
+
+## wdio 这一轮为什么要多写一个 service
+
+wdio 把一轮测试拆进**多个 worker 子进程**（一个 spec 一个），进程间内存不通。而 ingest 的契约是**一轮只收一次总提交，不支持追加**，同一个幂等键第二次提交会命中第一次的缓存对账单原样返回。
+
+所以那套眼熟的「先建后发」（总控先建一个 build、把 id 塞进环境变量、各 worker 各自追加）在这里**行不通**。照抄的后果是第 2 个往后的 worker 一条都写不进去，却各自收到一份看起来成功的对账单——**绿的，什么都没发生**，连退出码都不会红。
+
+这份示例走的是汇聚：
+
+```
+worker 0-0 ──onRunnerEnd──▶ .wdio-spool/0-0.json ─┐
+worker 0-1 ──onRunnerEnd──▶ .wdio-spool/0-1.json ─┤
+                                                   ├─▶ 总控 onComplete
+                                                   │   回捡 → 拼成一轮
+                                                   └─▶ 唯一一次 finish()
+```
+
+两个地方不能省：
+
+- **`isSynchronised` 必须实现。** wdio 文档原话：*「The test runner waits for all reporters to have `isSynchronised` set to `true` before terminating the process.」* `onRunnerEnd` 的**返回值是被忽略的**（基类里就是同步调一句）。写成 `async onRunnerEnd()` 而不实现这个 getter，wdio 不会等——落盘写到一半进程就被杀，症状是这一轮少了某个 worker 的结果，**而且没有任何报错**。
+- **一个 worker 一个文件。** 两个 worker 同时写同一个文件会互相截断，截掉的正好是「某个 spec 的全部结果」。
+
+`onComplete` 会把证据打出来，好让「少了一个 worker」这件事看得见：
+
+```
+[切面/wdio] 回捡到 2 份 spool（每份 = 一个 worker 子进程）：
+  cid 0-0  3 条  execution-contract.spec.ts
+  cid 0-1  2 条  route-paths.spec.ts
+[切面/wdio] 合计 5 条，汇成一轮，只发一次 POST
+```
+
+3 + 2 = 5，和后面「开始上报：5 条结果」对得上，才叫一条没丢。
+
+---
+
+## 「全绿但一条都没写进去」
 
 ```bash
-pnpm --filter @automationstack/example-nodejs report:empty-write
-echo $?          # 1
+pnpm report:empty-write; echo $?     # 1
 ```
 
-这个入口故意上报一条平台上不存在的 sourceRef。服务端仍然返回 **200**
-（HTTP 状态码说的是「请求本身有没有问题」，对账单说的是「业务上发生了什么」），
-SDK 看见 `writtenTo` 为空就抛 `IngestEmptyWriteError` 并把退出码置成 1。
+那条用例是**通过**的，node:test 不会给任何非零退出码。退出码 1 完全来自上报侧：标题里的 sourceRef 在平台上不存在 → `writtenTo` 为空 → SDK 抛 `IngestEmptyWriteError` 并把 `process.exitCode` 置 1。
 
-这条路径值得单独有个入口：**CI 里最危险的失败不是红，是绿着但什么都没写。**
-一整晚的自动化跑完、流水线全绿、平台上一条结论都没有——这个入口就是用来
-证明那种情况不会静悄悄过去的。
+服务端这时返回的仍然是 **200**：HTTP 状态码表达「请求本身有没有问题」，对账单表达「业务上发生了什么」。把后者翻译成退出码是 SDK 的职责。
 
-## CI 重试要复用幂等键
+CI 里最危险的失败从来不是红，是**绿着但什么都没写进去**——跑了一整晚、流水线全绿、平台上一条结论都没有。这个入口就是用来证明那种情况不会静悄悄过去。
 
-一次进程一个幂等键，SDK 默认自己生成 UUID。但 CI 重试的是**同一次运行**，
-不是新的一轮——不复用键，网络抖了重跑一次流水线，平台上就会多出一份内容
-一模一样的执行记录。
+---
 
-⚠️ 这个键必须是**合法 UUID**（服务端按 `z.uuid()` 校，不是就 400）。
-CI 给的是 `12345-2` 这种字符串，直接塞进去会被拒，先确定性地折成 UUID：
+## 接到你自己的仓库里
 
-```bash
-export AS_IDEMPOTENCY_KEY=$(node src/ci-idempotency-key.js "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT")
-pnpm report
-```
+1. 抄 `src/report-run.ts` 和 `src/source-ref.ts`（改掉 sourceRef 的正则就行）。
+2. 按你的框架挑一份 `adapters/*.ts`，改掉里面 `results` 的取法。
+3. 在框架配置里挂上它——**测试文件一个字都不用改**。
 
-`src/ci-idempotency-key.js` 就是把输入串折成 UUIDv5 的十几行代码——要的性质
-只有「同样的输入永远得到同样的 UUID」。复用同一个键再跑一次，服务端返回的是
-**同一个 execution id**，不会写第二份：
-
-```
---- 第一次 ---  [automationstack] 上报对账单（execution c9664820-…）
---- 重试   ---  [automationstack] 上报对账单（execution c9664820-…）
-```
-
-⚠️ 它摘的是 `node:` + 输入串，不是输入串本身。CI 发给三种语言的
-`$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT` 是**同一个字符串**，一条流水线上
-Node 和 Python 各跑一轮，两轮要是撞上同一个幂等键，第二轮会命中第一轮的
-缓存对账单直接返回——结论一条都写不进去，而它看到的是一份「成功」的对账单。
-`examples/python` / `examples/jdk` 两份各自加了 `python:` / `java:`，
-所以三份对同一个输入算出的键两两不同，而且是靠前缀**保证**不同，
-不是靠三份实现碰巧用了不同公式。
-
-## 关于附件
-
-失败的用例会带两个附件：一张截图和一份完整日志（`artifacts/` 下，已 gitignore）。
-示例里那张「截图」是个 1×1 的占位 PNG——这份示例不装浏览器，真实项目里把它换成
-`await page.screenshot(...)` 即可，上报侧一个字都不用改。
-
-附件走的是「预签名 → PUT → 登记」三步。**如果服务端没配对象存储（R2），
-上报不会失败**：服务端返回 `storageConfigured: false`，SDK 跳过附件、
-把结论正常写进去，并在对账单旁边说明这次降级。让一张丢失的截图把一整轮结论
-拦在门外，是最没道理的失败方式。
-
-## 退出码的含义
-
-**本进程的退出码表达的是「结论有没有写进平台」，不是「测试有没有全过」。**
-示例里有一条用例故意失败（要用它演示附件），如果把用例失败也算进退出码，
-这个示例每次都红，上面那个「一条都没写进去」的信号就永远看不见了。
-
-真实 CI 里让 `node --test` 那一步自己决定构建成败，上报是**另一件事**：
-
-```bash
-node --test tests/          # 这一步决定构建红绿
-node src/run-and-report.js  # 这一步决定结论有没有落库
-```
+wdio 的那两份要一起抄，少了 `wdio-service.ts` 就退回成「每个 worker 各发一次」，而那条路上的失败是静默的。
