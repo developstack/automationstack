@@ -73,7 +73,13 @@ export function RunExecutionLayout(props: RunExecutionLayoutProps) {
 function RunExecutionBody(props: RunExecutionLayoutProps) {
 	const { bulk, checked, data, selection, verdict } = props;
 	return (
-		<div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-run-execution">
+		/*
+		 * lg:h-screen —— 用例区的高度定死为一屏（用户指示），不再依赖 flex-1 从上游
+		 * 逐级分剩余空间：链上任何一环断掉，这一块也有一个确定的高度，左右两栏在
+		 * 自己的 overflow-y-auto 里滚。min-h-0 保留：外层链完好时它允许本块收缩到
+		 * 「视口减顶栏减变更历史」的实际可用高度，两种情况都不会把页面顶出滚动条。
+		 */
+		<div className="grid min-h-0 grid-cols-1 lg:h-screen lg:grid-cols-run-execution">
 			<RunCaseList
 				canConclude={data.permissions.canConclude}
 				canEditCases={data.permissions.canEditCases}
