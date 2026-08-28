@@ -47,6 +47,37 @@ catalog:
   "@orpc/client": 1.15.0
   "@types/react": 19.2.18
   "@types/react-dom": 19.2.4
+# 24 小时冷静期。**这个值和 pnpm 11 的内置默认值一模一样，删掉它却会改变行为**——
+# 所以它看着冗余，其实是这段配置里唯一一个开关。别当成 noise 清掉。
+#
+# 机制（读的是实际在跑的二进制 pnpm 11.17.0，corepack 缓存里那份 pnpm.mjs）：
+#   if (explicitlySetKeys.has("minimumReleaseAge") && minimumReleaseAgeStrict == null)
+#       minimumReleaseAgeStrict = true;
+# 即 strict 的默认值不取决于**值是多少**，而取决于**这个键有没有被显式写出来**。
+# 吃默认值 = strict false；显式写出来（哪怕写的就是 1440）= strict true。
+#
+# strict 为 false 时，`pnpm add` 遇到不够龄的包不会失败，而是照装，
+# 并**自己往下面的 minimumReleaseAgeExclude 里追加条目**。这不是推测，2026-08-28
+# 在一份一次性克隆里当场重现过（探针选了当时发布不到一小时的 rollup@4.63.1）：
+#
+#   不写这一行：  pnpm add -w rollup@4.63.1  → EXIT=0，装上，
+#                 pnpm 自报「Added 26 entries to minimumReleaseAgeExclude
+#                 in pnpm-workspace.yaml」，26 条豁免直接落进版本库
+#   写了这一行：  同一条命令              → EXIT=1
+#                 ERR_PNPM_NO_MATURE_MATCHING_VERSION，自动追加 0 条
+#
+# 一次 pnpm add 就能凭空长出 26 条没人看过的豁免——这正是 2026-08-28 删掉的那 9 条
+# （@hono/mcp + vitest 家族）的来历：不是有人偷懒没写注释，是**根本没有人做过那个决定**，
+# 工具替你按了「同意」，还把同意记录 commit 了进去。一条豁免的全部意义在于
+# 「有人看过并且拍了板」，自动生成的豁免把这个意义清零，却和人写的那两条长得一模一样。
+# 写上这一行之后，要放行必须人手往下面那张表里加，并留下审计注释——和 blobatar 那两条一样。
+#
+# 对 CI 无影响，理由不是「大概不会」而是走的根本不是同一条路：
+#   - 解析期（pnpm add / update）：看 strict，行为如上。
+#   - lockfile 审计期（pnpm install --frozen-lockfile，CI 只走这条）：**完全不看 strict**。
+#     实测过：显式配一个大值时，写不写 minimumReleaseAgeStrict: false 都照样失败，
+#     输出几乎一字不差。而这里写的 1440 与原本生效的默认值数值相同，审计策略不变。
+minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   # blobatar 2026-08-16 首发、@blobatar/react 2026-08-19 首发，装的时候都不满 release age。
   # 钉死精确版本而不是 caret：豁免的是「这一个已经审过的版本」，不是这个包以后的任何发布，
