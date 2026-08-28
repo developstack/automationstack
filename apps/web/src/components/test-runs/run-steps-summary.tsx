@@ -13,6 +13,13 @@
  *
  * 这一屏的判定还在本机草稿里（用户选的口径），库里那条用例的结论仍是上一次
  * 保存的值。写成「当前结论」会让人以为已经生效了，于是不点保存就切走。
+ *
+ * ## 未改动时（`dirty` 为假）不再显示「结论」
+ *
+ * 执行结论面板已经挪到了这一栏最前面，用例名旁边也常驻结论徽章，`dirty` 为假
+ * 时这里画的「结论」就是同一个已保存的值在同一屏上的第三次重复，删掉。
+ * `dirty` 为真时的「保存后结论」不受影响——那是**另一个值**：这一屏还没保存的
+ * 分步判定推导出来的结果，跟已保存的当前结论不是一回事，别处看不到，必须留。
  */
 import type {
 	TestRunCaseResult,
@@ -72,19 +79,26 @@ function StepsSummaryText({
 	return (
 		<div className="flex flex-col gap-1">
 			<div className="flex flex-wrap items-center gap-2 text-sm">
-				<span className="text-muted-foreground">
-					{dirty ? "保存后结论" : "结论"}
-				</span>
 				{/*
-				 * 带底色而不是只涂字色：这是整条用例保存后会得到的结论，
-				 * 一行同色小字混在「保存后结论 / 分布 / 未判定数」里根本挑不出来。
+				 * 只在 dirty 时画「保存后结论」：dirty 为假时这里的结论跟折叠面板
+				 * 折叠条、用例名旁边的徽章是同一个已保存的值，画出来就是第三次重复
+				 * （见本文件顶部注释）。
 				 */}
-				<span
-					className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium ${RESULT_BADGE_CLASSES[derived]}`}
-				>
-					<DerivedIcon aria-hidden="true" className="size-4" />
-					{RESULT_LABELS[derived]}
-				</span>
+				{dirty ? (
+					<>
+						<span className="text-muted-foreground">保存后结论</span>
+						{/*
+						 * 带底色而不是只涂字色：这是整条用例保存后会得到的结论，
+						 * 一行同色小字混在「保存后结论 / 分布 / 未判定数」里根本挑不出来。
+						 */}
+						<span
+							className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium ${RESULT_BADGE_CLASSES[derived]}`}
+						>
+							<DerivedIcon aria-hidden="true" className="size-4" />
+							{RESULT_LABELS[derived]}
+						</span>
+					</>
+				) : null}
 				<StepDistribution counts={counts} />
 			</div>
 			{unjudged > 0 ? (

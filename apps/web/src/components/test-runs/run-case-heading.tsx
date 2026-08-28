@@ -1,36 +1,39 @@
 /**
- * 执行台右栏的抬头：用例名 + 当前结论 + 身份标签 + 两颗常用操作。
+ * 执行台右栏的抬头：用例名 + 当前结论 + 两颗常用操作 + 身份标签。
  *
  * 从 `run-case-panel-sections.tsx` 拆出来。那个文件是「右栏的各段怎么画」的集合，
- * 而抬头从「一行标题 + 四个徽章」长成了三行（标题带结论徽章、标签行多了维护人与
- * 用例更新时间、底下还多一条操作行），继续留在那边会把它顶过 300 行上限。
+ * 而抬头从「一行标题 + 四个徽章」长成了标题行带结论徽章与两颗按钮、标签行还多了
+ * 维护人与用例更新时间，继续留在那边会把它顶过 300 行上限。
  *
- * ## 「修改」与「打回未测」为什么在这里
+ * ## 两颗按钮为什么就贴在用例名旁边
  *
- * 这两颗按钮原先一个藏在「步骤与判定」的汇总条里、一个藏在「执行结论」段里，
- * 两处都在页面**最下面**——想改一条已经判过的用例，得先滚到底（用户原话）。
- * 它们是看完一条用例后最常点的东西，所以跟着用例名走。
+ * 它们原先一个藏在「步骤与判定」的汇总条里、一个藏在「执行结论」段里，两处都在
+ * 页面**最下面**——想改一条判过的用例得先滚到底（用户原话）。搬上来之后又被摆成
+ * 名字下面单独一行、一颗 outline 一颗 ghost、文案一个两字一个十二字，看着不成对，
+ * 于是用户再提了一次：「修改按钮+打回重测 要都是按钮，都放在测试用例名字旁边，
+ * 按钮大小要控制一样大，视觉对齐」。
  *
- * 搬过来的只有这两颗。四颗结论按钮与说明框仍留在页面中部紧挨着步骤列表：
- * 那是「照着步骤打结论」的位置，把它们拽到用例名底下反而要求用户先滚下去读完
- * 步骤、再滚回来点按钮。
+ * 所以现在两颗都在**标题这一行**，同 `size="sm"`、同 `variant="outline"`、文案都是
+ * 两到四个字。「打回未测」原先那句「（清空全部分步判定）」不能塞回按钮面上——
+ * 它一个人就比「修改」长六倍，成对的观感当场没了；那句警告移进了按钮的 title 与
+ * 点击后的二次确认框，见 `run-reset-verdict-button.tsx`。
+ *
+ * 四颗结论按钮与说明框不在这里：它们住在下面的执行结论面板，那一整块才是
+ * 「这次执行判成什么」的地方，抬头只放两颗跨形态都要用的常用操作。
  */
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 import { Badge } from "@automationstack/ui/components/badge";
 import { Button } from "@automationstack/ui/components/button";
-import { PencilIcon, RotateCcwIcon } from "lucide-react";
+import { PencilIcon } from "lucide-react";
 
 import {
 	formatDateTime,
 	PRIORITY_BADGE_VARIANTS,
 } from "@/components/cases/case-meta";
 import { CaseStatusBadge } from "@/components/cases/case-status-badge";
+import { RunCaseResultBadge } from "@/components/test-runs/run-case-result-badge";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
-import {
-	RESULT_BADGE_CLASSES,
-	RESULT_ICONS,
-	RESULT_LABELS,
-} from "@/components/test-runs/test-run-meta";
+import { ResetVerdictButton } from "@/components/test-runs/run-reset-verdict-button";
 
 type RunTestCase = RunCaseDetail["testCase"];
 
@@ -39,22 +42,15 @@ type RunTestCase = RunCaseDetail["testCase"];
  *
  * 未测不画：用户要的是「提交结果后」在名字旁看到结果（原话），而「未测」是
  * 还没有结果，给它一颗灰徽章等于让整份清单里每一条都顶着一块无信息的色块。
+ * `RunCaseResultBadge` 本身五态都画，「未测」那一档是当初留给执行结论面板折叠条
+ * 上那颗徽章的；那颗已经删掉（见 `run-case-verdict-panel.tsx` 头注释），所以现在
+ * 挡掉未测这件事由这里独自负责。
  */
-function RunCaseResultBadge({ result }: { result: TestRunCaseResult }) {
+function HeadingResultBadge({ result }: { result: TestRunCaseResult }) {
 	if (result === "untested") {
 		return null;
 	}
-	const Icon = RESULT_ICONS[result];
-	return (
-		// class 与分步汇总条那颗**逐字相同**：同一个结论在一页里出现两次，
-		// 长得不一样会让人以为是两件不同的东西。
-		<span
-			className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-sm ${RESULT_BADGE_CLASSES[result]}`}
-		>
-			<Icon aria-hidden="true" className="size-4" />
-			{RESULT_LABELS[result]}
-		</span>
-	);
+	return <RunCaseResultBadge result={result} />;
 }
 
 /** 模块 / 优先级 / 状态 / 版本 / 维护人 / 用例更新时间。 */
@@ -95,9 +91,9 @@ function RunCaseMetaBadges({ testCase }: { testCase: RunTestCase }) {
 export interface RunCaseHeaderActionsProps {
 	/** 能否打结论：`pending_review` 与 `submitted` 都不能。 */
 	canConclude: boolean;
-	/** 分步判定此刻是不是可编辑态——编辑中就不再给「修改」。 */
+	/** 执行结论面板此刻是不是改态——正在改就不再给「修改」。 */
 	editing: boolean;
-	/** 有步骤的用例走分步判定，「修改」与「打回未测」的含义都跟着变。 */
+	/** 有步骤的用例走分步判定，「打回未测」的后果跟着变。 */
 	hasSteps: boolean;
 	/** `null` = 这个任务谁都不能改（待评审 / 已提交），连「修改」都不给。 */
 	onEdit: (() => void) | null;
@@ -106,13 +102,14 @@ export interface RunCaseHeaderActionsProps {
 }
 
 /**
- * 抬头下面那条操作行。显隐门禁与它们原来待的地方逐条一致，没有放宽：
+ * 标题行右侧那一对按钮。显隐门禁与它们原来待的地方逐条一致，没有放宽：
  *
- * - 「修改」：只有分步形态才有（没步骤的用例四颗按钮一直可点，没有只读态），
- *   且要 `editing === false` 与 `onEdit !== null`；
+ * - 「修改」：要 `editing === false` 与 `onEdit !== null`。不再要求有步骤——
+ *   读 / 改态现在管的是整个执行结论面板，没步骤的用例判过之后同样停在结果页面；
  * - 「打回未测」：`result !== "untested"` 才画，不能打结论时按 `aria-disabled`
- *   留在原位而不是隐掉——禁用的按钮仍要能被 Tab 到，否则读屏用户根本发现不了
- *   「这里有个现在不能用的控件」。
+ *   留在原位而不是隐掉（那颗按钮连同它的二次确认在 `run-reset-verdict-button.tsx`）。
+ *
+ * 两颗都没得画时整条不渲染，不留一条空的按钮行占着 gap。
  */
 function RunCaseHeaderActions({
 	canConclude,
@@ -122,13 +119,14 @@ function RunCaseHeaderActions({
 	onReset,
 	result,
 }: RunCaseHeaderActionsProps) {
-	const editAction = hasSteps && !editing ? onEdit : null;
+	const editAction = editing ? null : onEdit;
 	const showReset = result !== "untested";
 	if (editAction === null && !showReset) {
 		return null;
 	}
 	return (
-		<div className="flex flex-wrap items-center gap-2">
+		// shrink-0：用例名再长也不许把这两颗按钮压扁，名字那半自己换行让位。
+		<div className="flex shrink-0 items-center gap-2">
 			{editAction === null ? null : (
 				<Button onClick={editAction} size="sm" type="button" variant="outline">
 					<PencilIcon aria-hidden="true" data-icon="inline-start" />
@@ -136,20 +134,11 @@ function RunCaseHeaderActions({
 				</Button>
 			)}
 			{showReset ? (
-				<Button
-					aria-disabled={!canConclude || undefined}
-					onClick={canConclude ? onReset : undefined}
-					size="sm"
-					type="button"
-					variant="ghost"
-				>
-					<RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
-					{/*
-					 * 两种形态后果不同，文案必须分开写：分步形态下回退会把 `step_results`
-					 * 一并清空，用户点之前得知道丢的是一整屏逐步判定，不是一个结论。
-					 */}
-					{hasSteps ? "打回未测（清空全部分步判定）" : "打回未测"}
-				</Button>
+				<ResetVerdictButton
+					canConclude={canConclude}
+					hasSteps={hasSteps}
+					onReset={onReset}
+				/>
 			) : null}
 		</div>
 	);
@@ -165,7 +154,7 @@ export interface RunCaseHeadingProps {
 	testCase: RunTestCase;
 }
 
-/** 用例名、它的几个身份标签，以及两颗常用操作。 */
+/** 用例名、结论徽章、两颗常用操作，以及底下那条身份标签。 */
 export function RunCaseHeading({
 	canConclude,
 	editing,
@@ -177,19 +166,28 @@ export function RunCaseHeading({
 }: RunCaseHeadingProps) {
 	return (
 		<div className="flex flex-col gap-2">
-			<div className="flex flex-wrap items-center gap-2">
-				<h2 className="font-medium text-base">{testCase.name}</h2>
-				<RunCaseResultBadge result={runCase.result} />
+			{/*
+			 * flex-wrap + justify-between：名字与徽章占左半，按钮贴右。窄栏或长名时
+			 * 按钮整组换到下一行，而不是被挤成两个图标或溢出被裁。
+			 */}
+			<div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+				<div className="flex min-w-0 flex-wrap items-center gap-2">
+					{/* break-words：用例名常常是一长串没有空格的中文，不给断词点会把整行撑出去 */}
+					<h2 className="min-w-0 break-words font-medium text-base">
+						{testCase.name}
+					</h2>
+					<HeadingResultBadge result={runCase.result} />
+				</div>
+				<RunCaseHeaderActions
+					canConclude={canConclude}
+					editing={editing}
+					hasSteps={hasSteps}
+					onEdit={onEdit}
+					onReset={onReset}
+					result={runCase.result}
+				/>
 			</div>
 			<RunCaseMetaBadges testCase={testCase} />
-			<RunCaseHeaderActions
-				canConclude={canConclude}
-				editing={editing}
-				hasSteps={hasSteps}
-				onEdit={onEdit}
-				onReset={onReset}
-				result={runCase.result}
-			/>
 		</div>
 	);
 }

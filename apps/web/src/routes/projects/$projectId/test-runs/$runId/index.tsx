@@ -32,7 +32,14 @@ const runDetailSearchSchema = z.object({
    断点必须同进同退，改一处就得改另一处。
    <lg 的堆叠布局每行自适应内容、由外层滚动容器整体滚，本就没有 stretch 空白，加
    h-full 反而会让两行内容溢出被裁，所以只在 lg 起。 */
-const EXECUTION_MAIN = "flex min-h-0 flex-col lg:h-full";
+/* lg:overflow-hidden —— 这一页在 lg 下自己就是满高的，绝不能再产生整页滚动：
+   一旦内部有一处横向顶破（比如某一栏缺 min-w-0），外层那个 absolute inset-0
+   overflow-y-auto 会先长出横滚条、吃掉约 15px 高度，原本刚好铺满的那一摞随即
+   差这一点，竖滚条跟着冒出来——用户看到的就是「突然多了个全局滚动，还能往下多滚
+   一截」。在这一页的 main 上把溢出关掉，这条路径从根上不成立；滚动只发生在
+   右栏与左侧清单各自的 overflow-y-auto 里。
+   只在 lg 起：<lg 是堆叠布局，本来就靠外层滚动容器整体滚，关掉会把内容裁掉。 */
+const EXECUTION_MAIN = "flex min-h-0 flex-col lg:h-full lg:overflow-hidden";
 
 interface RunDetailLoaderData {
 	projectName: string;

@@ -168,7 +168,7 @@ export function RunCaseList({
 	const selectable = canConclude || canEditCases;
 
 	return (
-		<div className="flex min-h-0 flex-col gap-2 border-r pt-2">
+		<div className="flex min-h-0 min-w-0 flex-col gap-2 border-r pt-2">
 			<RunCaseFilters
 				filter={filter}
 				moduleOptions={moduleOptions}

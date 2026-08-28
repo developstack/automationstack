@@ -4,7 +4,10 @@
  * 拆成三段的理由是那两颗图标按钮：它们除了图标与文案完全一样，而每一颗都要
  * 展开成 aria-disabled + onClick 二选一两条分支，抄两遍就是四条分支挤在
  * 一个函数里。抽掉之后这个文件里剩下的判断全都是**业务判断**（有没有 key、
- * 锁没锁、URL 能不能点），一眼能数完。
+ * 在不在修改页面、URL 能不能点），一眼能数完。
+
+ * 结果页面上只剩链接本身：刷新与解除关联都要 `editing`。用户要的是「结果页面
+ * 只有缺陷链接」，而这两颗都是写操作，摆在只读那一屏上本来也不该点得动。
  */
 import { Button } from "@automationstack/ui/components/button";
 import { BugIcon, ExternalLinkIcon, RefreshCwIcon, XIcon } from "lucide-react";
@@ -83,7 +86,7 @@ export function LinkedDefect({
 	defectStatus,
 	defectTitle,
 	defectUrl,
-	locked,
+	editing,
 	runCaseId,
 }: Omit<RunDefectPanelProps, "projectId">) {
 	const { clear, handleClear, handleRefresh, refresh } =
@@ -103,7 +106,7 @@ export function LinkedDefect({
 				</span>
 			)}
 			{/* 没有 issue key 就没什么可向 Jira 问的：手填的链接刷不出状态。 */}
-			{defectKey !== null && !locked && (
+			{defectKey !== null && editing ? (
 				<DefectIconButton
 					label="刷新 Jira 状态"
 					onClick={handleRefresh}
@@ -111,8 +114,8 @@ export function LinkedDefect({
 				>
 					<RefreshCwIcon aria-hidden="true" />
 				</DefectIconButton>
-			)}
-			{!locked && (
+			) : null}
+			{editing ? (
 				<DefectIconButton
 					label="解除缺陷关联"
 					onClick={handleClear}
@@ -120,7 +123,7 @@ export function LinkedDefect({
 				>
 					<XIcon aria-hidden="true" />
 				</DefectIconButton>
-			)}
+			) : null}
 		</div>
 	);
 }

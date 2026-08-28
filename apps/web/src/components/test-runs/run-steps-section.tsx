@@ -4,7 +4,7 @@
  * ## 它取代了原来的「用例级四颗按钮」
  *
  * 有步骤的用例，结论由分步结果推导（用户选的口径），所以这一段一出现，
- * `RunCaseVerdictSection` 的四颗按钮就不再渲染（见 `run-case-panel.tsx`）。
+ * 执行结论面板里那四颗用例级按钮就不再渲染（见 `run-case-verdict-body.tsx`）。
  * 两套入口并存的话，用户点一次用例级「通过」就会把逐步判出来的结果整片盖掉，
  * 而界面上没有任何东西提示他刚刚发生了什么。
  *
@@ -13,10 +13,11 @@
  *
  * ## 编辑态住在父组件里
  *
- * 「现在能不能点」这份状态由 `useSteppedEditingMode` 持有，而这个 hook 是在
- * `RunCasePanel` 里调的、结果当 prop 传下来。原因是「修改」按钮已经搬到了抬头，
- * 抬头与这一段是**兄弟节点**，同一份状态只能由共同的父节点拿着。
- * 三条语义（默认进编辑态、草稿恢复强制进编辑态、`canConclude` 一票否决）
+ * 「现在能不能点」这份状态由 `useVerdictEditingMode` 持有（它现在管的是整个
+ * 执行结论面板的读 / 改态，不止这一段，所以搬去了自己的文件），
+ * 而那个 hook 是在 `RunCasePanel` 里调的、结果当 prop 传下来。原因是「修改」按钮
+ * 在抬头上，抬头与这一段是**兄弟节点**，同一份状态只能由共同的父节点拿着。
+ * 三条语义（没判过就直接进改态、草稿恢复强制进改态、`canConclude` 一票否决）
  * 一条不改，只是第二条留在了这里——只有这里看得见 `draft.dirty`。
  */
 import {
@@ -25,7 +26,7 @@ import {
 } from "@automationstack/db/repositories/test-run-step-results-core";
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import type { TestRunStepResult } from "@automationstack/db/schema/test-runs";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
@@ -34,6 +35,7 @@ import {
 	RunStepsSummary,
 	type StepResultCounts,
 } from "@/components/test-runs/run-steps-summary";
+import type { VerdictEditingMode } from "@/components/test-runs/run-verdict-editing-mode";
 import { useRunStepDraft } from "@/components/test-runs/use-run-step-draft";
 import {
 	useRunStepSave,
@@ -143,59 +145,16 @@ function RunStepsHeader({
 	);
 }
 
-export interface SteppedEditingMode {
-	/** 已经被 `canConclude` 否决过的最终编辑态，直接拿去用。 */
-	editing: boolean;
-	/** `null` = 这个任务谁都不能改（待评审 / 已提交），连「修改」都不给。 */
-	onEdit: (() => void) | null;
-	/** 草稿恢复出来时强制进编辑态用；只有 `RunStepsSection` 会调。 */
-	startEditing: () => void;
-	/** 保存成功后退出编辑态。 */
-	stopEditing: () => void;
-}
-
-/**
- * 「现在能不能点」这一件事。
- *
- * 初值：没保存过分步结果就直接进编辑态（用户打开一条没测过的用例，本来就是来判的，
- * 还要先点一下「修改」纯属多一步）；已经保存过就是只读，改要显式点「修改」。
- *
- * 本机草稿一旦恢复出来（`dirty` 变真）也要进编辑态：那份草稿正是上次没写完的判定，
- * 摆在只读界面里等于用户看得见自己写的字却动不了。这一条落在 `useRunStepsSection`
- * 里——`dirty` 是工作副本的状态，只有那边看得见，它调这里的 `startEditing`。
- *
- * `canConclude` 是一票否决：待评审 / 已提交的任务谁都不能改，这时连「修改」都不给。
- * 否决只在读出去的两个字段上生效，`editing` 这个 state 本身不动：任务从待评审
- * 评审完变成可测时，用户不该被要求先点一下「修改」才能接着判。
- *
- * 由 `RunCasePanel` 调用，结果同时喂给抬头的「修改」按钮和这一段——
- * 两者是兄弟节点，状态只能放在它们的父节点上。
- */
-export function useSteppedEditingMode(
-	hasSavedResults: boolean,
-	canConclude: boolean
-): SteppedEditingMode {
-	const [editing, setEditing] = useState(!hasSavedResults);
-	const startEditing = useCallback(() => setEditing(true), []);
-	const stopEditing = useCallback(() => setEditing(false), []);
-	return {
-		editing: canConclude && editing,
-		onEdit: canConclude ? startEditing : null,
-		startEditing,
-		stopEditing,
-	};
-}
-
 export interface RunStepsSectionProps {
-	editingMode: SteppedEditingMode;
+	editingMode: VerdictEditingMode;
 	imageUrls: MarkdownImageUrls;
 	item: RunCaseDetail;
 }
 
-/** 这一段用到的全部状态：工作副本 + 编辑态 + 汇总预览 + 保存 + 快捷键。 */
+/** 这一段用到的全部状态：工作副本 + 读改态 + 汇总预览 + 保存 + 快捷键。 */
 function useRunStepsSection(
 	item: RunCaseDetail,
-	editingMode: SteppedEditingMode
+	editingMode: VerdictEditingMode
 ) {
 	const { runCase, testCase } = item;
 	const { steps } = testCase;
@@ -210,8 +169,8 @@ function useRunStepsSection(
 	const { editing, startEditing, stopEditing } = editingMode;
 
 	/*
-	 * 本机草稿恢复出来就强制进编辑态（`useSteppedEditingMode` 的第二条语义）。
-	 * 判断留在这一层是因为 `dirty` 是工作副本的状态，持有编辑态的父组件看不到它。
+	 * 本机草稿恢复出来就强制进改态（`useVerdictEditingMode` 的第二条语义）。
+	 * 判断留在这一层是因为 `dirty` 是工作副本的状态，持有读 / 改态的父组件看不到它。
 	 */
 	const { dirty } = draft;
 	useEffect(() => {
@@ -220,7 +179,7 @@ function useRunStepsSection(
 		}
 	}, [dirty, startEditing]);
 
-	// 保存成功才退出编辑态：失败时留在原地，用户那一屏判定还在草稿里。
+	// 保存成功才退出改态：失败时留在原地，用户那一屏判定还在草稿里。
 	const onSaved = useCallback(() => {
 		markSaved();
 		stopEditing();
@@ -234,7 +193,7 @@ function useRunStepsSection(
 		runCaseId: runCase.id,
 		steps,
 	});
-	// 快捷键只在编辑态生效：只读时按 P 应该什么都不发生，而不是悄悄改一步。
+	// 快捷键只在改态生效：结果页面按 P 应该什么都不发生，而不是悄悄改一步。
 	useRunStepShortcuts({
 		enabled: editing,
 		judged,
