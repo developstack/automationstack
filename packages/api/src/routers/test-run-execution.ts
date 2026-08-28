@@ -12,6 +12,7 @@ import { z } from "zod";
 import { protectedProcedure } from "../index";
 import { publishInvalidate } from "../lib/realtime-publish";
 import {
+	REVIEW_PENDING_MESSAGE,
 	rejectRunWrite,
 	type TestRunErrorThrowers,
 	testRunErrors,
@@ -53,8 +54,6 @@ const bulkSetResultSchema = z.object({
 	runCaseIds: z.array(z.uuid()).min(1),
 	runId: z.uuid(),
 });
-
-const REVIEW_PENDING_MESSAGE = "该测试任务尚未评审完成，暂不能打结论";
 
 function rejectInvalidRunCases(
 	invalidRunCaseIds: string[],

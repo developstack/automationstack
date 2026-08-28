@@ -33,3 +33,10 @@ export function rejectRunWrite(
 	}
 	throw errors.NOT_FOUND({ message: "测试任务不存在" });
 }
+
+/**
+ * 「待评审」的拒收话术。放在这里而不是各路由自己写一份：
+ * 手工单条、批量、分步保存三条路径撞到的是同一条业务规则，
+ * 各写各的迟早会出现三种措辞，用户看到的就是「同一件事三个说法」。
+ */
+export const REVIEW_PENDING_MESSAGE = "该测试任务尚未评审完成，暂不能打结论";

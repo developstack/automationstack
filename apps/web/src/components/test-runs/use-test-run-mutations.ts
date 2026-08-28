@@ -56,6 +56,28 @@ export function useSaveRunCaseComment() {
 	);
 }
 
+/**
+ * 保存一条用例的分步判定。
+ *
+ * 与 `useSetRunCaseResult` 刻意相反，这里**成功要弹 toast**：那条是连按快捷键
+ * 的高频操作，弹了会糊屏；这条是「判完一整屏再点一次」的低频操作，而且成功的
+ * 那一刻本机草稿会被清掉，不说一声，用户没有任何办法确认刚才那一屏真的进库了。
+ *
+ * 失败时**什么都不做**（错误 toast 由全局 MutationCache 兜底）：草稿必须原样
+ * 留着——它此刻是那一屏判定的唯一副本。
+ */
+export function useSaveRunCaseStepResults() {
+	const invalidate = useInvalidateTestRuns();
+	return useMutation(
+		orpc.testRuns.saveStepResults.mutationOptions({
+			onSuccess: () => {
+				invalidate();
+				toast.success("分步判定已保存");
+			},
+		})
+	);
+}
+
 export function useBulkSetRunCaseResult() {
 	const invalidate = useInvalidateTestRuns();
 	return useMutation(

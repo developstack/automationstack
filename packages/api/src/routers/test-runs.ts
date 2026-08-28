@@ -21,6 +21,7 @@ import { publishInvalidate } from "../lib/realtime-publish";
 import { rejectRunWrite, testRunErrors } from "../lib/test-run-errors";
 import { runIdSchema, testRunStatusSchema } from "../schemas/test-run";
 import { testRunExecutionProcedures } from "./test-run-execution";
+import { testRunStepExecutionProcedures } from "./test-run-step-execution";
 
 const listTestRunsSchema = z.object({
 	keyword: z.string().optional(),
@@ -57,6 +58,7 @@ const createFromFailedSchema = z.object({
 
 export const testRunsRouter = {
 	...testRunExecutionProcedures,
+	...testRunStepExecutionProcedures,
 	create: protectedProcedure
 		.errors(testRunErrors)
 		.input(createTestRunSchema)

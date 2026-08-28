@@ -135,7 +135,14 @@ function RunExecutionCasePane({
 	storageUnavailable,
 }: RunExecutionCasePaneProps) {
 	return (
-		<div className="min-h-0 overflow-y-auto">
+		/*
+		 * 底面刻意压成灰：这一栏里的步骤是一张张 `bg-card` 卡片，卡片与底面同色时
+		 * 「卡片」只剩一圈描边，十几张排下来是一片等距横线，数不清边界在哪
+		 * （用户原话：「背景色为灰色，凸显卡片出来，不要都一个颜色」）。
+		 * 用 /40 而不是实色：右栏还有说明、附件、缺陷这些**不在卡里**的段落，
+		 * 底面太深会把它们压成「禁用」的观感。
+		 */
+		<div className="min-h-0 overflow-y-auto bg-muted/40">
 			{selected === null ? (
 				<p className="p-8 text-center text-muted-foreground text-sm">
 					这个测试任务里还没有用例，先追加几条再开始测。

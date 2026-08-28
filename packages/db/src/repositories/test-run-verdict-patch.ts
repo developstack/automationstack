@@ -6,6 +6,10 @@ import {
 	type TestRunExecutedVia,
 	testRunCases,
 } from "../schema/test-runs";
+import {
+	EMPTY_STEP_RESULTS_SQL,
+	uniformStepResultsSql,
+} from "./test-run-step-results-sql";
 
 /**
  * 手工打结论时写进 `test_run_cases` 的那一组字段。
@@ -41,6 +45,8 @@ export interface RunCaseResultPatch {
 	executedVia?: TestRunExecutedVia | null;
 	lastAutomationExecutionId?: string | null;
 	result: TestRunCaseResult;
+	/** 分步结果。走 SQL 是因为步骤要就地从 `test_cases.steps` 里取，见下。 */
+	stepResults?: SQL;
 }
 
 /**
@@ -78,8 +84,17 @@ export function buildResultPatch(input: ResultPatchInput): RunCaseResultPatch {
 		patch.executedBy = null;
 		patch.executedVia = null;
 		patch.lastAutomationExecutionId = null;
+		patch.stepResults = EMPTY_STEP_RESULTS_SQL;
 		return patch;
 	}
+	// 用例级结论是**覆盖式**的：铺满每一步，而不是留着旧的分步结果不动。
+	// `result` 必须恒等于 `deriveCaseResult(stepResults)`（见 schema 里那一列的
+	// 注释），留着旧分步就会立刻造出「用例判通过、第 3 步标着失败」的行——
+	// 那正是分步这件事要消灭的状态。代价是「一键全部通过」会盖掉逐步判过的结果，
+	// 这是一次显式的破坏性操作，被盖掉的原因在 `test_run_case_events` 里仍有快照。
+	patch.stepResults = uniformStepResultsSql({
+		result: sql`${input.result}::text`,
+	});
 	patch.executedAt = new Date();
 	patch.executedBy = input.actorId;
 	patch.executedVia = input.via;

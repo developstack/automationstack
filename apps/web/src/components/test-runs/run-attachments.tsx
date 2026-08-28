@@ -1,6 +1,14 @@
 /**
  * 用例行的附件区：粘贴 / 拖拽 / 选文件三条入口 + 已传列表。
  *
+ * ## 为什么没有「附件」这个小标题
+ *
+ * 这一块原先是右栏最底下一个带 `<h3>附件</h3>` 的独立段落，用户要求去掉
+ * （原话：「最后附件我觉得不要特意在最后还显示……去掉」），改成折进抬头下面的
+ * 结论摘要区、跟缺陷并排。折进去之后再顶一个小标题，就等于把刚拆掉的那一段
+ * 原样搬了个位置。上传区自己那句「把截图 / 录屏拖到这里」已经说清了这是什么，
+ * 已传列表则每行都带文件名与缩略图。
+ *
  * 三条入口必须都在：粘贴是截图后最顺手的动作，拖拽适合录屏文件，
  * 而**选文件是唯一键盘可达的那条**——只做前两个等于把这个功能对键盘用户关掉。
  *
@@ -25,9 +33,12 @@ export interface RunAttachmentsProps {
 	locked: boolean;
 	onStorageUnavailable: () => void;
 	/**
-	 * 当前结论下附件区是否常驻（失败 / 阻塞才是 true）。false 时**一条附件都没有**
-	 * 就整块不渲染。这个判断只能落在这一层：附件列表是这里自己查的，
-	 * 父组件不知道有几条，为了这个再发一次同样的查询不值当。
+	 * 当前结论下附件区是否常驻（`needsVerdictDetails`，失败 / 阻塞才是 true）。
+	 * false 时**一条附件都没有**就整块不渲染。这个判断只能落在这一层：附件列表是
+	 * 这里自己查的，父组件不知道有几条，为了这个再发一次同样的查询不值当。
+	 *
+	 * 缺陷那块用的是另一条更宽的规则（多一档跳过），两者故意不共用，
+	 * 理由写在 `needsVerdictDetails` / `needsDefectLink` 旁边。
 	 */
 	relevant: boolean;
 	runCaseId: string;
@@ -63,8 +74,7 @@ export function RunAttachments({
 	}
 
 	return (
-		<section className="flex flex-col gap-2">
-			<h3 className="font-medium text-sm">附件</h3>
+		<div className="flex flex-col gap-2">
 			{canUpload ? (
 				<AttachmentDropZone picker={picker} uploading={upload.isPending} />
 			) : null}
@@ -81,6 +91,6 @@ export function RunAttachments({
 				onRemove={handleRemove}
 				removable={!locked}
 			/>
-		</section>
+		</div>
 	);
 }

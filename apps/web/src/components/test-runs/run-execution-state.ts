@@ -174,9 +174,18 @@ export function useRunExecution(
 	const openAdd = useCallback(() => setAddOpen(true), []);
 	const closeAdd = useCallback(() => setAddOpen(false), []);
 
-	/** 没有可打结论的行时整套快捷键都不挂，免得空按一下什么都不发生。 */
+	/**
+	 * 没有可打结论的行时整套快捷键都不挂，免得空按一下什么都不发生。
+	 *
+	 * **有步骤的用例也不挂**：这一套键走 `handleVerdict` → `setResult`，
+	 * 那是覆盖式写入，会把逐步判出来的结果连同失败原因一起铺平成一个结论。
+	 * 同样的四个键在右栏由 `useRunStepShortcuts` 接管，改成「判给下一个还没判
+	 * 的步骤」——两处永远只有一处挂着监听，不会互相抢。
+	 */
 	const canUseShortcuts =
-		data.permissions.canConclude && selection.selected !== null;
+		data.permissions.canConclude &&
+		selection.selected !== null &&
+		selection.selected.testCase.steps.length === 0;
 	useRunShortcuts({
 		enabled: canUseShortcuts,
 		onVerdict: verdict.handleVerdict,

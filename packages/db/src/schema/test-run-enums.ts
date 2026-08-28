@@ -104,3 +104,37 @@ export type TestRunAttachmentKind =
 	(typeof testRunAttachmentKindEnum.enumValues)[number];
 export type TestRunExecutedVia =
 	(typeof testRunExecutedViaEnum.enumValues)[number];
+
+/**
+ * **单个步骤**的判定结果（分步执行）。
+ *
+ * 刻意是 `TestRunCaseResult` 去掉 `untested` 后的子集，而不是另造一个枚举：
+ * 两者问的是同一个问题「这次测得怎么样」，两份取值只会在将来加第五态时分叉，
+ * 而 `RESULT_LABELS` / `RESULT_ICONS` / `RESULT_TEXT_CLASSES` 那三张表也就能
+ * 原样复用，不必再维护一套只差一个键的孪生表。
+ *
+ * 为什么步骤级**没有** `untested`：保存时未点过的步骤一律落成 `skipped`
+ * （用户的原话），所以库里不存在「判了一半」的步骤行。整条用例还没开测这件事
+ * 由 `stepResults` 为空数组表达——一条一条存成 `untested` 只是把同一个事实
+ * 抄 N 遍，还会让「这条用例测过没有」多出一种要判断的写法。
+ */
+export type TestRunStepResult = Exclude<TestRunCaseResult, "untested">;
+
+/**
+ * `test_run_cases.stepResults` 里的一项。
+ *
+ * `stepId` 指向 `test_cases.steps[].id`，**没有、也不可能有外键**：步骤本身存在
+ * jsonb 里。用例是活引用（D2），别人删掉一个步骤之后这里就会留下一条指不到人的
+ * 结果——这不是缺陷而是事实本身，读路径按用例**当前**的步骤顺序渲染，
+ * 认不出的那些单独归到「已删除的步骤」，绝不静默丢弃：它是当时判过失败的证据。
+ *
+ * 数组的**顺序不承载语义**，显示顺序永远以 `test_cases.steps` 为准。
+ * 存成数组而不是 `Record<stepId, ...>` 只是为了与 `steps` 本身同形，
+ * 也让「同一个 stepId 出现两次」这种脏数据在读的时候就能被看见。
+ */
+export interface RunCaseStepResult {
+	/** 失败 / 阻塞原因。其余两态恒为 null——判成通过就不该还挂着一条失败原因。 */
+	comment: string | null;
+	result: TestRunStepResult;
+	stepId: string;
+}

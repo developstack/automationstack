@@ -7,6 +7,7 @@
 import type {
 	TestRunCaseResult,
 	TestRunStatus,
+	TestRunStepResult,
 } from "@automationstack/db/schema/test-runs";
 import {
 	CircleCheckIcon,
@@ -58,6 +59,25 @@ export const RESULT_TEXT_CLASSES: Record<TestRunCaseResult, string> = {
 	untested: "text-muted-foreground",
 };
 
+/**
+ * 结论的**底色**版本，用在已保存、只读展示的地方（步骤卡片抬头、汇总条）。
+ *
+ * 与 `RESULT_TEXT_CLASSES` 并存而不是取代它：正在编辑时结论只是一行字的一部分，
+ * 涂个字色就够；判定落库之后它是这张卡的结论，一行同色小字扫十张卡根本认不出来，
+ * 得有一块能被眼睛先抓到的色块。两张表的色相严格一一对应，只差有没有底。
+ *
+ * 底色统一用 /15：本仓库 theme.css 的四个状态色在浅底上做 15% 混色后，
+ * 与 card 底面的对比落在 1.1~1.2:1，是「看得出是一块」但不会盖过文字的档位；
+ * 文字仍用实色（≥ 4.5:1），所以对比度不靠底色兑现，底色只负责定位。
+ */
+export const RESULT_BADGE_CLASSES: Record<TestRunCaseResult, string> = {
+	blocked: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+	failed: "bg-destructive/15 text-destructive",
+	passed: "bg-success/15 text-success",
+	skipped: "bg-muted text-muted-foreground",
+	untested: "bg-muted text-muted-foreground",
+};
+
 export const RUN_STATUS_BADGE_VARIANTS: Record<TestRunStatus, BadgeVariant> = {
 	completed: "secondary",
 	in_progress: "default",
@@ -84,6 +104,19 @@ export const VERDICT_VALUES: readonly TestRunCaseResult[] = [
 ];
 
 /**
+ * 分步判定的四态。值与 `VERDICT_VALUES` 逐字相同，类型却不是同一个：
+ * 步骤没有「未测」这一档（没点过的保存时落成跳过），所以它的元素类型是
+ * `TestRunStepResult`。共用 `VERDICT_VALUES` 会让每个使用点都要再断言一次，
+ * 而断言正是这里最不该出现的东西——枚举将来若分家，断言不会报错。
+ */
+export const STEP_VERDICT_VALUES: readonly TestRunStepResult[] = [
+	"passed",
+	"failed",
+	"blocked",
+	"skipped",
+];
+
+/**
  * 快捷键 → 结论（plan §7.3）。键面字母同时显示在按钮上，
  * 不做隐藏快捷键：没有可见提示的快捷键等于不存在。
  */
@@ -96,20 +129,39 @@ export const VERDICT_SHORTCUT_KEYS: Record<TestRunCaseResult, string> = {
 };
 
 /**
- * 这条结论是否需要「说明 + 附件 + 缺陷」那三块。
+ * 这条结论是否需要「说明 + 附件」那两块。
  *
  * 只有**失败**和**阻塞**需要：其余三态（通过 / 跳过 / 未测）打完就完事了，
- * 把三块空控件常驻在下面只会让人每判一条都要略过一遍。规则刻意只有这一条
- * 且三块共用，多一条分支就多一份「这块为什么在、那块为什么不在」的解释成本。
+ * 把空控件常驻在下面只会让人每判一条都要略过一遍。
+ *
+ * **缺陷不走这条规则**，它有自己的 `needsDefectLink`（多一档「跳过」）。
+ * 两者分家不是重复：说明与附件是「解释这次为什么没通过」的产物，跳过一条
+ * 用例往往没什么可写也没图可传；而缺陷是「挡住我的那个东西在哪」，跳过恰恰
+ * 常常就是被一个已知缺陷挡的。合成一条规则，必然是让跳过多两个空控件、
+ * 或者让它挂不上缺陷，两头都比多写一个函数贵。
  *
  * 注意这只是「相不相关」。**已经有内容的那块一律照常显示**，判断在各自的
- * 调用点上做（说明看 comment、缺陷看 defectKey/defectUrl、附件看列表长度）：
- * 判过失败又改判通过时，说明 / 附件 / 缺陷在库里都还在（后端只有回退成
- * `untested` 时才清 comment），藏起来等于让人以为数据没了，更糟的是
- * 底下还挂着一个没人知道的未关闭缺陷。
+ * 调用点上做（说明看 comment、附件看列表长度）：判过失败又改判通过时，
+ * 说明 / 附件在库里都还在（后端只有回退成 `untested` 时才清 comment），
+ * 藏起来等于让人以为数据没了。
  */
 export function needsVerdictDetails(result: TestRunCaseResult): boolean {
 	return result === "failed" || result === "blocked";
+}
+
+/**
+ * 这条结论下「缺陷」那一块相不相关。
+ *
+ * 比 `needsVerdictDetails` 多一档**跳过**（用户原话：「只有失败阻塞跳过才显示，
+ * 通过就不要显示了」）。为什么不是同一个函数、各自服务谁，见上面那段。
+ *
+ * 同样只是「相不相关」：**已经关联了缺陷的一律照常显示**，那条逃生口在
+ * `RunCaseDefectSection` 里（只有它看得到 defectKey / defectUrl）——
+ * 把一条挂着缺陷的用例改判通过就让缺陷从页面上消失，看着就是数据丢了，
+ * 更糟的是底下还留着一个没人知道的未关闭缺陷。
+ */
+export function needsDefectLink(result: TestRunCaseResult): boolean {
+	return needsVerdictDetails(result) || result === "skipped";
 }
 
 export interface CommentFieldText {

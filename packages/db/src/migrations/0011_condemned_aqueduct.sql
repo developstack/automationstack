@@ -1,0 +1,1 @@
+ALTER TABLE "test_run_cases" ADD COLUMN "step_results" jsonb DEFAULT '[]'::jsonb NOT NULL;

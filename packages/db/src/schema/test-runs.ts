@@ -3,6 +3,7 @@ import {
 	check,
 	index,
 	integer,
+	jsonb,
 	pgTable,
 	text,
 	timestamp,
@@ -14,6 +15,7 @@ import { automationExecutions } from "./automation-executions";
 import { projects } from "./projects";
 import { testCases } from "./test-cases";
 import {
+	type RunCaseStepResult,
 	testRunCaseResultEnum,
 	testRunExecutedViaEnum,
 	testRunStatusEnum,
@@ -21,10 +23,12 @@ import {
 import { users } from "./users";
 
 export type {
+	RunCaseStepResult,
 	TestRunAttachmentKind,
 	TestRunCaseResult,
 	TestRunExecutedVia,
 	TestRunStatus,
+	TestRunStepResult,
 } from "./test-run-enums";
 /**
  * 测试任务链路的两张主表：`test_runs`（任务本身）与 `test_run_cases`
@@ -227,6 +231,37 @@ export const testRunCases = pgTable(
 			.notNull()
 			.references(() => testRuns.id, { onDelete: "cascade" }),
 		sortOrder: integer("sort_order").notNull().default(0),
+		/**
+		 * 分步判定结果，每个元素对应用例的一个步骤。
+		 *
+		 * **`result` 是这一列的函数**（`deriveCaseResult`，
+		 * 见 `repositories/test-run-step-results-core.ts`），不是一个可以各走各的
+		 * 独立字段。所以这里没有「用例判通过、第 3 步却标着失败」这种状态——
+		 * 那正是本列存在的意义：把用例结论做成分步结果的函数，
+		 * 与 `test_runs.status` 做成用例分布的函数是同一条原则。
+		 * 每一条写路径都必须同事务地同时写这两列，只写一列的代码一律是错的。
+		 *
+		 * 空数组 ⇔ `result = 'untested'`（对**有步骤**的用例而言）。回退成未测时
+		 * 连它一起清空，理由与 `buildResultPatch` 清 comment 那条完全相同。
+		 * 没有步骤的用例恒为空数组，结论仍由人直接点四颗按钮——本列不适用。
+		 *
+		 * ⚠️ **例外只有一类：分步判定上线之前就已经打过结论的历史行**——迁移
+		 * `0011` 给它们的默认值是 `[]`，于是这些行 `result` 非 untested 而本列为空。
+		 * 刻意**不回填**：把「用例判过通过」摊成「每一步都通过」是在替当时的人
+		 * 声称一件他没说过的事（他可能压根没走完每一步）。执行台把这类行显示成
+		 * 「分步判定上线前打的结论，没有分步记录」，重判一次就自然补上。
+		 * 新写入的每一行都必须满足上面那条不变式。
+		 *
+		 * 存 jsonb 而不是另开一张 `test_run_case_steps` 表：步骤本身就存在
+		 * `test_cases.steps` 这个 jsonb 里，步骤 id 无论如何都没有外键可依。
+		 * 建一张表只会造出「看起来有引用完整性、其实没有」的错觉，还要多一次
+		 * join 和一套删用例时的清理逻辑。而读路径永远是「这一行的这些步骤」，
+		 * 从来不需要跨用例按步骤聚合。
+		 */
+		stepResults: jsonb("step_results")
+			.$type<RunCaseStepResult[]>()
+			.notNull()
+			.default(sql`'[]'::jsonb`),
 	},
 	(table) => [
 		// 同一条用例在一个测试任务里只能出现一次：addCases 重复勾选时直接由数据库挡下，

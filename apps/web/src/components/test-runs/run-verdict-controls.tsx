@@ -20,8 +20,6 @@ export interface VerdictControlsProps {
 	/** 说明失焦时保存；不改结论。 */
 	onCommentSave: (comment: string | null) => void;
 	onPick: (result: TestRunCaseResult) => void;
-	/** 把结论打回「未测」。已完成的测试任务同样允许（plan §2.2）。 */
-	onReset: () => void;
 	result: TestRunCaseResult;
 	/** 每条用例一个 key，用来在切换用例时重置说明输入框。 */
 	runCaseId: string;
@@ -37,7 +35,6 @@ export function VerdictControls({
 	disabled,
 	onCommentSave,
 	onPick,
-	onReset,
 	result,
 	runCaseId,
 }: VerdictControlsProps) {
@@ -61,12 +58,7 @@ export function VerdictControls({
 
 	return (
 		<div className="flex flex-col gap-3">
-			<VerdictPicker
-				disabled={disabled}
-				onPick={onPick}
-				onReset={onReset}
-				result={result}
-			/>
+			<VerdictPicker disabled={disabled} onPick={onPick} result={result} />
 			{showComment ? (
 				<VerdictCommentField
 					draft={draft}

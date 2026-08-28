@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	commentFieldText,
+	needsDefectLink,
 	needsVerdictDetails,
 } from "@/components/test-runs/test-run-meta";
 
@@ -16,6 +17,28 @@ describe("needsVerdictDetails", () => {
 		expect(needsVerdictDetails("passed")).toBe(false);
 		expect(needsVerdictDetails("skipped")).toBe(false);
 		expect(needsVerdictDetails("untested")).toBe(false);
+	});
+});
+
+describe("needsDefectLink", () => {
+	it("失败、阻塞、跳过都要显示缺陷区块", () => {
+		expect(needsDefectLink("failed")).toBe(true);
+		expect(needsDefectLink("blocked")).toBe(true);
+		expect(needsDefectLink("skipped")).toBe(true);
+	});
+
+	it("通过 / 未测下缺陷区块不相关", () => {
+		expect(needsDefectLink("passed")).toBe(false);
+		expect(needsDefectLink("untested")).toBe(false);
+	});
+
+	it("skipped 是两个函数唯一分道的一档，钉死这条差异防止后来者把它们合并回一个", () => {
+		// 不是与上面重复的断言：上面两条各自验证的是单个函数在完整取值范围上的行为，
+		// 这一条验证的是「两个函数在同一输入上给出不同答案」这件事本身——
+		// 说明与附件不需要跳过，缺陷需要，这正是两者分开存在的唯一理由。
+		// 一旦有人把 needsDefectLink 精简成 needsVerdictDetails 的别名，这条断言会先炸。
+		expect(needsDefectLink("skipped")).toBe(true);
+		expect(needsVerdictDetails("skipped")).toBe(false);
 	});
 });
 

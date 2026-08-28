@@ -24,6 +24,7 @@ import {
 	applyRunStatusDerivation,
 	ensureRunWritable,
 } from "./test-run-status-repository";
+import { uniformStepResultsSql } from "./test-run-step-results-sql";
 
 /**
  * 自动化上报结论的写路径（plan §5.4 / §5.5）：事务编排 + 那条整批 UPDATE。
@@ -103,6 +104,12 @@ async function loadAutomationSnapshots(
  *
  * 摘成独立函数只是为了让 `applyAutomationVerdicts` 的事务体读起来是一串守卫，
  * 它必须在那个事务的 `tx` 上执行——单独拿到事务外就绕开了行锁。
+ *
+ * `step_results` 那一列：脚本目前只报整条用例的通过/失败，所以把这个结论铺满
+ * 每一步，失败信息落到最后一步（用户定的口径，将来脚本能报到步骤级时改
+ * `test-run-step-results-sql.ts` 一处）。**这一列不能不写**——`result` 必须
+ * 恒等于 `deriveCaseResult(step_results)`，漏写会让自动化覆盖过的行
+ * 变成「用例失败、分步全是上一次人工判的通过」。
  */
 async function updateAutomationVerdictRows(
 	tx: DbTransaction,
@@ -121,7 +128,8 @@ async function updateAutomationVerdictRows(
 			executed_at = now(),
 			executed_by = ${input.actorId}::uuid,
 			executed_via = 'automation',
-			last_automation_execution_id = ${input.executionId}::uuid
+			last_automation_execution_id = ${input.executionId}::uuid,
+			step_results = ${uniformStepResultsSql({ lastStepComment: sql`v.comment`, result: sql`v.result::text` })}
 		from (values ${sql.join(valueRows, sql`, `)}) as v(id, result, comment)
 		where ${testRunCases.id} = v.id
 		returning ${testRunCases.id}

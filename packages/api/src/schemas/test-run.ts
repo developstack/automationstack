@@ -22,3 +22,18 @@ export const testRunCaseResultSchema = z.enum([
 ]);
 
 export const runIdSchema = z.object({ runId: z.uuid() });
+
+/**
+ * **单个步骤**的判定。与 `testRunCaseResultSchema` 差一个 `untested`，
+ * 理由见 db 侧 `TestRunStepResult` 的注释：保存时没点过的步骤一律落成
+ * `skipped`，库里不存在「判了一半」的步骤。
+ *
+ * 同样是照着 pgEnum 的取值重写一遍而不是从 db 包 import——本包只允许
+ * type-only 依赖 db，理由见本文件开头。
+ */
+export const testRunStepResultSchema = z.enum([
+	"passed",
+	"failed",
+	"blocked",
+	"skipped",
+]);

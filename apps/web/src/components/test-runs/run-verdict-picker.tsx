@@ -1,5 +1,8 @@
 /**
- * 四态结论按钮组 + 「打回未测」。
+ * 四态结论按钮组。
+ *
+ * 「打回未测」原先也在这里，现在搬去了抬头（`run-case-heading.tsx`）：它跟
+ * 「修改」一样，是看完一条用例后最常点的东西，摆在页面最底下等于每次都要滚。
  *
  * 用一组 `role="radio"` 的按钮而不是原生 `<input type="radio">`：
  * 需要在每个选项里同时排下图标、中文、键面提示三样东西，原生 radio 的
@@ -8,7 +11,6 @@
  */
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 import { Button } from "@automationstack/ui/components/button";
-import { RotateCcwIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import {
@@ -66,45 +68,29 @@ function VerdictButton({
 export interface VerdictPickerProps {
 	disabled: boolean;
 	onPick: (result: TestRunCaseResult) => void;
-	/** 把结论打回「未测」。已完成的测试任务同样允许（plan §2.2）。 */
-	onReset: () => void;
 	result: TestRunCaseResult;
 }
 
 export function VerdictPicker({
 	disabled,
 	onPick,
-	onReset,
 	result,
 }: VerdictPickerProps) {
 	return (
-		<div className="flex flex-wrap items-center gap-2">
-			<div
-				aria-label="执行结论"
-				className="flex flex-wrap gap-2"
-				role="radiogroup"
-			>
-				{VERDICT_VALUES.map((value) => (
-					<VerdictButton
-						current={result}
-						disabled={disabled}
-						key={value}
-						onPick={onPick}
-						value={value}
-					/>
-				))}
-			</div>
-			{result !== "untested" && (
-				<Button
-					aria-disabled={disabled || undefined}
-					onClick={disabled ? undefined : onReset}
-					type="button"
-					variant="ghost"
-				>
-					<RotateCcwIcon aria-hidden="true" data-icon="inline-start" />
-					打回未测
-				</Button>
-			)}
+		<div
+			aria-label="执行结论"
+			className="flex flex-wrap gap-2"
+			role="radiogroup"
+		>
+			{VERDICT_VALUES.map((value) => (
+				<VerdictButton
+					current={result}
+					disabled={disabled}
+					key={value}
+					onPick={onPick}
+					value={value}
+				/>
+			))}
 		</div>
 	);
 }

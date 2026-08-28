@@ -36,6 +36,7 @@ import { settleAutoSubmitForRun } from "./test-run-auto-submit-repository";
 export interface TestRunLiveCase {
 	currentVersion: number;
 	id: string;
+	maintainer: string | null;
 	moduleId: string;
 	moduleName: string;
 	name: string;
@@ -43,6 +44,8 @@ export interface TestRunLiveCase {
 	priority: CasePriority;
 	status: CaseStatus;
 	steps: CaseStep[];
+	/** 用例内容本身的更新时间，不是这条执行记录的更新时间。 */
+	updatedAt: Date;
 }
 
 export interface TestRunCaseDetail {
@@ -126,6 +129,7 @@ async function loadRunCaseRows(runId: string) {
 		.select({
 			...getTableColumns(testRunCases),
 			caseCurrentVersion: testCases.currentVersion,
+			caseMaintainer: testCases.maintainer,
 			caseModuleId: testCases.moduleId,
 			caseModuleName: modules.name,
 			caseName: testCases.name,
@@ -133,6 +137,7 @@ async function loadRunCaseRows(runId: string) {
 			casePriority: testCases.priority,
 			caseStatus: testCases.status,
 			caseSteps: testCases.steps,
+			caseUpdatedAt: testCases.updatedAt,
 			executedByName: executor.username,
 		})
 		.from(testRunCases)
@@ -160,6 +165,7 @@ type TestRunCaseRow = Awaited<ReturnType<typeof loadRunCaseRows>>[number];
  */
 function toRunCaseDetail({
 	caseCurrentVersion,
+	caseMaintainer,
 	caseModuleId,
 	caseModuleName,
 	caseName,
@@ -167,6 +173,7 @@ function toRunCaseDetail({
 	casePriority,
 	caseStatus,
 	caseSteps,
+	caseUpdatedAt,
 	executedByName,
 	...runCase
 }: TestRunCaseRow): TestRunCaseDetail {
@@ -176,6 +183,7 @@ function toRunCaseDetail({
 		testCase: {
 			currentVersion: caseCurrentVersion,
 			id: runCase.caseId,
+			maintainer: caseMaintainer,
 			moduleId: caseModuleId,
 			moduleName: caseModuleName,
 			name: caseName,
@@ -183,6 +191,7 @@ function toRunCaseDetail({
 			priority: casePriority,
 			status: caseStatus,
 			steps: caseSteps,
+			updatedAt: caseUpdatedAt,
 		},
 	};
 }
