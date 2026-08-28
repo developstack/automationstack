@@ -54,12 +54,3 @@ minimumReleaseAgeExclude:
   # dist 与 src 里无 fetch/eval/child_process/process.env 等外联或动态执行。
   - blobatar@2.4.0
   - '@blobatar/react@2.4.0'
-  - '@hono/mcp@0.3.2'
-  - '@vitest/expect@4.1.11'
-  - '@vitest/mocker@4.1.11'
-  - '@vitest/pretty-format@4.1.11'
-  - '@vitest/runner@4.1.11'
-  - '@vitest/snapshot@4.1.11'
-  - '@vitest/spy@4.1.11'
-  - '@vitest/utils@4.1.11'
-  - vitest@4.1.11
