@@ -10,6 +10,7 @@
  * 重建——右栏里正在敲的说明、滚动位置、附件上传进度会当场全部丢掉。
  */
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
+import { cn } from "@automationstack/ui/lib/utils";
 
 import { AddRunCasesSheet } from "@/components/test-runs/add-run-cases-sheet";
 import { RunCaseList } from "@/components/test-runs/run-case-list";
@@ -26,29 +27,44 @@ export interface RunExecutionLayoutProps extends RunExecutionState {
 
 export function RunExecutionLayout(props: RunExecutionLayoutProps) {
 	const { data } = props;
+	// 先落成本地 const 再判空：TS 的别名收窄只认直接变量，穿不透属性链，
+	// 不这样写的话下面横幅的 submittedAt 传参会推成 Date | null。
+	const { submittedAt } = data.run;
+	const showBanner = data.permissions.locked && submittedAt !== null;
 	return (
 		/*
-		 * lg 起 flex-1：`main`（EXECUTION_MAIN）在 lg 下已经吃满了外层那个
-		 * absolute inset-0 overflow-y-auto 的滚动容器，但这个根 div 是它唯一的
-		 * 流内子元素，flex 子项默认 `flex: 0 1 auto`——不接住那段高度的话它只按
-		 * 内容高度收住，下面那个 `flex-1` 的两栏区没有剩余空间可分，整摞按内容
-		 * 高度停在半空，变更历史下面就露出一片空白（收起时最明显，那时内容最矮）。
+		 * lg 起从 flex 换成 grid 定行：横幅（可选）/ header / 用例区 / 变更历史
+		 * 各占一行，前后都是 auto、用例区独占 minmax(0,1fr)。之前用 flex-1 +
+		 * 子项高度的写法，用例区的高度是「声明值再被 flex 收缩削一刀」得出的
+		 * （h-screen 声明 100vh，实际渲染 ≈ 视口 − 138px），改声明值只会改收缩
+		 * 权重，看起来像「改了不生效」。grid 行是算出来的：用例区 = 本容器高
+		 * （lg:flex-1 = main = 视口 − 顶栏）− header − 变更历史，header 或
+		 * 变更历史将来变高，1fr 行自动跟着缩，不再依赖 shrink 的巧合。
+		 * 行模板跟着横幅有无切换：grid 行按位置对号入座，少了横幅那行不切模板
+		 * 的话 header 会掉进 auto、用例区掉进另一个 auto，1fr 落到变更历史头上。
 		 * 断点与 EXECUTION_MAIN 严格一致：<lg 是堆叠布局，每行自适应内容、由外层
 		 * 滚动容器整体滚，这时把高度钉死反而会把两行内容压得溢出被裁。
 		 */
-		<div className="flex min-h-0 flex-col lg:flex-1">
-			{data.permissions.locked && data.run.submittedAt !== null && (
+		<div
+			className={cn(
+				"flex min-h-0 flex-col lg:grid lg:flex-1",
+				showBanner
+					? "lg:grid-rows-[auto_auto_minmax(0,1fr)_auto]"
+					: "lg:grid-rows-[auto_minmax(0,1fr)_auto]"
+			)}
+		>
+			{showBanner ? (
 				/*
 				 * 三个值原样往下传：横幅要用 `submittedBy`（uuid）判「是不是系统
 				 * 自动提交」，用 `submittedByName` 显示人名。两者不能互相替代，
 				 * 理由见 RunLockedBannerProps 上的注释。
 				 */
 				<RunLockedBanner
-					submittedAt={data.run.submittedAt}
+					submittedAt={submittedAt}
 					submittedBy={data.run.submittedBy}
 					submittedByName={data.submittedByName}
 				/>
-			)}
+			) : null}
 			<RunExecutionHeader
 				counts={{ ...props.selection.counts, total: data.cases.length }}
 				projectId={props.projectId}
@@ -74,12 +90,13 @@ function RunExecutionBody(props: RunExecutionLayoutProps) {
 	const { bulk, checked, data, selection, verdict } = props;
 	return (
 		/*
-		 * lg:h-screen —— 用例区的高度定死为一屏（用户指示），不再依赖 flex-1 从上游
-		 * 逐级分剩余空间：链上任何一环断掉，这一块也有一个确定的高度，左右两栏在
-		 * 自己的 overflow-y-auto 里滚。min-h-0 保留：外层链完好时它允许本块收缩到
-		 * 「视口减顶栏减变更历史」的实际可用高度，两种情况都不会把页面顶出滚动条。
+		 * 不写任何 h-*：这一块在根 grid 的 minmax(0,1fr) 行里，高度由那边算好
+		 * （视口 − 顶栏 − header − 变更历史），grid item 默认 stretch 直接铺满。
+		 * 曾经的 lg:h-screen 在这儿只是个会被 flex 收缩改写的 basis，声明 100vh
+		 * 实际渲染不到，教训记在根 div 的注释里。min-h-0 必须留：没有它，行内
+		 * 用例列表的 min-content 会把 1fr 行顶穿，左右两栏就滚不起来了。
 		 */
-		<div className="grid min-h-0 grid-cols-1 lg:h-screen lg:grid-cols-run-execution">
+		<div className="grid min-h-0 grid-cols-1 lg:grid-cols-run-execution">
 			<RunCaseList
 				canConclude={data.permissions.canConclude}
 				canEditCases={data.permissions.canEditCases}
