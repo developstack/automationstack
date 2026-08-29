@@ -49,8 +49,8 @@ export function RunExecutionLayout(props: RunExecutionLayoutProps) {
 			className={cn(
 				"flex min-h-0 flex-col lg:grid lg:flex-1",
 				showBanner
-					? "lg:grid-rows-[auto_auto_minmax(0,1fr)_auto]"
-					: "lg:grid-rows-[auto_minmax(0,1fr)_auto]"
+					? "lg:grid-rows-run-execution-banner"
+					: "lg:grid-rows-run-execution"
 			)}
 		>
 			{showBanner ? (
