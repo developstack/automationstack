@@ -165,7 +165,13 @@ function RunExecutionCasePane({
 		 * 用 /40 而不是实色：右栏还有说明、附件、缺陷这些**不在卡里**的段落，
 		 * 底面太深会把它们压成「禁用」的观感。
 		 */
-		<div className="min-h-0 overflow-y-auto bg-muted/40">
+		/*
+		 * relative：面板里有 position:absolute 的 sr-only 文案（如附件拖放区），
+		 * 不让本层当包含块的话，它们会穿透这里的滚动裁剪、把整页滚动区撑出
+		 * 一段空白——左栏用例列表刚为此翻过车，机制详见 run-case-list.tsx 的
+		 * ul 注释。凡 overflow-y-auto 的滚动容器都必须同时是包含块。
+		 */
+		<div className="relative min-h-0 overflow-y-auto bg-muted/40">
 			{selected === null ? (
 				<p className="p-8 text-center text-muted-foreground text-sm">
 					这个测试任务里还没有用例，先追加几条再开始测。

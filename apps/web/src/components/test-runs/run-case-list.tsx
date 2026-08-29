@@ -88,7 +88,17 @@ function RunCaseRows({
 	selectedRunCaseId: string | null;
 }) {
 	return (
-		<ul className="min-h-0 flex-1 overflow-y-auto pb-2">
+		/*
+		 * relative 不是装饰：行里那段 sr-only 结论文字（run-case-row.tsx:66）是
+		 * position:absolute 的，绝对定位元素只受**包含块链**上的 overflow 裁剪，
+		 * 这个 ul 的 overflow-y-auto 对它们不起作用。往上最近的定位祖先是整页
+		 * 滚动容器（$projectId/route.tsx 的 absolute inset-0 那层），于是最后
+		 * 一行的 sr-only 把整页滚动区撑到列表未裁剪的全高——lg 下页面本已恰好
+		 * 一屏，却还能往下滚出一段纯空白（2026-08-29 实测：scrollHeight 858 vs
+		 * 视口内 649，差值正是被裁掉的行）。relative 让 ul 自己当包含块，
+		 * sr-only 随行一起被这里的滚动裁剪收住。
+		 */
+		<ul className="relative min-h-0 flex-1 overflow-y-auto pb-2">
 			{cases.length === 0 ? (
 				<li className="px-4 py-8 text-center text-muted-foreground text-sm">
 					当前筛选下没有用例。
