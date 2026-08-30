@@ -1,10 +1,10 @@
 /**
  * 项目成员管理。授权规则的本体在 `lib/project-access.ts`，这里只做编排。
  *
- * 四个 handler 全部先过 `requireProjectMember`（进得来才谈得上看名单），
- * 其中三个写操作再额外要求 `canAdministerProject`——也就是项目 owner 或平台
- * admin。**不用 `adminProcedure`**：那会让每加一个人都得去找平台管理员，
- * 而 owner 这一档存在的全部理由就是让「谁能加人」有个项目内的答案。
+ * 五个 handler 全部先过 `requireProjectMember`（进得来才谈得上看名单），
+ * 其中三个写操作外加 `listCandidates` 再额外要求 `canAdministerProject`——也就是
+ * 项目 owner 或平台 admin。**不用 `adminProcedure`**：那会让每加一个人都得去找
+ * 平台管理员，而 owner 这一档存在的全部理由就是让「谁能加人」有个项目内的答案。
  *
  * 不发 `publishInvalidate`：实时协议的 `InvalidateEntity` 里没有成员这一类
  * （`realtime/protocol.ts`），加一类要连着前端的失效映射一起改，属于下一批
@@ -15,6 +15,7 @@ import {
 	addProjectMember,
 	countProjectOwners,
 	getProjectRole,
+	listProjectMemberCandidates,
 	listProjectMembers,
 	removeProjectMember,
 	updateProjectMemberRole,
@@ -97,6 +98,24 @@ export const projectMembersRouter = {
 		.input(projectScopeSchema)
 		.use(requireProjectMember)
 		.handler(({ input }) => listProjectMembers(input.projectId)),
+	/**
+	 * 「添加成员」下拉框里的候选人：平台上还没进这个项目的账号。
+	 *
+	 * 这一条与三个写操作同一档权限，而不是跟 `list` 一样对所有成员开放：它回答的
+	 * 是「平台上还有谁」，普通成员没有任何用得上它的地方，开放出去等于让每个项目
+	 * 成员都能枚举平台账号。字段窄到只有 id 与用户名，理由与查询本身写在
+	 * `listProjectMemberCandidates` 的注释里。
+	 */
+	listCandidates: protectedProcedure
+		.errors(routerErrors)
+		.input(projectScopeSchema)
+		.use(requireProjectMember)
+		.handler(({ context, errors, input }) => {
+			if (!canAdministerProject(context.projectAccess)) {
+				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
+			}
+			return listProjectMemberCandidates(input.projectId);
+		}),
 	remove: protectedProcedure
 		.errors(routerErrors)
 		.input(memberScopeSchema)

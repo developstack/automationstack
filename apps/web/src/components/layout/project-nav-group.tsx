@@ -10,6 +10,7 @@ import {
 	LayoutDashboardIcon,
 	ListChecksIcon,
 	SettingsIcon,
+	UsersIcon,
 } from "lucide-react";
 
 import { isCaseSectionPathname } from "@/components/layout/case-section-path";
@@ -23,7 +24,7 @@ import { isCaseSectionPathname } from "@/components/layout/case-section-path";
  * 判定与理由（见下），共性只有「一个图标加一行字」。
  *
  * `pathname` 由组一次性订阅、再逐项传下去，不让每项各自调 `useRouterState`：
- * 一次订阅换成四次，路由一变就是四次各自独立的重渲染，而它们本来就该一起变。
+ * 一次订阅换成五次，路由一变就是五次各自独立的重渲染，而它们本来就该一起变。
  */
 
 /** 只取 pathname：整个 location 拿来比较的话，search/hash 一变侧栏就白重画一次。 */
@@ -143,6 +144,34 @@ function ProjectSettingsNavItem({ pathname, projectId }: NavItemProps) {
 	);
 }
 
+/**
+ * 成员。
+ *
+ * 对**所有**项目成员可见，不按角色隐藏：普通成员点进去看到的是一份只读名单，
+ * 那正是他需要的（队友是谁、找谁要权限）。按角色藏掉这一项会让人以为平台压根
+ * 没有成员管理这回事，于是去问一个本来就有答案的问题；能不能改由页面里的操作
+ * 控件回答，而不是由「这一项在不在」回答。
+ *
+ * 按前缀算，理由同「设置」那一项：这一支目前没有更深的子页面，将来长出来了
+ * （比如某个成员的详情）前缀写法也仍然对。activeOptions 不给（即默认的前缀
+ * 判定）：前缀为真时人就在这一页上，aria-current="page" 是真话。
+ */
+function ProjectUsersNavItem({ pathname, projectId }: NavItemProps) {
+	return (
+		<SidebarMenuItem>
+			<SidebarMenuButton
+				aria-label="成员"
+				isActive={pathname.startsWith(`/projects/${projectId}/users`)}
+				render={<Link params={{ projectId }} to="/projects/$projectId/users" />}
+				tooltip="成员"
+			>
+				<UsersIcon aria-hidden="true" />
+				<span>成员</span>
+			</SidebarMenuButton>
+		</SidebarMenuItem>
+	);
+}
+
 interface ProjectNavGroupProps {
 	projectId: string;
 }
@@ -150,11 +179,13 @@ interface ProjectNavGroupProps {
 /**
  * 项目内的一级去处。
  *
- * 不加组标题、也不 mt-auto 顶到底部：全组只有四项，再没有第二组要跟它区分，
+ * 不加组标题、也不 mt-auto 顶到底部：全组只有五项，再没有第二组要跟它区分，
  * 标题除了占掉一行什么也没说。
  *
  * 顺序按「先看状况、再干活、再看这一轮在测什么、最后是配一次就走的设置」排：
  * 概览是进项目后的第一个问题，用例管理是每天的落脚点，测试任务是用例库的消费方。
+ * 成员排在设置之前：它改的是这个项目里有谁，与前三项一样是项目内的日常事务，
+ * 而设置那一格里有三格改的根本不是当前项目的东西（平台级与个人级），排在最后。
  */
 export function ProjectNavGroup({ projectId }: ProjectNavGroupProps) {
 	const pathname = useRouterState({ select: selectPathname });
@@ -164,6 +195,7 @@ export function ProjectNavGroup({ projectId }: ProjectNavGroupProps) {
 				<OverviewNavItem pathname={pathname} projectId={projectId} />
 				<CasesNavItem pathname={pathname} projectId={projectId} />
 				<TestRunsNavItem pathname={pathname} projectId={projectId} />
+				<ProjectUsersNavItem pathname={pathname} projectId={projectId} />
 				<ProjectSettingsNavItem pathname={pathname} projectId={projectId} />
 			</SidebarMenu>
 		</SidebarGroup>

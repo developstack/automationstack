@@ -31,6 +31,7 @@ const VIEW_LABELS: Record<string, string> = {
 	overview: "概览",
 	settings: "设置",
 	testRuns: "测试任务",
+	users: "成员",
 };
 
 /**

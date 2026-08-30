@@ -17,6 +17,7 @@ import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$p
 import { Route as ProjectsProjectIdMindmapRouteImport } from './routes/projects/$projectId/mindmap'
 import { Route as ProjectsProjectIdOverviewRouteImport } from './routes/projects/$projectId/overview'
 import { Route as ProjectsProjectIdSettingsRouteImport } from './routes/projects/$projectId/settings'
+import { Route as ProjectsProjectIdUsersRouteImport } from './routes/projects/$projectId/users'
 import { Route as ProjectsProjectIdTestRunsIndexRouteImport } from './routes/projects/$projectId/test-runs/index'
 import { Route as ProjectsProjectIdTestRunsRunIdIndexRouteImport } from './routes/projects/$projectId/test-runs/$runId/index'
 import { Route as ProjectsProjectIdTestRunsRunIdReportRouteImport } from './routes/projects/$projectId/test-runs/$runId/report'
@@ -64,6 +65,11 @@ const ProjectsProjectIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => ProjectsProjectIdRouteRoute,
   } as any)
+const ProjectsProjectIdUsersRoute = ProjectsProjectIdUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => ProjectsProjectIdRouteRoute,
+} as any)
 const ProjectsProjectIdTestRunsIndexRoute =
   ProjectsProjectIdTestRunsIndexRouteImport.update({
     id: '/test-runs/',
@@ -91,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
   '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
+  '/projects/$projectId/users': typeof ProjectsProjectIdUsersRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/test-runs/': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
   '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
+  '/projects/$projectId/users': typeof ProjectsProjectIdUsersRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/test-runs': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
   '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
+  '/projects/$projectId/users': typeof ProjectsProjectIdUsersRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/test-runs/': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
     | '/projects/$projectId/settings'
+    | '/projects/$projectId/users'
     | '/projects/$projectId/'
     | '/projects/$projectId/test-runs/'
     | '/projects/$projectId/test-runs/$runId/report'
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
     | '/projects/$projectId/settings'
+    | '/projects/$projectId/users'
     | '/projects/$projectId'
     | '/projects/$projectId/test-runs'
     | '/projects/$projectId/test-runs/$runId/report'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
     | '/projects/$projectId/settings'
+    | '/projects/$projectId/users'
     | '/projects/$projectId/'
     | '/projects/$projectId/test-runs/'
     | '/projects/$projectId/test-runs/$runId/report'
@@ -228,6 +240,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdSettingsRouteImport
       parentRoute: typeof ProjectsProjectIdRouteRoute
     }
+    '/projects/$projectId/users': {
+      id: '/projects/$projectId/users'
+      path: '/users'
+      fullPath: '/projects/$projectId/users'
+      preLoaderRoute: typeof ProjectsProjectIdUsersRouteImport
+      parentRoute: typeof ProjectsProjectIdRouteRoute
+    }
     '/projects/$projectId/test-runs/': {
       id: '/projects/$projectId/test-runs/'
       path: '/test-runs'
@@ -256,6 +275,7 @@ interface ProjectsProjectIdRouteRouteChildren {
   ProjectsProjectIdMindmapRoute: typeof ProjectsProjectIdMindmapRoute
   ProjectsProjectIdOverviewRoute: typeof ProjectsProjectIdOverviewRoute
   ProjectsProjectIdSettingsRoute: typeof ProjectsProjectIdSettingsRoute
+  ProjectsProjectIdUsersRoute: typeof ProjectsProjectIdUsersRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
   ProjectsProjectIdTestRunsIndexRoute: typeof ProjectsProjectIdTestRunsIndexRoute
   ProjectsProjectIdTestRunsRunIdReportRoute: typeof ProjectsProjectIdTestRunsRunIdReportRoute
@@ -267,6 +287,7 @@ const ProjectsProjectIdRouteRouteChildren: ProjectsProjectIdRouteRouteChildren =
     ProjectsProjectIdMindmapRoute: ProjectsProjectIdMindmapRoute,
     ProjectsProjectIdOverviewRoute: ProjectsProjectIdOverviewRoute,
     ProjectsProjectIdSettingsRoute: ProjectsProjectIdSettingsRoute,
+    ProjectsProjectIdUsersRoute: ProjectsProjectIdUsersRoute,
     ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
     ProjectsProjectIdTestRunsIndexRoute: ProjectsProjectIdTestRunsIndexRoute,
     ProjectsProjectIdTestRunsRunIdReportRoute:

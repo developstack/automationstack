@@ -81,6 +81,11 @@ const TEST_RUNS_PATH_SEGMENT = "/test-runs";
  * 改的根本不是当前项目的东西，广播「他在 API Token」对同项目的人是句废话。
  */
 const SETTINGS_PATH_SUFFIX = "/settings";
+/**
+ * 成员页。与设置页同理，报到这一页为止就够——同项目的人知道「他在看成员名单」
+ * 已经足够，页面里没有更细的去处可分。
+ */
+const USERS_PATH_SUFFIX = "/users";
 
 /**
  * 当前路径对应哪个视图。这个值会随 presence 广播出去，别人顶栏头像的 tooltip
@@ -99,6 +104,9 @@ function viewFor(pathname: string): string {
 	}
 	if (pathname.endsWith(SETTINGS_PATH_SUFFIX)) {
 		return "settings";
+	}
+	if (pathname.endsWith(USERS_PATH_SUFFIX)) {
+		return "users";
 	}
 	return "list";
 }

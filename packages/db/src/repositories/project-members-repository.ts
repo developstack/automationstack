@@ -6,7 +6,7 @@
  * `getProjectRole`，因此那一条查询刻意只取 `role` 一列。
  */
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNull, notExists, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import {
@@ -57,6 +57,55 @@ export function listProjectMembers(
 		.innerJoin(users, eq(users.id, projectMembers.userId))
 		.where(eq(projectMembers.projectId, projectId))
 		.orderBy(asc(projectMembers.createdAt));
+}
+
+/** 候选人只带下拉框选人所需的两列，理由见下面的查询。 */
+export interface ProjectMemberCandidate {
+	id: string;
+	username: string;
+}
+
+/**
+ * 「还能被加进这个项目的账号」。
+ *
+ * 存在的理由是 `users.list` 是 `adminProcedure` 专属的：不给项目 owner 一条
+ * 自己的候选人来源，他就只能去求平台管理员替他加人，而 owner 这一档存在的
+ * 全部意义就是让「谁能加人」在项目内有答案。反过来把 `users.list` 对非管理员
+ * 开放则是把平台账号全表（含角色、停用状态、创建时间）交给任何一个项目 owner，
+ * 所以这里另开一条窄查询，字段只有 id 与用户名。
+ *
+ * 两条过滤各有理由：
+ * - `notExists` 排掉已经在项目里的人——他们出现在候选里只会换来一句
+ *   「该用户已经是项目成员」，而那是选之前就能知道的事；
+ * - 停用的账号一并排掉：它连登录都做不到，加进项目只是在成员表里多一行
+ *   永远不会出现的人。已经在项目里的人被停用不受影响（那是 `listProjectMembers`
+ *   的事，那边照常带出 `disabledAt` 给界面标注）。
+ *
+ * 按用户名排序而不是创建时间：这份数据的唯一用途是让人在下拉框里找一个名字。
+ */
+export function listProjectMemberCandidates(
+	projectId: string
+): Promise<ProjectMemberCandidate[]> {
+	return db
+		.select({ id: users.id, username: users.username })
+		.from(users)
+		.where(
+			and(
+				isNull(users.disabledAt),
+				notExists(
+					db
+						.select({ one: sql`1` })
+						.from(projectMembers)
+						.where(
+							and(
+								eq(projectMembers.projectId, projectId),
+								eq(projectMembers.userId, users.id)
+							)
+						)
+				)
+			)
+		)
+		.orderBy(asc(users.username));
 }
 
 /**
