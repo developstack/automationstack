@@ -7,22 +7,26 @@
  * 不再需要一个查询参数来补作用域。
  *
  * 顺序即 tab 条的排列，也是「作用域由近及远」：两个项目级的排前面（人是从项目
- * 侧栏点进来的，默认落点该是这个项目自己的配置），跨项目的三格排后面。
+ * 侧栏点进来的，默认落点该是这个项目自己的配置），跨项目的那两格排后面——
+ * API Token 是个人级，本地 Agent 接入更远一层，是整套平台共用的一份说明。
  */
 import { z } from "zod";
 
 export const PROJECT_TAB = "project";
 export const JIRA_TAB = "jira";
-export const AI_TAB = "ai";
 export const TOKENS_TAB = "tokens";
-export const MEMBERS_TAB = "members";
+/*
+ * 值取 "agent" 而不是 "ai"：这一格讲的是「把你自己的本地 agent 接进来」，
+ * 而 "ai" 这个值属于已经删掉的那格在线 AI 配置，收藏夹里还留着旧链接。
+ * 复用同一个值会把那些旧链接静默地导到一格意思完全不同的页面上。
+ */
+export const AGENT_TAB = "agent";
 
 export const SETTINGS_TABS = [
 	PROJECT_TAB,
 	JIRA_TAB,
-	AI_TAB,
 	TOKENS_TAB,
-	MEMBERS_TAB,
+	AGENT_TAB,
 ] as const;
 
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
@@ -33,8 +37,9 @@ export const DEFAULT_SETTINGS_TAB: SettingsTab = PROJECT_TAB;
 export const settingsTabSearchSchema = z.object({
 	/**
 	 * optional + `.catch(undefined)` 不是可有可无的兜底：手抄断的链接、或指向
-	 * 早先某个 tab 名的旧链接，若让 validateSearch 抛出去，整页会掉到路由的错误
-	 * 边界上，而这时正确的行为是当作「没指定」，落回默认那一格。
+	 * 早先某个 tab 名的旧链接（`?tab=ai`、`?tab=members` 这两格已经删了，收藏夹
+	 * 里还留着），若让 validateSearch 抛出去，整页会掉到路由的错误边界上，
+	 * 而这时正确的行为是当作「没指定」，落回默认那一格。
 	 */
 	tab: z.enum(SETTINGS_TABS).optional().catch(undefined),
 });

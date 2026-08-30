@@ -36,8 +36,8 @@ function ProjectMemberRow({
 				 * 这一列说的是**平台账号**的状态，不是他在本项目里的状态：账号被停用
 				 * 的人仍然留在成员名单里（停用是可逆的，移出项目才是删这一行），但他
 				 * 登不进来。不标出来的话，名单上会有一个谁都等不到的人。
-				 * 停用态用 outline 而不是 destructive，理由同 components/members：
-				 * 已停用的行该退到背景里，不该看起来像一条待处理的报错。
+				 * 停用态用 outline 而不是 destructive：已停用的行该退到背景里，
+				 * 不该看起来像一条待处理的报错。
 				 */}
 				<Badge variant={disabled ? "outline" : "secondary"}>
 					{disabled ? "已停用" : "启用"}

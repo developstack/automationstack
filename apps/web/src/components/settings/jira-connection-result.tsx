@@ -65,16 +65,14 @@ export function JiraConnectionResult({
 			}
 			role="status"
 		>
+			{/*
+			 * 不加 mt-0.5：这块是 text-xs（行高 16px），图标 size-4 也是 16px，
+			 * items-start 下两个盒子本来就顶齐；那 2px 是净错位，不是补偿。
+			 */}
 			{copy.ok ? (
-				<CircleCheckIcon
-					aria-hidden="true"
-					className="mt-0.5 size-4 shrink-0"
-				/>
+				<CircleCheckIcon aria-hidden="true" className="size-4 shrink-0" />
 			) : (
-				<TriangleAlertIcon
-					aria-hidden="true"
-					className="mt-0.5 size-4 shrink-0"
-				/>
+				<TriangleAlertIcon aria-hidden="true" className="size-4 shrink-0" />
 			)}
 			<div className="flex flex-col gap-1">
 				<p className="font-medium">{copy.title}</p>

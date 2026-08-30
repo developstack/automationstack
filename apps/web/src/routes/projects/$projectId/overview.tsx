@@ -9,13 +9,13 @@ import {
 import type { RouterAppContext } from "@/routes/__root";
 
 /**
- * 六条统计各自 ensureQueryData，一次 Promise.all 并发发出。
+ * 四条统计各自 ensureQueryData，一次 Promise.all 并发发出。
  *
  * 写在路由选项字面量外面，与同目录的 index.tsx / route.tsx 同理：TypeScript
  * 才能在检查同一字面量里的其他字段之前推导出 loader 的类型。
  *
  * 刻意不把结果 return 出去：TanStack Start 会把 loader 的返回值序列化进 SSR
- * 载荷，而这五份数据已经随 queryClient 脱水传过去一遍了，return 等于让首屏
+ * 载荷，而这四份数据已经随 queryClient 脱水传过去一遍了，return 等于让首屏
  * 多背一份同样的 JSON。卡片一律从 queryClient 里取（useSuspenseQuery），
  * loader 只负责把缓存预热到位。
  *
@@ -43,9 +43,6 @@ const overviewLoader = async ({
 			orpc.projectStats.staleHighPriority.queryOptions({ input })
 		),
 		queryClient.ensureQueryData(
-			orpc.projectStats.aiAdoption.queryOptions({ input })
-		),
-		queryClient.ensureQueryData(
 			orpc.projectStats.recentChanges.queryOptions({ input })
 		),
 	]);
@@ -55,7 +52,7 @@ export const Route = createFileRoute("/projects/$projectId/overview")({
 	component: ProjectOverviewPage,
 	loader: overviewLoader,
 	/*
-	 * loader 要等五条统计里最慢的那条，超过 router.tsx 的 200ms 阈值就得摆加载态。
+	 * loader 要等四条统计里最慢的那条，超过 router.tsx 的 200ms 阈值就得摆加载态。
 	 * 不摆就落到兜底的整页 spinner 上——一级侧栏、顶栏、二级面板整块消失，而
 	 * defaultPendingMinMs 还保证它至少停 300ms，从侧栏点一下看着像应用闪没了一次。
 	 *

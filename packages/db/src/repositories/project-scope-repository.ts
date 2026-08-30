@@ -21,7 +21,6 @@
 import { eq, inArray } from "drizzle-orm";
 
 import { db } from "../index";
-import { aiCaseProposals, aiGenerationSessions } from "../schema/ai";
 import { modules } from "../schema/modules";
 import { testCases } from "../schema/test-cases";
 import { testRunAttachments } from "../schema/test-run-attachments";
@@ -91,45 +90,6 @@ export async function getProjectIdByRunAttachmentId(
 		.where(eq(testRunAttachments.id, attachmentId))
 		.limit(1);
 	return row?.projectId ?? null;
-}
-
-export async function getProjectIdByAiSessionId(
-	sessionId: string
-): Promise<string | null> {
-	const [row] = await db
-		.select({ projectId: aiGenerationSessions.projectId })
-		.from(aiGenerationSessions)
-		.where(eq(aiGenerationSessions.id, sessionId))
-		.limit(1);
-	return row?.projectId ?? null;
-}
-
-/**
- * 一批提案涉及的**去重后**项目列表。
- *
- * 返回数组而不是单个 id，是因为「这批 id 是不是全在一个项目里」本身就是调用方
- * 要判的事：`ai.rejectProposals` 只收 proposalIds，一次请求里混进别的项目的
- * 提案时，任何「取第一个」的写法都会把剩下那些一起放行。
- * 由调用方（api 的中间件）要求结果恰好一项，多一项就是跨项目调用，直接拒。
- *
- * 空数组进来时不查库：`inArray(col, [])` 在 drizzle 里会生成一条恒假条件，
- * 白跑一次往返，而答案已经知道了。
- */
-export async function listProjectIdsByProposalIds(
-	proposalIds: string[]
-): Promise<string[]> {
-	if (proposalIds.length === 0) {
-		return [];
-	}
-	const rows = await db
-		.selectDistinct({ projectId: aiGenerationSessions.projectId })
-		.from(aiCaseProposals)
-		.innerJoin(
-			aiGenerationSessions,
-			eq(aiGenerationSessions.id, aiCaseProposals.sessionId)
-		)
-		.where(inArray(aiCaseProposals.id, proposalIds));
-	return rows.map((row) => row.projectId);
 }
 
 export interface MindmapNodeIds {

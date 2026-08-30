@@ -8,7 +8,7 @@ import { cn } from "@automationstack/ui/lib/utils";
 import { type ReactNode, useEffect } from "react";
 
 /**
- * 概览页首屏骨架：六张卡逐张按真实内容折算高度。
+ * 概览页首屏骨架：五张卡逐张按真实内容折算高度。
  *
  * 换算表（真实类名 → 骨架高度）：
  *   CardTitle        text-base leading-normal = 24px → h-6
@@ -20,9 +20,9 @@ import { type ReactNode, useEffect } from "react";
  *   环形图            OverviewDonut 的 h-40 w-40 = 160×160px → mx-auto size-40 rounded-full
  *   条形图            OverviewPriorityBars 的 h-32 = 128px → 见 PriorityCardSkeleton
  *
- * 三张卡（用例总数 / 模块覆盖 / AI 采纳率）的大号读数已经挪进环心，那一行 h-9 换成
- * 了 160px 的圆；优先级卡原来那条 h-2 的手搓分布条换成了 128px 的横向条形图。
- * 骨架不跟着改的话，数据到达那一帧这三张卡会各自跳 120~150px。
+ * 两张卡（用例总数 / 模块覆盖）的大号读数已经挪进环心，那一行 h-9 换成了
+ * 160px 的圆；优先级卡原来那条 h-2 的手搓分布条换成了 128px 的横向条形图。
+ * 骨架不跟着改的话，数据到达那一帧这两张卡会各自跳 120~150px。
  *
  * 外框直接复用真的 <Card>/<CardHeader>/<CardContent>，不自己描 py-6 / px-6 / gap：
  * 卡片的内边距与间距写在 --card-spacing 上，抄一份数值出来，那边一改这边就错位。
@@ -143,19 +143,6 @@ function PriorityCardSkeleton() {
 }
 
 /**
- * AI 采纳率：进度环 + 一行说明。160 + 12 + 20 = 192px。
- * 环与另外两张同尺寸（h-40 w-40），三张卡的圆在栅格里是同一个大小。
- */
-function AiCardSkeleton() {
-	return (
-		<CardSkeleton descriptionWidth="w-56" titleWidth="w-24">
-			<Skeleton className="mx-auto size-40 rounded-full" />
-			<Skeleton className="h-5 w-48" />
-		</CardSkeleton>
-	);
-}
-
-/**
  * 覆盖缺口：环形图 + 三行计数 + 点名清单。
  * 计数行从两行变三行：环上多了「有生效用例」这一段，图例必须把三段都列全。
  * 160 + 12 + (3×20+2×6) + 12 + (1px 分隔线 + pt-3 12px + 5×20 + 4×6) = 393px。
@@ -213,7 +200,7 @@ function ChangesCardSkeleton() {
  * main 里面的东西，不含 main / PageTransition：那一层由路由的 pendingComponent
  * 给出，与就绪态共用同一份 OVERVIEW_MAIN。
  *
- * 六张卡各自 aria-hidden，播报只留下面这一个 output：同一次加载播六遍读屏只会更吵。
+ * 五张卡各自 aria-hidden，播报只留下面这一个 output：同一次加载播五遍读屏只会更吵。
  * output 带 sr-only，脱离文档流，不占栅格里的一格。
  */
 export function OverviewSkeleton() {
@@ -226,7 +213,6 @@ export function OverviewSkeleton() {
 			</output>
 			<TotalsCardSkeleton />
 			<PriorityCardSkeleton />
-			<AiCardSkeleton />
 			<CoverageCardSkeleton />
 			<StaleCardSkeleton />
 			<ChangesCardSkeleton />

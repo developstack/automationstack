@@ -13,7 +13,7 @@ const SECRET_ENCRYPTION_KEY_BYTES = 32;
 
 /**
  * 在这里就把 base64 解开量一下长度，而不是等到第一次加密时才炸：主密钥少一位
- * 或多一位都会让整个「数据库里的 API Key」功能静默不可用，越早报越好。
+ * 或多一位都会让整个「数据库里的第三方凭据」功能静默不可用，越早报越好。
  */
 function isValidSecretEncryptionKey(value: string): boolean {
 	try {
@@ -45,9 +45,6 @@ export const env = createEnv({
 	emptyStringAsUndefined: true,
 	runtimeEnv: process.env,
 	server: {
-		AI_API_KEY: z.string().min(1).optional(),
-		AI_BASE_URL: z.url().optional(),
-		AI_MODEL: z.string().min(1).optional(),
 		/**
 		 * 测试报告每日自动提交扫描的 cron 表达式（plan 011 D5）。时刻本身无
 		 * 业务含义，仅钻夜间低谷；条件是累积式的，停机错过一天次日自然补上。
@@ -106,15 +103,14 @@ export const env = createEnv({
 		R2_ENDPOINT: z.url().optional(),
 		R2_SECRET_ACCESS_KEY: z.string().min(1).optional(),
 		/**
-		 * 数据库里那份 AI provider 配置的 API Key 主密钥：base64 编码的 32 字节，
-		 * 用 `openssl rand -base64 32` 生成。
+		 * 数据库里那些第三方凭据（当前是 `jira_configs.api_token_cipher`）的主
+		 * 密钥：base64 编码的 32 字节，用 `openssl rand -base64 32` 生成。
 		 *
-		 * ⚠️ 换掉它会让所有已存的 API Key 全部解不开（AES-GCM 认证标签对不上），
-		 * 表现为管理员必须重新填一次 Key；旧密文没有任何办法找回。
+		 * ⚠️ 换掉它会让所有已存的凭据全部解不开（AES-GCM 认证标签对不上），
+		 * 表现为项目 owner 必须重新填一次 Jira API Token；旧密文没有任何办法找回。
 		 *
-		 * 设成 optional：没配主密钥时「把配置存进数据库」这条路整体不可用，
-		 * 服务干净地回落到 AI_BASE_URL / AI_API_KEY / AI_MODEL 三个环境变量，
-		 * 而不是连服务都起不来。
+		 * 设成 optional：没配主密钥时「把凭据存进数据库」这条路整体不可用，
+		 * Jira 集成配不起来，但服务照常启动。
 		 */
 		SECRET_ENCRYPTION_KEY: z
 			.string()

@@ -35,14 +35,12 @@
 import type { MindmapOperation } from "@automationstack/db/repositories/mindmap-operations";
 import { getProjectRole } from "@automationstack/db/repositories/project-members-repository";
 import {
-	getProjectIdByAiSessionId,
 	getProjectIdByCaseId,
 	getProjectIdByModuleId,
 	getProjectIdByRunAttachmentId,
 	getProjectIdByRunCaseId,
 	getProjectIdByRunId,
 	listProjectIdsByMindmapNodes,
-	listProjectIdsByProposalIds,
 } from "@automationstack/db/repositories/project-scope-repository";
 import { ORPCError } from "@orpc/server";
 
@@ -115,17 +113,6 @@ export const requireRunAttachmentMember = projectScopeMiddleware(
 	(input: { attachmentId: string }) =>
 		getProjectIdByRunAttachmentId(input.attachmentId),
 	"附件不存在"
-);
-
-export const requireAiSessionMember = projectScopeMiddleware(
-	(input: { sessionId: string }) => getProjectIdByAiSessionId(input.sessionId),
-	"生成会话不存在"
-);
-
-export const requireAiProposalsMember = projectScopeMiddleware(
-	async (input: { proposalIds: string[] }) =>
-		onlyProjectId(await listProjectIdsByProposalIds(input.proposalIds)),
-	"提案不存在，或这一批提案分属不同项目"
 );
 
 /**

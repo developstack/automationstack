@@ -6,7 +6,7 @@ import { Button } from "@automationstack/ui/components/button";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
-import { type ReactNode, useCallback } from "react";
+import { useCallback } from "react";
 
 import { CaseCreateSheet } from "@/components/cases/case-create-sheet";
 import { CaseDetailSheet } from "@/components/cases/case-detail-sheet";
@@ -30,20 +30,13 @@ const NO_TAGS: string[] = [];
 const CREATE_HINT_ID = "case-create-hint";
 
 interface CaseListActionsProps {
-	/** 由路由注入的附加操作（如「AI 生成用例」），与「新建用例」同组排布。 */
-	action: ReactNode;
 	canCreate: boolean;
 	onCreate: () => void;
 	total: number | undefined;
 }
 
-/** 工具栏右半区：结果计数 + 附加操作 + 新建用例。 */
-function CaseListActions({
-	action,
-	canCreate,
-	onCreate,
-	total,
-}: CaseListActionsProps) {
+/** 工具栏右半区：结果计数 + 新建用例。 */
+function CaseListActions({ canCreate, onCreate, total }: CaseListActionsProps) {
 	// aria-disabled 而不是原生 disabled：原生禁用会把按钮移出 tab 序，
 	// 键盘和读屏用户既够不到按钮，也听不到「为什么不能用」。
 	const handleCreate = useCallback(() => {
@@ -72,18 +65,14 @@ function CaseListActions({
 					请先在左侧选择一个模块
 				</span>
 			)}
-			{/* 次要操作与主操作同属一组：组内 gap-2，与左侧计数文字之间保持 gap-3 的分组间距。 */}
-			<div className="flex items-center gap-2">
-				{action}
-				<Button
-					aria-describedby={canCreate ? undefined : CREATE_HINT_ID}
-					aria-disabled={!canCreate}
-					onClick={handleCreate}
-				>
-					<PlusIcon data-icon="inline-start" />
-					新建用例
-				</Button>
-			</div>
+			<Button
+				aria-describedby={canCreate ? undefined : CREATE_HINT_ID}
+				aria-disabled={!canCreate}
+				onClick={handleCreate}
+			>
+				<PlusIcon data-icon="inline-start" />
+				新建用例
+			</Button>
 		</div>
 	);
 }
@@ -110,7 +99,6 @@ function CaseListToolbar(props: CaseListToolbarProps) {
 				tags={search.tags ?? NO_TAGS}
 			/>
 			<CaseListActions
-				action={props.action}
 				canCreate={props.canCreate}
 				onCreate={props.onCreate}
 				total={props.total}
@@ -187,8 +175,6 @@ function CaseListOverlays(props: CaseListOverlaysProps) {
 }
 
 interface CaseListViewProps {
-	/** 工具栏右侧的附加操作；由路由提供，避免在 main 之外再套一层带内边距的容器。 */
-	action: ReactNode;
 	projectId: string;
 }
 
@@ -216,7 +202,7 @@ export const CASE_LIST_MAIN = "flex min-h-0 flex-col gap-3 overflow-y-auto p-4";
  * 只是「去问一句我是不是接在同一页的骨架后面」，缓存命中、根本没走 pending 的那种
  * 秒开导航问出来的答案是否，照常播一次进场。
  */
-export function CaseListView({ action, projectId }: CaseListViewProps) {
+export function CaseListView({ projectId }: CaseListViewProps) {
 	const search = routeApi.useSearch();
 	const navigation = useWorkspaceNavigation();
 	const listQuery = useQuery(
@@ -229,7 +215,6 @@ export function CaseListView({ action, projectId }: CaseListViewProps) {
 	return (
 		<PageTransition className={CASE_LIST_MAIN} phase="ready">
 			<CaseListToolbar
-				action={action}
 				canCreate={search.moduleId !== undefined}
 				navigation={navigation}
 				onCreate={navigation.openCreate}

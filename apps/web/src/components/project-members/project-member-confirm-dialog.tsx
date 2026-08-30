@@ -10,7 +10,7 @@ import {
 	AlertDialogTitle,
 } from "@automationstack/ui/components/alert-dialog";
 
-import { MemberFormError } from "@/components/members/member-form-fields";
+import { ProjectMemberFormError } from "@/components/project-members/project-member-form-error";
 import type { ProjectMemberConfirmKind } from "@/components/project-members/project-member-meta";
 import type { ProjectMemberActions } from "@/components/project-members/use-project-member-actions";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
@@ -54,9 +54,8 @@ interface ProjectMemberConfirmDialogProps {
  * BAD_REQUEST，冒到全站兜底的错误 toast 上只会摆一句没有上下文的红字，而人
  * 刚刚点下的按钮已经关掉了。留在框里，那句话就挨着他要做的事。
  *
- * 错误行复用 `components/members/member-form-fields` 的 MemberFormError：那是
- * 一个只画一行红字 + role="alert" 的展示组件，跨作用域复用它不会把平台账号
- * 管理的逻辑牵进来。
+ * 错误行是同目录的 `ProjectMemberFormError`：一个只画一行红字 + role="alert"
+ * 的展示组件。
  */
 export function ProjectMemberConfirmDialog({
 	actions,
@@ -75,7 +74,7 @@ export function ProjectMemberConfirmDialog({
 						</AlertDialogTitle>
 						<AlertDialogDescription>{copy.description}</AlertDialogDescription>
 					</AlertDialogHeader>
-					<MemberFormError message={actions.error} />
+					<ProjectMemberFormError message={actions.error} />
 					<AlertDialogFooter>
 						<AlertDialogCancel disabled={actions.isPending}>
 							取消

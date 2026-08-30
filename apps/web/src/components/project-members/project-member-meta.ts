@@ -71,7 +71,7 @@ export function canManageProjectMembers(
  * 行内菜单里需要二次确认的三个动作。
  *
  * 改角色本身不算破坏性，但它和移除一样可能被服务端挡下（不能降级 / 移除最后
- * 一个 owner），确认框同时也是这些错误的落点——照 `components/members` 那边
- * 的做法，服务端拒绝时框不关闭，错误就写在框里。
+ * 一个 owner），确认框同时也是这些错误的落点：服务端拒绝时框不关闭，错误就
+ * 写在框里。
  */
 export type ProjectMemberConfirmKind = "demote" | "promote" | "remove";

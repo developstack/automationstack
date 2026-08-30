@@ -1,5 +1,4 @@
 /** biome-ignore-all lint/performance/noBarrelFile: drizzle requires an aggregated schema module (`import * as schema`) for query typing */
-export * from "./ai";
 export * from "./api-tokens";
 export * from "./automation-executions";
 export * from "./case-attachments";

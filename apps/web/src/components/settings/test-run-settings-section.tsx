@@ -17,6 +17,8 @@ import {
 	SettingsFieldsSkeleton,
 	SettingsSection,
 	SettingsSectionError,
+	type SettingsSkeletonAction,
+	type SettingsSkeletonField,
 } from "@/components/settings/settings-section";
 import { TestRunSettingsFields } from "@/components/settings/test-run-settings-fields";
 import { orpc } from "@/utils/orpc";
@@ -32,8 +34,25 @@ const SECTION_TITLE = "测试评审和执行";
 const SECTION_DESCRIPTION =
 	"测试任务完成后超过该天数仍未手动提交，将自动提交并锁定。";
 
-/** 骨架里要占位的字段数：这一节只有「天数」一格。 */
-const FIELD_COUNT = 1;
+/**
+ * 骨架逐项对着 test-run-settings-fields.tsx 的真身填，不是「一格满宽输入框」：
+ * 那一格的 `<Input className="w-28">` 只有 112px，画成 w-full 的话数据到达那一帧
+ * 输入框会从整条面板宽度（这一格是 max-w-3xl）当场塌回 112px；它底下还有一行
+ * hint（`<p className="text-muted-foreground text-xs" id={HINT_ID}>`），漏掉的话
+ * 这一节会凭空长高 24px，把下面的提交行一起顶下去。
+ */
+const SKELETON_FIELDS: readonly SettingsSkeletonField[] = [
+	{ hint: true, id: "auto-submit-days", width: "w-28" },
+];
+
+/**
+ * 提交行只有「保存」一颗（真身在 TestRunSettingsFields 末尾的
+ * `<div className="flex justify-end">`）。宽度按 Button default 档折算：
+ * 两个汉字 text-sm = 28px + px-2.5 两侧 20px ≈ 48px = w-12。
+ */
+const SKELETON_ACTIONS: readonly SettingsSkeletonAction[] = [
+	{ id: "save", width: "w-12" },
+];
 
 interface ProjectSettingsData {
 	autoSubmitAfterCompletedDays: number;
@@ -157,7 +176,12 @@ function TestRunSettingsBody({ projectId }: { projectId: string }) {
 	}, [refetch]);
 
 	if (settingsQuery.isPending) {
-		return <SettingsFieldsSkeleton fields={FIELD_COUNT} />;
+		return (
+			<SettingsFieldsSkeleton
+				actions={SKELETON_ACTIONS}
+				fields={SKELETON_FIELDS}
+			/>
+		);
 	}
 	// isPending 落下来还没有数据 = 这条查询失败了（全局 toast 已经报过一次）
 	if (settingsQuery.data === undefined) {

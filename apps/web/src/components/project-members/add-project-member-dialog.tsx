@@ -20,7 +20,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
 
-import { MemberFormError } from "@/components/members/member-form-fields";
+import { ProjectMemberFormError } from "@/components/project-members/project-member-form-error";
 import { PROJECT_ROLE_OPTIONS } from "@/components/project-members/project-member-meta";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 import { orpc } from "@/utils/orpc";
@@ -193,7 +193,7 @@ function AddProjectMemberForm({
 		>
 			<CandidateField onChange={setUserId} options={options} value={userId} />
 			<RoleField onChange={setRole} value={role} />
-			<MemberFormError message={add.error?.message} />
+			<ProjectMemberFormError message={add.error?.message} />
 			<DialogFooter>
 				<Button onClick={onClose} type="button" variant="outline">
 					取消

@@ -26,6 +26,8 @@ import {
 	SettingsFieldsSkeleton,
 	SettingsSection,
 	SettingsSectionError,
+	type SettingsSkeletonAction,
+	type SettingsSkeletonField,
 } from "@/components/settings/settings-section";
 import { useJiraConfigForm } from "@/components/settings/use-jira-config-form";
 import { orpc } from "@/utils/orpc";
@@ -35,8 +37,40 @@ const SECTION_TITLE = "Jira 集成";
 const SECTION_DESCRIPTION =
 	"配置后，失败用例可一键建 issue、粘贴链接反向关联，并由 webhook 同步 issue 状态。未配置也不影响测试任务的任何功能。";
 
-/** 骨架占位：站点 / 邮箱 / Token / project key / issue 类型。 */
-const FIELD_COUNT = 5;
+/**
+ * 骨架逐项对着 jira-settings-fields.tsx 的 `JiraConfigFields` 填。
+ *
+ * **六格，不是五格**：站点 URL / 邮箱 / API Token / project key / 默认 issue
+ * 类型 / Webhook 密钥。原先漏的是最后那格密钥——它在 `JiraWebhookFields` 里，
+ * 数错的代价是数据到达那一帧表单凭空长出一格（54px 起）。
+ *
+ * 第七格「Webhook 地址」（`JiraWebhookUrl`）刻意不画：它只在库里已经存过配置
+ * 时才渲染（`config === null` 时整块不出），而「未配置」是绝大多数项目的常态
+ * （见文件头）。按常态的六格画，已配置的项目会在数据到达时往下补一格；反过来
+ * 画七格则是每一个没接 Jira 的项目都要往上塌一格。
+ *
+ * hint 只有两个密文格有：`JiraTextField` 底下只有一个「有错才渲染」的错误行，
+ * 没有说明行；四格都跟着画说明，表单会白高 96px（4 × 24px）。
+ */
+const SKELETON_FIELDS: readonly SettingsSkeletonField[] = [
+	{ hint: false, id: "site-url", width: "w-full" },
+	{ hint: false, id: "email", width: "w-full" },
+	{ hint: true, id: "api-token", width: "w-full" },
+	{ hint: false, id: "project-key", width: "w-full" },
+	{ hint: false, id: "issue-type", width: "w-full" },
+	{ hint: true, id: "webhook-secret", width: "w-full" },
+];
+
+/**
+ * 提交行是**两颗**按钮，见下面的 `JiraConfigFormActions`。宽度按 Button
+ * default 档折算（汉字 text-sm 14px + px-2.5 两侧 20px）：
+ * 「测试连接」4 字 = 76px，取最近的标准档 w-20（80px，横向差 4px，且这一行是
+ * 右对齐的，差值只落在占位块的左缘）；「保存」2 字 = 48px = w-12。
+ */
+const SKELETON_ACTIONS: readonly SettingsSkeletonAction[] = [
+	{ id: "test-connection", width: "w-20" },
+	{ id: "save", width: "w-12" },
+];
 
 function CredentialProblemNotice({ reason }: { reason: string }) {
 	const detail =
@@ -50,10 +84,11 @@ function CredentialProblemNotice({ reason }: { reason: string }) {
 			className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-destructive text-xs"
 			role="status"
 		>
-			<TriangleAlertIcon
-				aria-hidden="true"
-				className="mt-0.5 size-4 shrink-0"
-			/>
+			{/*
+			 * 不加 mt-0.5：外层是 text-xs（行高 16px），图标 size-4 也是 16px，
+			 * items-start 下两个盒子本来就顶齐；那 2px 是净错位，不是补偿。
+			 */}
+			<TriangleAlertIcon aria-hidden="true" className="size-4 shrink-0" />
 			<div className="flex flex-col gap-1">
 				<p className="font-medium">当前 Jira 凭据不可用</p>
 				<p>{detail}</p>
@@ -147,7 +182,12 @@ function JiraSettingsBody({ projectId }: { projectId: string }) {
 	}, [refetch]);
 
 	if (configQuery.isPending) {
-		return <SettingsFieldsSkeleton fields={FIELD_COUNT} />;
+		return (
+			<SettingsFieldsSkeleton
+				actions={SKELETON_ACTIONS}
+				fields={SKELETON_FIELDS}
+			/>
+		);
 	}
 	// isPending 落下来还没有数据 = 这条查询失败了（全局 toast 已经报过一次）
 	if (configQuery.data === undefined) {

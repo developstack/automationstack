@@ -17,9 +17,15 @@ description: 将存量测试用例（Excel/CSV/XMind/TestRail 等导出件）批
    `/mcp` 要求 `Authorization: Bearer <token>`，**MCP 的身份与权限就是这枚 token
    所属用户的身份与权限**：导入只能落进该用户所属的项目，`list_projects` 也只
    列得出这些项目。没带或 token 无效时服务端返回 401，不存在任何默认身份。
-4. MCP 工具可用（`list_projects` 能正常返回）；不可用时先解决连接问题再开始迁移
-   （401 = token 缺失/失效；某个项目 403 = token 主人不是该项目成员，去找项目
-   owner 把他加进去，不要换成别的项目继续导）
+4. MCP 工具可用（`list_projects` 能正常返回）；不可用时先解决连接问题再开始迁移。
+   两类失败的区分方式（**注意不是靠 HTTP 状态码**）：
+   - **401**：token 缺失或失效。鉴权发生在建 MCP server 之前，所以这时**一个工具
+     都不会被注册**，连 `tools/list` 都是空的——表现是「根本没有平台工具可用」。
+   - **权限不足**（token 主人不是该项目成员）：**不会**返回 403。服务端把
+     FORBIDDEN / NOT_FOUND / BAD_REQUEST 统一包成 `isError: true` 的文本结果，
+     HTTP 状态码仍是 200（见 `apps/server/src/mcp/tools/tool-helpers.ts` 的
+     `safeToolCall`）。表现是工具能调用，但返回 `Error: <原因>`。
+     正解是去找项目 owner 把 token 主人加进项目成员，不要换成别的项目继续导。
 
 ## 工具契约（与实现对齐）
 

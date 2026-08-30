@@ -19,7 +19,7 @@ export const caseStepSchema = z.object({
 	step: z.string(),
 });
 
-/** Full user-editable content of a test case (shared with AI tools later). */
+/** Full user-editable content of a test case. */
 export const caseContentSchema = z.object({
 	caseType: caseTypeSchema.default("functional"),
 	maintainer: z.string().nullable().default(null),
@@ -80,16 +80,5 @@ export const caseConflictDataSchema = z.object({
 	lastModifiedBy: z.string().nullable(),
 });
 
-/** Shape produced by the AI generation agent for a proposed case. */
-export const proposedCaseSchema = z.object({
-	caseType: caseTypeSchema.default("functional"),
-	name: z.string().min(1),
-	preconditions: z.string().nullable().default(null),
-	priority: casePrioritySchema.default("P2"),
-	steps: z.array(caseStepSchema).default([]),
-	tags: z.array(z.string()).default([]),
-});
-
 export type CaseContentInput = z.infer<typeof caseContentSchema>;
 export type CaseContentPatchInput = z.infer<typeof caseContentPatchSchema>;
-export type ProposedCaseInput = z.infer<typeof proposedCaseSchema>;

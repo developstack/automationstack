@@ -31,7 +31,7 @@ import { jiraDefectProcedures } from "./jira-defects";
  * 缺陷联动那四个接口在 `./jira-defects.ts`，在下面被展开进同一个 router：
  * 拆分只发生在源码层面，`client.jira.*` 的调用路径一个都没变。
  *
- * 安全底线，与 `ai-provider-config.ts` 同档：**API Token 无论明文还是密文都不
+ * 安全底线：**API Token 无论明文还是密文都不
  * 出现在任何返回值里**。为此 `JiraConfigView` 是独立声明的接口、逐字段手工
  * 构造——刻意不用 `Omit<JiraConfig, "apiTokenCipher">` 再 spread：后者在给表加
  * 新的敏感列时会静默地把它带出去，独立接口则会在编译期少一个字段就报错。

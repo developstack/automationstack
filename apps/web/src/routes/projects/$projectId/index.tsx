@@ -1,9 +1,5 @@
-import { Button } from "@automationstack/ui/components/button";
 import { createFileRoute } from "@tanstack/react-router";
-import { SparklesIcon } from "lucide-react";
-import { useCallback, useState } from "react";
 
-import { AiGenerateDialog } from "@/components/ai/ai-generate-dialog";
 import { caseListInput } from "@/components/cases/case-list-query";
 import { CaseListSkeleton } from "@/components/cases/case-list-skeleton";
 import {
@@ -83,31 +79,5 @@ function CaseListPending() {
 
 function CaseListPage() {
 	const { projectId } = Route.useParams();
-	const { moduleId } = Route.useSearch();
-	const [aiOpen, setAiOpen] = useState(false);
-	const openAi = useCallback(() => setAiOpen(true), []);
-	const closeAi = useCallback(() => setAiOpen(false), []);
-
-	// 「AI 生成用例」交给 CaseListView 的工具栏渲染：原先它待在一个额外的
-	// px-4 pt-4 容器里，与 CaseListView 内部 <main> 的 p-4 叠成 32px 的左右留白，
-	// 而且自成一行，和「新建用例」在垂直方向错开。内容区的内边距只保留在 main 上。
-	return (
-		<>
-			<CaseListView
-				action={
-					<Button onClick={openAi} type="button" variant="outline">
-						<SparklesIcon data-icon="inline-start" />
-						AI 生成用例
-					</Button>
-				}
-				projectId={projectId}
-			/>
-			<AiGenerateDialog
-				moduleId={moduleId}
-				onClose={closeAi}
-				open={aiOpen}
-				projectId={projectId}
-			/>
-		</>
-	);
+	return <CaseListView projectId={projectId} />;
 }

@@ -77,8 +77,7 @@ function useSettle(
 /**
  * 单行成员的「改角色 / 移出项目」两个过程，外加待确认动作的状态。
  *
- * 与 `components/members/use-member-actions.ts` 是同一副骨架（确认框既是二次
- * 确认也是错误落点），差别只在这两条过程都要带 projectId，以及成功后要多失效
+ * 确认框既是二次确认也是错误落点；两条过程都要带 projectId，成功后还要多失效
  * 一条候选人查询。
  */
 export function useProjectMemberActions(

@@ -129,7 +129,7 @@ function buildPieData(slices: readonly DonutSlice[], trackValue: number) {
 }
 
 /**
- * 概览页的环形图，构成类问题共用这一个（用例状态、模块覆盖、AI 采纳率）。
+ * 概览页的环形图，构成类问题共用这一个（用例状态、模块覆盖等）。
  *
  * 整块 aria-hidden：环里的一切都是 SVG，读屏拿到的是空的；每张卡各自在正文里给出
  * 同一份数据的文字等价物（计数行 / sr-only 一句话），播两遍只会更吵——这与本目录

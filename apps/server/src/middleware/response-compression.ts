@@ -11,8 +11,8 @@ const COMPRESSION_THRESHOLD_BYTES = 1024;
  * 只压缩确定「一次性返回、非流式」的 JSON 响应。
  *
  * /rpc 是混合端点：绝大多数 procedure 返回 `application/json`（可压），
- * 而 event-iterator（如 ai.generate）返回 `text/event-stream`（SSE，
- * 绝不能压——压缩流会缓冲/分块，导致事件无法即时到达客户端）。
+ * 而 event-iterator 返回 `text/event-stream`（SSE，绝不能压——压缩流会
+ * 缓冲/分块，导致事件无法即时到达客户端）。
  * 因此判断依据是响应的 content-type，而不是请求路径。
  */
 const COMPRESSIBLE_CONTENT_TYPE = /^application\/json\s*(?:;|$)/i;
