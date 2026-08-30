@@ -10,6 +10,7 @@ import type { Context } from "hono";
 
 export const HTTP_BAD_REQUEST = 400;
 export const HTTP_UNAUTHORIZED = 401;
+export const HTTP_FORBIDDEN = 403;
 export const HTTP_NOT_FOUND = 404;
 export const HTTP_PAYLOAD_TOO_LARGE = 413;
 
@@ -31,6 +32,24 @@ export function unauthorized(c: Context): Response {
 		},
 		HTTP_UNAUTHORIZED,
 		UNAUTHORIZED_HEADERS
+	);
+}
+
+/**
+ * 403，不是 401：token 本身是好的、主人也确实存在，缺的是**这个项目**的成员
+ * 资格（§4.4「一枚 token 的权限等于它主人的权限」）。回 401 会让 SDK 的重试
+ * 逻辑以为该换一枚 token，而换一百枚也没用——要做的是把主人加进项目。
+ * 同理不回 404：那会把「你进不去」说成「项目不存在」，人只会去反复核对
+ * `AS_PROJECT` 里那个抄对了的 uuid。取舍与 oRPC 侧的 `requireProjectMember`
+ * 逐字一致（`packages/api/src/index.ts`）。
+ */
+export function forbidden(c: Context): Response {
+	return c.json(
+		{
+			error: "forbidden",
+			message: "这枚 token 的主人不是该项目的成员",
+		},
+		HTTP_FORBIDDEN
 	);
 }
 

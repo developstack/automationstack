@@ -5,6 +5,7 @@ import {
 	prepareRunAttachmentUploads,
 } from "@automationstack/db/repositories/test-run-attachments-repository";
 import { settleAutoSubmitForProject } from "@automationstack/db/repositories/test-run-auto-submit-repository";
+import type { User } from "@automationstack/db/schema/users";
 
 import {
 	buildAttachmentStorageKey,
@@ -27,6 +28,7 @@ import {
 	planAttachmentUploads,
 	REASON_STORAGE_UNCONFIGURED,
 } from "./attachment-reconcile";
+import { tokenCanEnterProject } from "./ingest-project-access";
 
 /**
  * `POST /ingest/attachments/presign` 的**编排**（plan §5.6）：查项目、结算超时
@@ -45,13 +47,14 @@ import {
 
 /**
  * 端点的类型化结果。HTTP 映射由 `apps/server` 做：
- * `unauthorized` → 401、`project-not-found` → 404、`invalid-payload` → 400、
- * `ok` → 200。
+ * `unauthorized` → 401、`forbidden` → 403、`project-not-found` → 404、
+ * `invalid-payload` → 400、`ok` → 200。
  *
  * ⚠️ `ok` 里 `uploads` 为空**仍然是 200**：与 `writtenTo` 为空同理，
  * HTTP 状态码表达「请求本身有没有问题」，对账单表达「业务上发生了什么」。
  */
 export type IngestAttachmentPresignOutcome =
+	| { kind: "forbidden" }
 	| { kind: "invalid-payload"; message: string }
 	| { kind: "ok"; receipt: IngestAttachmentPresignReceipt }
 	| { kind: "project-not-found" }
@@ -190,12 +193,21 @@ async function signGroup(
 }
 
 export async function presignParsed(
-	request: IngestAttachmentPresignRequest
+	request: IngestAttachmentPresignRequest,
+	user: User
 ): Promise<IngestAttachmentPresignOutcome> {
-	// 只查项目存不存在，**不查成员资格**——理由见 `./execution-ingest`（§4.4）：
-	// 本仓库没有项目级成员模型，token 的权限严格等于其主人。
 	if (!(await projectExists(request.projectId))) {
 		return { kind: "project-not-found" };
+	}
+	// §4.4：token 的权限严格等于其主人，所以这里按主人的成员资格判，判据与
+	// 浏览器会话那条完全同源（`lib/project-access.ts`）。顺序、以及 404 与 403
+	// 各自表达什么，与 `./execution-ingest` 逐字一致。
+	//
+	// ⚠️ 这一关必须排在**签名之前**，理由与 `signGroup` 里那句「守卫必须在签名
+	// 之前」同构：预签名 URL 一发出去就是一张我们收不回的写入凭证，把作用域
+	// 挪到 register 才判，拦下的只是「数据库里看不见」，bucket 里已经多了东西。
+	if (!(await tokenCanEnterProject(user, request.projectId))) {
+		return { kind: "forbidden" };
 	}
 	// D36 / §3.8：**在选候选任务之前**结算一次超时自动提交，与结论那一侧同因。
 	// 少了它，一个早该自动提交的任务会被当成候选，脚本的附件就挂进了一个

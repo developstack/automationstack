@@ -63,11 +63,12 @@ export default defineConfig({
 				},
 			},
 			{
-				// ingest 的 HTTP 搬运层（`apps/server/src/ingest`）：四条端点的状态码
-				// 映射、413 闸门、JSON 解析。测试用 `vi.mock` 把 api 侧的 handler
-				// 整个换掉，所以这条链路上一行 db 都不 import，同样不需要
-				// `DATABASE_URL`。server 里其余部分（连库、起 WS）没有测试，
-				// 这个 project 目前只收 ingest 那几个文件。
+				// server 里所有**不连库**的部分：ingest 的 HTTP 搬运层
+				// （四条端点的状态码映射、413 闸门、JSON 解析，测试用 `vi.mock`
+				// 把 api 侧的 handler 整个换掉）、MCP 的身份映射、以及实时房间
+				// 登记表。共同前提是这条链路上一行 db 都不 import（只 import type
+				// 的会在编译期擦除），因此不需要 `DATABASE_URL`。
+				// 真去连库、起 WS 的那些文件仍然没有测试。
 				test: {
 					environment: "node",
 					include: ["src/**/*.test.ts"],

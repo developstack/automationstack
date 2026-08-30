@@ -74,3 +74,20 @@ export function publishInvalidateAs(options: PublishInvalidateAsOptions): void {
 		moduleId: options.moduleId,
 	});
 }
+
+/**
+ * 成员被移出项目后，通告 WS 服务端断开该用户在该项目的全部连接。
+ *
+ * 为什么必须有这一步：`/ws` 的成员校验发生在**握手那一刻**，之后连接就一直
+ * 开着。只补握手的话，被移除的人只要不刷新页面，就能继续收该项目的
+ * `data:invalidate` 事件流和全部在线成员的 presence——权限被收走了，
+ * 数据还在流。踢连接的动作在 `apps/server/src/realtime/ws.ts`。
+ *
+ * 与 `publishInvalidate` 同一个理由放在这一层：路由不直接碰总线。
+ */
+export function publishMembershipRevoked(
+	projectId: string,
+	userId: string
+): void {
+	realtimeBus.publishMembershipRevoked(projectId, userId);
+}

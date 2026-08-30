@@ -1,0 +1,53 @@
+/**
+ * MCP 的运行身份。
+ *
+ * 要测的不是「函数会不会抛」，而是**身份有没有被原样传下去**：这个映射的
+ * 结果会成为 oRPC `Context.user`，而 `requireProjectMember` 全靠
+ * `context.user.id` 去查项目角色。id 只要在这里被换成任何一个别的值
+ * （比如从前那个写死的合成用户），授权判定就会去问一个不存在的人，
+ * 整条通道要么全禁要么全放——两种都不会让 tsc 变红。
+ */
+
+import type { User } from "@automationstack/db/schema/users";
+import { describe, expect, it } from "vitest";
+
+import { MCP_CLIENT_ID, mcpContext } from "./identity";
+
+const tokenOwner: User = {
+	createdAt: new Date("2026-01-01T00:00:00Z"),
+	disabledAt: null,
+	id: "55555555-5555-4555-8555-555555555555",
+	passwordHash: "argon2id$placeholder",
+	role: "member",
+	updatedAt: new Date("2026-01-01T00:00:00Z"),
+	username: "qa-bot",
+};
+
+describe("mcpContext", () => {
+	it("context.user 就是 token 的主人本人，一个字段都不换", () => {
+		expect(mcpContext(tokenOwner, false).user).toBe(tokenOwner);
+	});
+
+	it("平台角色原样带过去，MCP 不会给谁加一档权限", () => {
+		const admin: User = { ...tokenOwner, role: "admin" };
+		expect(mcpContext(tokenOwner, false).user?.role).toBe("member");
+		expect(mcpContext(admin, false).user?.role).toBe("admin");
+	});
+
+	it("actor.name 是真人的用户名——它会落进用例的 lastModifiedBy", () => {
+		expect(mcpContext(tokenOwner, false).actor?.name).toBe("qa-bot");
+	});
+
+	it("actor.clientId 是固定的渠道标识，与任何真实标签页都不会相同", () => {
+		expect(mcpContext(tokenOwner, false).actor?.clientId).toBe(MCP_CLIENT_ID);
+	});
+
+	it("不下发任何 cookie：MCP 不走登录/登出", () => {
+		expect(mcpContext(tokenOwner, true).cookies).toEqual([]);
+	});
+
+	it("secure 跟随请求的 scheme", () => {
+		expect(mcpContext(tokenOwner, true).secure).toBe(true);
+		expect(mcpContext(tokenOwner, false).secure).toBe(false);
+	});
+});

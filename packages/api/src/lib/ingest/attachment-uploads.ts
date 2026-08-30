@@ -83,7 +83,7 @@ export async function handleIngestAttachmentPresign(
 			message: formatIngestIssues(parsed.error),
 		};
 	}
-	return await presignParsed(parsed.data);
+	return await presignParsed(parsed.data, user);
 }
 
 export interface HandleIngestAttachmentRegisterInput {

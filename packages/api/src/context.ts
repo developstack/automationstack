@@ -46,8 +46,9 @@ function readActor(context: HonoContext, user: User | null): Actor | null {
  * 「停用账号立即生效」只能靠这一次读库拿到最新的 disabledAt / role。
  * 已停用的账号视同未登录（连 auth.me 都返回 null，前端会被弹回登录页）。
  *
- * 导出给 WebSocket 握手复用（apps/server/src/realtime/ws.ts）：升级请求不走
- * oRPC，拿不到这里的 Context，但同样要按 cookie 认人。
+ * 导出给 WebSocket 握手复用（apps/server/src/realtime/handshake.ts）：升级请求
+ * 不走 oRPC，拿不到这里的 Context，但同样要按 cookie 认人；那边认完人还要再
+ * 判一次项目成员资格，因为 `requireProjectMember` 同样够不着 WS 这条路。
  */
 export async function resolveUserFromCookies(
 	cookieHeader: string | null | undefined

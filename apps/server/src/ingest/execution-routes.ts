@@ -8,6 +8,7 @@ import type { Hono } from "hono";
 
 import { ingestBodyLimit, MAX_INGEST_BODY_BYTES } from "./body-limit";
 import {
+	forbidden,
 	HTTP_BAD_REQUEST,
 	INVALID_JSON_MESSAGE,
 	invalidPayload,
@@ -36,6 +37,8 @@ function registerRunsRoute(app: Hono): void {
 			query: c.req.query(),
 		});
 		switch (outcome.kind) {
+			case "forbidden":
+				return forbidden(c);
 			case "invalid-payload":
 				return invalidPayload(c, outcome.message);
 			case "ok":
@@ -89,6 +92,8 @@ function registerExecutionRoute(app: Hono): void {
 						},
 						HTTP_BAD_REQUEST
 					);
+				case "forbidden":
+					return forbidden(c);
 				case "invalid-payload":
 					return invalidPayload(c, outcome.message);
 				case "ok":

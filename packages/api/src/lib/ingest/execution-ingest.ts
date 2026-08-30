@@ -22,6 +22,7 @@ import {
 } from "./execution-reconcile";
 import { ingestActor, writeGroups } from "./execution-verdict-writer";
 import { formatIngestIssues } from "./format-issues";
+import { tokenCanEnterProject } from "./ingest-project-access";
 
 /**
  * ingest 两个端点的**编排层**（plan §5.1.1 / §5.2 / §5.5 / §5.7 / §5.8）。
@@ -47,7 +48,7 @@ import { formatIngestIssues } from "./format-issues";
 
 /**
  * 端点的类型化结果。HTTP 映射由 `apps/server` 做：
- * `unauthorized` → 401、`project-not-found` → 404、
+ * `unauthorized` → 401、`forbidden` → 403、`project-not-found` → 404、
  * `invalid-payload` / `duplicate-source-refs` → 400、`ok` → 200。
  *
  * ⚠️ `ok` 里 `writtenTo` 为空**仍然是 200**（§5.8 最后一段）：HTTP 状态码表达
@@ -57,6 +58,7 @@ import { formatIngestIssues } from "./format-issues";
  */
 export type IngestExecutionOutcome =
 	| { kind: "duplicate-source-refs"; sourceRefs: string[] }
+	| { kind: "forbidden" }
 	| { kind: "invalid-payload"; message: string }
 	| { kind: "ok"; receipt: IngestExecutionReceipt }
 	| { kind: "project-not-found" }
@@ -113,14 +115,17 @@ async function ingestParsedExecution(
 	request: IngestExecutionRequest,
 	user: User
 ): Promise<IngestExecutionOutcome> {
-	// 只查项目存不存在，不查成员资格。§4.4 的边界是「token 的权限严格等于其
-	// 主人」，所以这里该不该加成员校验，取决于**主人的浏览器会话**受不受限。
-	// 项目成员模型已经落地（`schema/project-members.ts`），但 B2a 只收口了
-	// projects.get/update/remove 与 projectMembers.*，上报这条链路还没跟上——
-	// 于是现在 token 比它主人略宽。下一批推授权时这里要一起改，并且要照 §4.4
-	// 的口径改成「按 token 主人的成员资格判」，而不是另起一套。
 	if (!(await projectExists(request.projectId))) {
 		return { kind: "project-not-found" };
+	}
+	// §4.4 的边界是「token 的权限严格等于其主人」，所以这里按**主人的成员
+	// 资格**判，判据与浏览器会话走的那条完全同源（`lib/project-access.ts`）。
+	// 顺序是先存在后成员，与 `lib/project-scope.ts` 一致：「项目不存在」与
+	// 「你不在这个项目里」在 CI 日志里要给的出路完全不同，前者去改 `AS_PROJECT`，
+	// 后者去找 owner 加人。代价是 404 与 403 的差别确认了某个 uuid 是真项目——
+	// 与 `index.ts` 的 `requireProjectMember` 是同一个取舍，那里有更长的说明。
+	if (!(await tokenCanEnterProject(user, request.projectId))) {
+		return { kind: "forbidden" };
 	}
 	// D36 / §3.8：**在选候选任务之前**结算一次超时自动提交。
 	// plans/011 那个每日 03:00 的扫描是天级的，写入这一刻的准确性只能靠这一次——

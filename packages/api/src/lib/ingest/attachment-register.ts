@@ -22,6 +22,8 @@ import {
 	REASON_STORAGE_UNCONFIGURED,
 } from "./attachment-reconcile";
 import { type RegisterOne, registerOne } from "./attachment-register-one";
+import { splitRegisterGroupsByAccess } from "./attachment-register-scope";
+import { forbiddenRunIds } from "./ingest-project-access";
 
 /**
  * `POST /ingest/attachments/register` 的**编排**（plan §5.6）：按任务过守卫、
@@ -187,8 +189,24 @@ export async function registerParsed(
 	}
 	const actor = attachmentIngestActor(user);
 	const registered: IngestAttachmentRegistered[] = [];
-	const rejected: IngestAttachmentRegisterRejection[] = [];
-	for (const group of groupRegisterItemsByRunId(request.attachments)) {
+	/**
+	 * §4.4：token 的权限等于其主人。登记请求里没有 projectId，作用域只能从
+	 * 每个 `runId` 反查——判据与另外三条端点同源，逐组拒绝而非整请求 403 的
+	 * 理由写在 `./attachment-register-scope`。
+	 *
+	 * 这一关排在守卫事务与 `HeadObject` **之前**：把一个越权批次放进
+	 * `prepareRunAttachmentUploads` 就是让它去抢别人项目里那把 `test_runs`
+	 * 行锁，而它本来一行都不该写。
+	 */
+	const scope = splitRegisterGroupsByAccess(
+		groupRegisterItemsByRunId(request.attachments),
+		await forbiddenRunIds(
+			user,
+			request.attachments.map((attachment) => attachment.runId)
+		)
+	);
+	const rejected: IngestAttachmentRegisterRejection[] = [...scope.rejected];
+	for (const group of scope.allowed) {
 		// biome-ignore lint/performance/noAwaitInLoops: 每组一个守卫事务，串行抢行锁，同 signGroup
 		const outcome = await registerGroup(group, storage, user.id);
 		registered.push(...outcome.registered);

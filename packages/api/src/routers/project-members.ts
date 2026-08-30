@@ -9,6 +9,9 @@
  * 不发 `publishInvalidate`：实时协议的 `InvalidateEntity` 里没有成员这一类
  * （`realtime/protocol.ts`），加一类要连着前端的失效映射一起改，属于下一批
  * 的成员管理页。成员变更后对方需要刷新一次页面才生效，本批接受这个代价。
+ *
+ * `remove` 是唯一的例外，它额外发一条 `publishMembershipRevoked`——那不是
+ * 「数据过期了」，是「这个人的实时连接不该再存在了」，理由见该 handler。
  */
 
 import {
@@ -25,6 +28,7 @@ import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
 import { canAdministerProject } from "../lib/project-access";
+import { publishMembershipRevoked } from "../lib/realtime-publish";
 
 const projectScopeSchema = z.object({ projectId: z.uuid() });
 
@@ -132,6 +136,13 @@ export const projectMembersRouter = {
 			if (!(await removeProjectMember(input.projectId, input.userId))) {
 				throw errors.NOT_FOUND({ message: "该用户不是项目成员" });
 			}
+			// 删除**成功之后**才发：发在前面的话，一次失败的移除会白白踢掉
+			// 对方的连接。WS 那边据此断开该用户在该项目的所有连接——否则他
+			// 早就开着的那条 socket 会继续吐这个项目的事件流，权限收走了、
+			// 数据还在流。踢掉后客户端会自动重连，重连要重新过握手校验，
+			// 于是「平台 admin 被移出成员表」这种仍然有权进入的情况会自己
+			// 恢复，不需要在这里分情况。
+			publishMembershipRevoked(input.projectId, input.userId);
 			return { projectId: input.projectId, userId: input.userId };
 		}),
 	updateRole: protectedProcedure
@@ -142,6 +153,9 @@ export const projectMembersRouter = {
 			if (!canAdministerProject(context.projectAccess)) {
 				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
 			}
+			// 降级不发成员撤销事件：`canEnterProject` 只看 projectRole 是不是
+			// null，owner→member 依然是成员，进得来的东西一样都没变，踢连接
+			// 纯属打扰。只有 `remove` 会真正拿掉进入权。
 			const isDemotion = input.role !== "owner";
 			if (
 				isDemotion &&

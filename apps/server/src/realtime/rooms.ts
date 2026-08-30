@@ -26,6 +26,13 @@ export interface ClientRecord {
 	entry: PresenceEntry;
 	lastSeen: number;
 	socket: RoomSocket;
+	/**
+	 * 连接背后的账号 id（握手时由会话解出）。**只留在服务端**，不进
+	 * `PresenceEntry`——那个结构会广播给房间里所有人，多一个字段就是多向所有
+	 * 同事披露一份身份信息。这里存它只为一件事：成员被移出项目时，按 userId
+	 * 找出他在这个房间里的全部连接（一个人可以开很多个标签页）并踢掉。
+	 */
+	userId: string;
 }
 
 /** Map<projectId, Map<clientId, ClientRecord>>。 */
@@ -100,6 +107,31 @@ export function evictClient(projectId: string, clientId: string): void {
 	deleteClient(projectId, clientId);
 	closeQuietly(record.socket);
 	broadcast(projectId, { clientId, type: "presence:leave" });
+}
+
+/**
+ * 踢掉某个用户在某项目内的**全部**连接（多标签页 = 多条），返回踢掉的条数。
+ *
+ * 先把目标 clientId 收集完再逐个 `evictClient`：`evictClient` 会广播
+ * `presence:leave`，而广播过程本身可能因发送失败再驱逐别的连接、进而改动
+ * 这张 Map——边遍历边删是在给自己挖坑。
+ *
+ * 被踢的客户端会自动重连，重连必须重新过握手校验（`./handshake.ts`），
+ * 所以这里不需要判断「他是不是真的没权限了」：还有权限的人（比如平台 admin）
+ * 会自己连回来，没权限的人会在握手处被 1008 挡住。
+ */
+export function evictUserFromRoom(projectId: string, userId: string): number {
+	const room = rooms.get(projectId);
+	if (!room) {
+		return 0;
+	}
+	const targets = [...room.values()]
+		.filter((record) => record.userId === userId)
+		.map((record) => record.entry.clientId);
+	for (const clientId of targets) {
+		evictClient(projectId, clientId);
+	}
+	return targets.length;
 }
 
 /**

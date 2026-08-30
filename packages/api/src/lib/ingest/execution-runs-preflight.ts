@@ -8,6 +8,7 @@ import {
 	ingestRunsQuerySchema,
 } from "./execution-contract";
 import { formatIngestIssues } from "./format-issues";
+import { tokenCanEnterProject } from "./ingest-project-access";
 
 /**
  * `GET /ingest/runs` 的编排层（plan §5.1.1）。
@@ -20,6 +21,7 @@ import { formatIngestIssues } from "./format-issues";
  */
 
 export type IngestRunsOutcome =
+	| { kind: "forbidden" }
 	| { kind: "invalid-payload"; message: string }
 	| { kind: "ok"; response: IngestRunsResponse }
 	| { kind: "project-not-found" }
@@ -59,6 +61,13 @@ export async function handleIngestRuns(
 	const { projectId } = parsed.data;
 	if (!(await projectExists(projectId))) {
 		return { kind: "project-not-found" };
+	}
+	// §4.4：token 的权限等于其主人。这条端点是只读的，但它披露的是「这个项目里
+	// 现在有哪些未提交任务、各自叫什么名字」——那正是项目成员才该看见的东西，
+	// 与 `testRuns.list` 在 oRPC 那边被 `requireProjectMember` 拦住的是同一份数据。
+	// 判据与那边同源，见 `./ingest-project-access`。
+	if (!(await tokenCanEnterProject(user, projectId))) {
+		return { kind: "forbidden" };
 	}
 	await settleAutoSubmitForProject(projectId);
 	return {

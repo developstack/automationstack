@@ -1,21 +1,19 @@
-import { resolveUserFromCookies } from "@automationstack/api/context";
 import { realtimeBus } from "@automationstack/api/realtime/bus";
-import { colorForName } from "@automationstack/api/realtime/presence-color";
 import {
 	type ClientMessage,
 	clientMessageSchema,
 	type PresenceEntry,
 	type PresencePatch,
 } from "@automationstack/api/realtime/protocol";
-import { env } from "@automationstack/env/server";
 import { upgradeWebSocket, type WebSocketLike } from "@hono/node-server";
-import type { Context as HonoContext } from "hono";
 import type { WSContext } from "hono/ws";
 import { WebSocketServer } from "ws";
 
+import { type ConnectionParams, resolveHandshake } from "./handshake";
 import {
 	broadcast,
 	type ClientRecord,
+	evictUserFromRoom,
 	getClient,
 	joinRoom,
 	leaveRoom,
@@ -23,53 +21,10 @@ import {
 	touchClient,
 } from "./rooms";
 
-/** 关闭码：策略违规（参数缺失 / 未登录 / Origin 不匹配）。 */
+/** 关闭码：策略违规（参数缺失 / 未登录 / Origin 不匹配 / 不是项目成员）。 */
 const POLICY_VIOLATION_CODE = 1008;
 
-const DEFAULT_VIEW = "list";
-
 type RealtimeSocket = WSContext<WebSocketLike>;
-
-interface ConnectionParams {
-	clientId: string;
-	color: string;
-	name: string;
-	projectId: string;
-	view: string;
-}
-
-/**
- * 握手参数：身份（name / color）一律由服务端按会话 cookie 推导，
- * **不接受客户端自报**——否则任何人都能顶着别人的名字出现在 presence 里。
- * 仍然从 query 里读的只有三样：clientId（标签页标识，自报无害）、
- * projectId（要进哪个房间）、view（初始视图，纯展示）。
- */
-async function readParams(
-	context: HonoContext
-): Promise<ConnectionParams | null> {
-	const clientId = context.req.query("clientId");
-	const projectId = context.req.query("projectId");
-	if (!(clientId && projectId)) {
-		return null;
-	}
-	const user = await resolveUserFromCookies(context.req.header("cookie"));
-	if (user === null) {
-		return null;
-	}
-	return {
-		clientId,
-		color: colorForName(user.username),
-		name: user.username,
-		projectId,
-		view: context.req.query("view") || DEFAULT_VIEW,
-	};
-}
-
-/** 浏览器会带 Origin；非浏览器客户端（脚本/测试）无 Origin，放行。 */
-function isAllowedOrigin(context: HonoContext): boolean {
-	const origin = context.req.header("origin");
-	return !origin || origin === env.CORS_ORIGIN;
-}
 
 function buildEntry(params: ConnectionParams): PresenceEntry {
 	return {
@@ -157,6 +112,7 @@ function openConnection(
 		entry,
 		lastSeen: Date.now(),
 		socket,
+		userId: params.userId,
 	});
 	socket.send(JSON.stringify({ entries: others, type: "presence:sync" }));
 	broadcast(params.projectId, { entry, type: "presence:join" }, entry.clientId);
@@ -177,18 +133,19 @@ function closeConnection(
 
 /**
  * `/ws` 升级处理器：`GET /ws?projectId&clientId&view`。
- * 参数缺失、未登录、Origin 不匹配时立即以 1008 关闭。
+ * 参数缺失、未登录、Origin 不匹配、或**不是该项目成员**时立即以 1008 关闭
+ * （准入判定全部在 `./handshake.ts`）。
  */
 export const realtimeWebSocketHandler = upgradeWebSocket(async (context) => {
-	const params = await readParams(context);
-	const allowed = params !== null && isAllowedOrigin(context);
-	if (!(params && allowed)) {
+	const handshake = await resolveHandshake(context);
+	if (handshake.kind === "rejected") {
 		return {
 			onOpen: (_event, socket) => {
-				socket.close(POLICY_VIOLATION_CODE, "invalid realtime handshake");
+				socket.close(POLICY_VIOLATION_CODE, handshake.reason);
 			},
 		};
 	}
+	const { params } = handshake;
 	return {
 		onClose: (_event, socket) => {
 			closeConnection(params, socket);
@@ -210,14 +167,24 @@ export const realtimeWebSocketServer = new WebSocketServer({ noServer: true });
 
 /**
  * 启动实时协作运行时：订阅总线 fan-out + 心跳扫描。返回停止函数。
+ *
+ * 两条订阅：数据失效事件 fan-out 给房间；成员撤销事件踢掉那个人在那个项目里
+ * 的全部连接。后者是握手校验的另一半——握手只管连接**建立**那一刻，
+ * 没有这一条，被移出项目的人只要不刷新页面就能一直收下去。
  */
 export function startRealtime(): () => void {
 	const unsubscribe = realtimeBus.subscribe((projectId, event) => {
 		broadcast(projectId, { ...event, type: "data:invalidate" });
 	});
+	const unsubscribeRevoked = realtimeBus.subscribeMembershipRevoked(
+		(projectId, userId) => {
+			evictUserFromRoom(projectId, userId);
+		}
+	);
 	const stopSweeper = startPresenceSweeper();
 	return () => {
 		unsubscribe();
+		unsubscribeRevoked();
 		stopSweeper();
 	};
 }
