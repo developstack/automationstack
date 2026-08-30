@@ -14,6 +14,7 @@
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
+import { canPickCaseVerdict } from "@/components/test-runs/run-verdict-entry";
 import { VerdictPicker } from "@/components/test-runs/run-verdict-picker";
 
 /**
@@ -58,6 +59,13 @@ function SteppedVerdictNote({
 
 export interface VerdictBodyProps {
 	canConclude: boolean;
+	/**
+	 * 读 / 改态。调用方本来就只在改态里渲染本组件，这个值传进来在这里**恒为
+	 * 真**——照样要传：四颗按钮的判据必须是完整的那一条（`canPickCaseVerdict`），
+	 * 不能在这里只剩半条 `!hasSteps`。半条正是上一次分叉的起点：快捷键那边要复用
+	 * 这条判据，它拿到的必须是「按钮到底画不画」的全部答案。
+	 */
+	editing: boolean;
 	/** 有步骤的用例走分步判定，这里只说明结论怎么来，不给四颗按钮。 */
 	hasSteps: boolean;
 	onPick: (result: TestRunCaseResult) => void;
@@ -74,11 +82,15 @@ export interface VerdictBodyProps {
  */
 export function VerdictBody({
 	canConclude,
+	editing,
 	hasSteps,
 	onPick,
 	runCase,
 }: VerdictBodyProps) {
-	if (!hasSteps) {
+	// 这一句就是四颗按钮的渲染判据本身，`use-run-shortcuts` 的开关复用同一个函数
+	// （见 `run-verdict-entry.ts`）。**必须与按钮同源**，别在任何一边把它展开成
+	// 手写的布尔表达式。
+	if (canPickCaseVerdict({ editing, hasSteps })) {
 		return (
 			// 改态已经蕴含 canConclude（`useVerdictEditingMode` 的一票否决），这里仍然
 			// 把它原样传下去而不是写死 false：那条否决只该有一处，这一层不替它下结论。

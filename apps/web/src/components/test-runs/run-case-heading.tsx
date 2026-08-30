@@ -15,8 +15,9 @@
  *
  * 所以现在两颗都在**标题这一行**，同 `size="sm"`、同 `variant="outline"`、文案都是
  * 两到四个字。「打回未测」原先那句「（清空全部分步判定）」不能塞回按钮面上——
- * 它一个人就比「修改」长六倍，成对的观感当场没了；那句警告移进了按钮的 title 与
- * 点击后的二次确认框，见 `run-reset-verdict-button.tsx`。
+ * 它一个人就比「修改」长六倍，成对的观感当场没了；那句警告移进了点击后的二次
+ * 确认框，而那个框只在这次回退**真会丢掉东西**时才出现，见
+ * `run-reset-verdict-button.tsx`。
  *
  * 四颗结论按钮与说明框不在这里：它们住在下面的执行结论面板，那一整块才是
  * 「这次执行判成什么」的地方，抬头只放两颗跨形态都要用的常用操作。
@@ -77,7 +78,7 @@ function RunCaseMetaBadges({ testCase }: { testCase: RunTestCase }) {
 			)}
 			{/*
 			 * 「用例更新于」不能简写成「更新时间」：这一页上还有另一个时间——本次执行的
-			 * 判定时间（「最后由 X 于 Y 判为 Z」）。裸标签会让人把用例作者改文案的时间
+			 * 判定时间（「最后由 X 于 Y 判定为 Z」）。裸标签会让人把用例作者改文案的时间
 			 * 读成自己刚才判定的时间，而这两个时间差得越远越危险（用例刚改过意味着
 			 * 你手上这条判定是对着旧文案打的）。
 			 */}
@@ -93,12 +94,15 @@ export interface RunCaseHeaderActionsProps {
 	canConclude: boolean;
 	/** 执行结论面板此刻是不是改态——正在改就不再给「修改」。 */
 	editing: boolean;
-	/** 有步骤的用例走分步判定，「打回未测」的后果跟着变。 */
-	hasSteps: boolean;
 	/** `null` = 这个任务谁都不能改（待评审 / 已提交），连「修改」都不给。 */
 	onEdit: (() => void) | null;
 	onReset: () => void;
-	result: TestRunCaseResult;
+	/**
+	 * 整行原样收下，不再只挑 `result`：「打回未测」要按这次回退会不会丢东西
+	 * 决定弹不弹确认框，判据要读 `comment` 与 `stepResults`（见
+	 * `run-reset-impact.ts`）。挑字段传的话，这里每加一档判据都要多穿一个 prop。
+	 */
+	runCase: RunCaseDetail["runCase"];
 }
 
 /**
@@ -114,13 +118,12 @@ export interface RunCaseHeaderActionsProps {
 function RunCaseHeaderActions({
 	canConclude,
 	editing,
-	hasSteps,
 	onEdit,
 	onReset,
-	result,
+	runCase,
 }: RunCaseHeaderActionsProps) {
 	const editAction = editing ? null : onEdit;
-	const showReset = result !== "untested";
+	const showReset = runCase.result !== "untested";
 	if (editAction === null && !showReset) {
 		return null;
 	}
@@ -136,8 +139,9 @@ function RunCaseHeaderActions({
 			{showReset ? (
 				<ResetVerdictButton
 					canConclude={canConclude}
-					hasSteps={hasSteps}
+					comment={runCase.comment}
 					onReset={onReset}
+					stepResultCount={runCase.stepResults.length}
 				/>
 			) : null}
 		</div>
@@ -147,7 +151,6 @@ function RunCaseHeaderActions({
 export interface RunCaseHeadingProps {
 	canConclude: boolean;
 	editing: boolean;
-	hasSteps: boolean;
 	onEdit: (() => void) | null;
 	onReset: () => void;
 	runCase: RunCaseDetail["runCase"];
@@ -158,7 +161,6 @@ export interface RunCaseHeadingProps {
 export function RunCaseHeading({
 	canConclude,
 	editing,
-	hasSteps,
 	onEdit,
 	onReset,
 	runCase,
@@ -181,10 +183,9 @@ export function RunCaseHeading({
 				<RunCaseHeaderActions
 					canConclude={canConclude}
 					editing={editing}
-					hasSteps={hasSteps}
 					onEdit={onEdit}
 					onReset={onReset}
-					result={runCase.result}
+					runCase={runCase}
 				/>
 			</div>
 			<RunCaseMetaBadges testCase={testCase} />

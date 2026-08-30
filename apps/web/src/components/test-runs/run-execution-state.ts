@@ -45,7 +45,6 @@ import {
 	runPermissions,
 } from "@/components/test-runs/test-run-meta";
 import { useAttachmentStorageStatus } from "@/components/test-runs/use-attachment-upload";
-import { useRunShortcuts } from "@/components/test-runs/use-run-shortcuts";
 import { useCasePresence } from "@/realtime/use-editing";
 import { orpc } from "@/utils/orpc";
 
@@ -174,22 +173,18 @@ export function useRunExecution(
 	const openAdd = useCallback(() => setAddOpen(true), []);
 	const closeAdd = useCallback(() => setAddOpen(false), []);
 
-	/**
-	 * 没有可打结论的行时整套快捷键都不挂，免得空按一下什么都不发生。
+	/*
+	 * P / F / B / S 的监听**不在这一层**，它挂在 `RunCasePanel` 里。
 	 *
-	 * **有步骤的用例也不挂**：这一套键走 `handleVerdict` → `setResult`，
-	 * 那是覆盖式写入，会把逐步判出来的结果连同失败原因一起铺平成一个结论。
-	 * 同样的四个键在右栏由 `useRunStepShortcuts` 接管，改成「判给下一个还没判
-	 * 的步骤」——两处永远只有一处挂着监听，不会互相抢。
+	 * 这里曾经挂过一次，开关是另写的一条式子（`canConclude && selected !== null
+	 * && steps.length === 0`）。它与四颗结论按钮的渲染条件只在权限那一半重合，
+	 * 差的正是读 / 改态——而读 / 改态这份 state 住在右栏，这一层根本看不见它。
+	 * 结果是只读态下按钮藏了、键还活着，键盘绕过界面上的判定直接改写结论。
+	 *
+	 * 判据现在只有一份（`canPickCaseVerdict`），它要读的东西都在右栏，
+	 * 监听就跟着搬到了那边。别再在这一层补一个「页面级快捷键」——那等于把刚
+	 * 合上的分叉重新劈开。
 	 */
-	const canUseShortcuts =
-		data.permissions.canConclude &&
-		selection.selected !== null &&
-		selection.selected.testCase.steps.length === 0;
-	useRunShortcuts({
-		enabled: canUseShortcuts,
-		onVerdict: verdict.handleVerdict,
-	});
 
 	return {
 		addOpen,

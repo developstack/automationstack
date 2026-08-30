@@ -34,7 +34,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export interface RunShortcutOptions {
-	/** false 时整个监听不挂：待评审与已提交都不该响应这些键。 */
+	/**
+	 * false 时整个监听一个都不挂。
+	 *
+	 * 调用方**不要**在这里现攒一条布尔表达式：用例级那一路请传
+	 * `canPickCaseVerdict()`（`run-verdict-entry.ts`），它就是四颗结论按钮的渲染
+	 * 判据；分步那一路（`useRunStepShortcuts`）传的是步骤卡片能不能点的同一个
+	 * `editing`。这条约定是 B4 修出来的：从前用例级这一路另写了一套式子，漏掉
+	 * 读 / 改态，只读态下按钮藏了、键还活着，键盘绕过了界面上的权限判定。
+	 */
 	enabled: boolean;
 	onVerdict: (result: TestRunCaseResult) => void;
 }

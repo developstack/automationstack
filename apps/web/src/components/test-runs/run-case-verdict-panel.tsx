@@ -36,6 +36,7 @@ import { VerdictBody } from "@/components/test-runs/run-case-verdict-body";
 import { RunDefectPanel } from "@/components/test-runs/run-defect-panel";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
 import { VerdictComment } from "@/components/test-runs/run-verdict-comment";
+import { canPickCaseVerdict } from "@/components/test-runs/run-verdict-entry";
 import { VERDICT_SHORTCUT_KEYS } from "@/components/test-runs/test-run-meta";
 
 /**
@@ -66,6 +67,7 @@ function VerdictPanelTrigger() {
 
 interface VerdictPanelNotesProps {
 	canConclude: boolean;
+	editing: boolean;
 	hasSteps: boolean;
 	locked: boolean;
 }
@@ -73,6 +75,7 @@ interface VerdictPanelNotesProps {
 /** 面板顶部两句提示：待评审阶段的说明，以及非分步形态的快捷键说明。 */
 function VerdictPanelNotes({
 	canConclude,
+	editing,
 	hasSteps,
 	locked,
 }: VerdictPanelNotesProps) {
@@ -84,12 +87,15 @@ function VerdictPanelNotes({
 				</p>
 			)}
 			{/*
-			 * 快捷键提示的显隐条件仍然是 `canConclude && !hasSteps`，**没有**跟着
-			 * 读 / 改态走：P/F/B/S 是在页面一层（`run-execution-state.ts`）注册的，
-			 * 那里看不见本面板的读 / 改态，按键在结果页面上照样生效。提示藏起来而键
-			 * 还活着，就成了一个按下去会悄悄改写结论的隐形快捷键——比多显示一行糟得多。
+			 * 提示与键同真同假：两边都问 `canPickCaseVerdict`。
+			 *
+			 * 这里原先写的是 `canConclude && !hasSteps`，理由是当时 P/F/B/S 挂在页面
+			 * 一层、看不见本面板的读 / 改态，在结果页面上照样生效——提示藏起来而键还
+			 * 活着，就成了按下去会悄悄改写结论的隐形快捷键。那个「键还活着」本身才是
+			 * bug：监听已经搬进 `RunCasePanel`、与四颗按钮同源，所以提示也跟着回到同
+			 * 一条判据上。三处（按钮 / 键 / 这行提示）从此只有一份真话。
 			 */}
-			{canConclude && !hasSteps ? (
+			{canPickCaseVerdict({ editing, hasSteps }) ? (
 				<p className="text-muted-foreground text-xs">
 					快捷键 {VERDICT_SHORTCUT_KEYS.passed} / {VERDICT_SHORTCUT_KEYS.failed}{" "}
 					/ {VERDICT_SHORTCUT_KEYS.blocked} / {VERDICT_SHORTCUT_KEYS.skipped}
@@ -196,6 +202,7 @@ function VerdictPanelDecision({
 			{editing ? (
 				<VerdictBody
 					canConclude={canConclude}
+					editing={editing}
 					hasSteps={hasSteps}
 					onPick={onPick}
 					runCase={runCase}
@@ -235,6 +242,7 @@ function VerdictPanelBody({
 		<div className="flex flex-col gap-3 pb-2">
 			<VerdictPanelNotes
 				canConclude={canConclude}
+				editing={editing}
 				hasSteps={hasSteps}
 				locked={locked}
 			/>

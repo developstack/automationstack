@@ -35,6 +35,8 @@ import {
 	useVerdictEditingMode,
 	type VerdictEditingMode,
 } from "@/components/test-runs/run-verdict-editing-mode";
+import { canPickCaseVerdict } from "@/components/test-runs/run-verdict-entry";
+import { useRunShortcuts } from "@/components/test-runs/use-run-shortcuts";
 
 interface RunCaseBodyProps {
 	editingMode: VerdictEditingMode;
@@ -97,6 +99,61 @@ function hasVerdictOf(item: RunCaseDetail, hasSteps: boolean): boolean {
 	return runCase.result !== "untested";
 }
 
+interface CaseVerdictEntryOptions {
+	canConclude: boolean;
+	item: RunCaseDetail;
+	onPick: (result: TestRunCaseResult) => void;
+}
+
+/**
+ * 这一栏的两件事，**绑在一起**：读 / 改态，以及 P / F / B / S 的监听。
+ *
+ * ## 形态
+ *
+ * 有没有步骤，决定这一栏是「逐步判定」还是「整条判定」两种形态之一。判据是
+ * **用例当前的步骤**，不是 `runCase.stepResults` 有没有值：用例是活引用（D2），
+ * 一条本来没步骤、后来补上步骤的用例必须立刻切到分步形态，而它此刻的
+ * `stepResults` 还是空的。反过来看 stepResults 会把这种用例永远钉在四颗按钮上，
+ * 且没有任何办法脱出。
+ *
+ * ## 读 / 改态住在这一层
+ *
+ * 它原先私有于 `RunStepsSection`、只管步骤那一屏，现在管的是整个执行结论面板
+ * （判定 / 说明 / 缺陷 / 附件都按它切结果页面与修改页面）。而「修改」按钮在抬头上，
+ * 抬头、执行结论面板、步骤那一段互为**兄弟节点**——同一份状态只能由共同的父节点
+ * 拿着。三条语义原样保留在 `useVerdictEditingMode` 里，其中「草稿恢复强制进改态」
+ * 那条仍落在 `RunStepsSection` 内部，因为只有那里看得见 `dirty`。
+ *
+ * ## 快捷键为什么也在这里
+ *
+ * 它原先挂在页面一层（`run-execution-state.ts`），开关是另写的一条式子
+ * （`canConclude && selected !== null && steps.length === 0`）。那条式子与四颗结论
+ * 按钮的渲染条件只在权限那一半重合，差的正是读 / 改态——而读 / 改态这份 state 只
+ * 存在于这里，页面那一层根本看不见它。于是只读态下按钮按权限藏了、键还活着，
+ * 按一下 P 就绕过界面上的判定改写了这条用例的结论。
+ *
+ * 所以监听搬进了产出 `editing` 的这个 hook，开关**只许**调 `canPickCaseVerdict`
+ * ——它就是按钮的渲染判据本身，别把它展开成 `editing && !hasSteps`，展开的那一刻
+ * 就又有了第二份会各自漂移的判据。原先那条 `selected !== null` 不必再写：
+ * `RunCasePanel` 只在选中某条用例时才挂载。
+ */
+function useCaseVerdictEntry({
+	canConclude,
+	item,
+	onPick,
+}: CaseVerdictEntryOptions) {
+	const hasSteps = item.testCase.steps.length > 0;
+	const editingMode = useVerdictEditingMode(
+		hasVerdictOf(item, hasSteps),
+		canConclude
+	);
+	useRunShortcuts({
+		enabled: canPickCaseVerdict({ editing: editingMode.editing, hasSteps }),
+		onVerdict: onPick,
+	});
+	return { editingMode, hasSteps };
+}
+
 export function RunCasePanel({
 	canConclude,
 	item,
@@ -112,35 +169,17 @@ export function RunCasePanel({
 	// 一次请求签完这条用例的全部贴图，正文里的引用按 id 查表；执行台是只读侧，
 	// 不套 CaseAttachmentProvider（那边才有粘贴上传）。
 	const imageUrls = useCaseAttachmentUrls(testCase.id);
-	/**
-	 * 有没有步骤，决定这一栏是「逐步判定」还是「整条判定」两种形态之一。
-	 *
-	 * 判据是**用例当前的步骤**，不是 `runCase.stepResults` 有没有值：用例是活
-	 * 引用（D2），一条本来没步骤、后来补上步骤的用例必须立刻切到分步形态，
-	 * 而它此刻的 `stepResults` 还是空的。反过来看 stepResults 会把这种用例
-	 * 永远钉在四颗按钮上，且没有任何办法脱出。
-	 */
-	const hasSteps = testCase.steps.length > 0;
-	/**
-	 * 读 / 改态住在这一层。
-	 *
-	 * 它原先私有于 `RunStepsSection`、只管步骤那一屏，现在管的是整个执行结论面板
-	 * （判定 / 说明 / 缺陷 / 附件都按它切结果页面与修改页面）。而「修改」按钮在抬头上，
-	 * 抬头、执行结论面板、步骤那一段互为**兄弟节点**——同一份状态只能由共同的
-	 * 父节点拿着。三条语义原样保留在 `useVerdictEditingMode` 里，其中「草稿恢复
-	 * 强制进改态」那条仍落在 `RunStepsSection` 内部，因为只有那里看得见 `dirty`。
-	 */
-	const editingMode = useVerdictEditingMode(
-		hasVerdictOf(item, hasSteps),
-		canConclude
-	);
+	const { editingMode, hasSteps } = useCaseVerdictEntry({
+		canConclude,
+		item,
+		onPick,
+	});
 
 	return (
 		<div className="flex flex-col gap-4 p-4">
 			<RunCaseHeading
 				canConclude={canConclude}
 				editing={editingMode.editing}
-				hasSteps={hasSteps}
 				onEdit={editingMode.onEdit}
 				onReset={onReset}
 				runCase={runCase}

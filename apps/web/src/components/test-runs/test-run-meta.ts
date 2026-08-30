@@ -161,9 +161,13 @@ export interface CommentFieldText {
  *
  * 不再写「说明（失败原因 / 阻塞原因）」这种两头兼顾的话——那是这个字段常驻
  * 时的妥协，现在它只在一种结论下出现，就该直说是哪一种。
- * 第三档（通过 / 跳过 / 未测）只可能出现在上面说的「已有内容」路径上，
- * 所以文案要写明这段是上一次判失败 / 阻塞时留下的，否则用户会以为
- * 系统在让他给一条「通过」的用例写失败原因。
+ *
+ * 第三档（通过 / 跳过 / 未测）只可能出现在上面说的「已有内容」路径上，标签就
+ * 两个字：**说明**。它曾经是「说明（上次判失败 / 阻塞时留下的）」，括号里那半句
+ * 讲的是这段字的来历——可来历在同一屏上已经被说了两遍：用例名旁边的结论徽章，
+ * 以及紧挨着这块的「最后由 X 于 Y 判定为 Z」。同一件事说三遍，多出来的两遍就
+ * 不再是信息，只是把这一栏读起来更费劲。真要追这段字是哪一次留下的，
+ * 面板底部的「判定记录」按时间列着，那才是能回答这个问题的地方。
  */
 export function commentFieldText(result: TestRunCaseResult): CommentFieldText {
 	if (result === "failed") {
@@ -178,7 +182,7 @@ export function commentFieldText(result: TestRunCaseResult): CommentFieldText {
 			placeholder: "写清楚卡在哪一步、缺什么环境或数据，解开后才知道从哪接着测",
 		};
 	}
-	return { label: "说明（上次判失败 / 阻塞时留下的）" };
+	return { label: "说明" };
 }
 
 export interface RunPermissions {

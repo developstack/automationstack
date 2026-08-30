@@ -33,12 +33,15 @@ describe("commentFieldText", () => {
 		expect(blocked).not.toContain("复现");
 	});
 
-	it("其余结论下说明只可能是上一次留下的，label 要讲清来历", () => {
-		// 这一档只出现在逃生口路径上（comment 已有内容却改判成了别的结论），
-		// 说成「失败原因」会让人以为系统在要一条「通过」的用例交代失败原因。
+	it("其余结论下就两个字：说明，不再在括号里补一遍来历", () => {
+		// 这一档只出现在逃生口路径上（comment 已有内容却改判成了别的结论）。
+		// 说成「失败原因」会让人以为系统在要一条「通过」的用例交代失败原因，
+		// 所以不能沿用上面两档的词；但也不该写成「说明（上次判失败 / 阻塞时留下
+		// 的）」——那半句来历，用例名旁的结论徽章与「最后由 X 于 Y 判定为 Z」
+		// 已经在同一屏上说过两遍了。
 		for (const result of ["passed", "skipped", "untested"] as const) {
 			const text = commentFieldText(result);
-			expect(text.label).toContain("上次");
+			expect(text.label).toBe("说明");
 			// 这一档框里必有内容，placeholder 看不见，不该编一句出来。
 			expect(text.placeholder).toBeUndefined();
 		}

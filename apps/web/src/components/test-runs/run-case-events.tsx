@@ -66,7 +66,19 @@ export function RunCaseLastVerdict({
 	}
 	return (
 		<p className="text-muted-foreground text-xs">
-			{`最后由 ${executedByName ?? DELETED_ACTOR} 于 ${formatDateTime(executedAt)} 判为「${RESULT_LABELS[result]}」`}
+			{`最后由 ${executedByName ?? DELETED_ACTOR} 于 ${formatDateTime(executedAt)} 判定为 `}
+			{/*
+			 * 结论只加 font-medium，不加引号也不加颜色。
+			 *
+			 * 原先写的是「判为「通过」」：一句中文里再套一层引号，读的人要先分清
+			 * 哪对引号是句子的、哪对是值的。去掉引号之后「判为通过」会黏成一团，
+			 * 所以动词补成「判定为」——多一个字，断句就回来了。
+			 *
+			 * 颜色不给：这一行是灰色小字，通篇只有它变色会把视线从上面那颗真正的
+			 * 结论徽章上抢走，而徽章才是这一屏读结论的地方（形状 + 底色 + 文字
+			 * 三重编码，见 `test-run-meta.ts` 的 RESULT_ICONS）。
+			 */}
+			<span className="font-medium">{RESULT_LABELS[result]}</span>
 		</p>
 	);
 }
