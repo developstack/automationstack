@@ -16,8 +16,9 @@ import {
 import { z } from "zod";
 
 import type { Context } from "../context";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
 import { resolveNewCaseAttachments } from "../lib/case-attachment-draft-ingest";
+import { requireCaseMember, requireModuleMember } from "../lib/project-scope";
 import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
 import {
@@ -26,6 +27,8 @@ import {
 	caseContentSchema,
 	casePrioritySchema,
 	caseStatusSchema,
+	createCaseAttachmentSchema,
+	MAX_NEW_CASE_ATTACHMENTS,
 } from "../schemas/case";
 import { caseImportProcedures } from "./case-import";
 import { caseVersionProcedures } from "./case-versions";
@@ -42,24 +45,6 @@ const listCasesSchema = z.object({
 	/** 标签筛选（any-of：命中任意一个即匹配）；空数组等同不筛选。 */
 	tags: z.array(z.string()).optional(),
 });
-
-/**
- * 一张随新用例一起登记的草稿贴图。三个字段全部来自
- * `caseAttachments.presignDraftUpload` 的返回值 + 用户粘贴时的文件名。
- *
- * **刻意不收 contentType / sizeBytes**，与 `caseAttachments.register` 同一条约定：
- * 预签名 URL 一发出去，实际传了多大、传的什么类型就不再受我们控制，
- * 落库的那两个值一律来自服务端的 `HeadObject`。
- */
-const createCaseAttachmentSchema = z.object({
-	fileName: z.string().min(1).max(255),
-	/** presign 阶段就定下的 id，正文里的 `![](attachment:<id>)` 引的就是它。 */
-	id: z.uuid(),
-	storageKey: z.string().min(1),
-});
-
-/** 一次建用例最多带 50 张图，与 `presignDraftDownload` 的上限保持一致。 */
-const MAX_NEW_CASE_ATTACHMENTS = 50;
 
 const createCaseSchema = caseContentSchema.extend({
 	/**
@@ -99,6 +84,15 @@ const reorderCasesSchema = z.object({
 	orderedIds: z.array(z.uuid()).min(1),
 });
 
+/**
+ * 按用例 id 寻址的四条（get / update / remove / move）把 `id` 改名喂给中间件，
+ * 与 `projects.get` 的 `toProjectScope` 同一种做法。
+ *
+ * move 只解析被移动的那条用例，不再解析目标模块：`moveTestCase` 自己就会以
+ * `invalid-module` 拒绝不同项目的目标模块，两处都判等于同一条规则写两遍。
+ */
+const toCaseScope = (input: { id: string }) => ({ caseId: input.id });
+
 function actorName(context: Context): string | null {
 	return context.actor?.name ?? null;
 }
@@ -118,6 +112,7 @@ export const casesRouter = {
 	create: protectedProcedure
 		.errors({ BAD_REQUEST: {}, CONFLICT: {} })
 		.input(createCaseSchema)
+		.use(requireProjectMember)
 		.handler(async ({ context, errors, input }) => {
 			const attachments = await resolveNewCaseAttachments(
 				{
@@ -161,6 +156,7 @@ export const casesRouter = {
 	get: protectedProcedure
 		.errors({ NOT_FOUND: {} })
 		.input(z.object({ id: z.uuid() }))
+		.use(requireCaseMember, toCaseScope)
 		.handler(async ({ errors, input }) => {
 			const testCase = await getTestCaseById(input.id);
 			if (!testCase) {
@@ -170,14 +166,17 @@ export const casesRouter = {
 		}),
 	list: protectedProcedure
 		.input(listCasesSchema)
+		.use(requireProjectMember)
 		.handler(({ input }) => listTestCases(input)),
 	/** 供筛选器填候选项：项目内全部用例用过的标签，去重且按名称升序。 */
 	listTags: protectedProcedure
 		.input(z.object({ projectId: z.uuid() }))
+		.use(requireProjectMember)
 		.handler(({ input }) => listProjectCaseTags(input.projectId)),
 	move: protectedProcedure
 		.errors({ BAD_REQUEST: {}, NOT_FOUND: {} })
 		.input(moveCaseSchema)
+		.use(requireCaseMember, toCaseScope)
 		.handler(async ({ context, errors, input }) => {
 			const result = await moveTestCase(input);
 			if (result.kind === "ok") {
@@ -201,6 +200,7 @@ export const casesRouter = {
 	remove: protectedProcedure
 		.errors({ CONFLICT: {}, NOT_FOUND: {} })
 		.input(z.object({ id: z.uuid() }))
+		.use(requireCaseMember, toCaseScope)
 		.handler(async ({ context, errors, input }) => {
 			const result = await removeTestCase(input.id);
 			if (result.kind === "not-found") {
@@ -226,6 +226,7 @@ export const casesRouter = {
 	reorder: protectedProcedure
 		.errors({ BAD_REQUEST: {} })
 		.input(reorderCasesSchema)
+		.use(requireModuleMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await reorderTestCases(input);
 			if (result.kind === "invalid-set") {
@@ -249,6 +250,7 @@ export const casesRouter = {
 			NOT_FOUND: {},
 		})
 		.input(updateCaseSchema)
+		.use(requireCaseMember, toCaseScope)
 		.handler(async ({ context, errors, input }) => {
 			const result = await updateTestCase({
 				actorName: actorName(context),

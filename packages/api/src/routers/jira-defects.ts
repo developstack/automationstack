@@ -9,6 +9,7 @@ import { protectedProcedure } from "../index";
 import type { DefectLinkView } from "../lib/jira/defect-link";
 import { describeJiraFailure } from "../lib/jira/failure";
 import { resolveJiraClient } from "../lib/jira/get-client";
+import { requireRunCaseMember } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
 import { defectReferenceSchema } from "../schemas/jira";
 import { createDefectErrorMap, handleCreateDefect } from "./jira-defect-create";
@@ -33,6 +34,7 @@ export const jiraDefectProcedures = {
 	clearDefect: protectedProcedure
 		.errors({ CONFLICT: {}, NOT_FOUND: {} })
 		.input(runCaseIdSchema)
+		.use(requireRunCaseMember)
 		.handler(async ({ context, errors, input }): Promise<DefectLinkView> => {
 			const defect = await getDefectContext(input.runCaseId);
 			if (defect === null) {
@@ -69,6 +71,7 @@ export const jiraDefectProcedures = {
 	createDefect: protectedProcedure
 		.errors(createDefectErrorMap)
 		.input(runCaseIdSchema)
+		.use(requireRunCaseMember)
 		.handler((options): Promise<DefectLinkView> => handleCreateDefect(options)),
 
 	/**
@@ -85,6 +88,7 @@ export const jiraDefectProcedures = {
 				runCaseId: z.uuid(),
 			})
 		)
+		.use(requireRunCaseMember)
 		.handler((options): Promise<DefectLinkView> => handleLinkDefect(options)),
 
 	/**
@@ -97,6 +101,7 @@ export const jiraDefectProcedures = {
 	refreshDefectStatus: protectedProcedure
 		.errors({ BAD_GATEWAY: {}, BAD_REQUEST: {}, NOT_FOUND: {} })
 		.input(runCaseIdSchema)
+		.use(requireRunCaseMember)
 		.handler(async ({ errors, input }): Promise<{ status: string | null }> => {
 			const defect = await getDefectContext(input.runCaseId);
 			if (defect === null) {

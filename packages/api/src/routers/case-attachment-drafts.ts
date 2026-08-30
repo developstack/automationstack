@@ -4,7 +4,7 @@ import { projectExists } from "@automationstack/db/repositories/projects-reposit
 import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
 import { throwCaseImageViolation } from "../lib/case-attachment-ingest";
 import {
 	buildCaseAttachmentStorageKey,
@@ -99,6 +99,7 @@ export const caseAttachmentDraftProcedures = {
 	presignDraftDownload: protectedProcedure
 		.errors({ BAD_REQUEST: {} })
 		.input(presignDraftDownloadSchema)
+		.use(requireProjectMember)
 		.handler(async ({ errors, input }): Promise<DraftAttachmentUrl[]> => {
 			const scope = { caseId: input.caseId, projectId: input.projectId };
 			for (const storageKey of input.storageKeys) {
@@ -148,6 +149,7 @@ export const caseAttachmentDraftProcedures = {
 	presignDraftUpload: protectedProcedure
 		.errors({ BAD_REQUEST: {}, NOT_FOUND: {} })
 		.input(presignDraftUploadSchema)
+		.use(requireProjectMember)
 		.handler(async ({ errors, input }) => {
 			const storage = getR2Storage();
 			if (storage === null) {

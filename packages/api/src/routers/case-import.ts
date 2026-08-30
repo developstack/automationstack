@@ -14,7 +14,7 @@ import {
 import { z } from "zod";
 
 import type { Context } from "../context";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
 import { publishInvalidate } from "../lib/realtime-publish";
 import { importCaseSchema, importOnDuplicateSchema } from "../schemas/case";
 
@@ -145,8 +145,10 @@ async function runImportBatch(
 export const caseImportProcedures = {
 	importBatch: protectedProcedure
 		.input(importBatchSchema)
+		.use(requireProjectMember)
 		.handler(({ context, input }) => runImportBatch(context, input)),
 	search: protectedProcedure
 		.input(searchCasesSchema)
+		.use(requireProjectMember)
 		.handler(({ input }) => searchTestCases(input)),
 };

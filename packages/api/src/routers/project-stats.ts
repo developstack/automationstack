@@ -9,7 +9,7 @@ import {
 } from "@automationstack/db/repositories/project-stats-repository";
 import { z } from "zod";
 
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
 
 const projectStatsInputSchema = z.object({ projectId: z.uuid() });
 
@@ -26,36 +26,35 @@ const projectStatsInputSchema = z.object({ projectId: z.uuid() });
  * 全零 / 空列表，与 cases.list 对不存在项目返回空页的行为一致，概览页因此
  * 不需要为「项目刚被别人删掉」写一条额外的错误分支。
  *
- * ⚠️ 项目级授权（`schema/project-members.ts`）已经落地，但**这个 router 还没
- * 收口**：B2a 只把 `requireProjectMember` 挂在 projects.get/update/remove 与
- * projectMembers.* 上。也就是说非成员拿着一个 projectId 仍能读到这里的聚合
- * 数字。下一批把中间件推到其余项目作用域过程时，这里是必须覆盖的一处。
- *
- * 鉴权用 protectedProcedure，与 cases.list / projects.get 完全同档：统计的
- * 就是用例与模块数据本身，口子不能比数据源更宽。注意 `/mcp` 端点用
- * createRouterClient 造了一个 member 合成用户，appRouter 里的任何过程都会经
- * 它可达——选 protectedProcedure 意味着 MCP 通道可读概览，与它已经能读的
- * cases.list 处于同一档，没有新增暴露面。
+ * 五条全部先过 `requireProjectMember`：统计的就是用例与模块数据本身，口子不能
+ * 比数据源更宽，而数据源那边（cases.list / modules.tree）现在也都在这道闸门后。
+ * 都只是读，所以到 `canEnterProject` 为止，不再要求 owner——概览页正是普通成员
+ * 每天进项目第一眼要看的东西。
  */
 export const projectStatsRouter = {
 	/** AI 提案的采纳分子 / 分母（不返回百分比，理由见 repository 注释）。 */
 	aiAdoption: protectedProcedure
 		.input(projectStatsInputSchema)
+		.use(requireProjectMember)
 		.handler(({ input }) => getAiAdoptionStats(input.projectId)),
 	/** 模块覆盖缺口：零用例 / 无 active 用例的模块，按子树口径判定。 */
 	coverage: protectedProcedure
 		.input(projectStatsInputSchema)
+		.use(requireProjectMember)
 		.handler(({ input }) => getProjectCoverageStats(input.projectId)),
 	/** 用例总数 + 按 status / priority 的分组计数。 */
 	overview: protectedProcedure
 		.input(projectStatsInputSchema)
+		.use(requireProjectMember)
 		.handler(({ input }) => getProjectOverviewStats(input.projectId)),
 	/** 最近若干条用例版本记录，作为项目变更时间线。 */
 	recentChanges: protectedProcedure
 		.input(projectStatsInputSchema)
+		.use(requireProjectMember)
 		.handler(({ input }) => getRecentChanges(input.projectId)),
 	/** 超过阈值天数未更新的 P0/P1 用例：命中总数 + 前若干条。 */
 	staleHighPriority: protectedProcedure
 		.input(projectStatsInputSchema)
+		.use(requireProjectMember)
 		.handler(({ input }) => getStaleHighPriorityStats(input.projectId)),
 };

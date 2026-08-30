@@ -8,7 +8,7 @@ import type { JiraConfig } from "@automationstack/db/schema/integrations";
 import { env } from "@automationstack/env/server";
 import { z } from "zod";
 
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
 import { describeJiraFailure } from "../lib/jira/failure";
 import {
 	encryptJiraApiToken,
@@ -21,6 +21,7 @@ import {
 	resolveJiraClientFromConfig,
 } from "../lib/jira/resolve-client";
 import { jiraWebhookPath } from "../lib/jira/webhook";
+import { canAdministerProject } from "../lib/project-access";
 import { formCredentialsSchema, upsertConfigSchema } from "../schemas/jira";
 import { jiraDefectProcedures } from "./jira-defects";
 
@@ -35,12 +36,19 @@ import { jiraDefectProcedures } from "./jira-defects";
  * 构造——刻意不用 `Omit<JiraConfig, "apiTokenCipher">` 再 spread：后者在给表加
  * 新的敏感列时会静默地把它带出去，独立接口则会在编译期少一个字段就报错。
  *
- * 全部 `protectedProcedure`，**尚未挂 `requireProjectMember`**：B2a 只收口了
- * projects.get/update/remove 与 projectMembers.*，其余项目作用域的过程留到
- * 下一批。这里尤其要记着——Jira 配置里有凭据，是最不该漏的一处。
+ * 项目级授权分两档：`getConfig` 是**成员**可读（执行台的缺陷面板要靠它判断
+ * 「这个项目能不能建 Jira Issue」，见 `run-defect-panel.tsx`；它本来也只下发
+ * 站点地址、项目 key 这类非机密字段）。其余三个动的是项目配置本身，与
+ * `projects.update` 同档，额外要求 owner——凭据一旦被改，整个项目的 Jira 写入
+ * 都跟着换了身份，这不是「项目内的日常读写」。
  */
 
 const projectIdSchema = z.object({ projectId: z.uuid() });
+
+/** 改配置那三个过程共用的错误档：`requireProjectMember` 之后还要再判一次 owner。 */
+const ownerOnlyErrors = { FORBIDDEN: {} } as const;
+
+const NOT_PROJECT_OWNER_MESSAGE = "只有项目 owner 能改 Jira 配置";
 
 /** 可以安全下发到前端的配置字段：**没有任何 Token / 密钥内容**。 */
 export interface JiraConfigView {
@@ -139,6 +147,7 @@ export const jiraRouter = {
 	/** 读取项目的 Jira 配置状态。未配置时 `config` 为 null，这是正常状态。 */
 	getConfig: protectedProcedure
 		.input(projectIdSchema)
+		.use(requireProjectMember)
 		.handler(async ({ input }): Promise<JiraConfigState> => {
 			const row = await getJiraConfig(input.projectId);
 			// 顺手解一次密：配置页正是该发现「主密钥被换过、Token 已解不开」的地方，
@@ -159,10 +168,15 @@ export const jiraRouter = {
 
 	/** 断开接入 = 删掉那一行；之后所有 Jira 能力自动降级（D9）。 */
 	removeConfig: protectedProcedure
+		.errors(ownerOnlyErrors)
 		.input(projectIdSchema)
-		.handler(async ({ input }) => ({
-			removed: await removeJiraConfig(input.projectId),
-		})),
+		.use(requireProjectMember)
+		.handler(async ({ context, errors, input }) => {
+			if (!canAdministerProject(context.projectAccess)) {
+				throw errors.FORBIDDEN({ message: NOT_PROJECT_OWNER_MESSAGE });
+			}
+			return { removed: await removeJiraConfig(input.projectId) };
+		}),
 
 	/**
 	 * 连通性自检。**返回类型化结果而不是抛异常**——「测不通」正是这个接口
@@ -172,43 +186,56 @@ export const jiraRouter = {
 	 * （其中 `apiToken` 仍可省略，表示沿用库里那份）。
 	 */
 	testConnection: protectedProcedure
+		.errors(ownerOnlyErrors)
 		.input(
 			z.object({
 				credentials: formCredentialsSchema.optional(),
 				projectId: z.uuid(),
 			})
 		)
-		.handler(async ({ input }): Promise<JiraConnectionTestResult> => {
-			const resolution = await resolveJiraClientForForm(
-				input.projectId,
-				input.credentials
-			);
-			const unavailable = testResultFromResolution(resolution);
-			if (unavailable !== null) {
-				return unavailable;
-			}
-			if (resolution.kind !== "ok") {
-				return { kind: "unconfigured" };
-			}
-			const verified = await resolution.client.verifyConnection();
-			if (!verified.ok) {
+		.use(requireProjectMember)
+		.handler(
+			async ({ context, errors, input }): Promise<JiraConnectionTestResult> => {
+				// 它收的是**表单里还没保存的凭据**，等于一个拿本项目当跳板的探测器：
+				// 谁能测，就该是谁能改。所以和 upsertConfig 同档，不是成员可用。
+				if (!canAdministerProject(context.projectAccess)) {
+					throw errors.FORBIDDEN({ message: NOT_PROJECT_OWNER_MESSAGE });
+				}
+				const resolution = await resolveJiraClientForForm(
+					input.projectId,
+					input.credentials
+				);
+				const unavailable = testResultFromResolution(resolution);
+				if (unavailable !== null) {
+					return unavailable;
+				}
+				if (resolution.kind !== "ok") {
+					return { kind: "unconfigured" };
+				}
+				const verified = await resolution.client.verifyConnection();
+				if (!verified.ok) {
+					return {
+						kind: "failed",
+						message: describeJiraFailure(verified.failure),
+					};
+				}
 				return {
-					kind: "failed",
-					message: describeJiraFailure(verified.failure),
+					accountDisplayName: verified.value.accountDisplayName,
+					kind: "ok",
+					projectName: verified.value.projectName,
 				};
 			}
-			return {
-				accountDisplayName: verified.value.accountDisplayName,
-				kind: "ok",
-				projectName: verified.value.projectName,
-			};
-		}),
+		),
 
 	/** 保存配置。`apiToken` 留空 = 保持库里那份不动。 */
 	upsertConfig: protectedProcedure
-		.errors({ BAD_REQUEST: {}, PRECONDITION_FAILED: {} })
+		.errors({ BAD_REQUEST: {}, FORBIDDEN: {}, PRECONDITION_FAILED: {} })
 		.input(upsertConfigSchema)
+		.use(requireProjectMember)
 		.handler(async ({ context, errors, input }): Promise<JiraConfigView> => {
+			if (!canAdministerProject(context.projectAccess)) {
+				throw errors.FORBIDDEN({ message: NOT_PROJECT_OWNER_MESSAGE });
+			}
 			let apiTokenCipher: string | undefined;
 			if (input.apiToken !== undefined) {
 				const encrypted = await encryptJiraApiToken(input.apiToken);

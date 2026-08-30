@@ -7,9 +7,10 @@ import { listModulesByProject } from "@automationstack/db/repositories/modules-r
 import { z } from "zod";
 
 import type { Context } from "../context";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
 import { publishMindmapInvalidations } from "../lib/mindmap-invalidate";
 import { scopeMindmapTree } from "../lib/mindmap-scope";
+import { requireMindmapBatchMember } from "../lib/project-scope";
 
 /** Node references may be real uuids or tempIds minted earlier in a batch. */
 const nodeIdSchema = z.string().min(1);
@@ -85,9 +86,15 @@ function actorName(context: Context): string | null {
 }
 
 export const mindmapRouter = {
+	/**
+	 * 批量应用画布上的改动。授权走 `requireMindmapBatchMember`：整批必须落在
+	 * **同一个**项目里，理由与算法见 `../lib/mindmap-batch-scope.ts`——
+	 * 这里不能像别处那样「取第一个 id 解析出项目」，那正好是这条接口独有的洞。
+	 */
 	batch: protectedProcedure
 		.errors({ BAD_REQUEST: {} })
 		.input(batchSchema)
+		.use(requireMindmapBatchMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await runMindmapBatch(
 				input.operations,
@@ -109,6 +116,7 @@ export const mindmapRouter = {
 	tree: protectedProcedure
 		.errors({ NOT_FOUND: {} })
 		.input(treeSchema)
+		.use(requireProjectMember)
 		.handler(async ({ errors, input }) => {
 			const [moduleRows, caseNodes] = await Promise.all([
 				listModulesByProject(input.projectId),

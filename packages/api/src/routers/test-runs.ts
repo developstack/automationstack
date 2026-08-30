@@ -1,4 +1,3 @@
-import { listTestRunCaseEvents } from "@automationstack/db/repositories/test-run-case-events-repository";
 import { getTestRunDetail } from "@automationstack/db/repositories/test-run-detail-repository";
 import {
 	createTestRun,
@@ -7,7 +6,6 @@ import {
 	updateTestRun,
 } from "@automationstack/db/repositories/test-run-mutations-repository";
 import { getTestRunReport } from "@automationstack/db/repositories/test-run-report-repository";
-import { listTestRunEvents } from "@automationstack/db/repositories/test-run-status-repository";
 import {
 	markTestRunReviewed,
 	submitTestRun,
@@ -16,10 +14,12 @@ import {
 import { listTestRuns } from "@automationstack/db/repositories/test-runs-repository";
 import { z } from "zod";
 
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
+import { requireRunMember } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
 import { rejectRunWrite, testRunErrors } from "../lib/test-run-errors";
 import { runIdSchema, testRunStatusSchema } from "../schemas/test-run";
+import { testRunEventProcedures } from "./test-run-events";
 import { testRunExecutionProcedures } from "./test-run-execution";
 import { testRunStepExecutionProcedures } from "./test-run-step-execution";
 
@@ -47,21 +47,28 @@ const updateTestRunSchema = z.object({
 	runId: z.uuid(),
 });
 
-/** 本地声明而不是提到 schemas/test-run.ts：与 `jira-defects.ts` 同样的一行，各用各的。 */
-const runCaseIdSchema = z.object({ runCaseId: z.uuid() });
-
 const createFromFailedSchema = z.object({
 	description: z.string().nullable().optional(),
 	name: z.string().min(1),
 	sourceRunId: z.uuid(),
 });
 
+/**
+ * `createFromFailed` 的归属由**源任务**决定：新任务是照着它复制出来的，
+ * 能不能从这份失败清单再开一轮，问的就是「你进不进得去源任务所在的项目」。
+ */
+const toSourceRunScope = (input: { sourceRunId: string }) => ({
+	runId: input.sourceRunId,
+});
+
 export const testRunsRouter = {
+	...testRunEventProcedures,
 	...testRunExecutionProcedures,
 	...testRunStepExecutionProcedures,
 	create: protectedProcedure
 		.errors(testRunErrors)
 		.input(createTestRunSchema)
+		.use(requireProjectMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await createTestRun({
 				caseIds: input.caseIds,
@@ -94,6 +101,7 @@ export const testRunsRouter = {
 	createFromFailed: protectedProcedure
 		.errors(testRunErrors)
 		.input(createFromFailedSchema)
+		.use(requireRunMember, toSourceRunScope)
 		.handler(async ({ context, errors, input }) => {
 			const result = await createTestRunFromFailed({
 				createdBy: context.user.id,
@@ -124,6 +132,7 @@ export const testRunsRouter = {
 	get: protectedProcedure
 		.errors({ NOT_FOUND: {} })
 		.input(runIdSchema)
+		.use(requireRunMember)
 		.handler(async ({ errors, input }) => {
 			const detail = await getTestRunDetail(input.runId);
 			if (!detail) {
@@ -131,29 +140,19 @@ export const testRunsRouter = {
 			}
 			return detail;
 		}),
-	list: protectedProcedure.input(listTestRunsSchema).handler(({ input }) =>
-		listTestRuns(input.projectId, {
-			keyword: input.keyword,
-			status: input.status,
-		})
-	),
-	/**
-	 * 单条用例的结论时间线（谁判的、几点判的、谁打回的、当时写的什么）。
-	 *
-	 * 返回外形与 `listEvents` 一致（`{ actorName, event }`），前端两处折叠区
-	 * 是同一种列表，渲染逻辑共用。鉴权同本 router 其余 procedure：登录即可见。
-	 * 项目级授权（`schema/project-members.ts`）尚未推到这里，见下一批。
-	 */
-	listCaseEvents: protectedProcedure
-		.input(runCaseIdSchema)
-		.handler(({ input }) => listTestRunCaseEvents(input.runCaseId)),
-	/** 详情页「变更历史」折叠区，审计用（plan §2.3：它不保护报告）。 */
-	listEvents: protectedProcedure
-		.input(runIdSchema)
-		.handler(({ input }) => listTestRunEvents(input.runId)),
+	list: protectedProcedure
+		.input(listTestRunsSchema)
+		.use(requireProjectMember)
+		.handler(({ input }) =>
+			listTestRuns(input.projectId, {
+				keyword: input.keyword,
+				status: input.status,
+			})
+		),
 	markReviewed: protectedProcedure
 		.errors(testRunErrors)
 		.input(runIdSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await markTestRunReviewed({
 				actorId: context.user.id,
@@ -180,6 +179,7 @@ export const testRunsRouter = {
 	remove: protectedProcedure
 		.errors(testRunErrors)
 		.input(runIdSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await removeTestRun(input.runId);
 			if (result.kind !== "ok") {
@@ -197,6 +197,7 @@ export const testRunsRouter = {
 	report: protectedProcedure
 		.errors({ NOT_FOUND: {} })
 		.input(runIdSchema)
+		.use(requireRunMember)
 		.handler(async ({ errors, input }) => {
 			const report = await getTestRunReport(input.runId);
 			if (!report) {
@@ -214,6 +215,7 @@ export const testRunsRouter = {
 	submit: protectedProcedure
 		.errors(testRunErrors)
 		.input(runIdSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await submitTestRun({
 				actorId: context.user.id,
@@ -242,6 +244,7 @@ export const testRunsRouter = {
 	unmarkReviewed: protectedProcedure
 		.errors(testRunErrors)
 		.input(runIdSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await unmarkTestRunReviewed({
 				actorId: context.user.id,
@@ -272,6 +275,7 @@ export const testRunsRouter = {
 	update: protectedProcedure
 		.errors(testRunErrors)
 		.input(updateTestRunSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await updateTestRun(input);
 			if (result.kind !== "ok") {

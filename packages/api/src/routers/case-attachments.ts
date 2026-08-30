@@ -18,6 +18,7 @@ import {
 	isCaseAttachmentKeyOwnedBy,
 	validateCaseImageUpload,
 } from "../lib/case-attachment-policy";
+import { requireCaseMember } from "../lib/project-scope";
 import { getR2Storage, type R2Storage } from "../lib/r2";
 import { caseAttachmentDraftProcedures } from "./case-attachment-drafts";
 
@@ -142,6 +143,7 @@ export const caseAttachmentsRouter = {
 	 */
 	list: protectedProcedure
 		.input(caseSchema)
+		.use(requireCaseMember)
 		.handler(async ({ input }): Promise<CaseAttachmentView[]> => {
 			const attachments = await listCaseAttachments(input.caseId);
 			const storage = getR2Storage();
@@ -168,6 +170,7 @@ export const caseAttachmentsRouter = {
 	presignUpload: protectedProcedure
 		.errors(caseAttachmentErrors)
 		.input(presignUploadSchema)
+		.use(requireCaseMember)
 		.handler(async ({ errors, input }) => {
 			const storage = requireStorage();
 			const declared = validateCaseImageUpload(input);
@@ -207,6 +210,7 @@ export const caseAttachmentsRouter = {
 	register: protectedProcedure
 		.errors(caseAttachmentErrors)
 		.input(registerSchema)
+		.use(requireCaseMember)
 		.handler(async ({ context, errors, input }) => {
 			const storage = requireStorage();
 			// 这次查询只为拿到 projectId 去验 key 归属；归属校验与对象校验的顺序

@@ -2,6 +2,7 @@ import { saveRunCaseStepResults } from "@automationstack/db/repositories/test-ru
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
+import { requireRunCaseMember } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
 import {
 	REVIEW_PENDING_MESSAGE,
@@ -77,6 +78,7 @@ export const testRunStepExecutionProcedures = {
 	saveStepResults: protectedProcedure
 		.errors(testRunErrors)
 		.input(saveStepResultsSchema)
+		.use(requireRunCaseMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await saveRunCaseStepResults({
 				actorId: context.user.id,

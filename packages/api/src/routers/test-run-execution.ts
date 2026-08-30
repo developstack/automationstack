@@ -10,6 +10,7 @@ import {
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
+import { requireRunCaseMember, requireRunMember } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
 import {
 	REVIEW_PENDING_MESSAGE,
@@ -73,6 +74,7 @@ export const testRunExecutionProcedures = {
 	addCases: protectedProcedure
 		.errors(testRunErrors)
 		.input(addCasesSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await addCasesToRun({
 				actorId: context.user.id,
@@ -99,6 +101,7 @@ export const testRunExecutionProcedures = {
 	assign: protectedProcedure
 		.errors(testRunErrors)
 		.input(assignSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await assignRunCases(input);
 			if (result.kind === "invalid-run-cases") {
@@ -122,6 +125,7 @@ export const testRunExecutionProcedures = {
 	bulkSetResult: protectedProcedure
 		.errors(testRunErrors)
 		.input(bulkSetResultSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await bulkSetRunCaseResult({
 				actorId: context.user.id,
@@ -151,6 +155,7 @@ export const testRunExecutionProcedures = {
 	removeCases: protectedProcedure
 		.errors(testRunErrors)
 		.input(removeCasesSchema)
+		.use(requireRunMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await removeRunCases({
 				actorId: context.user.id,
@@ -172,6 +177,7 @@ export const testRunExecutionProcedures = {
 	setResult: protectedProcedure
 		.errors(testRunErrors)
 		.input(setResultSchema)
+		.use(requireRunCaseMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await setRunCaseResult({
 				actorId: context.user.id,

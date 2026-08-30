@@ -30,6 +30,12 @@ const requireAdmin = o.middleware(({ context, next }) => {
 });
 
 /**
+ * 「不是成员」这句话在两处出现：这里，以及 `lib/project-scope.ts` 里那组按
+ * 子资源 id 判权限的中间件。同一堵墙不该有两种说法，所以从这里导出去共用。
+ */
+export const NOT_PROJECT_MEMBER_MESSAGE = "你不是该项目的成员";
+
+/**
  * 项目级闸门：必须是本项目成员（平台 admin 放行）。规则本体在
  * `lib/project-access.ts`，这里只负责查一次角色并把结论挂进 context。
  *
@@ -54,7 +60,7 @@ export const requireProjectMember = o.middleware(
 			// 「不够格」和「不存在」在界面上要给的出路完全不同（前者是找 owner
 			// 要权限，后者是回列表页）。代价是它确认了这个 id 对应一个真项目——
 			// 项目 id 是 uuid，只经成员之手流出，这点信息量换来的是可用的报错。
-			throw new ORPCError("FORBIDDEN", { message: "你不是该项目的成员" });
+			throw new ORPCError("FORBIDDEN", { message: NOT_PROJECT_MEMBER_MESSAGE });
 		}
 		return next({ context: { projectAccess } });
 	}

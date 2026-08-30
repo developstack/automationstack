@@ -12,8 +12,13 @@ import {
 import { z } from "zod";
 
 import type { Context } from "../context";
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
 import { streamGeneration } from "../lib/ai-generation-stream";
+import {
+	requireAiProposalsMember,
+	requireAiSessionMember,
+	requireModuleMember,
+} from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
 
 const REQUIREMENT_MAX_LENGTH = 4000;
@@ -38,9 +43,16 @@ function actorName(context: Context): string | null {
 }
 
 export const aiRouter = {
+	/**
+	 * 采纳提案。闸门按**目标模块**解析项目，提案那一侧不用再判：
+	 * `acceptProposals` 内部正是以目标模块的 projectId 去筛可采纳的提案
+	 * （见该 repository 的「项目归属在这里合流」），跨项目的提案会落进
+	 * `invalid-proposals`。
+	 */
 	acceptProposals: protectedProcedure
 		.errors({ BAD_REQUEST: {}, NOT_FOUND: {} })
 		.input(acceptProposalsSchema)
+		.use(requireModuleMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await acceptProposals({
 				actorName: actorName(context),
@@ -69,6 +81,7 @@ export const aiRouter = {
 	generate: protectedProcedure
 		.errors({ SERVICE_UNAVAILABLE: {} })
 		.input(generateSchema)
+		.use(requireProjectMember)
 		.handler(async ({ errors, input, signal }) => {
 			// 一次拿到「能不能跑」和「跑不了为什么」：生效口径只看环境变量
 			//（登记表不是生效决策点，见 config-store.ts），没配齐就引导去补。
@@ -94,6 +107,7 @@ export const aiRouter = {
 	getSession: protectedProcedure
 		.errors({ NOT_FOUND: {} })
 		.input(z.object({ sessionId: z.uuid() }))
+		.use(requireAiSessionMember)
 		.handler(async ({ errors, input }) => {
 			const session = await getGenerationSessionById(input.sessionId);
 			if (!session) {
@@ -104,9 +118,11 @@ export const aiRouter = {
 		}),
 	listSessions: protectedProcedure
 		.input(z.object({ projectId: z.uuid() }))
+		.use(requireProjectMember)
 		.handler(({ input }) => listGenerationSessions(input.projectId)),
 	rejectProposals: protectedProcedure
 		.input(proposalIdsSchema)
+		.use(requireAiProposalsMember)
 		.handler(async ({ input }) => {
 			const rejectedIds = await rejectCaseProposals(input.proposalIds);
 			return { rejectedIds };

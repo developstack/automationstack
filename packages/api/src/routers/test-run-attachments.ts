@@ -19,6 +19,10 @@ import {
 	isAttachmentKeyOwnedBy,
 	validateAttachmentUpload,
 } from "../lib/attachment-policy";
+import {
+	requireRunAttachmentMember,
+	requireRunCaseMember,
+} from "../lib/project-scope";
 import { getR2Storage, type R2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
 import {
@@ -127,6 +131,7 @@ export const testRunAttachmentsRouter = {
 	/** 附件列表 + 现签的 GET URL，最近上传的在前。已提交的测试任务同样可读。 */
 	list: protectedProcedure
 		.input(runCaseSchema)
+		.use(requireRunCaseMember)
 		.handler(async ({ input }): Promise<TestRunAttachmentView[]> => {
 			const attachments = await listAttachments(input.runCaseId);
 			const storage = getR2Storage();
@@ -150,6 +155,7 @@ export const testRunAttachmentsRouter = {
 	presignUpload: protectedProcedure
 		.errors(testRunErrors)
 		.input(presignUploadSchema)
+		.use(requireRunCaseMember)
 		.handler(async ({ errors, input }) => {
 			const storage = requireStorage();
 			const declared = validateAttachmentUpload(input);
@@ -186,6 +192,7 @@ export const testRunAttachmentsRouter = {
 	register: protectedProcedure
 		.errors(testRunErrors)
 		.input(registerSchema)
+		.use(requireRunCaseMember)
 		.handler(async ({ context, errors, input }) => {
 			const storage = requireStorage();
 			// 这次查询**不是**守卫，只为拿到 projectId / runId 去验 key 归属
@@ -244,6 +251,7 @@ export const testRunAttachmentsRouter = {
 	remove: protectedProcedure
 		.errors(testRunErrors)
 		.input(attachmentIdSchema)
+		.use(requireRunAttachmentMember)
 		.handler(async ({ context, errors, input }) => {
 			const storage = requireStorage();
 			const result = await removeAttachment(input.attachmentId);

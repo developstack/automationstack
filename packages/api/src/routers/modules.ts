@@ -10,8 +10,9 @@ import {
 } from "@automationstack/db/repositories/modules-repository";
 import { z } from "zod";
 
-import { protectedProcedure } from "../index";
+import { protectedProcedure, requireProjectMember } from "../index";
 import { buildModuleTree } from "../lib/module-tree";
+import { requireModuleMember } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
 
 const createModuleSchema = z.object({
@@ -37,6 +38,16 @@ const reorderModulesSchema = z.object({
 	parentId: z.uuid().nullable(),
 	projectId: z.uuid(),
 });
+
+/**
+ * 按模块 id 寻址的三条（rename / move / remove）把 `id` 改名喂给中间件，
+ * 与 `projects.get` 的 `toProjectScope` 同一种做法。
+ *
+ * 只解析被操作的那个模块：move 的目标父模块不必再解析一次——
+ * `moveModule` 本身就会以 `invalid-parent` 拒绝跨项目的父模块，
+ * 两处都判等于把同一条规则写两遍，而这两遍将来会各自漂移。
+ */
+const toModuleScope = (input: { id: string }) => ({ moduleId: input.id });
 
 const MAX_MODULE_PATH_DEPTH = 10;
 
@@ -83,6 +94,7 @@ export const modulesRouter = {
 	create: protectedProcedure
 		.errors(moduleErrors)
 		.input(createModuleSchema)
+		.use(requireProjectMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await createModule(input);
 			const created = unwrapModuleResult(result, errors);
@@ -98,6 +110,7 @@ export const modulesRouter = {
 	ensurePath: protectedProcedure
 		.errors({ BAD_REQUEST: {}, NOT_FOUND: {} })
 		.input(ensurePathSchema)
+		.use(requireProjectMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await ensureModulePath(input);
 			if (result.kind === "project-not-found") {
@@ -121,6 +134,7 @@ export const modulesRouter = {
 	move: protectedProcedure
 		.errors(moduleErrors)
 		.input(moveModuleSchema)
+		.use(requireModuleMember, toModuleScope)
 		.handler(async ({ context, errors, input }) => {
 			const result = await moveModule(input);
 			const moved = unwrapModuleResult(result, errors);
@@ -136,6 +150,7 @@ export const modulesRouter = {
 	remove: protectedProcedure
 		.errors({ NOT_FOUND: {} })
 		.input(z.object({ id: z.uuid() }))
+		.use(requireModuleMember, toModuleScope)
 		.handler(async ({ context, errors, input }) => {
 			const removed = await removeModule(input.id);
 			if (!removed) {
@@ -153,6 +168,7 @@ export const modulesRouter = {
 	rename: protectedProcedure
 		.errors(moduleErrors)
 		.input(renameModuleSchema)
+		.use(requireModuleMember, toModuleScope)
 		.handler(async ({ context, errors, input }) => {
 			const result = await renameModule(input.id, input.name);
 			const renamed = unwrapModuleResult(result, errors);
@@ -168,6 +184,7 @@ export const modulesRouter = {
 	reorder: protectedProcedure
 		.errors({ BAD_REQUEST: {} })
 		.input(reorderModulesSchema)
+		.use(requireProjectMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await reorderModules(input);
 			if (result.kind === "invalid-set") {
@@ -186,6 +203,7 @@ export const modulesRouter = {
 		}),
 	tree: protectedProcedure
 		.input(z.object({ projectId: z.uuid() }))
+		.use(requireProjectMember)
 		.handler(async ({ input }) => {
 			const rows = await listModulesByProject(input.projectId);
 			return buildModuleTree(rows);
