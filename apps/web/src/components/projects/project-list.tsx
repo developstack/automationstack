@@ -54,10 +54,15 @@ function ProjectCard({ onDelete, onEdit, project }: ProjectCardProps) {
 		<Card>
 			<CardHeader>
 				<CardTitle>
+					{/*
+					 * 进项目落在概览，不是用例列表：「这个项目现在什么状况」是进来之后
+					 * 的第一个问题，用例列表是接下来的动作。项目根路径本身仍旧是用例
+					 * 列表（一级侧栏「用例管理」那一项就指着它），这里改的只是入口的落点。
+					 */}
 					<Link
 						className="hover:underline"
 						params={{ projectId: project.id }}
-						to="/projects/$projectId"
+						to="/projects/$projectId/overview"
 					>
 						{project.name}
 					</Link>
@@ -184,7 +189,11 @@ export function ProjectList() {
 		<section className="flex flex-col gap-4">
 			<div className="flex items-center justify-between">
 				<h1 className="font-semibold text-lg">项目</h1>
-				{/* 主题切换已移入侧边栏底部的用户菜单：全站唯一入口，不在每页各放一个 */}
+				{/*
+				 * 主题切换在账户菜单里：这一页没有侧栏，那颗菜单挂在顶栏右端
+				 * （plain-shell.tsx），项目内则在侧栏底部。总之全站只此一个入口，
+				 * 不在每页各放一个。
+				 */}
 				<Button onClick={create}>
 					<PlusIcon data-icon="inline-start" />
 					新建项目

@@ -1,5 +1,4 @@
 import type { Project } from "@automationstack/db/schema/projects";
-import { Button } from "@automationstack/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -7,76 +6,45 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@automationstack/ui/components/dropdown-menu";
+import { SidebarMenuButton } from "@automationstack/ui/components/sidebar-menu";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { CheckIcon, ChevronsUpDownIcon, FolderKanbanIcon } from "lucide-react";
 
-import { clearModuleSelection } from "@/components/workspace/workspace-search";
 import { orpc } from "@/utils/orpc";
 
 /**
- * 触发器。
+ * 触发器：侧栏里的一行，形态与其它侧栏行同档。
  *
- * 下面所有坐标都从面板内容区的左右缘量起（secondary-panel-surface 的 border-r 在
- * width 之内，标题行与模块树共用同一个内容盒，那 1px 对两列是同一份偏移，可以约掉）；
- * 右缘记作 W。
+ * 用 SidebarMenuButton 而不是自己搭一个 Button：这一行的行高（h-8）、内边距
+ * （px-2）、悬停底色、圆角都得跟上下的品牌行与四条导航行逐像素对齐，而那些数
+ * 全在这个原语里。它此前住在二级面板的标题行（px-4 的语境），靠一串负外边距
+ * 把自己掰回模块树那条 16px 的 gutter 上；搬进侧栏之后那套折算连同它的推导一起
+ * 作废了——现在的对齐是原语自带的。
  *
- * -mx-2.25 px-2 一起看：标题行是 px-4，Button 自带 px-2.5，base class 还有一圈
- * 1px 的透明边框（border border-transparent bg-clip-padding），不管的话项目名会落在
- * 16+1+10 = 27px 上，而底下模块树的每一行内容都在 16px（见 module-tree.tsx 的 gutter
- * 约定），同一列里差着 11px 的两条竖线比没有 hover 底色更扎眼。
- * px-2 先把按钮内边距压到 8px，-mx-2.25 再把它整块外扩 9px —— 8px 抵消标题行 px-4
- * 与模块树 aside p-2 的档位差，多出来的 1px 抵消那圈透明边框：内容盒回到 [16, W−16]，
- * 文字落在 16px；底色被 bg-clip-padding 裁在 padding box [8, W−8]，
- * 与模块行（aside p-2）的高亮块逐像素同宽。
- * 只写 -mx-2.75（不压 px）也能把文字摆到 16px，但底色会内缩 6px，
- * 同一列里两种高亮块差 2px。
+ * 前导图标不是装饰：侧栏里每一行的文字都落在「p-2 容器 + px-2 行 + 16px 图标 +
+ * gap-2」= 40px 上（品牌行、四条导航行都如此），少一枚图标这行字就会缩到 16px，
+ * 在一列左对齐的文字里独自往左突出一截。图标取 FolderKanban，与菜单里「查看全部
+ * 项目」那一条同款——它们说的是同一件事：项目。
  *
- * 宽度不能写 w-full：它就是 width:100%，对 flex 子项解析成标题行 *内容盒* 的宽度
- * （W−32），而负外边距只平移、不撑宽，按钮右缘会停在 W−24——左边齐了右边短 18px，
- * 箭头跟着偏左。要的是「margin box 与标题行内容盒等宽」，两种形态各自达成：
- * lg 及以上标题行是 flex 行，靠 flex-1 —— basis 为 0，剩余空间是容器宽度减掉
- * 「基准尺寸 + 外边距」算出来的，负的那 18px 会被加回来；lg 以下换成抽屉，
- * 头是 SheetHeader 的 flex-col，宽度落在交叉轴上，align-self 默认的 stretch
- * 本来就按同一个式子算，此时反倒不能再给宽度类——给了就成了定尺寸，stretch 失效，
- * 退回上面那个短 18px 的毛病。断点写 lg 是因为抽屉与流内列的切换本来就压在
- * 1024px 这条线上（见 secondary-panel.tsx）。
- * 也没有无条件写 flex-1：在 flex-col 的抽屉头里 basis 0 会作用到高度上，
- * 把 36px 的触发器撑满标题行的 48px——那是另一处不相干的改动。
- *
- * 项目名 min-w-0 flex-1 才截得断：flex 子项默认 min-width:auto，名字一长
- * 会把右端的箭头顶出按钮外。
- *
- * 箭头上的 me-1 是对齐侧栏右侧那条竖线，不是随手加的间距。
- * 底下每一枚尾部控件都是 size="icon-xs"，即 24px 的方按钮里放 12px 的图标
- * （button.tsx 的 icon-xs 把 svg 压到 size-3）；图标居中、透明边框两侧对称，
- * 中心不受边框影响，于是「＋」「⋯」「脑图」三枚图标的中心一律落在 W−28。
- * 而这里的箭头是直接贴着按钮内边距的裸图标，尺寸走默认的 size-4（16px），
- * 内容盒右缘既然在 W−16，裸放的话中心就在 W−24 —— 比那条竖线偏右 4px。
- * 差 4px 恰恰是最难看的一档：远了像两栏，近了才像没对齐。
- * me-1 把它左推 4px，中心回到 W−28。
- *
- * 不用 pe-3 去顶：tailwind-merge 的冲突表里 px 只和 pl/pr 互斥，不含 ps/pe，
- * 基类的 px-2.5 不会被消掉，两条 padding 同时出现、谁赢取决于 Tailwind 的
- * 出栈顺序——能work但是靠巧合。给图标加 margin 没有任何覆盖关系，改了就是改了。
- * 也没有把箭头包进一个 size-6 的槽位里去跟对面逐格对齐：那要多一层 DOM，
- * 而标题行本来就比树行高一档（min-h-12 对 py-0.5），槽位对不出额外的信息。
+ * 名字用 font-medium：它是「当前作用域」，比底下那四个去处高一层；而 data-active
+ * 的加粗只落在导航行上，两者不会撞。
+ * min-w-0 flex-1 才截得断：flex 子项默认 min-width:auto，名字一长会把右端的箭头
+ * 顶出按钮外。truncate 也得自己写——原语只给「最后一个 span」加 truncate，
+ * 而这一行的末位是那枚箭头 svg。
  */
 function ProjectSwitcherTrigger({ projectName }: { projectName: string }) {
 	return (
 		<DropdownMenuTrigger
 			render={
 				// 光念项目名说不清这是个按钮，名字里要带上「按下去会发生什么」
-				<Button
-					aria-label={`切换项目：当前是 ${projectName}`}
-					className="-mx-2.25 px-2 text-sm lg:flex-1"
-					variant="ghost"
-				>
-					<span className="min-w-0 flex-1 truncate text-left">
+				<SidebarMenuButton aria-label={`切换项目：当前是 ${projectName}`}>
+					<FolderKanbanIcon aria-hidden="true" />
+					<span className="min-w-0 flex-1 truncate font-medium">
 						{projectName}
 					</span>
-					<ChevronsUpDownIcon aria-hidden="true" className="me-1" />
-				</Button>
+					<ChevronsUpDownIcon aria-hidden="true" />
+				</SidebarMenuButton>
 			}
 		/>
 	);
@@ -115,13 +83,17 @@ function ProjectSwitcherItem({ isCurrent, project }: ProjectSwitcherItemProps) {
 		<DropdownMenuItem
 			render={
 				/*
-				 * search 走 clearModuleSelection：URL 里的 moduleId / caseId 属于上一个项目，
-				 * 原样带过去会指向新项目里根本不存在的模块，落地就是一片「加载不出来」。
+				 * 落在概览而不是用例列表，与项目列表页的卡片同一个落点（理由见
+				 * components/projects/project-list.tsx）。
+				 *
+				 * 顺带解决了旧写法要 clearModuleSelection 的那件事：URL 里的
+				 * moduleId / caseId 属于上一个项目，原样带过去会指向新项目里根本不
+				 * 存在的模块，落地就是一片「加载不出来」。概览页没有 search 参数，
+				 * Link 不指定 search 时也不会把当前这份带过去，那些参数自己就掉了。
 				 */
 				<Link
 					params={{ projectId: project.id }}
-					search={clearModuleSelection}
-					to="/projects/$projectId"
+					to="/projects/$projectId/overview"
 				/>
 			}
 		>
@@ -133,8 +105,8 @@ function ProjectSwitcherItem({ isCurrent, project }: ProjectSwitcherItemProps) {
 /**
  * 项目列表。
  *
- * 用 useQuery 而不是 useSuspenseQuery：这块头是面板的常驻 chrome，
- * 挂起会把整块二级面板变白（module-panel.tsx 那层 Suspense 是给模块树准备的）。
+ * 用 useQuery 而不是 useSuspenseQuery：这一行是侧栏的常驻 chrome，四周没有任何
+ * Suspense 边界，挂起会一路冒泡到根布局、把整个外壳变白。
  * 菜单只在展开时才挂载，所以这个请求也只在真要切项目时才发。
  */
 function ProjectSwitcherItems({
@@ -168,10 +140,14 @@ interface ProjectSwitcherProps {
 }
 
 /**
- * 二级面板标题行里的项目切换器。
+ * 项目侧栏里的项目切换器：显示当前项目，点开换一个。
  *
- * 面板顶上本来就写着当前项目名，「换一个项目」这件事从这行字上点开最近；
- * 一级侧栏的「项目管理」是另一条路，但那是先退回列表页再进去，中间隔着一整页。
+ * 住在一级侧栏而不是二级面板：侧栏本身就是项目作用域的，切换器换掉的正是这个
+ * 作用域；留在面板里则意味着它的可见性跟着一块与它无关的模块树走——面板只在
+ * 用例管理这一段挂出来（判据见 layout/case-section-path.ts），概览与测试任务页
+ * 会连带失去换项目的能力。
+ *
+ * 顶栏面包屑的「项目」是另一条路，但那是先退回列表页再进去，中间隔着一整页。
  */
 export function ProjectSwitcher({
 	projectId,
@@ -185,7 +161,7 @@ export function ProjectSwitcher({
 				<DropdownMenuSeparator />
 				{/*
 				 * 「我要换个项目」时才发现要找的项目得先建 / 得先改名，出口就该在同一个菜单里，
-				 * 不必先关掉菜单再去一级侧栏找入口。
+				 * 不必先关掉菜单再去顶栏面包屑上找。
 				 */}
 				<DropdownMenuItem render={<Link to="/projects" />}>
 					<FolderKanbanIcon aria-hidden="true" />

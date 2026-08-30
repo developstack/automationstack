@@ -8,12 +8,12 @@ import { clearModuleSelection } from "@/components/workspace/workspace-search";
 /**
  * 侧栏里「模块」这一组的外壳：标题行 + 全项目脑图 + 新建根模块，底下直接装模块树。
  *
- * 单独成组是因为 aside 里现在还排着项目级导航（项目概览、测试评审和执行、
- * 未完成草稿），它们明确在模块分组之外。整块 aside 叫「项目导航」，这一组另有
- * 自己的可及名称——section + aria-labelledby 指向下面那个 <h2>，读屏才分得清两层。
+ * 单独成组是因为 aside 里还排着一行项目级导航（未完成草稿），它明确在模块分组
+ * 之外。整块 aside 叫「项目导航」，这一组另有自己的可及名称——section +
+ * aria-labelledby 指向下面那个 <h2>，读屏才分得清两层。
  *
  * 单独成文件而不是留在 module-tree.tsx 里：那个文件贴着 300 行的上限，
- * 同目录的 project-overview-link.tsx / test-runs-link.tsx 也是这么拆出去的。
+ * 同目录的 case-drafts-link.tsx 也是这么拆出去的。
  */
 const HEADING_ID = "workspace-module-section-heading";
 

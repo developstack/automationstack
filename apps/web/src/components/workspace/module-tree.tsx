@@ -8,7 +8,7 @@ import {
 } from "@automationstack/ui/components/empty";
 import { DndContext } from "@dnd-kit/core";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { FolderTreeIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { CaseDraftsLink } from "@/components/workspace/case-drafts-link";
@@ -27,8 +27,6 @@ import {
 	type ModuleNodeActions,
 	ModuleNodeItem,
 } from "@/components/workspace/module-tree-node";
-import { ProjectOverviewLink } from "@/components/workspace/project-overview-link";
-import { TestRunsLink } from "@/components/workspace/test-runs-link";
 import { useModuleDrag } from "@/components/workspace/use-module-drag";
 import {
 	type ModuleExpansion,
@@ -38,19 +36,6 @@ import { clearModuleSelection } from "@/components/workspace/workspace-search";
 import { orpc } from "@/utils/orpc";
 
 const DRAG_CONTEXT_ID = "module-tree-dnd";
-
-/** 概览页的路径后缀，用来判定侧栏第 0 行的选中态。 */
-const OVERVIEW_PATH_SUFFIX = "/overview";
-
-/**
- * 测试任务相关路径的公共片段。用 includes 而不是 endsWith：测试任务详情页
- * （/test-runs/<id>）与报告页也在这一支下面，侧栏那一行在它们上面同样要亮着。
- */
-const TEST_RUNS_PATH_SEGMENT = "/test-runs";
-
-/** 与 routes/projects/$projectId/route.tsx 同样的取法：只订阅 pathname。 */
-const selectPathname = (state: { location: { pathname: string } }) =>
-	state.location.pathname;
 
 function ModuleTreeEmpty() {
 	return (
@@ -204,14 +189,6 @@ export function ModuleTree({ projectId }: ModuleTreeProps) {
 	);
 	const search = useSearch({ strict: false });
 	const selectedModuleId = search.moduleId;
-	/*
-	 * 选中态按 pathname 判，不按 `selectedModuleId === undefined` 判：概览页与
-	 * 测试任务页都不带 moduleId，光看 moduleId 会让这两行跟着模块行一起亮，
-	 * 看着像同时选中了两个去处。
-	 */
-	const pathname = useRouterState({ select: selectPathname });
-	const onOverview = pathname.endsWith(OVERVIEW_PATH_SUFFIX);
-	const onTestRuns = pathname.includes(TEST_RUNS_PATH_SEGMENT);
 	const handleDeleted = useHandleModuleDeleted(projectId, selectedModuleId);
 	const { actions, close, createRoot, dialog } = useModuleDialogState();
 	const expansion = useModuleExpansion(
@@ -233,15 +210,18 @@ export function ModuleTree({ projectId }: ModuleTreeProps) {
 		 * 底下的 <ModuleSection> 只是分组用的壳，本身不带内边距，这笔账不变。
 		 */
 		<aside aria-label="项目导航" className="flex flex-col gap-1 p-2">
-			<ProjectOverviewLink projectId={projectId} selected={onOverview} />
-			<TestRunsLink projectId={projectId} selected={onTestRuns} />
 			{/*
-			 * 「未完成草稿」也是项目级去处（草稿散落在各个模块下，不属于任何一个），
-			 * 所以和概览、测试任务同组；它没有草稿时整行不渲染，见 case-drafts-link.tsx。
+			 * 「未完成草稿」是项目级去处（草稿散落在各个模块下，不属于任何一个），
+			 * 所以排在「模块」这一组之外、之上；它没有草稿时整行不渲染，
+			 * 见 case-drafts-link.tsx。
+			 *
+			 * 这块面板从此只装用例相关的东西：原先同组的「项目概览」「测试评审和执行」
+			 * 已经升级成一级侧栏的菜单项（见 layout/project-nav-group.tsx），
+			 * 二级面板本身也只在用例管理这一段才挂出来。
 			 */}
 			<CaseDraftsLink nodes={treeQuery.data} projectId={projectId} />
 			{/*
-			 * 上面几行是项目级去处，与模块无关；「模块」这一组从这里开始。
+			 * 上面那行是项目级去处，与模块无关；「模块」这一组从这里开始。
 			 * 不另画分隔线：标题行本身就是分界，而侧栏至今没有任何 <Separator/>，
 			 * 为这一处引进一种新的分隔方式反而多出一条与全局不一致的横线。
 			 */}

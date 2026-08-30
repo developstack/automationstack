@@ -2,7 +2,6 @@ import { SecondaryPanel } from "@automationstack/ui/components/secondary-panel";
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { Suspense } from "react";
 
-import { ProjectSwitcher } from "@/components/layout/project-switcher";
 import { ModuleTree } from "@/components/workspace/module-tree";
 
 /** 骨架行的稳定 key：条数固定，用下标当 key 会被 lint 拦下。 */
@@ -27,19 +26,18 @@ interface ModulePanelProps {
 /**
  * 二级面板：当前项目的模块树。
  *
- * 面板标题给项目名——这块面板装的是「哪个项目里的东西」，标题回答的正是这个；
- * 而「当前是哪个项目」的下一句话往往是「换一个」，于是可见的那一份做成切换器，
- * title 仍传项目名，窄屏下它充当抽屉的可访问名（字符串，切换器顶不了这个班）。
+ * 只给 title、不给 header：项目切换器已经搬去一级侧栏（project-sidebar.tsx），
+ * 换项目是**全局**动作，摆在只有用例段才出现的这块面板里，概览页和测试任务页就
+ * 换不了项目了。这里于是退回原语的纯文本标题——那段文本连同 min-h-12 的行高是
+ * 与顶栏底边对齐的一环，整行删掉会让面板比主内容区高出半格。
+ *
+ * title 仍传项目名：这块面板装的是「哪个项目里的东西」，标题回答的正是这个；
+ * 窄屏下它同时是抽屉（Dialog）的可访问名，那一份只能是字符串。
  * 树里那行「模块 + 新建」的小标题是 ModuleTree 自己的事，两者不是同一层。
  */
 export function ModulePanel({ projectId, projectName }: ModulePanelProps) {
 	return (
-		<SecondaryPanel
-			header={
-				<ProjectSwitcher projectId={projectId} projectName={projectName} />
-			}
-			title={projectName}
-		>
+		<SecondaryPanel title={projectName}>
 			{/*
 			 * 必须自带 Suspense 边界：切项目时 params 先变、loader 还没回来，
 			 * 模块树的 useSuspenseQuery 会挂起。没有这层边界，挂起会一路冒泡到

@@ -10,19 +10,30 @@ import { readSidebarDefaultOpen } from "@/components/layout/sidebar-state";
 
 interface AppShellProps {
 	children: ReactNode;
+	/**
+	 * 要渲染的一级侧栏。省略则是全局作用域的那一份。
+	 *
+	 * 做成 prop 而不是写死：侧栏的内容跟着作用域走——全局四个顶级路由用
+	 * AppSidebar，项目内的页面用 ProjectSidebar（要 projectId）。而外壳本身
+	 * （SidebarProvider 的展开位、满屏高度、主内容的滚动容器）两种作用域完全
+	 * 一样，另开一份外壳就是把这三条推导抄第二遍，迟早各改各的。
+	 */
+	sidebar?: ReactNode;
 }
 
 /**
- * 登录闸门之后所有页面的外壳：一级侧栏 + 自己滚动的主内容。
+ * 登录闸门之后带侧栏页面的外壳：一级侧栏 + 自己滚动的主内容。
  *
- * 项目页在此之上再套二级面板（见 project-shell.tsx），项目列表与成员管理
- * 直接用这一层。登录页不套——它本来就是一张自带满屏布局的页面，
+ * 项目页传入项目侧栏、并在此之上再套二级面板（见 project-shell.tsx）；
+ * 成员管理等四个顶级路由吃默认的全局侧栏。
+ * 项目列表页不用这一层——那时还没有作用域可导航，见 plain-shell.tsx。
+ * 登录页也不套——它本来就是一张自带满屏布局的页面，
  * 而且那时还没有用户，侧栏底部的用户区会直接抛。
  */
-export function AppShell({ children }: AppShellProps) {
+export function AppShell({ children, sidebar }: AppShellProps) {
 	return (
 		<SidebarProvider defaultOpen={readSidebarDefaultOpen()}>
-			<AppSidebar />
+			{sidebar ?? <AppSidebar />}
 			{/*
 			 * h-svh 得在这里给：__root 不再统一派发高度，不撑满视口的话内容一长
 			 * 就变成整页滚动，sticky 的顶栏会跟着被推出视野。SidebarProvider 自带的

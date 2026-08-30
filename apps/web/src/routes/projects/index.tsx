@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
-import { AppHeader, AppShell } from "@/components/layout/app-shell";
 import type { PageTransitionPhase } from "@/components/layout/page-transition";
 import { PageTransition } from "@/components/layout/page-transition";
+import { PlainShell, PlainShellHeader } from "@/components/layout/plain-shell";
 import {
 	ProjectList,
 	ProjectListSkeleton,
@@ -39,8 +39,11 @@ export const Route = createFileRoute("/projects/")({
 const PROJECTS_MAIN = "min-h-0 w-full flex-1 overflow-y-auto";
 
 /*
+ * 这一页没有侧栏：选项目这一步还没有作用域可导航，理由写在 plain-shell.tsx。
+ * 顶栏因此换成裸壳那一份——品牌在左、账户菜单在右（登出与切主题原本在侧栏底部，
+ * 侧栏一走它们就是这一页唯一的出口）。
+ *
  * 顶栏不放页名：main 里已经有一个 h1「项目」，顶栏再放一个就是同页两个一级标题。
- * 于是 AppHeader 这里只剩窄屏那颗侧栏开关。
  *
  * phase 与 /members 同理，由两个调用方各自给出：标注了「骨架 → 就绪」这一跳才只
  * 淡入一次；写死成 "ready" 则连没走 pending 的秒开导航也不再有进场。
@@ -53,14 +56,14 @@ function ProjectsShell({
 	phase: PageTransitionPhase;
 }) {
 	return (
-		<AppShell>
-			<AppHeader />
+		<PlainShell>
+			<PlainShellHeader />
 			{/* main 地标、跳转落点与路由级进场动画都在 PageTransition 里 */}
 			<PageTransition className={PROJECTS_MAIN} phase={phase}>
 				{/* 滚动容器（main）与内容列分离：滚动条贴视口，居中交给这一层 */}
 				<div className="mx-auto w-full max-w-5xl px-4 py-6">{children}</div>
 			</PageTransition>
-		</AppShell>
+		</PlainShell>
 	);
 }
 

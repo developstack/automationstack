@@ -102,8 +102,9 @@ function WorkspaceHeader({ projectName }: { projectName: string }) {
 		 * 顶栏的外观（sticky、高度、下边框）与两颗面板开关都由 ProjectShellHeader
 		 * 统一给出，这里只补本页专属的内容。主题切换已并入侧栏的用户菜单。
 		 *
-		 * 不再放「列表｜脑图」tabs：视图切换已由一级侧栏那两项承担，同一去处留两套
-		 * 导航，用户每次都得先判断该点哪个；而且两处的选中态要各自维护，迟早对不上。
+		 * 不再放「列表｜脑图」tabs：视图切换已由二级面板里的脑图入口承担（「模块」
+		 * 标题行上的全项目脑图 + 每个模块行尾的那一枚），同一去处留两套导航，
+		 * 用户每次都得先判断该点哪个；而且两处的选中态要各自维护，迟早对不上。
 		 */
 		<ProjectShellHeader>
 			<div className="flex min-w-0 items-center gap-2 text-sm">
@@ -144,8 +145,10 @@ function WorkspaceLayout() {
 
 	/*
 	 * 记住「最近在哪个项目里干活」，供设置页作默认选中（见
-	 * components/settings/recent-project.ts）。一级侧栏是全局作用域的，从那里
-	 * 点进设置时地址栏里没有项目，落到「列表第一个」对多项目团队几乎必然是错的。
+	 * components/settings/recent-project.ts）。项目侧栏的「设置」那一项已经把
+	 * projectId 带在 search 里，用不着这份记忆；兜的是另一条入口——全局侧栏
+	 * （/members、/api-tokens 那几页还在用它）是全局作用域的，从那里点进设置时
+	 * 地址栏里没有项目，落到「列表第一个」对多项目团队几乎必然是错的。
 	 */
 	useEffect(() => {
 		rememberRecentProjectId(projectId);
