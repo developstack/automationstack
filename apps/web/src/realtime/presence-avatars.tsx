@@ -29,6 +29,7 @@ const VIEW_LABELS: Record<string, string> = {
 	list: "列表",
 	mindmap: "脑图",
 	overview: "概览",
+	settings: "设置",
 	testRuns: "测试任务",
 };
 

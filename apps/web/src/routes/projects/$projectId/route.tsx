@@ -5,14 +5,12 @@ import {
 	Outlet,
 	useRouterState,
 } from "@tanstack/react-router";
-import { useEffect } from "react";
 
 import {
 	ProjectShell,
 	ProjectShellHeader,
 } from "@/components/layout/project-shell";
 import { ProjectShellSkeleton } from "@/components/layout/project-shell-skeleton";
-import { rememberRecentProjectId } from "@/components/settings/recent-project";
 import { PresenceAvatars } from "@/realtime/presence-avatars";
 import { RealtimeProvider } from "@/realtime/realtime-provider";
 import type { RouterAppContext } from "@/routes/__root";
@@ -77,6 +75,12 @@ const OVERVIEW_PATH_SUFFIX = "/overview";
  * 三者不再细分——presence 只回答「他在哪一块」，分到子页对读的人没有用处。
  */
 const TEST_RUNS_PATH_SEGMENT = "/test-runs";
+/**
+ * 设置页：五格 tab 全落在 search 的 `tab` 上，pathname 自始至终是这一条，所以
+ * 这里只报到「设置」为止。分到格上也没用——AI 配置、API Token、平台账号那三格
+ * 改的根本不是当前项目的东西，广播「他在 API Token」对同项目的人是句废话。
+ */
+const SETTINGS_PATH_SUFFIX = "/settings";
 
 /**
  * 当前路径对应哪个视图。这个值会随 presence 广播出去，别人顶栏头像的 tooltip
@@ -92,6 +96,9 @@ function viewFor(pathname: string): string {
 	}
 	if (pathname.includes(TEST_RUNS_PATH_SEGMENT)) {
 		return "testRuns";
+	}
+	if (pathname.endsWith(SETTINGS_PATH_SUFFIX)) {
+		return "settings";
 	}
 	return "list";
 }
@@ -142,17 +149,6 @@ function WorkspaceLayout() {
 		orpc.projects.get.queryOptions({ input: { id: projectId } })
 	);
 	const projectName = projectQuery.data.name;
-
-	/*
-	 * 记住「最近在哪个项目里干活」，供设置页作默认选中（见
-	 * components/settings/recent-project.ts）。项目侧栏的「设置」那一项已经把
-	 * projectId 带在 search 里，用不着这份记忆；兜的是另一条入口——全局侧栏
-	 * （/members、/api-tokens 那几页还在用它）是全局作用域的，从那里点进设置时
-	 * 地址栏里没有项目，落到「列表第一个」对多项目团队几乎必然是错的。
-	 */
-	useEffect(() => {
-		rememberRecentProjectId(projectId);
-	}, [projectId]);
 
 	return (
 		/*

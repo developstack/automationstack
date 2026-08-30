@@ -10,16 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AiProviderRouteImport } from './routes/ai-provider'
-import { Route as ApiTokensRouteImport } from './routes/api-tokens'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as MembersRouteImport } from './routes/members'
-import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsProjectIdRouteRouteImport } from './routes/projects/$projectId/route'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
 import { Route as ProjectsProjectIdMindmapRouteImport } from './routes/projects/$projectId/mindmap'
 import { Route as ProjectsProjectIdOverviewRouteImport } from './routes/projects/$projectId/overview'
+import { Route as ProjectsProjectIdSettingsRouteImport } from './routes/projects/$projectId/settings'
 import { Route as ProjectsProjectIdTestRunsIndexRouteImport } from './routes/projects/$projectId/test-runs/index'
 import { Route as ProjectsProjectIdTestRunsRunIdIndexRouteImport } from './routes/projects/$projectId/test-runs/$runId/index'
 import { Route as ProjectsProjectIdTestRunsRunIdReportRouteImport } from './routes/projects/$projectId/test-runs/$runId/report'
@@ -29,29 +26,9 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AiProviderRoute = AiProviderRouteImport.update({
-  id: '/ai-provider',
-  path: '/ai-provider',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTokensRoute = ApiTokensRouteImport.update({
-  id: '/api-tokens',
-  path: '/api-tokens',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MembersRoute = MembersRouteImport.update({
-  id: '/members',
-  path: '/members',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
@@ -81,6 +58,12 @@ const ProjectsProjectIdOverviewRoute =
     path: '/overview',
     getParentRoute: () => ProjectsProjectIdRouteRoute,
   } as any)
+const ProjectsProjectIdSettingsRoute =
+  ProjectsProjectIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => ProjectsProjectIdRouteRoute,
+  } as any)
 const ProjectsProjectIdTestRunsIndexRoute =
   ProjectsProjectIdTestRunsIndexRouteImport.update({
     id: '/test-runs/',
@@ -102,15 +85,12 @@ const ProjectsProjectIdTestRunsRunIdReportRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/ai-provider': typeof AiProviderRoute
-  '/api-tokens': typeof ApiTokensRoute
   '/login': typeof LoginRoute
-  '/members': typeof MembersRoute
-  '/settings': typeof SettingsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
   '/projects/': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
+  '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/test-runs/': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
@@ -118,14 +98,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/ai-provider': typeof AiProviderRoute
-  '/api-tokens': typeof ApiTokensRoute
   '/login': typeof LoginRoute
-  '/members': typeof MembersRoute
-  '/settings': typeof SettingsRoute
   '/projects': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
+  '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/test-runs': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
@@ -134,15 +111,12 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/ai-provider': typeof AiProviderRoute
-  '/api-tokens': typeof ApiTokensRoute
   '/login': typeof LoginRoute
-  '/members': typeof MembersRoute
-  '/settings': typeof SettingsRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
   '/projects/': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
+  '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
   '/projects/$projectId/test-runs/': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
@@ -152,15 +126,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/ai-provider'
-    | '/api-tokens'
     | '/login'
-    | '/members'
-    | '/settings'
     | '/projects/$projectId'
     | '/projects/'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
+    | '/projects/$projectId/settings'
     | '/projects/$projectId/'
     | '/projects/$projectId/test-runs/'
     | '/projects/$projectId/test-runs/$runId/report'
@@ -168,14 +139,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/ai-provider'
-    | '/api-tokens'
     | '/login'
-    | '/members'
-    | '/settings'
     | '/projects'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
+    | '/projects/$projectId/settings'
     | '/projects/$projectId'
     | '/projects/$projectId/test-runs'
     | '/projects/$projectId/test-runs/$runId/report'
@@ -183,15 +151,12 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/ai-provider'
-    | '/api-tokens'
     | '/login'
-    | '/members'
-    | '/settings'
     | '/projects/$projectId'
     | '/projects/'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
+    | '/projects/$projectId/settings'
     | '/projects/$projectId/'
     | '/projects/$projectId/test-runs/'
     | '/projects/$projectId/test-runs/$runId/report'
@@ -200,11 +165,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AiProviderRoute: typeof AiProviderRoute
-  ApiTokensRoute: typeof ApiTokensRoute
   LoginRoute: typeof LoginRoute
-  MembersRoute: typeof MembersRoute
-  SettingsRoute: typeof SettingsRoute
   ProjectsProjectIdRouteRoute: typeof ProjectsProjectIdRouteRouteWithChildren
   ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
@@ -218,39 +179,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ai-provider': {
-      id: '/ai-provider'
-      path: '/ai-provider'
-      fullPath: '/ai-provider'
-      preLoaderRoute: typeof AiProviderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api-tokens': {
-      id: '/api-tokens'
-      path: '/api-tokens'
-      fullPath: '/api-tokens'
-      preLoaderRoute: typeof ApiTokensRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/members': {
-      id: '/members'
-      path: '/members'
-      fullPath: '/members'
-      preLoaderRoute: typeof MembersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/': {
@@ -288,6 +221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdOverviewRouteImport
       parentRoute: typeof ProjectsProjectIdRouteRoute
     }
+    '/projects/$projectId/settings': {
+      id: '/projects/$projectId/settings'
+      path: '/settings'
+      fullPath: '/projects/$projectId/settings'
+      preLoaderRoute: typeof ProjectsProjectIdSettingsRouteImport
+      parentRoute: typeof ProjectsProjectIdRouteRoute
+    }
     '/projects/$projectId/test-runs/': {
       id: '/projects/$projectId/test-runs/'
       path: '/test-runs'
@@ -315,6 +255,7 @@ declare module '@tanstack/react-router' {
 interface ProjectsProjectIdRouteRouteChildren {
   ProjectsProjectIdMindmapRoute: typeof ProjectsProjectIdMindmapRoute
   ProjectsProjectIdOverviewRoute: typeof ProjectsProjectIdOverviewRoute
+  ProjectsProjectIdSettingsRoute: typeof ProjectsProjectIdSettingsRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
   ProjectsProjectIdTestRunsIndexRoute: typeof ProjectsProjectIdTestRunsIndexRoute
   ProjectsProjectIdTestRunsRunIdReportRoute: typeof ProjectsProjectIdTestRunsRunIdReportRoute
@@ -325,6 +266,7 @@ const ProjectsProjectIdRouteRouteChildren: ProjectsProjectIdRouteRouteChildren =
   {
     ProjectsProjectIdMindmapRoute: ProjectsProjectIdMindmapRoute,
     ProjectsProjectIdOverviewRoute: ProjectsProjectIdOverviewRoute,
+    ProjectsProjectIdSettingsRoute: ProjectsProjectIdSettingsRoute,
     ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
     ProjectsProjectIdTestRunsIndexRoute: ProjectsProjectIdTestRunsIndexRoute,
     ProjectsProjectIdTestRunsRunIdReportRoute:
@@ -340,11 +282,7 @@ const ProjectsProjectIdRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AiProviderRoute: AiProviderRoute,
-  ApiTokensRoute: ApiTokensRoute,
   LoginRoute: LoginRoute,
-  MembersRoute: MembersRoute,
-  SettingsRoute: SettingsRoute,
   ProjectsProjectIdRouteRoute: ProjectsProjectIdRouteRouteWithChildren,
   ProjectsIndexRoute: ProjectsIndexRoute,
 }

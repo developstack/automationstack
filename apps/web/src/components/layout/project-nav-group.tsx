@@ -17,7 +17,7 @@ import { isCaseSectionPathname } from "@/components/layout/case-section-path";
 /**
  * 项目内一级侧栏的导航组，以及组成它的那几项。
  *
- * 写法一律照抄 global-nav-group.tsx：每一项单独一个组件而不是由一份数组渲染，
+ * 每一项单独一个组件而不是由一份数组渲染，
  * 因为 `to` 在 TanStack Router 里是**按路由树校验过的字面量**，塞进数组就只能
  * 退化成 string，整棵路由树的类型保护当场作废；而且这几项各自带着不同的活动态
  * 判定与理由（见下），共性只有「一个图标加一行字」。
@@ -59,8 +59,7 @@ function OverviewNavItem({ pathname, projectId }: NavItemProps) {
  * 按前缀算——前缀匹配会让四项在任何项目内页面上同时高亮。判据单独抽在
  * case-section-path.ts 里（项目根路径，或脑图页），二级模块面板也用同一份。
  *
- * activeOptions.exact 不能省，而且它与 isActive 刻意不同步，理由与
- * global-nav-group.tsx 里「项目管理」那一项一字不差：Link 默认按前缀判定活动态，
+ * activeOptions.exact 不能省，而且它与 isActive 刻意不同步：Link 默认按前缀判定活动态，
  * 于是待在 /overview、/test-runs 里时它会挂上 aria-current="page"，读屏据此播报
  * 「当前页」——那句播报是假的。视觉高亮走 isActive（纯视觉，按本段的判据），
  * 语义只在精确匹配时给。代价是脑图页视觉亮着而没有 aria-current，这是对的：
@@ -113,20 +112,28 @@ function TestRunsNavItem({ pathname, projectId }: NavItemProps) {
 /**
  * 设置。
  *
- * 目标是全局的 /settings 页，只把当前项目通过 search 带过去（那一页本来就用
- * projectId 决定在配哪个项目，见 components/settings/settings-search.ts）；
- * 设置页搬进项目内是下一批的事。
+ * 这一项曾经指向全局的 /settings，把当前项目通过 search 带过去；那时它是**离开**
+ * 项目外壳的出口——落地后渲染的是另一套外壳（AppShell + 全局侧栏），这条侧栏根本
+ * 不在屏幕上，所以当时刻意不给 isActive，算一个永远为假的高亮只会留下死代码。
+ * 设置页如今就在项目里（/projects/<id>/settings，四个顶级路由已合并进它的五格
+ * tab），这一项与上面三项一样是项目内部的一站，高亮该照常亮。
  *
- * 不给 isActive，也不给 activeOptions：这一项是**离开**项目外壳的出口，
- * 落地后渲染的是另一套外壳（AppShell + 全局侧栏），这条侧栏那时根本不在屏幕上，
- * 算一个永远为假的高亮只会留下一段没人验证得到的死代码。
+ * 按前缀算：五格 tab 只落在 search 的 `tab` 上，pathname 自始至终是这一条；
+ * 前缀写法同时兜住将来在设置底下再长出子路由的情况。
+ *
+ * activeOptions 不给（即默认的前缀判定）：与「项目管理」「用例管理」那两项不同，
+ * 这一项的落点没有更深的子页面可去，前缀为真时人就在这一页上，
+ * aria-current="page" 是真话。
  */
-function ProjectSettingsNavItem({ projectId }: { projectId: string }) {
+function ProjectSettingsNavItem({ pathname, projectId }: NavItemProps) {
 	return (
 		<SidebarMenuItem>
 			<SidebarMenuButton
 				aria-label="设置"
-				render={<Link search={{ projectId }} to="/settings" />}
+				isActive={pathname.startsWith(`/projects/${projectId}/settings`)}
+				render={
+					<Link params={{ projectId }} to="/projects/$projectId/settings" />
+				}
 				tooltip="设置"
 			>
 				<SettingsIcon aria-hidden="true" />
@@ -143,8 +150,8 @@ interface ProjectNavGroupProps {
 /**
  * 项目内的一级去处。
  *
- * 不加组标题、也不 mt-auto 顶到底部，理由同 global-nav-group.tsx：全组只有四项，
- * 再没有第二组要跟它区分，标题除了占掉一行什么也没说。
+ * 不加组标题、也不 mt-auto 顶到底部：全组只有四项，再没有第二组要跟它区分，
+ * 标题除了占掉一行什么也没说。
  *
  * 顺序按「先看状况、再干活、再看这一轮在测什么、最后是配一次就走的设置」排：
  * 概览是进项目后的第一个问题，用例管理是每天的落脚点，测试任务是用例库的消费方。
@@ -157,7 +164,7 @@ export function ProjectNavGroup({ projectId }: ProjectNavGroupProps) {
 				<OverviewNavItem pathname={pathname} projectId={projectId} />
 				<CasesNavItem pathname={pathname} projectId={projectId} />
 				<TestRunsNavItem pathname={pathname} projectId={projectId} />
-				<ProjectSettingsNavItem projectId={projectId} />
+				<ProjectSettingsNavItem pathname={pathname} projectId={projectId} />
 			</SidebarMenu>
 		</SidebarGroup>
 	);

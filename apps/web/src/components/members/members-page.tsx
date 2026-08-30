@@ -17,8 +17,9 @@ import {
 } from "@/components/members/members-table";
 
 /**
- * 侧边栏只给管理员显示入口，但地址栏是拦不住的：非管理员直接输 /members
- * 会被 adminProcedure 挡成 FORBIDDEN。放任它冒到全站兜底的错误边界
+ * 只给管理员显示入口（搬家前是全局侧栏里那一项，如今是设置页的「平台账号」那格
+ * tab，判定见 settings-tabs.tsx），但地址栏是拦不住的：非管理员手敲
+ * ?tab=members 会被 adminProcedure 挡成 FORBIDDEN。放任它冒到全站兜底的错误边界
  * （router.tsx 的 defaultErrorComponent）不至于白页，但那儿只会把服务端那句
  * FORBIDDEN 原样摆出来，还配一颗重试——权限不够，重试多少次都是同一句话。
  * 不如在这里说清楚「这页要管理员」以及从哪儿回去。
