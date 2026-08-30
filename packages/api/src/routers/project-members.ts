@@ -1,0 +1,145 @@
+/**
+ * 项目成员管理。授权规则的本体在 `lib/project-access.ts`，这里只做编排。
+ *
+ * 四个 handler 全部先过 `requireProjectMember`（进得来才谈得上看名单），
+ * 其中三个写操作再额外要求 `canAdministerProject`——也就是项目 owner 或平台
+ * admin。**不用 `adminProcedure`**：那会让每加一个人都得去找平台管理员，
+ * 而 owner 这一档存在的全部理由就是让「谁能加人」有个项目内的答案。
+ *
+ * 不发 `publishInvalidate`：实时协议的 `InvalidateEntity` 里没有成员这一类
+ * （`realtime/protocol.ts`），加一类要连着前端的失效映射一起改，属于下一批
+ * 的成员管理页。成员变更后对方需要刷新一次页面才生效，本批接受这个代价。
+ */
+
+import {
+	addProjectMember,
+	countProjectOwners,
+	getProjectRole,
+	listProjectMembers,
+	removeProjectMember,
+	updateProjectMemberRole,
+} from "@automationstack/db/repositories/project-members-repository";
+import { getUserById } from "@automationstack/db/repositories/users-repository";
+import { z } from "zod";
+
+import { protectedProcedure, requireProjectMember } from "../index";
+import { canAdministerProject } from "../lib/project-access";
+
+const projectScopeSchema = z.object({ projectId: z.uuid() });
+
+const memberScopeSchema = z.object({
+	projectId: z.uuid(),
+	userId: z.uuid(),
+});
+
+const projectRoleSchema = z.enum(["owner", "member"]);
+
+const routerErrors = {
+	BAD_REQUEST: {},
+	CONFLICT: {},
+	FORBIDDEN: {},
+	NOT_FOUND: {},
+} as const;
+
+const OWNER_REQUIRED_MESSAGE = "只有项目 owner 能管理成员";
+
+/**
+ * 这次改动会不会把项目的最后一个 owner 拿掉。
+ *
+ * 真发生了，项目就再没人能加人、改名、删除，只有平台 admin 能救——与
+ * `routers/users.ts` 拦「最后一个管理员」是同一条思路，作用域从平台缩到项目。
+ *
+ * 两次查询之间有竞态（两个 owner 同时退出），与那边一样接受：代价是项目
+ * 暂时无主，而不是数据损坏，平台 admin 一条 `add` 就能修回来。
+ */
+async function wouldRemoveLastOwner(
+	projectId: string,
+	targetUserId: string
+): Promise<boolean> {
+	if ((await getProjectRole(projectId, targetUserId)) !== "owner") {
+		return false;
+	}
+	return (await countProjectOwners(projectId)) <= 1;
+}
+
+export const projectMembersRouter = {
+	add: protectedProcedure
+		.errors(routerErrors)
+		.input(
+			projectScopeSchema.extend({
+				role: projectRoleSchema.optional(),
+				userId: z.uuid(),
+			})
+		)
+		.use(requireProjectMember)
+		.handler(async ({ context, errors, input }) => {
+			if (!canAdministerProject(context.projectAccess)) {
+				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
+			}
+			// 先确认账号存在：直接插会撞外键，那是一条裸的数据库异常，
+			// 到不了前端就变成 500，用户看不出是「用户名填错了」。
+			if ((await getUserById(input.userId)) === null) {
+				throw errors.NOT_FOUND({ message: "用户不存在" });
+			}
+			const member = await addProjectMember({
+				projectId: input.projectId,
+				role: input.role,
+				userId: input.userId,
+			});
+			if (member === null) {
+				throw errors.CONFLICT({ message: "该用户已经是项目成员" });
+			}
+			return member;
+		}),
+	/** 项目内**所有**成员都能看名单：连队友是谁都不知道，协作无从谈起。 */
+	list: protectedProcedure
+		.errors(routerErrors)
+		.input(projectScopeSchema)
+		.use(requireProjectMember)
+		.handler(({ input }) => listProjectMembers(input.projectId)),
+	remove: protectedProcedure
+		.errors(routerErrors)
+		.input(memberScopeSchema)
+		.use(requireProjectMember)
+		.handler(async ({ context, errors, input }) => {
+			if (!canAdministerProject(context.projectAccess)) {
+				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
+			}
+			if (await wouldRemoveLastOwner(input.projectId, input.userId)) {
+				throw errors.BAD_REQUEST({
+					message: "不能移除项目的最后一个 owner",
+				});
+			}
+			if (!(await removeProjectMember(input.projectId, input.userId))) {
+				throw errors.NOT_FOUND({ message: "该用户不是项目成员" });
+			}
+			return { projectId: input.projectId, userId: input.userId };
+		}),
+	updateRole: protectedProcedure
+		.errors(routerErrors)
+		.input(memberScopeSchema.extend({ role: projectRoleSchema }))
+		.use(requireProjectMember)
+		.handler(async ({ context, errors, input }) => {
+			if (!canAdministerProject(context.projectAccess)) {
+				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
+			}
+			const isDemotion = input.role !== "owner";
+			if (
+				isDemotion &&
+				(await wouldRemoveLastOwner(input.projectId, input.userId))
+			) {
+				throw errors.BAD_REQUEST({
+					message: "不能降级项目的最后一个 owner",
+				});
+			}
+			const member = await updateProjectMemberRole(
+				input.projectId,
+				input.userId,
+				input.role
+			);
+			if (member === null) {
+				throw errors.NOT_FOUND({ message: "该用户不是项目成员" });
+			}
+			return member;
+		}),
+};

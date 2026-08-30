@@ -113,11 +113,12 @@ async function ingestParsedExecution(
 	request: IngestExecutionRequest,
 	user: User
 ): Promise<IngestExecutionOutcome> {
-	// 只查项目存不存在，**不查成员资格——这不是漏掉的鉴权**（§4.4）。
-	// 本仓库没有项目级成员模型：`requireUser` 只管「登录了没有」，`listProjects()`
-	// 不带用户参数，`packages/api/src/index.ts` 明写「业务数据本身不分权限」。
-	// 于是 token 的权限严格等于其主人，正是 §4.4 要的边界；在这里凭空加一道
-	// 项目成员校验，反而会让 token 比它主人的浏览器会话更受限。
+	// 只查项目存不存在，不查成员资格。§4.4 的边界是「token 的权限严格等于其
+	// 主人」，所以这里该不该加成员校验，取决于**主人的浏览器会话**受不受限。
+	// 项目成员模型已经落地（`schema/project-members.ts`），但 B2a 只收口了
+	// projects.get/update/remove 与 projectMembers.*，上报这条链路还没跟上——
+	// 于是现在 token 比它主人略宽。下一批推授权时这里要一起改，并且要照 §4.4
+	// 的口径改成「按 token 主人的成员资格判」，而不是另起一套。
 	if (!(await projectExists(request.projectId))) {
 		return { kind: "project-not-found" };
 	}

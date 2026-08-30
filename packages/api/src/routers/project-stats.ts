@@ -24,8 +24,12 @@ const projectStatsInputSchema = z.object({ projectId: z.uuid() });
  *
  * 所有过程都只按 projectId 聚合，不额外校验项目是否存在：项目不存在时返回
  * 全零 / 空列表，与 cases.list 对不存在项目返回空页的行为一致，概览页因此
- * 不需要为「项目刚被别人删掉」写一条额外的错误分支。本期没有项目级授权
- * （见 schema/users.ts），登录用户可见全部项目，所以也没有归属校验可做。
+ * 不需要为「项目刚被别人删掉」写一条额外的错误分支。
+ *
+ * ⚠️ 项目级授权（`schema/project-members.ts`）已经落地，但**这个 router 还没
+ * 收口**：B2a 只把 `requireProjectMember` 挂在 projects.get/update/remove 与
+ * projectMembers.* 上。也就是说非成员拿着一个 projectId 仍能读到这里的聚合
+ * 数字。下一批把中间件推到其余项目作用域过程时，这里是必须覆盖的一处。
  *
  * 鉴权用 protectedProcedure，与 cases.list / projects.get 完全同档：统计的
  * 就是用例与模块数据本身，口子不能比数据源更宽。注意 `/mcp` 端点用

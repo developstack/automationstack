@@ -4,7 +4,11 @@
 /**
  * 自动化上报演示的种子（`examples/{nodejs,python,jdk}` 三份示例共用的前置）。
  *
- *   pnpm db:seed-automation-demo
+ *   pnpm db:seed-automation-demo --owner <用户名>
+ *
+ * `--owner` 的账号会被设成演示项目的 owner。示例走 token、不看成员资格，不给也
+ * 照样能上报——但那样界面上没人看得见这个项目，而「跑完能在页面上看到结果」
+ * 恰恰是这个演示的重点。项目级授权见 `packages/db/src/schema/project-members.ts`。
  *
  * 造出一整条「跑完能真的写进去」的链路，并把三份示例需要的三样环境变量原样
  * 打印出来：项目 id、token 明文、平台地址。不写死某一份示例：三份用的是
@@ -42,9 +46,11 @@ import {
 	DEMO_RUN_NAME_SMOKE,
 	DEMO_SOURCE_REF_MANUAL,
 	DEMO_SOURCE_REF_OUT_OF_SCOPE,
+	DEMO_SPEC,
 	REGRESSION_SOURCE_REFS,
 	SMOKE_SOURCE_REFS,
 } from "./seed-automation-demo-cases";
+import { ARGV_OFFSET, ownerSummaryLine, resolveSeedOwner } from "./seed-owner";
 
 /** 这枚 token 的主人。普通成员即可——ingest 的权限严格等于 token 主人。 */
 const DEMO_USERNAME = "automation-demo";
@@ -241,12 +247,9 @@ function printEnvBlock(projectId: string, plaintext: string): void {
 }
 
 async function main(): Promise<void> {
+	const owner = await resolveSeedOwner(process.argv.slice(ARGV_OFFSET));
 	const user = await ensureDemoUser();
-	const seeded = await seedProject({
-		description: "自动化上报演示：examples/ 下三个示例共用的项目",
-		modules: [{ cases: DEMO_CASES, path: ["自动化演示", "核心链路"] }],
-		name: DEMO_PROJECT_NAME,
-	});
+	const seeded = await seedProject(DEMO_SPEC, owner?.id);
 	if (seeded.errors.length > 0) {
 		throw new Error(`用例写入失败：\n${seeded.errors.join("\n")}`);
 	}
@@ -276,6 +279,7 @@ async function main(): Promise<void> {
 	console.log(
 		[
 			`项目：${DEMO_PROJECT_NAME}（${seeded.projectId}）${seeded.projectCreated ? "，新建" : "，复用已有"}`,
+			ownerSummaryLine(owner, seeded.owner),
 			`用例：新建 ${seeded.casesCreated} 条，已存在跳过 ${seeded.casesSkipped} 条；共 ${DEMO_CASES.length} 条`,
 			`  ${DEMO_SOURCE_REF_OUT_OF_SCOPE} 故意不勾进任何任务 → 对账单里的「越界」`,
 			`测试任务：《${DEMO_RUN_NAME_REGRESSION}》（${regression.runId}）${regression.created ? "，新建" : "，复用已有"}，${REGRESSION_SOURCE_REFS.length} 条用例`,

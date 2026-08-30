@@ -1,10 +1,14 @@
 import { pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 /**
- * 两档权限（用户选定「管理员创建账号」模式）：
+ * 两档**平台**权限（用户选定「管理员创建账号」模式）：
  * - `admin`：额外可进「成员管理」，创建 / 停用 / 重置成员账号
- * - `member`：项目、模块、用例全部可读可写，与 admin 无差别
- * 项目级授权不在本期范围内——所有登录用户看到同一批项目。
+ * - `member`：普通账号
+ *
+ * 这两档只回答「你在这台平台上是谁」，不回答「你能看见哪个项目」——后者由
+ * `schema/project-members.ts` 的项目内角色（owner / member）决定。两者唯一的
+ * 交叉点：平台 `admin` 在项目级授权上一律放行（他本来就能改任何人的账号，
+ * 再拦他看项目只是把同一件事绕远路）。
  */
 export const userRoleEnum = pgEnum("user_role", ["admin", "member"]);
 

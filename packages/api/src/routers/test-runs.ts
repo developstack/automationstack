@@ -141,8 +141,8 @@ export const testRunsRouter = {
 	 * 单条用例的结论时间线（谁判的、几点判的、谁打回的、当时写的什么）。
 	 *
 	 * 返回外形与 `listEvents` 一致（`{ actorName, event }`），前端两处折叠区
-	 * 是同一种列表，渲染逻辑共用。鉴权同本 router 其余 procedure：
-	 * 登录即可见——本期所有登录用户看到同一批项目（见 schema/users.ts）。
+	 * 是同一种列表，渲染逻辑共用。鉴权同本 router 其余 procedure：登录即可见。
+	 * 项目级授权（`schema/project-members.ts`）尚未推到这里，见下一批。
 	 */
 	listCaseEvents: protectedProcedure
 		.input(runCaseIdSchema)

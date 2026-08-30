@@ -35,8 +35,9 @@ import { jiraDefectProcedures } from "./jira-defects";
  * 构造——刻意不用 `Omit<JiraConfig, "apiTokenCipher">` 再 spread：后者在给表加
  * 新的敏感列时会静默地把它带出去，独立接口则会在编译期少一个字段就报错。
  *
- * 全部 `protectedProcedure`：本期没有项目级授权（见 `schema/users.ts`），
- * 登录用户可见全部项目，与 `projects` / `cases` 等既有路由同档。
+ * 全部 `protectedProcedure`，**尚未挂 `requireProjectMember`**：B2a 只收口了
+ * projects.get/update/remove 与 projectMembers.*，其余项目作用域的过程留到
+ * 下一批。这里尤其要记着——Jira 配置里有凭据，是最不该漏的一处。
  */
 
 const projectIdSchema = z.object({ projectId: z.uuid() });

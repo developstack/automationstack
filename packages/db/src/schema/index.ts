@@ -5,6 +5,7 @@ export * from "./automation-executions";
 export * from "./case-attachments";
 export * from "./integrations";
 export * from "./modules";
+export * from "./project-members";
 export * from "./project-settings";
 export * from "./projects";
 export * from "./test-cases";

@@ -4,9 +4,13 @@
 /**
  * 演示数据种子脚本（plan §7 M12）。
  *
- *   pnpm db:seed            幂等补齐：项目/模块按名复用，用例按 sourceRef 去重
- *   pnpm db:seed --reset    先清空全部业务数据（projects 级联）再插入
- *   pnpm db:seed --purge-smoke  只删除历史冒烟项目，不写入种子
+ *   pnpm db:seed --owner <用户名>   幂等补齐：项目/模块按名复用，用例按 sourceRef 去重
+ *   pnpm db:seed --reset            先清空全部业务数据（projects 级联）再插入
+ *   pnpm db:seed --purge-smoke      只删除历史冒烟项目，不写入种子
+ *
+ * `--owner` 指定的账号会被设成种子项目的 owner。**不给就没人能看见这个项目**
+ * （项目级授权见 `packages/db/src/schema/project-members.ts`），脚本会为此打一条
+ * 警告——细节与错误文案在 `./seed-owner.ts`。
  *
  * 本脚本只做编排：所有 DB 访问都在 packages/db 的 repository 里
  * （docs/init-code-quantity.md 硬规则：packages/db 之外不得直接用 drizzle）。
@@ -24,12 +28,10 @@ import {
 	seedProject,
 } from "../packages/db/src/repositories/seed-repository";
 import { BULK_ORDER_CASES } from "./seed-bulk-cases";
+import { ARGV_OFFSET, ownerSummaryLine, resolveSeedOwner } from "./seed-owner";
 
 /** 历史各轮冒烟残留的项目名，--reset / --purge-smoke 时清理。 */
 const SMOKE_PROJECT_NAMES = ["AI 冒烟 1787123122370", "T7s smoke"];
-
-/** process.argv 前两项是 node 与脚本路径，从第 3 项起才是用户参数。 */
-const ARGV_OFFSET = 2;
 
 function step(id: string, text: string, expected: string) {
 	return { expected, id, step: text };
@@ -210,22 +212,27 @@ async function purgeSmokeProjects(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-	const args = new Set(process.argv.slice(ARGV_OFFSET));
+	const argv = process.argv.slice(ARGV_OFFSET);
+	const args = new Set(argv);
 	if (args.has("--purge-smoke")) {
 		await purgeSmokeProjects();
 		return;
 	}
+	// 在 --reset 之前解析：owner 写错了要在删库**之前**就退出，
+	// 而不是清空之后才发现，那样人得先把数据重建一遍才能重试。
+	const owner = await resolveSeedOwner(argv);
 	if (args.has("--reset")) {
 		const cleared = await resetBusinessData();
 		console.log(`--reset：已清空 ${cleared.projects} 个项目及其级联数据`);
 	} else {
 		await purgeSmokeProjects();
 	}
-	const result = await seedProject(DEMO_PROJECT);
+	const result = await seedProject(DEMO_PROJECT, owner?.id);
 	console.log(
 		[
 			`项目：${DEMO_PROJECT.name}（${result.projectId}）`,
 			`  ${result.projectCreated ? "新建" : "复用已有"}`,
+			ownerSummaryLine(owner, result.owner),
 			`新建模块：${result.modulesCreated}`,
 			`新建用例：${result.casesCreated}，已存在跳过：${result.casesSkipped}`,
 		].join("\n")

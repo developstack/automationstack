@@ -3,6 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "../index";
 import { type Project, projects } from "../schema/projects";
 import { testRuns } from "../schema/test-runs";
+import type { DbTransaction } from "./repository-types";
 
 export interface CreateProjectInput {
 	description?: string | null;
@@ -38,17 +39,31 @@ export async function getProjectByName(name: string): Promise<Project | null> {
 	return row ?? null;
 }
 
-export async function createProject(
+/**
+ * 建项目的插入语句本体。导出成 `*InTx` 是因为它有一个跨 repository 的组合方：
+ * `project-members-repository.createProjectWithOwner` 要在同一个事务里顺手写下
+ * owner 那一行（少了它，新项目对创建者自己都不可见）。
+ */
+export async function createProjectInTx(
+	tx: DbTransaction,
 	input: CreateProjectInput
 ): Promise<Project> {
-	const [row] = await db
+	const [row] = await tx
 		.insert(projects)
 		.values({ description: input.description ?? null, name: input.name })
 		.returning();
 	if (!row) {
-		throw new Error("createProject: insert returned no row");
+		throw new Error("createProjectInTx: insert returned no row");
 	}
 	return row;
+}
+
+/**
+ * 不带成员的建项目。**只剩种子脚本在用**——API 走
+ * `createProjectWithOwner`，因为经界面建的项目必须有 owner 才进得去。
+ */
+export function createProject(input: CreateProjectInput): Promise<Project> {
+	return db.transaction((tx) => createProjectInTx(tx, input));
 }
 
 export async function updateProject(

@@ -10,6 +10,7 @@ import { casesRouter } from "./cases";
 import { jiraRouter } from "./jira";
 import { mindmapRouter } from "./mindmap";
 import { modulesRouter } from "./modules";
+import { projectMembersRouter } from "./project-members";
 import { projectSettingsRouter } from "./project-settings";
 import { projectStatsRouter } from "./project-stats";
 import { projectsRouter } from "./projects";
@@ -28,6 +29,7 @@ export const appRouter = {
 	jira: jiraRouter,
 	mindmap: mindmapRouter,
 	modules: modulesRouter,
+	projectMembers: projectMembersRouter,
 	projectSettings: projectSettingsRouter,
 	projectStats: projectStatsRouter,
 	projects: projectsRouter,

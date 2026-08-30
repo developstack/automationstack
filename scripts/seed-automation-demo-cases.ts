@@ -137,3 +137,10 @@ export const REGRESSION_SOURCE_REFS = [
 
 /** 冒烟任务只收 2 条，与回归任务**故意重叠**，好让一次上报写进两个任务。 */
 export const SMOKE_SOURCE_REFS = ["AUTO-LOGIN-001", DEMO_SOURCE_REF_MANUAL];
+
+/** 演示项目本体（名字 / 描述 / 唯一那棵模块路径）。编排侧原样喂给 seedProject。 */
+export const DEMO_SPEC = {
+	description: "自动化上报演示：examples/ 下三个示例共用的项目",
+	modules: [{ cases: DEMO_CASES, path: ["自动化演示", "核心链路"] }],
+	name: DEMO_PROJECT_NAME,
+};
