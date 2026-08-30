@@ -8,6 +8,7 @@
  * 第一眼：blobatar 按用户名确定性生成，与顶栏的在线成员组是同一份实现、同一张
  * 脸，扫一眼就对得上人。
  */
+import { AvatarGroup } from "@automationstack/ui/components/avatar-group";
 import {
 	Tooltip,
 	TooltipContent,
@@ -63,15 +64,36 @@ const EDITING_RING = "ring-amber-600 dark:ring-amber-400";
 /**
  * 整堆头像共用一个 trigger，而不是每枚各挂一个 tooltip：横着划过这一格会连弹
  * 好几次，而这一列要回答的是「这条用例上都有谁」这一个问题，答案就该是一段话。
+ * 因此 AvatarGroup 是包在这个 trigger **里面**的（顶栏正相反：那里每枚头像
+ * 自己就是一个 trigger，AvatarGroup 在外层）。
  * 不覆盖 render：Base UI 默认渲染 button，键盘能聚焦、触屏够得到
  * （参考 realtime/presence-avatars.tsx）。头像本身 aria-hidden，
  * 可访问名统一由这里的 aria-label 给全。
  *
- * -space-x-1 = 重叠 4px（size-5 的 20%），于是每多一枚头像只多占 16px；
  * rounded-full 让聚焦轮廓贴着头像堆的胶囊外形走，不是一个方框套着一排圆。
+ * 重叠间距挪去了 STACK_CLASS：现在 trigger 的直接子节点只有 AvatarGroup 那
+ * 一个容器，-space-x-* 作用在直接子节点上，留在这里会变成对着一个元素生效。
  */
 const TRIGGER_CLASS =
-	"-space-x-1 flex items-center rounded-full focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2";
+	"flex items-center rounded-full focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2";
+
+/**
+ * 头像堆本身：-space-x-1 = 重叠 4px（size-5 的 20%），于是每多一枚头像只多占
+ * 16px——MAX_VISIBLE_AVATARS 那笔账算的就是这个数。
+ *
+ * AvatarGroup 传 lift={false}：**这一列不要 hover 抬升**。它与顶栏共用同一个
+ * 组件，但不共用同一套动效策略——这一列是表格里每行都有的高频界面，指针横穿
+ * 表格时会一路扫过几十个头像堆，抬升会变成跟着鼠标跑的一串抖动
+ * （better-ui 的 Motion Restraint：高频交互不加自定义动效）。这和上面
+ * AVATAR_ENTER 只做一次性进场是同一条取舍：这一列允许「多了一个人」的一次
+ * 动作，不允许任何随指针持续发生的动作。lift={false} 时 AvatarGroup 连 motion
+ * 节点都不生成，几十行的表格不为此多付一分钱。
+ *
+ * 仍然用 AvatarGroup 而不是留着原来那行 flex：拿的是它的 z-index 反序。默认的
+ * DOM 叠放是后面的压前面的，于是「+N」和只在看的人会压住编辑者；反序之后压在
+ * 最上面的是排第一的那枚，正好接上 stackFor 里「编辑者优先」的排序理由。
+ */
+const STACK_CLASS = "-space-x-1";
 
 /**
  * 最多并排几枚头像。列宽 w-24（96px）扣掉 TableCell 的 px-2（16px）剩 80px，
@@ -166,30 +188,32 @@ function CaseCollaboratorsBadge({
 	return (
 		<Tooltip>
 			<TooltipTrigger aria-label={label} className={TRIGGER_CLASS}>
-				{visible.map(({ collaborator, editing }) => (
-					<PresenceAvatar
-						className={cn(
-							AVATAR_SIZE,
-							AVATAR_ENTER,
-							editing ? EDITING_RING : undefined
-						)}
-						key={collaborator.clientId}
-						name={collaborator.name}
-					/>
-				))}
-				{overflow > 0 ? (
-					<span
-						aria-hidden={true}
-						className={cn(
-							PRESENCE_AVATAR_CLASS,
-							PRESENCE_OVERFLOW_CLASS,
-							AVATAR_SIZE,
-							AVATAR_ENTER
-						)}
-					>
-						{`+${overflow}`}
-					</span>
-				) : null}
+				<AvatarGroup className={STACK_CLASS} lift={false}>
+					{visible.map(({ collaborator, editing }) => (
+						<PresenceAvatar
+							className={cn(
+								AVATAR_SIZE,
+								AVATAR_ENTER,
+								editing ? EDITING_RING : undefined
+							)}
+							key={collaborator.clientId}
+							name={collaborator.name}
+						/>
+					))}
+					{overflow > 0 ? (
+						<span
+							aria-hidden={true}
+							className={cn(
+								PRESENCE_AVATAR_CLASS,
+								PRESENCE_OVERFLOW_CLASS,
+								AVATAR_SIZE,
+								AVATAR_ENTER
+							)}
+						>
+							{`+${overflow}`}
+						</span>
+					) : null}
+				</AvatarGroup>
 			</TooltipTrigger>
 			{/* flex-col：TooltipContent 默认横排，两句会挤成一行读不出分组 */}
 			<TooltipContent className="flex-col items-start gap-0.5">

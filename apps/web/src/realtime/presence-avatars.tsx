@@ -1,4 +1,5 @@
 import type { PresenceEntry } from "@automationstack/api/realtime/protocol";
+import { AvatarGroup } from "@automationstack/ui/components/avatar-group";
 import {
 	Tooltip,
 	TooltipContent,
@@ -99,8 +100,17 @@ export function PresenceAvatars({ className }: { className?: string }) {
 	const visible = entries.slice(0, MAX_VISIBLE_AVATARS);
 	const overflow = entries.length - visible.length;
 	// TooltipProvider 不在这里包：根节点（routes/__root.tsx）已经挂了全局那一份。
+	//
+	// 排布与叠放交给 AvatarGroup（z-index 反序 + hover/聚焦抬升），但 tooltip
+	// 仍然是每枚各挂一个 Base UI 的：这里回答的是「这一枚是谁」，一人一句，
+	// 与协作列共用一个 trigger 的取舍相反（理由见 case-collaborators-cell.tsx）。
+	// AvatarGroup 只在外面包一层定位用的 span，trigger 本身还是 Base UI 渲染的
+	// 原生 button，可聚焦、可触达这一条一个字没改。
+	//
+	// 抬升在这里是留的：顶栏常驻、只有寥寥几枚，指针划过时抬一下能把「压在
+	// 后面的那半张脸」整个亮出来；表格协作列则相反，见那边的注释。
 	return (
-		<div className={cn("flex items-center -space-x-1.5", className)}>
+		<AvatarGroup className={cn("-space-x-1.5", className)}>
 			{visible.map((entry) => (
 				<PresenceAvatarTrigger
 					entry={entry}
@@ -109,6 +119,6 @@ export function PresenceAvatars({ className }: { className?: string }) {
 				/>
 			))}
 			{overflow > 0 ? <OverflowAvatar count={overflow} /> : null}
-		</div>
+		</AvatarGroup>
 	);
 }
