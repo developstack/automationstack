@@ -61,7 +61,10 @@ function RunCaseRowContent({
 			{/* 结论靠图标形状区分，紧跟一段 sr-only 文字，颜色不单独承担信息 */}
 			<Icon
 				aria-hidden="true"
-				className={cn("size-4 shrink-0", RESULT_TEXT_CLASSES[runCase.result])}
+				className={cn(
+					"icon-stroke-regular size-4 shrink-0",
+					RESULT_TEXT_CLASSES[runCase.result]
+				)}
 			/>
 			<span className="sr-only">{RESULT_LABELS[runCase.result]}</span>
 			<span className="min-w-0 flex-1 truncate">{testCase.name}</span>
@@ -69,7 +72,10 @@ function RunCaseRowContent({
 				{testCase.priority}
 			</Badge>
 			{runCase.assigneeId !== null && (
-				<UserIcon aria-hidden="true" className="size-3 text-muted-foreground" />
+				<UserIcon
+					aria-hidden="true"
+					className="icon-stroke-regular size-3 text-muted-foreground"
+				/>
 			)}
 		</button>
 	);

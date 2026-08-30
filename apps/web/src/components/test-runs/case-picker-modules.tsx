@@ -21,7 +21,10 @@ const ROW_CLASS =
 const ROW_SELECTED_CLASS = "bg-accent before:opacity-100";
 const ROW_IDLE_CLASS = "before:opacity-0 hover:bg-accent/50";
 
-const ICON_CLASS = "size-3.5 shrink-0 text-muted-foreground";
+// icon-stroke-regular：这两颗图标并排在未加粗的正文里，lucide 默认 stroke 2
+// 是配 medium/semibold 字重的，这里要跟着 regular 字重降到 1.5。
+const ICON_CLASS =
+	"icon-stroke-regular size-3.5 shrink-0 text-muted-foreground";
 
 interface ModuleOptionProps {
 	node: ModuleTreeNode;

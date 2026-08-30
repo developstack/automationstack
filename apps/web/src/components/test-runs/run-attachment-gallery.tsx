@@ -53,10 +53,15 @@ function GalleryItem({
 			 * fileName 只做 alt 文本，**绝不参与 URL 拼接**——它是用户可控字符串。
 			 */}
 			<a href={url} rel="noopener" target="_blank">
+				{/*
+				 * 描边用纯黑/纯白 10%（outline，不是 border）：border 是主题色边框，会跟着
+				 * 配色变；图片内容本身什么颜色都可能有，描边只用来跟底色分开，不该带自己
+				 * 的色相——slate/zinc 之类的近黑同样不行，那仍是带色相的灰。
+				 */}
 				{/* biome-ignore lint/correctness/useImageSize: 附件表里没有像素尺寸——它只存 contentType/sizeBytes（服务端 HeadObject 读回来的），先例见 markdown-inline-render.tsx。猜一个宽高会给出错误的宽高比，图会先按错的比例撑开再跳回去，比不填更糟。这里用 h-40 把高度钉死，加载带来的位移只剩宽度那一维。 */}
 				<img
 					alt={fileName}
-					className={`${IMAGE_HEIGHT_CLASS} w-auto max-w-full rounded-md border object-contain`}
+					className={`${IMAGE_HEIGHT_CLASS} w-auto max-w-full rounded-md object-contain outline outline-black/10 dark:outline-white/10`}
 					loading="lazy"
 					src={url}
 				/>

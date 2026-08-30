@@ -39,7 +39,10 @@ function DefectLabel({ defectKey, defectTitle, defectUrl }: DefectLabelProps) {
 				target="_blank"
 			>
 				{label}
-				<ExternalLinkIcon aria-hidden="true" className="ml-1 inline size-3" />
+				<ExternalLinkIcon
+					aria-hidden="true"
+					className="icon-stroke-regular ml-1 inline size-3"
+				/>
 			</a>
 		);
 	}
@@ -93,8 +96,13 @@ export function LinkedDefect({
 		useLinkedDefectActions(runCaseId);
 
 	return (
-		<div className="flex flex-wrap items-center gap-2 rounded-md border p-2">
-			<BugIcon aria-hidden="true" className="size-4 shrink-0" />
+		// bg-card 而不是 border：右栏底面是 bg-muted/40 灰画布，同一画布上的卡片
+		// 靠 bg-card 亮出来，不是靠描边（同一条理由见 run-step-card.tsx 文件头）。
+		<div className="flex flex-wrap items-center gap-2 rounded-md bg-card p-2">
+			<BugIcon
+				aria-hidden="true"
+				className="icon-stroke-regular size-4 shrink-0"
+			/>
 			<DefectLabel
 				defectKey={defectKey}
 				defectTitle={defectTitle}

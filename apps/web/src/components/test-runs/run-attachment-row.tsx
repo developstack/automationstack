@@ -44,10 +44,12 @@ function AttachmentThumbnail({
 	if (isImage && url !== null) {
 		// 宽高写死成与 size-10 一致的 40px：给出显式尺寸才不会在缩略图
 		// 加载完成的瞬间把整行往下顶（CLS）。
+		// 描边用纯黑/纯白 10%（而不是 slate/zinc 之类的近黑，也不是主题色）：
+		// 缩略图内容本身什么颜色都可能有，描边只用来跟底色分开，不该带自己的色相。
 		return (
 			<img
 				alt={`附件 ${fileName} 的缩略图`}
-				className="size-10 shrink-0 rounded object-cover"
+				className="size-10 shrink-0 rounded object-cover outline outline-black/10 dark:outline-white/10"
 				height={THUMBNAIL_PX}
 				src={url}
 				width={THUMBNAIL_PX}
@@ -125,7 +127,9 @@ function AttachmentRow({
 	const handleRemove = useCallback(() => onRemove(id), [id, onRemove]);
 
 	return (
-		<li className="flex items-center gap-2 rounded-md border p-2">
+		// bg-card 而不是 border：右栏底面是 bg-muted/40 灰画布，同一画布上的卡片
+		// 靠 bg-card 亮出来，不是靠描边（同一条理由见 run-step-card.tsx 文件头）。
+		<li className="flex items-center gap-2 rounded-md bg-card p-2">
 			<AttachmentThumbnail
 				contentType={contentType}
 				fileName={fileName}

@@ -47,7 +47,10 @@ export function RunLockedBanner({
 
 	return (
 		<div className="flex flex-wrap items-center gap-2 border-b bg-muted px-4 py-2 text-muted-foreground text-sm">
-			<LockIcon aria-hidden="true" className="size-4 shrink-0" />
+			<LockIcon
+				aria-hidden="true"
+				className="icon-stroke-regular size-4 shrink-0"
+			/>
 			<span>
 				该报告已于 {formatDateTime(submittedAt)} 提交并锁定，内容不可再修改。
 			</span>

@@ -36,10 +36,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@automationstack/ui/components/card";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { type ChangeEvent, useCallback } from "react";
 
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
+import { ICON_MOTION } from "@/components/test-runs/run-case-result-badge";
 import {
 	reasonKindOf,
 	StepReasonField,
@@ -100,6 +102,9 @@ function StepResultBadge({
 }: {
 	result: TestRunStepResult | undefined;
 }) {
+	// Hook 必须在提前 return 之前无条件调用；顺手把变体选出来，
+	// 免得再拆一条 `const reduced = ...` 占掉一行（这份卡片文件贴着 300 行上限）。
+	const v = ICON_MOTION[useReducedMotion() ? "reduced" : "full"];
 	if (result === undefined) {
 		return (
 			<span className="rounded-md bg-muted px-1.5 py-0.5 font-normal text-muted-foreground text-xs">
@@ -112,7 +117,12 @@ function StepResultBadge({
 		<span
 			className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-xs ${RESULT_BADGE_CLASSES[result]}`}
 		>
-			<Icon aria-hidden="true" className="size-3" />
+			{/* 数值定义与共享理由见 run-case-result-badge.tsx 的 ICON_MOTION。 */}
+			<AnimatePresence initial={false} mode="wait">
+				<motion.span key={result} {...v}>
+					<Icon aria-hidden="true" className="size-3" />
+				</motion.span>
+			</AnimatePresence>
 			{RESULT_LABELS[result]}
 		</span>
 	);
