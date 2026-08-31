@@ -14,6 +14,7 @@
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
+import { RUN_SECTION_TEXT } from "@/components/test-runs/run-panel-typography";
 import { canPickCaseVerdict } from "@/components/test-runs/run-verdict-entry";
 import { VerdictPicker } from "@/components/test-runs/run-verdict-picker";
 
@@ -45,11 +46,11 @@ function SteppedVerdictNote({
 			 * 说的是「下面」：执行结论面板现在排在这一栏最前面（用户要的顺序），
 			 * 步骤列表在它底下，不再是原先那个「结论在最后、步骤在上面」的版式。
 			 */}
-			<p className="text-muted-foreground text-sm">
+			<p className={RUN_SECTION_TEXT}>
 				本条用例有步骤，结论由下面的分步判定推导，不再单独选择。
 			</p>
 			{legacy ? (
-				<p className="text-muted-foreground text-sm">
+				<p className={RUN_SECTION_TEXT}>
 					这条结论是分步判定上线前打的，没有分步记录；重新逐步判定并保存后即可补齐。
 				</p>
 			) : null}

@@ -30,31 +30,18 @@ import { useCallback, useEffect, useMemo } from "react";
 
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
-import { RunStepCard } from "@/components/test-runs/run-step-card";
 import {
-	RunStepsSummary,
-	type StepResultCounts,
-} from "@/components/test-runs/run-steps-summary";
+	RUN_SECTION_TEXT,
+	RUN_SECTION_TITLE,
+} from "@/components/test-runs/run-panel-typography";
+import { RunStepCard } from "@/components/test-runs/run-step-card";
+import { RunStepsSummary } from "@/components/test-runs/run-steps-summary";
 import type { VerdictEditingMode } from "@/components/test-runs/run-verdict-editing-mode";
 import { useRunStepDraft } from "@/components/test-runs/use-run-step-draft";
 import {
 	useRunStepSave,
 	useRunStepShortcuts,
 } from "@/components/test-runs/use-run-step-save";
-
-function emptyStepCounts(): StepResultCounts {
-	return { blocked: 0, failed: 0, passed: 0, skipped: 0 };
-}
-
-function countStepResults(
-	results: readonly { result: TestRunStepResult }[]
-): StepResultCounts {
-	const counts = emptyStepCounts();
-	for (const item of results) {
-		counts[item.result] += 1;
-	}
-	return counts;
-}
 
 interface RunStepCardListProps {
 	comments: Record<string, string>;
@@ -96,11 +83,14 @@ function RunStepCardList({
 }
 
 /**
- * 汇总条要显示的三件事：保存后的用例结论、四态分布、还有几步没判。
+ * 汇总条要显示的两件事：保存后的用例结论、还有几步没判。
  *
- * 结论与分布都由 `fillStepResults` 的结果算出来，而那个函数与服务端写路径用的是
- * **同一个**。预览与写路径各算各的，用户就会看到「预览说通过、保存完变成失败」，
- * 而且没有任何地方会报错——这正是那个模块被写成纯函数的原因。
+ * 原先还有第三件「四态分布」，连同算它的 `countStepResults` 一起删了（用户原话
+ * 「不要自己加戏」，来龙去脉在 `run-steps-summary.tsx` 的文件头）。
+ *
+ * 结论由 `fillStepResults` 的结果算出来，而那个函数与服务端写路径用的是**同一个**。
+ * 预览与写路径各算各的，用户就会看到「预览说通过、保存完变成失败」，而且没有任何
+ * 地方会报错——这正是那个模块被写成纯函数的原因。
  */
 function useStepsPreview(
 	steps: readonly CaseStep[],
@@ -112,7 +102,6 @@ function useStepsPreview(
 		[comments, judged, steps]
 	);
 	return {
-		counts: countStepResults(filled),
 		derived: deriveCaseResult(filled),
 		unjudged: steps.filter((step) => judged[step.id] === undefined).length,
 	};
@@ -129,15 +118,15 @@ function RunStepsHeader({
 	return (
 		<>
 			<div className="flex flex-wrap items-baseline justify-between gap-2">
-				<h3 className="font-medium text-sm">步骤与判定</h3>
+				<h3 className={RUN_SECTION_TITLE}>步骤与判定</h3>
 				{showShortcutHint ? (
-					<p className="text-muted-foreground text-xs">
+					<p className={RUN_SECTION_TEXT}>
 						快捷键 P / F / B / S 判给下一个还没判定的步骤
 					</p>
 				) : null}
 			</div>
 			{staleDiscarded ? (
-				<p className="text-amber-600 text-xs dark:text-amber-400">
+				<p className="text-amber-600 text-sm dark:text-amber-400">
 					用例已被改过，本机上一份没保存的分步判定已作废，请对着新步骤重新判定。
 				</p>
 			) : null}
@@ -237,7 +226,6 @@ export function RunStepsSection({
 				steps={steps}
 			/>
 			<RunStepsSummary
-				counts={preview.counts}
 				derived={preview.derived}
 				dirty={draft.dirty}
 				editing={editing}

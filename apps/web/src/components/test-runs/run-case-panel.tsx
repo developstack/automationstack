@@ -181,6 +181,7 @@ export function RunCasePanel({
 				editing={editingMode.editing}
 				onEdit={editingMode.onEdit}
 				onReset={onReset}
+				projectId={projectId}
 				runCase={runCase}
 				testCase={testCase}
 			/>

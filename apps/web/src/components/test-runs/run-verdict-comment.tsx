@@ -10,6 +10,7 @@ import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 import { Textarea } from "@automationstack/ui/components/textarea";
 import { type ChangeEvent, useCallback, useEffect, useState } from "react";
 
+import { RUN_SECTION_TEXT } from "@/components/test-runs/run-panel-typography";
 import {
 	commentFieldText,
 	needsVerdictDetails,
@@ -67,7 +68,7 @@ function VerdictCommentField({
 
 	return (
 		<div className="flex flex-col gap-1.5">
-			<label className="text-muted-foreground text-xs" htmlFor="run-comment">
+			<label className={RUN_SECTION_TEXT} htmlFor="run-comment">
 				{commentText.label}
 			</label>
 			<Textarea
@@ -105,10 +106,15 @@ function VerdictCommentText({
 	}
 	return (
 		<div className="flex flex-col gap-1">
-			<p className="text-muted-foreground text-xs">
-				{commentFieldText(result).label}
-			</p>
-			{/* whitespace-pre-wrap：说明里常是分行写的复现步骤，压成一段就读不成路径了 */}
+			<p className={RUN_SECTION_TEXT}>{commentFieldText(result).label}</p>
+			{/*
+			 * whitespace-pre-wrap：说明里常是分行写的复现步骤，压成一段就读不成路径了。
+			 *
+			 * 这一段**刻意不套** `RUN_SECTION_TEXT`：执行结论面板里其余文字都统一成了
+			 * 次要灰（用户要的「字号与颜色统一」），但那条口径管的是平台自己说的话
+			 * ——标签、提示、元信息。这里是用户亲手写下的失败现象与复现路径，是内容，
+			 * 把它一起压成灰色是实打实的可读性回退。字号仍与面板同为 text-sm。
+			 */}
 			<p className="whitespace-pre-wrap text-sm">{comment}</p>
 		</div>
 	);

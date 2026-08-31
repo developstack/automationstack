@@ -10,6 +10,7 @@ import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 
 import { formatDateTime } from "@/components/cases/case-meta";
 import { DELETED_ACTOR } from "@/components/test-runs/run-case-events";
+import { RUN_SECTION_TEXT } from "@/components/test-runs/run-panel-typography";
 import { RESULT_LABELS } from "@/components/test-runs/test-run-meta";
 
 export interface RunCaseLastVerdictProps {
@@ -38,7 +39,7 @@ export function RunCaseLastVerdict({
 		return null;
 	}
 	return (
-		<p className="text-muted-foreground text-xs">
+		<p className={RUN_SECTION_TEXT}>
 			{`最后由 ${executedByName ?? DELETED_ACTOR} 于 ${formatDateTime(executedAt)} 判定为 `}
 			{/*
 			 * 结论只加 font-medium，不加引号也不加颜色。

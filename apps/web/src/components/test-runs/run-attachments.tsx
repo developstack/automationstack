@@ -28,6 +28,7 @@ import {
 	isViewableImage,
 } from "@/components/test-runs/run-attachment-gallery";
 import { useAttachmentPicker } from "@/components/test-runs/run-attachment-picker";
+import { RUN_SECTION_TEXT } from "@/components/test-runs/run-panel-typography";
 import {
 	useAttachmentList,
 	useRemoveAttachment,
@@ -82,7 +83,9 @@ export function RunAttachments({
 			) : null}
 			{editing && storageUnavailable ? (
 				// 禁用而不说明原因等于什么都没说；这条不影响打结论，只是传不了图。
-				<p className="rounded-md border border-dashed p-3 text-muted-foreground text-xs">
+				<p
+					className={`rounded-md border border-dashed p-3 ${RUN_SECTION_TEXT}`}
+				>
 					附件存储（R2）未配置，暂时无法上传附件。结论、说明与缺陷关联都不受影响，
 					可以让管理员在服务端补上 R2 配置后再补传。
 				</p>

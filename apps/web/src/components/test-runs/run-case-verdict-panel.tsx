@@ -20,47 +20,34 @@
  * 折叠条上只剩标题，结论徽章挪掉了——正上方用例名那一行常驻着同一颗徽章，
  * 收起状态不会因此丢信息。用例正文与步骤本来就在下面，收起这一块正是为了
  * 把它们拉近。
+ *
+ * ## 折叠条本身不再画在这里
+ *
+ * 它原先是本文件的一个私有组件，把 chevron 当行首图标，于是「执行结论」四个字
+ * 比下面的正文右移了 30px（成因见 `run-section-trigger.tsx`）。用户提的是「图标 +
+ * padding 把标题挤得跟下方正文没有视觉对齐」。同一个毛病在「判定记录」那块一模一样，
+ * 所以修的不是这一处，而是把两处的折叠条收敛成 `RunSectionTrigger` 一个写法。
+ *
+ * ## 面板内的字号与颜色
+ *
+ * 这一块里的说明性文字（待评审提示、快捷键提示、「最后由谁判的」、分步形态的说明、
+ * 说明框的标签、附件空态）原先在 `text-xs` 与 `text-sm` 之间来回跳，颜色也不一致。
+ * 现在一律走 `RUN_SECTION_TEXT`。唯一不套这条口径的是用户**自己填**的说明正文
+ * （`run-verdict-comment.tsx` 里那段 `whitespace-pre-wrap`）：那是内容不是平台文字，
+ * 把人写的复现步骤压成次要灰色是可读性回退。
  */
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
-import { Button } from "@automationstack/ui/components/button";
 import {
 	Collapsible,
 	CollapsibleContent,
-	CollapsibleTrigger,
 } from "@automationstack/ui/components/collapsible";
-import { ChevronDownIcon } from "lucide-react";
 
 import { RunCaseLastVerdict } from "@/components/test-runs/run-case-last-verdict";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
+import { RunSectionTrigger } from "@/components/test-runs/run-section-trigger";
 import { VerdictEvidence } from "@/components/test-runs/verdict-evidence";
 import { VerdictPanelDecision } from "@/components/test-runs/verdict-panel-decision";
 import { VerdictPanelNotes } from "@/components/test-runs/verdict-panel-notes";
-
-/**
- * 折叠条：标题 + 随开合旋转的箭头。
- *
- * 结论徽章不在这里画——用例名旁边（`run-case-heading.tsx`）已经常驻同一颗
- * 徽章，折叠条上再画一遍只是同一个值在同一屏上的重复。
- *
- * `aria-expanded` 由 base-ui 的 Trigger 自己打在按钮上，这里不重复声明——
- * 手写一份就多一份会和真实开合状态失配的可能。
- */
-function VerdictPanelTrigger() {
-	return (
-		<CollapsibleTrigger
-			render={
-				<Button className="w-full justify-start" type="button" variant="ghost">
-					<ChevronDownIcon
-						aria-hidden="true"
-						className="transition-transform group-data-open/run-verdict:rotate-180"
-						data-icon="inline-start"
-					/>
-					<span className="font-medium text-sm">执行结论</span>
-				</Button>
-			}
-		/>
-	);
-}
 
 export interface RunCaseVerdictPanelProps {
 	canConclude: boolean;
@@ -142,9 +129,14 @@ function VerdictPanelBody({
  */
 export function RunCaseVerdictPanel(props: RunCaseVerdictPanelProps) {
 	return (
-		// group/run-verdict 挂在根上：data-open 打在这里，箭头用具名 group 变体旋转。
-		<Collapsible className="group/run-verdict flex flex-col" defaultOpen>
-			<VerdictPanelTrigger />
+		/*
+		 * group/run-section 挂在根上：data-open 打在这里，箭头在 `RunSectionTrigger`
+		 * 里用具名 group 变体旋转。group 名与「判定记录」那块**刻意相同**——Tailwind
+		 * 不扫描拼接出来的类名，group 名没法当参数传给共用的触发器，两处只能约定同名。
+		 * 两块在这一栏里是兄弟节点、不嵌套，同名不会串。
+		 */
+		<Collapsible className="group/run-section flex flex-col" defaultOpen>
+			<RunSectionTrigger label="执行结论" />
 			{/* padding 内移到内层容器：height: 0 压不住 padding，留在面板上会在收起
 			    过程中露出一条空白带（同 `run-case-events.tsx`）。 */}
 			<CollapsibleContent className="collapsible-panel">

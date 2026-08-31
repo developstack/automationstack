@@ -3,6 +3,7 @@
  * 私有辅助组件超过了一个文件 2 个的上限）。
  */
 
+import { RUN_SECTION_TEXT } from "@/components/test-runs/run-panel-typography";
 import { canPickCaseVerdict } from "@/components/test-runs/run-verdict-entry";
 import { VERDICT_SHORTCUT_KEYS } from "@/components/test-runs/test-run-meta";
 
@@ -23,7 +24,7 @@ export function VerdictPanelNotes({
 	return (
 		<>
 			{!(canConclude || locked) && (
-				<p className="text-muted-foreground text-sm">
+				<p className={RUN_SECTION_TEXT}>
 					该测试任务还在待评审阶段，评审完成后才能打结论；现在可以增删用例。
 				</p>
 			)}
@@ -36,8 +37,9 @@ export function VerdictPanelNotes({
 			 * bug：监听已经搬进 `RunCasePanel`、与四颗按钮同源，所以提示也跟着回到同
 			 * 一条判据上。三处（按钮 / 键 / 这行提示）从此只有一份真话。
 			 */}
+			{/* 与上面那句同字号同颜色：两句都是面板在说话，没有主次之分 */}
 			{canPickCaseVerdict({ editing, hasSteps }) ? (
-				<p className="text-muted-foreground text-xs">
+				<p className={RUN_SECTION_TEXT}>
 					快捷键 {VERDICT_SHORTCUT_KEYS.passed} / {VERDICT_SHORTCUT_KEYS.failed}{" "}
 					/ {VERDICT_SHORTCUT_KEYS.blocked} / {VERDICT_SHORTCUT_KEYS.skipped}
 					，通过/跳过自动跳下一条，失败/阻塞留在本条填写说明

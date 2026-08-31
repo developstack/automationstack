@@ -15,9 +15,10 @@
  * ## 层次靠颜色，不靠标题和分隔线
  *
  * 操作步骤用正常前景色，预期压到 `text-muted-foreground`（用户原话：「步骤显示的
- * 字体颜色应该要深一点，预期结果的字体颜色相对较浅」）。既然颜色已经把主次分开，
- * 就不再给预期加小标题、也不再加分隔线——同一件事说三遍（浅色 + 标题 + 横线）
- * 只会让卡片内部看着比卡片之间还碎。只留一个「预期：」前缀和一段上下间距。
+ * 字体颜色应该要深一点，预期结果的字体颜色相对较浅」），后来又加了一档字号
+ * （预期比步骤小一号，同样是用户要求）。但仍然不给预期加小标题、不加分隔线——
+ * 同一件事说四遍（浅色 + 小字 + 标题 + 横线）只会让卡片内部看着比卡片之间还碎。
+ * 只留一个「预期：」前缀和一段很近的上下间距。
  *
  * ## 两种形态
  *
@@ -82,10 +83,34 @@ function StepResultBadge({
 }
 
 /**
- * 正文两块：操作步骤（深）+ 预期（浅）。
+ * 正文两块：操作步骤（深、text-sm）+ 预期（浅、text-xs）。
  *
  * 「预期：」是行内前缀而不是小标题：`shrink-0` 的前缀配 `min-w-0` 的正文，
  * 单行预期与前缀同排，多行预期从第二行起自然缩进对齐，两种都不会撑破卡片。
+ *
+ * ## 两处刚被用户点名的数值
+ *
+ * `mt-1` 而不是原来的 `mt-3`：步骤与它的预期是**同一件事的两半**，隔开 12px 之后
+ * 它们之间的距离已经接近卡片与卡片之间的 `gap-3`，读起来像两个并列的块，
+ * 用户的原话是「垂直间隔太远」。收到 4px，预期就明显挂在步骤下面。
+ *
+ * `text-xs` 而不是继承卡片的 `text-sm`：用户要求预期比步骤正文小一号。这与本文件
+ * 开头「层次靠颜色不靠标题和分隔线」并不冲突——那条拦的是**重复编码**（浅色 +
+ * 小标题 + 横线三样一起上），这里是把主次从一维（颜色）加到二维（颜色 + 字号），
+ * 而且间距刚被收紧、颜色差在小字上本来就更难读，字号正好补上这一半。
+ * 注意这一档 `text-xs` 是**卡片内部**的层级，不走面板级的 `RUN_SECTION_TEXT`
+ * 口径（见 `run-panel-typography.ts`）；下面的失败原因跟这一档对齐。
+ *
+ * ## 预期正文必须显式传 textSize，容器上的 text-xs 管不到它
+ *
+ * 容器那句 `text-xs` 只喂饱了「预期：」这个纯文本前缀。右边的正文走
+ * `MarkdownRender`，而它的根节点把 `text-sm` **写死**在自己身上（理由见那个文件
+ * 的头注释：正文里混着 pre / code / 标题，需要一个不随调用点漂移的基准），
+ * 继承下来的 xs 会被它原样顶掉——于是同一行里前缀 xs、正文 sm。第一版只改到了
+ * 前缀那一半，用户在真实页面上一眼看出来了。
+ *
+ * 修法是给 MarkdownRender 传 `textSize="xs"` 把**它的基准**挪下来，而不是在外面
+ * 加权重去压它。上面的步骤正文不传，保持默认 sm，两者的一号差距因此成立。
  */
 function StepCardBody({
 	imageUrls,
@@ -99,10 +124,14 @@ function StepCardBody({
 			<div className="text-foreground">
 				<MarkdownRender imageUrls={imageUrls} text={step.step} />
 			</div>
-			<div className="mt-3 flex gap-1 text-muted-foreground">
+			<div className="mt-1 flex gap-1 text-muted-foreground text-xs">
 				<span className="shrink-0">预期：</span>
 				<div className="min-w-0 flex-1">
-					<MarkdownRender imageUrls={imageUrls} text={step.expected} />
+					<MarkdownRender
+						imageUrls={imageUrls}
+						text={step.expected}
+						textSize="xs"
+					/>
 				</div>
 			</div>
 		</>
