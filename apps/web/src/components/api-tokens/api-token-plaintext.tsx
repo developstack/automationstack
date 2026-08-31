@@ -8,6 +8,10 @@
  *
  * 所以这个组件只接一个 string prop，自己不去任何地方取数：明文没有第二个来源，
  * 也不该有第二个存放处。
+ *
+ * 复制按钮用的 copyText 曾在本文件里另留一份，旧注释写着「等哪次能一起动，
+ * 这两份应该收进一个共用的 utils」——那一次就是现在：全仓三份逐字节相同的实现
+ * 已统一收进 `@/utils/clipboard`，非安全上下文那条坑也由它一处讲清。
  */
 import { Button } from "@automationstack/ui/components/button";
 import { Input } from "@automationstack/ui/components/input";
@@ -15,6 +19,8 @@ import { Label } from "@automationstack/ui/components/label";
 import { CopyIcon } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
+
+import { copyText } from "@/utils/clipboard";
 
 const FIELD_ID = "api-token-plaintext";
 const WARNING_ID = "api-token-plaintext-warning";
@@ -25,27 +31,6 @@ const WARNING_ID = "api-token-plaintext-warning";
  */
 const WARNING_TEXT =
 	"这是明文唯一一次显示。关掉这个对话框之后就再也看不到了，请立刻存好；弄丢了只能吊销这枚再建一枚。";
-
-/*
- * 与 components/settings/jira-webhook-url.tsx 的 copyText 同一份实现。
- * 那边没把它导出，而本次改动的范围不含 settings/，所以先各留一份；
- * 等哪次能一起动，这两份应该收进一个共用的 utils。
- *
- * navigator.clipboard 在非安全上下文（http 且非 localhost）里根本不存在，
- * 直接调会抛 TypeError 而不是被 catch 里那句 toast 说清楚，所以先探一下。
- */
-async function copyText(value: string): Promise<boolean> {
-	if (typeof navigator === "undefined" || navigator.clipboard === undefined) {
-		return false;
-	}
-	try {
-		await navigator.clipboard.writeText(value);
-		return true;
-	} catch {
-		// 用户拒绝了剪贴板权限，或页面此刻不在前台
-		return false;
-	}
-}
 
 export function ApiTokenPlaintext({ plaintext }: { plaintext: string }) {
 	const handleCopy = useCallback(() => {

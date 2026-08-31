@@ -43,6 +43,11 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# Lint/format caches
+# eslint --cache 的产物。不忽略的话，凡是本地跑过一次全仓 lint，
+# 它就会混进下一次 git add，且体积随仓库增长。
+.eslintcache
+
 # Turbo
 .turbo
 .nx

@@ -1,7 +1,13 @@
 import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "../index";
+import { projectMembers } from "../schema/project-members";
+import { projects } from "../schema/projects";
 import { type User, type UserRole, users } from "../schema/users";
+import {
+	groupUsersWithProjects,
+	type UserWithProjects,
+} from "./users-with-projects-core";
 
 export interface CreateUserInput {
 	passwordHash: string;
@@ -11,6 +17,45 @@ export interface CreateUserInput {
 
 export function listUsers(): Promise<User[]> {
 	return db.select().from(users).orderBy(asc(users.createdAt));
+}
+
+/**
+ * 全部用户 + 每个人所属的全部项目（平台 `/users` 页那张平铺表）。
+ *
+ * **为什么放在 users-repository 而不是 project-members-repository**：它确实跨了
+ * 两张表，但结果的行集与顺序完全由 users 定义——这就是 `listUsers()` 多带一列，
+ * 一个项目都没有的人也必须在（他们是界面上「所属项目」显示「—」的那些人，
+ * `leftJoin` 就是为他们写的）。project-members 那边每一条查询的主语都是某个
+ * projectId 或某条成员关系，把这条挪过去会让「用户全表」的定义散到两个文件。
+ *
+ * 用户字段只取 `PublicUser` 那五列，而不是 `select()` 整行再删：`passwordHash`
+ * 根本不进结果集，将来给 users 加敏感列也不会顺带流出来。
+ *
+ * 排序：用户 `createdAt asc`，与 `listUsers()` 一字不差（同一张表两个入口给出
+ * 不同顺序是纯粹的坑）；每个人内部的项目按**名字**排——这一列在界面上就是一串
+ * 项目名，人是照着名字扫的，createdAt 对读者不可见。项目名没有唯一约束，所以
+ * 再用 id 兜一个全序，免得两个同名项目的相对位置每次查询都可能不一样。
+ * 归并（笛卡尔展开 → 一人一行）在 `users-with-projects-core.ts`，那里能单测。
+ */
+export async function listUsersWithProjects(): Promise<UserWithProjects[]> {
+	const rows = await db
+		.select({
+			projectId: projects.id,
+			projectName: projects.name,
+			projectRole: projectMembers.role,
+			user: {
+				createdAt: users.createdAt,
+				disabledAt: users.disabledAt,
+				id: users.id,
+				role: users.role,
+				username: users.username,
+			},
+		})
+		.from(users)
+		.leftJoin(projectMembers, eq(projectMembers.userId, users.id))
+		.leftJoin(projects, eq(projects.id, projectMembers.projectId))
+		.orderBy(asc(users.createdAt), asc(projects.name), asc(projects.id));
+	return groupUsersWithProjects(rows);
 }
 
 export async function getUserById(id: string): Promise<User | null> {

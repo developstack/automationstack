@@ -3,9 +3,10 @@
  *
  * 做法逐字照抄同目录的 jira-webhook-url.tsx：只读 + 一枚复制按钮，且用
  * `readOnly` 而不是 `disabled` —— 禁用的控件拿不到焦点，也就选不中、复制不了，
- * 而这些块存在的全部意义就是被复制走。copyText 也是那一份的原样搬运（连
- * navigator.clipboard 在非安全上下文里根本不存在这条一起搬），没有抽成公共
- * 工具：两处各自独立演化的代价，远小于为两个调用方立一个中间层。
+ * 而这些块存在的全部意义就是被复制走。copyText 原先也是那一份的原样搬运，现在
+ * 已抽到 `@/utils/clipboard`：全仓三份逐字节相同的拷贝从未分头演化过，而「非
+ * 安全上下文里 navigator.clipboard 根本不存在」这条坑得同时记在三个地方——只改
+ * 一处，另外两处就悄悄退回抛 TypeError。它是个纯函数，抽出去并没有多出中间层。
  *
  * 与那一份的区别只有一处：这里的值可能是多行（TOML 表、几十行 JSON），所以
  * 多行时换 Textarea。它带 field-sizing-content，高度跟着内容长，不会出现一个
@@ -24,22 +25,7 @@ import { CopyIcon } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
-async function copyText(value: string): Promise<boolean> {
-	/*
-	 * navigator.clipboard 在非安全上下文（http 且非 localhost）里根本不存在，
-	 * 直接调会抛 TypeError 而不是被 catch 里那句 toast 说清楚，所以先探一下。
-	 */
-	if (typeof navigator === "undefined" || navigator.clipboard === undefined) {
-		return false;
-	}
-	try {
-		await navigator.clipboard.writeText(value);
-		return true;
-	} catch {
-		// 用户拒绝了剪贴板权限，或页面此刻不在前台
-		return false;
-	}
-}
+import { copyText } from "@/utils/clipboard";
 
 export interface AgentCopyBlockProps {
 	/** 说明文字；缺省则不渲染那一行，也不挂 aria-describedby。 */

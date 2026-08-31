@@ -190,9 +190,10 @@ export function ProjectList() {
 			<div className="flex items-center justify-between">
 				<h1 className="font-semibold text-lg">项目</h1>
 				{/*
-				 * 主题切换在账户菜单里：这一页没有侧栏，那颗菜单挂在顶栏右端
-				 * （plain-shell.tsx），项目内则在侧栏底部。总之全站只此一个入口，
-				 * 不在每页各放一个。
+				 * 主题切换在账户菜单里，也就是侧栏底部的 SidebarUser——这一页如今也有
+				 * 侧栏了（PlatformSidebar），与项目内是同一处。此前它没有侧栏，那颗菜单
+				 * 只好另挂在裸壳顶栏右端，那份重复实现已随 plain-shell.tsx 一起删掉。
+				 * 全站只此一个入口，不在每页各放一个。
 				 */}
 				<Button onClick={create}>
 					<PlusIcon data-icon="inline-start" />

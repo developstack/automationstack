@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "./theme.css";
+@import "./view-transition.css";
 @source "../../../apps/**/*.{ts,tsx}";
 @source "../**/*.{ts,tsx}";
 
@@ -42,9 +43,8 @@
 
    --motion-reduced-duration: 120ms 是这个类存在的主要理由。文件末尾那条全局的
    prefers-reduced-motion 规则会把一切过渡压到 0.01ms，而交叉淡入是纯透明度、不引起
-   前庭不适，被压掉之后这批用户看到的正是这套结构本来要消除的那一下硬切。120ms 与
-   page-transition.tsx 的 REDUCED_DURATION_S（0.12s）取同一个值：全站在减弱动效下
-   只保留这一档「几乎察觉不到、但不是硬切」的透明度变化。
+   前庭不适，被压掉之后这批用户看到的正是这套结构本来要消除的那一下硬切。120ms 是
+   全站在减弱动效下唯一保留的一档动效（页面进场与主题揭示在减弱档都是直接没有动画）。
 
    & > * 把变量在子元素上重置为 initial（自定义属性的 initial 是「保证无效值」，
    于是 var() 回落到 0.01ms 的兜底）：这个变量会继承，不重置的话挂着本类的容器会

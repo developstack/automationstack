@@ -26,9 +26,11 @@ interface AppShellProps {
 /**
  * 登录闸门之后带侧栏页面的外壳：一级侧栏 + 自己滚动的主内容。
  *
- * 眼下只有项目页走这一层：传入项目侧栏、并在此之上再套二级面板（见 project-shell.tsx）。
- * 项目列表页不用这一层——那时还没有作用域可导航，见 plain-shell.tsx。
- * 登录页也不套——它本来就是一张自带满屏布局的页面，
+ * 两个作用域走这一层：项目页传入项目侧栏、并在此之上再套二级面板（见
+ * project-shell.tsx）；平台层的 /projects 与 /users 传入 PlatformSidebar。
+ * 项目列表页曾经不用这一层（那时平台层只有它一页，侧栏里放不下第二项，理由写在
+ * 已删除的 plain-shell.tsx 里），/users 出现之后那个前提不再成立，它也搬了进来。
+ * 登录页仍然不套——它本来就是一张自带满屏布局的页面，
  * 而且那时还没有用户，侧栏底部的用户区会直接抛。
  */
 export function AppShell({ children, sidebar }: AppShellProps) {

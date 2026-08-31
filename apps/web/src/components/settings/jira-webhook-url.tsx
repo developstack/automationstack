@@ -12,25 +12,10 @@ import { CopyIcon } from "lucide-react";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
+import { copyText } from "@/utils/clipboard";
+
 const FIELD_ID = "settings-jira-webhook-url";
 const HINT_ID = "settings-jira-webhook-url-hint";
-
-async function copyText(value: string): Promise<boolean> {
-	/*
-	 * navigator.clipboard 在非安全上下文（http 且非 localhost）里根本不存在，
-	 * 直接调会抛 TypeError 而不是被 catch 里那句 toast 说清楚，所以先探一下。
-	 */
-	if (typeof navigator === "undefined" || navigator.clipboard === undefined) {
-		return false;
-	}
-	try {
-		await navigator.clipboard.writeText(value);
-		return true;
-	} catch {
-		// 用户拒绝了剪贴板权限，或页面此刻不在前台
-		return false;
-	}
-}
 
 export function JiraWebhookUrl({ url }: { url: string }) {
 	const handleCopy = useCallback(() => {

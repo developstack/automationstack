@@ -4,6 +4,7 @@ import {
 	createUser,
 	getUserById,
 	listUsers,
+	listUsersWithProjects,
 	setUserDisabled,
 	updateUserPasswordHash,
 	updateUserRole,
@@ -77,6 +78,17 @@ export const usersRouter = {
 	list: adminProcedure.handler(async () =>
 		(await listUsers()).map(toPublicUser)
 	),
+	/**
+	 * 平台用户管理页那张平铺表：一人一行，「所属项目」是数组。
+	 *
+	 * 与 `list` 并存而不是取代它：`list` 是「账号名单」，几乎所有地方要的都是
+	 * 那一份，这条要多跑一次跨表 join，只有那一个页面用得上。
+	 *
+	 * 增删项目成员关系不在这里，走 `projectMembers` 的 add / remove / updateRole
+	 * 逐项目调用（平台 admin 天然过 `canAdministerProject`）。不另开跨项目的批量
+	 * 端点，是为了不绕过那边「不能移除最后一个 owner」的护栏。
+	 */
+	listWithProjects: adminProcedure.handler(() => listUsersWithProjects()),
 	resetPassword: adminProcedure
 		.errors(routerErrors)
 		.input(userIdSchema.extend({ password: passwordSchema }))

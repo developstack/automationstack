@@ -18,11 +18,11 @@ export const CHART_SEAM = { stroke: "var(--card)", strokeWidth: 2 } as const;
  * 图表入场动画的时长与缓动。两张图共用，改这里就是同时改整页。
  *
  * recharts 的默认值对这一页是灾难：Pie 默认 1500ms（node_modules/recharts/lib/
- * polar/Pie.js:546），而概览页一次要画三个环，主内容区的进场只有 300ms
+ * polar/Pie.js:546），而概览页一次要画三个环，主内容区的进场只有 180ms
  * （page-transition.tsx 的 ENTER_DURATION_S）——文字第一帧就落位可读了，三个环
  * 还要再自转一秒多。同一份数据在同一张卡里给出两个「已经好了」的时刻。
  *
- * 400ms：环在主内容落位后约 100ms 收尾，视线还没离开这张卡；同时它正好是
+ * 400ms：环在主内容落位后约 220ms 收尾，视线还没离开这张卡；同时它正好是
  * recharts Bar 的原生默认值，柱图观感不变，变的只是这个数现在是写明的。
  *
  * ease-out 而不是 recharts 默认的 ease：入场该第一帧就最快、尾巴收住；

@@ -169,6 +169,9 @@ case "$SCOPE" in
 esac
 
 # URL 会被原样嵌进 JSON 字符串字面量，带引号或反斜杠会把文件写坏。
+# 下面是 case 的 glob 模式，不是字符串拼接：`*'"'*` 匹配含双引号的值，
+# `*'\'*` 匹配含反斜杠的值。shellcheck 误以为这里是想转义单引号。
+# shellcheck disable=SC1003
 case "$MCP_URL" in
 	*'"'*|*'\'*)
 		say "错误：--url 不能包含引号或反斜杠：$MCP_URL"
@@ -620,6 +623,9 @@ configure_opencode() {
 	# "http"）；插值语法是 {env:AS_TOKEN}（不是 ${...}）。
 	# "oauth": false 必须显式写，否则 opencode 会自己去试 OAuth。
 	entry="{\"type\":\"remote\",\"url\":\"$MCP_URL\",\"enabled\":true,\"oauth\":false,\"headers\":{\"Authorization\":\"Bearer {env:AS_TOKEN}\"}}"
+	# $schema 是 opencode 配置文件里的字面 JSON 键名，必须原样写进文件、
+	# 恰恰不能被 shell 展开，单引号正是为此。shellcheck 的提醒在这里是反的。
+	# shellcheck disable=SC2016
 	base='{"$schema":"https://opencode.ai/config.json"}'
 
 	if [ "$DRY_RUN" -ne 1 ]; then

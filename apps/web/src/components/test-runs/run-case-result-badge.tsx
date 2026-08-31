@@ -27,9 +27,11 @@ import {
  * 逐字一致——导出成一份而不是各写一遍，才不会将来悄悄分叉。
  *
  * full 档数值是审计定死的：scale 0.25→1、opacity 0→1、blur 4px→0，spring
- * duration 0.3 且 bounce=0（收尾不回弹）。reduced 档照抄 page-transition.tsx
- * 里 useReducedMotion 的处理方式——去掉缩放与模糊，只留一次几乎察觉不到的
- * 透明度变化，动效敏感的用户不该看见图标做「缩到一点再放大」这种形变。
+ * duration 0.3 且 bounce=0（收尾不回弹）。reduced 档去掉缩放与模糊，只留一次几乎
+ * 察觉不到的透明度变化，动效敏感的用户不该看见图标做「缩到一点再放大」这种形变；
+ * 0.12s 与 globals.css 的 transition-crossfade 那档 --motion-reduced-duration
+ * 取同一个值——那是全站在减弱动效下唯一保留的一档动效（页面进场与主题揭示在减弱档
+ * 都是直接没有动画）。
  * initial 与 exit 值相同：两者都是「未出现在屏幕上」的那个状态。
  */
 export const ICON_MOTION = {

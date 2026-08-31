@@ -6,8 +6,6 @@ import {
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import type { ReactNode } from "react";
 
-import { StaggerItem } from "@/components/layout/page-stagger";
-
 /**
  * 报告页首屏骨架。
  *
@@ -45,9 +43,9 @@ interface CardSkeletonProps {
 }
 
 /*
- * 不再收 className：跨列类名整体上移到了 ReportSkeleton 里的 StaggerItem 上。
- * 包了一层之后 grid item 是 StaggerItem 那层，`xl:col-span-*` 留在 <Card> 上会
- * 落在非 grid item 身上，跨列当场失效（成因见 page-stagger.tsx 顶部）。
+ * 不收 className：跨列类名统一写在 ReportSkeleton 里的包装层上。包了一层之后
+ * grid item 就是那层 div，`xl:col-span-*` 留在 <Card> 上会落在非 grid item 身上，
+ * 跨列当场失效。
  */
 function CardSkeleton({
 	children,
@@ -100,10 +98,10 @@ function TableRowsSkeleton({ keys }: { keys: readonly string[] }) {
  * 不只是高度，还有左右两列。
  */
 
-/** 对齐 ReportHeader：面包屑(h-5) + 标题(h-6)。跨整行的类名在下面的 StaggerItem 上。 */
+/** 对齐 ReportHeader：面包屑(h-5) + 标题(h-6)。它自己就是 grid item，跨列类名写在这里。 */
 function HeadingSkeleton() {
 	return (
-		<div className="flex items-center gap-3">
+		<div className="flex items-center gap-3 xl:col-span-3">
 			<Skeleton className="h-5 w-24" />
 			<Skeleton className="h-6 w-48" />
 		</div>
@@ -129,7 +127,7 @@ function SummaryCardSkeleton() {
 	);
 }
 
-/** 对齐 ReportPriorityCard：P0 结论条 + 优先级表（与它同为两列宽，见下面的 StaggerItem）。 */
+/** 对齐 ReportPriorityCard：P0 结论条 + 优先级表（与它同为两列宽，见下面的包装层）。 */
 function PriorityCardSkeleton() {
 	return (
 		<CardSkeleton descriptionWidth="w-80" titleWidth="w-36">
@@ -173,43 +171,34 @@ function FailedCasesCardSkeleton() {
 }
 
 /**
- * 骨架为什么也要逐项错开，而不是整块淡入。
+ * 这些卡片没有逐项错开的出场次序，**这是刻意的**。
  *
- * 不包 StaggerItem 的话，慢加载这条路**一次错开都不会发生**：这一份骨架挂载时
- * pathname 与上一页不同，PageTransition 判定要播进场，于是骨架整块淡入一次；等真身
- * 就绪，pending 那格里存的已经是本页 pathname，就绪态被判成 followsSamePath，
- * skipEnter 为真——report-view.tsx 那六个 StaggerItem 一个都不动，直接落在终态。
- * 结果是 loader 快（<200ms，router.tsx 的 defaultPendingMs）时逐项错开，慢时整块
- * 淡入，同一个页面两种观感。把错开挪到骨架这边，两条路看到的都是「一页在依次落位」。
+ * 原来每张外面各裹一层 StaggerItem 按 index 依次淡入（序号还刻意与 report-view.tsx
+ * 逐个对齐、跳过提交条那一号），整场因此拖到 440ms，已整体删除，理由见
+ * page-transition.tsx 末尾那节。现在骨架与真身都只跟着 <main> 整体淡入一次，
+ * 两条路（loader 快慢）的观感本来就一致，不再需要那套对齐。
  *
- * index 与 report-view.tsx 里逐个对齐，**包括 1 号那个空位**：那一格是提交条的，
- * 而本文件刻意不画提交条（理由见文件头）。留号不重排，两处的排位表因此是同一张，
- * 不需要任何换算——重排的话，「有提交条的就绪态」和「没有提交条的骨架」会给同一张
- * 卡两个不同的序号，骨架换真身那一帧的错位就成了必然。
- *
- * 跨列类名统一写在 StaggerItem 上：包了一层之后它才是 grid item。
+ * 剩下的包装 div 只有栅格占位一个职责：里面几张卡不收 className，跨列类名只能落在
+ * 包装层上；`grid` 是为了让 <Card> 跟着包装层一起满高，同一行的卡底边才齐平。
+ * 顺序仍必须与 report-view.tsx 逐个一致——栅格按源码顺序排位。
  */
 export function ReportSkeleton() {
 	return (
 		<>
-			<StaggerItem className="xl:col-span-3" index={0}>
-				<HeadingSkeleton />
-			</StaggerItem>
-			<StaggerItem className="xl:col-span-3" index={2}>
+			<HeadingSkeleton />
+			<div className="grid xl:col-span-3">
 				<SummaryCardSkeleton />
-			</StaggerItem>
-			<StaggerItem className="xl:col-span-2" index={3}>
+			</div>
+			<div className="grid xl:col-span-2">
 				<PriorityCardSkeleton />
-			</StaggerItem>
-			<StaggerItem index={4}>
-				<ResultCardSkeleton />
-			</StaggerItem>
-			<StaggerItem className="xl:col-span-3" index={5}>
+			</div>
+			<ResultCardSkeleton />
+			<div className="grid xl:col-span-3">
 				<ModuleCardSkeleton />
-			</StaggerItem>
-			<StaggerItem className="xl:col-span-3" index={6}>
+			</div>
+			<div className="grid xl:col-span-3">
 				<FailedCasesCardSkeleton />
-			</StaggerItem>
+			</div>
 		</>
 	);
 }

@@ -78,8 +78,9 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 });
 
 /**
- * 根布局不再套任何外壳：项目列表页自带 PlainShell，项目内的页面在 AppShell
- * 之上再套 ProjectShell，登录页则本来就是一个自带满屏布局的页面。
+ * 根布局不再套任何外壳：平台层的两页（/projects、/users）各自套 AppShell +
+ * PlatformSidebar，项目内的页面在 AppShell 之上再套 ProjectShell，登录页则本来
+ * 就是一个自带满屏布局的页面。
  * 这里只留登录闸门之后、会话尚未回填那几帧的占位。
  */
 function AppContent() {

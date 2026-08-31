@@ -2,7 +2,6 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
-import { StaggerItem } from "@/components/layout/page-stagger";
 import { PageTransition } from "@/components/layout/page-transition";
 import { ReportAutomationCard } from "@/components/test-runs/report-automation-card";
 import { ReportFailedCasesCard } from "@/components/test-runs/report-failed-cases-card";
@@ -31,6 +30,17 @@ export const REPORT_MAIN =
 
 /** 跨整行的卡：提交条、概览、模块、失败清单都不该被挤进三分之一列。 */
 const FULL_WIDTH = "xl:col-span-3";
+
+/**
+ * 给不接收 className 的卡片外面套的那层栅格占位。
+ *
+ * 这几张卡（提交条、概览、模块、失败清单、按优先级）自己不收 className，跨列类名
+ * 只能落在一层包装 div 上。`grid` 不是装饰：外层 REPORT_MAIN 的 align-items 默认是
+ * stretch，包装层会被拉满整行高度，而 display:block 的包装层不会把这份高度传给里面
+ * 的 Card——同一行里两张卡的底边就会参差。包装层自己也是 grid，孩子才跟着一起满高。
+ */
+const FULL_WIDTH_ROW = "grid xl:col-span-3";
+const WIDE_COLUMN = "grid xl:col-span-2";
 
 interface ReportViewProps {
 	projectId: string;
@@ -65,9 +75,8 @@ function hasSubmitBar(report: TestRunReportView): boolean {
  * 搬走它不改变任何行为。同文件内拆子组件也是本目录既有的写法
  * （见 report-out-of-scope-card.tsx 里的 OutOfScopeRow / Table / Footer）。
  *
- * FULL_WIDTH 现在写在调用方的 StaggerItem 上而不是这里：包了一层之后
- * grid item 是 StaggerItem 那层，跨列类名留在 <header> 上会落在一个非 grid item
- * 身上，整条跨列当场失效（成因见 page-stagger.tsx 顶部）。
+ * 跨列类名直接写在 <header> 上：它本身就是 REPORT_MAIN 的 grid item，外面没有
+ * 任何包装层（曾经有过一层 StaggerItem，已删除，见 page-transition.tsx 末尾那节）。
  */
 function ReportHeader({
 	projectId,
@@ -77,7 +86,7 @@ function ReportHeader({
 	report: TestRunReportView;
 }) {
 	return (
-		<header className="flex flex-wrap items-center gap-3">
+		<header className={`flex flex-wrap items-center gap-3 ${FULL_WIDTH}`}>
 			<Link
 				className="inline-flex items-center gap-1 text-muted-foreground text-sm underline-offset-4 hover:underline"
 				params={{ projectId }}
@@ -108,28 +117,10 @@ function ReportHeader({
  * → 具体是哪几条（失败清单）。按优先级那张图排在图表区第一位并占两列宽，
  * 因为 P0 有没有失败是上线红线，它比别的图更该先被看到。
  *
- * ## StaggerItem 的 index：提交条不在时**留号不重排**
- *
- * 序号写死成 0..6，提交条那一格（1）在 hasSubmitBar 为假时就空着，后面各项不往前挪。
- * 代价与收益都算得很清楚：
- *
- * - 代价只有一档。封顶是 Math.min(index, 5) × 40ms（见 page-stagger.tsx），
- *   末尾那几项两种算法下都钉在 200ms，**整场进场时长一模一样**；跳号影响到的只是
- *   中段几项各晚 40ms 起步，也就是标题与概览卡之间多一档间隔。
- * - 收益是这份序号成了一张固定的排位表。报告页最常被打开的时刻恰恰是「测试中」
- *   （没有提交条），而已完成时又有；重排的话同一张卡在两种运行状态下排位不同，
- *   而且 report-skeleton.tsx 那份刻意不画提交条的骨架也得跟着重排一次才对得上。
- *   留号之后，骨架的序号就是这里的序号原样去掉 1，两处不需要任何换算。
- * - 重排要么在 JSX 里摊一个数组、要么拿个可变计数器边渲边自增，两者都会把
- *   「顺序即阅读顺序」这件事从源码里藏进一次计算——overview-view.tsx 顶部
- *   拒绝用数组下标当 index，理由与这里同源。
- *
- * ## 自动化与越界那两张卡为什么不包 StaggerItem
- *
- * 它们在没数据时 return null，而 StaggerItem 渲染的是一个真实的 <motion.div>，
- * 和下面那段注释里说的空 <div> 是同一个东西：即使高度为 0 也仍占一个 grid item，
- * 照吃一道 16px 的 gap。空数据恰恰是这两张卡的常态，为了错开而在页尾常驻两道
- * 空白是笔亏本买卖。它们因此只跟着 <main> 整体淡入，不单独错开。
+ * 这一页的卡片没有任何逐张错开的出场次序，**这是刻意的**：原来每张卡外面各裹一层
+ * StaggerItem 按 index 0..6 依次淡入，整场因此拖到 440ms，已整体删除，理由见
+ * page-transition.tsx 末尾那节。下面那几层 div 只剩栅格占位这一个职责，
+ * 别把它们误当成动画残留而顺手摘掉——摘了跨列就没了。
  */
 export function ReportView({ projectId, runId }: ReportViewProps) {
 	// loader 已把这条查询预热进缓存，这里落地时是命中，不会真的挂起
@@ -140,46 +131,42 @@ export function ReportView({ projectId, runId }: ReportViewProps) {
 
 	return (
 		<PageTransition className={REPORT_MAIN} phase="ready">
-			<StaggerItem className={FULL_WIDTH} index={0}>
-				<ReportHeader projectId={projectId} report={report} />
-			</StaggerItem>
+			<ReportHeader projectId={projectId} report={report} />
 
 			{hasSubmitBar(report) ? (
-				<StaggerItem className={FULL_WIDTH} index={1}>
+				<div className={FULL_WIDTH_ROW}>
 					<ReportSubmitBar report={report} />
-				</StaggerItem>
+				</div>
 			) : null}
 
-			<StaggerItem className={FULL_WIDTH} index={2}>
+			<div className={FULL_WIDTH_ROW}>
 				<ReportSummaryCard report={report} />
-			</StaggerItem>
+			</div>
 
-			<StaggerItem className="xl:col-span-2" index={3}>
+			<div className={WIDE_COLUMN}>
 				<ReportPriorityCard priorities={report.priorities} />
-			</StaggerItem>
-			<StaggerItem index={4}>
-				<ReportResultCard report={report} />
-			</StaggerItem>
+			</div>
+			<ReportResultCard report={report} />
 
-			<StaggerItem className={FULL_WIDTH} index={5}>
+			<div className={FULL_WIDTH_ROW}>
 				<ReportModuleCard modules={report.modules} />
-			</StaggerItem>
+			</div>
 
-			<StaggerItem className={FULL_WIDTH} index={6}>
+			<div className={FULL_WIDTH_ROW}>
 				<ReportFailedCasesCard
 					counts={report.counts}
 					failedCases={report.failedCases}
 				/>
-			</StaggerItem>
+			</div>
 
 			{/*
 			 * 解释性材料排在失败清单之后：先给结论，再给「这批结论是怎么来的」。
 			 *
-			 * 这两块**都直接坐在 grid 里、外面既不套 div 也不套 StaggerItem**，栅格
-			 * 占位靠 className 传进去。两者在没数据时都 return null，而空数据恰恰是
-			 * 常态——纯手工的测试任务既没有脚本上报也没有越界用例。套一层的话，即使
-			 * 它高度为 0 也仍是一个 grid item，仍要吃掉一道 16px 的 gap，页面末尾就会
-			 * 多出一段没人解释得清的空白。它们因此是这一页仅有的两块不错开的内容。
+			 * 这两块**直接坐在 grid 里、外面不套 div**，栅格占位靠 className 传进去。
+			 * 两者在没数据时都 return null，而空数据恰恰是常态——纯手工的测试任务
+			 * 既没有脚本上报也没有越界用例。套一层的话，即使它高度为 0 也仍是一个
+			 * grid item，仍要吃掉一道 16px 的 gap，页面末尾就会多出一段没人解释得清
+			 * 的空白。上面那几张卡之所以套了，是因为它们不收 className。
 			 */}
 			<ReportAutomationCard
 				className={FULL_WIDTH}
