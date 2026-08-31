@@ -14,16 +14,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { PageTransition } from "@/components/layout/page-transition";
+import { SettingsPendingPanel } from "@/components/settings/settings-pending-panel";
 import {
 	resolveSettingsTab,
 	type SettingsTab,
 	settingsTabSearchSchema,
 	TOKENS_TAB,
 } from "@/components/settings/settings-tab";
-import {
-	SettingsPendingPanel,
-	SettingsTabPanels,
-} from "@/components/settings/settings-tab-panels";
+import { SettingsTabPanels } from "@/components/settings/settings-tab-panels";
 import {
 	SETTINGS_MAIN,
 	SettingsTabs,

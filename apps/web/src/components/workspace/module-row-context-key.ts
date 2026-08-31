@@ -10,7 +10,7 @@
  * 带坐标的 `contextmenu`，走 Base UI ContextMenuTrigger 自己的 onContextMenu
  * 分支（锚点就是在那里由事件坐标 setAnchor 的，绕过去菜单会锚错位置）。
  *
- * 这个模块只留可单测的纯函数，派发本身在 module-tree-node.tsx 里做。
+ * 这个模块只留可单测的纯函数，派发本身在 module-node-row.tsx 里做。
  */
 
 /** Windows / Linux 键盘上的应用程序键；macOS 键盘没有这个键。 */

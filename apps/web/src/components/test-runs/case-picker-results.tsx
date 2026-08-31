@@ -15,10 +15,8 @@ import type {
 	CasePickerSelection,
 	PickerFilterState,
 } from "@/components/test-runs/case-picker-state";
-import {
-	PickerTable,
-	PickerTableSkeleton,
-} from "@/components/test-runs/case-picker-table";
+import { CasePickerTable } from "@/components/test-runs/case-picker-table";
+import { CasePickerTableSkeleton } from "@/components/test-runs/case-picker-table-skeleton";
 
 interface CasePickerResultsProps {
 	cases: TestCase[];
@@ -58,7 +56,7 @@ export function CasePickerResults({
 			/>
 			<div className="min-h-0 flex-1 overflow-y-auto">
 				{hasData ? (
-					<PickerTable
+					<CasePickerTable
 						cases={cases}
 						onToggle={selection.toggleOne}
 						onTogglePage={selection.togglePage}
@@ -66,7 +64,7 @@ export function CasePickerResults({
 						selectedIds={selectedIds}
 					/>
 				) : (
-					<PickerTableSkeleton />
+					<CasePickerTableSkeleton />
 				)}
 			</div>
 			<CasePagination

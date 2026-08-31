@@ -29,7 +29,6 @@
 
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import type { TestRunStepResult } from "@automationstack/db/schema/test-runs";
-import { Button } from "@automationstack/ui/components/button";
 import {
 	Card,
 	CardContent,
@@ -42,59 +41,12 @@ import { type ChangeEvent, useCallback } from "react";
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 import { ICON_MOTION } from "@/components/test-runs/run-case-result-badge";
-import {
-	reasonKindOf,
-	StepReasonField,
-	StepReasonNote,
-} from "@/components/test-runs/run-step-reason";
+import { StepCardFooter } from "@/components/test-runs/step-card-footer";
 import {
 	RESULT_BADGE_CLASSES,
 	RESULT_ICONS,
 	RESULT_LABELS,
-	RESULT_TEXT_CLASSES,
-	STEP_VERDICT_VALUES,
 } from "@/components/test-runs/test-run-meta";
-
-interface StepVerdictButtonProps {
-	current: TestRunStepResult | undefined;
-	onPick: (stepId: string, result: TestRunStepResult) => void;
-	stepId: string;
-	value: TestRunStepResult;
-}
-
-function StepVerdictButton({
-	current,
-	onPick,
-	stepId,
-	value,
-}: StepVerdictButtonProps) {
-	// useCallback 不是为了性能，是 Biome 的 noJsxPropsBind：内联箭头每次渲染都是新引用。
-	const handleClick = useCallback(
-		() => onPick(stepId, value),
-		[onPick, stepId, value]
-	);
-	const active = current === value;
-	const Icon = RESULT_ICONS[value];
-	return (
-		<Button
-			aria-checked={active}
-			onClick={handleClick}
-			role="radio"
-			// xs（24px）：这四颗在每张卡里各出现一次，一屏十张卡就是四十颗。
-			// 尺寸台阶的分配规则见 `packages/ui/src/components/button.tsx` 的文件头。
-			size="xs"
-			type="button"
-			variant={active ? "default" : "outline"}
-		>
-			{/* 图标形状本身区分四态，颜色只是加强；选中态用主色底，靠对比而非色相 */}
-			<Icon
-				aria-hidden="true"
-				className={active ? undefined : RESULT_TEXT_CLASSES[value]}
-			/>
-			{RESULT_LABELS[value]}
-		</Button>
-	);
-}
 
 /** 抬头右侧那枚结论徽章。带底色而不是只有字色——只读态下它是这张卡的结论。 */
 function StepResultBadge({
@@ -103,7 +55,8 @@ function StepResultBadge({
 	result: TestRunStepResult | undefined;
 }) {
 	// Hook 必须在提前 return 之前无条件调用；顺手把变体选出来，
-	// 免得再拆一条 `const reduced = ...` 占掉一行（这份卡片文件贴着 300 行上限）。
+	// 免得再拆一条 `const reduced = ...` 占掉一行（拆分前这份卡片文件一直贴着
+	// 300 行上限，这个写法保留）。
 	const v = ICON_MOTION[useReducedMotion() ? "reduced" : "full"];
 	if (result === undefined) {
 		return (
@@ -152,88 +105,6 @@ function StepCardBody({
 					<MarkdownRender imageUrls={imageUrls} text={step.expected} />
 				</div>
 			</div>
-		</>
-	);
-}
-
-/** 判定固定在卡片底部：十几张卡的按钮排在同一个位置，才扫得下来。 */
-function StepVerdictRow({
-	current,
-	index,
-	onPick,
-	stepId,
-}: {
-	current: TestRunStepResult | undefined;
-	index: number;
-	onPick: (stepId: string, result: TestRunStepResult) => void;
-	stepId: string;
-}) {
-	return (
-		<div
-			aria-label={`步骤 ${index + 1} 的判定`}
-			className="mt-3 flex flex-wrap gap-1.5 border-t pt-3"
-			role="radiogroup"
-		>
-			{STEP_VERDICT_VALUES.map((value) => (
-				<StepVerdictButton
-					current={current}
-					key={value}
-					onPick={onPick}
-					stepId={stepId}
-					value={value}
-				/>
-			))}
-		</div>
-	);
-}
-
-/**
- * 卡片下半截：编辑态是「四颗判定 + 原因输入框」，只读态是「一块原因文本」。
- *
- * 两种形态写在一处而不是散在 `RunStepCard` 的 JSX 里，是因为它们互斥且共用
- * 同一个 `reasonKind`——分开写的话，将来给失败/阻塞加一种新形态，很容易
- * 只改到其中一支，另一支静默地还按旧规则渲染。
- */
-function StepCardFooter({
-	comment,
-	editing,
-	index,
-	onCommentChange,
-	onPick,
-	result,
-	stepId,
-}: {
-	comment: string;
-	editing: boolean;
-	index: number;
-	onCommentChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
-	onPick: (stepId: string, result: TestRunStepResult) => void;
-	result: TestRunStepResult | undefined;
-	stepId: string;
-}) {
-	const kind = reasonKindOf(result);
-	if (!editing) {
-		// 只读态：没写过原因就什么都不留，别在卡底吊一块空色块。
-		return kind !== null && comment !== "" ? (
-			<StepReasonNote kind={kind} value={comment} />
-		) : null;
-	}
-	return (
-		<>
-			<StepVerdictRow
-				current={result}
-				index={index}
-				onPick={onPick}
-				stepId={stepId}
-			/>
-			{kind === null ? null : (
-				<StepReasonField
-					kind={kind}
-					onChange={onCommentChange}
-					stepId={stepId}
-					value={comment}
-				/>
-			)}
 		</>
 	);
 }

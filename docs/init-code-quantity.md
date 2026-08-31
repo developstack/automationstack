@@ -342,6 +342,109 @@ pnpm exec eslint . --cache       # 检查
 pnpm exec eslint . --cache --fix # 自动修复
 ```
 
+### 4.3 本地规则 `local/one-component-per-file` — 一个文件一个组件
+
+「原子化」的另一半：Biome 与 ESLint 内置规则管得了单个函数有多长，管不了**一个文件对外暴露几个组件**。这一条由一个写在仓库里的本地 ESLint 规则（`eslint-rules/one-component-per-file.js`）补上——不是新开一个 `scripts/check-*.js`，因为它需要 AST，而 ESLint 已经把 AST 端到端准备好了。
+
+#### 口径（方案 C）
+
+- **对外组件** = 被 `export` 的 React 组件；
+- **私有辅助组件** = 同文件里未导出的 React 组件；
+- 违规 = 导出组件数 > 1，**或** 私有辅助组件数 > 2；
+- 外加一条命名：文件名必须等于那唯一一个对外组件名的 kebab-case（`case-table.tsx` 里就该是 `CaseTable`）。
+
+#### 为什么是「私有辅助 ≤ 2」而不是严格「一个组件一个文件」
+
+§4.1 那条 `max-lines-per-function: 50` 与「严格一个组件一个文件」是**互相拉扯**的：主组件一超 50 行就必须把一段 JSX 抽成函数组件，而抽出来的那个东西没有任何对外契约，只服务于同文件的主组件。两条规则同时按最严格口径执行，等于「每超 50 行就建一个文件」，此后每改一次 UI 都伴随建文件。
+
+在 `apps/web` 当前代码上实测（AST 统计，不是正则扫；2026-08-31 快照）：非豁免的 `.tsx` 共 208 个，其中 206 个含至少一个组件，组件总数 496（对外 219 + 私有 277）。
+
+| 口径 | 违规文件数 | 需新增文件数 | 组件文件总数变化 |
+| --- | --- | --- | --- |
+| 严格：一个文件一个组件 | 138 / 206 | +290 | 206 → 496 |
+| 方案 C：1 个对外 + ≤2 个私有 | 65 / 206 | +98 | 206 → 304 |
+
+两栏之差的那 **73** 个文件，就是「主组件 + 1~2 个为了 50 行上限切出来的私有片段」这一类。它们在严格口径下要被拆成独立文件，而拆完之后那些文件对外一个 `export` 都不会多。
+
+结论：这条规则要管的是**对外 API 的原子性**，不是文件个数。一个文件对外只暴露一个组件，`import` 的人就永远只有一种写法；文件内部为 50 行上限切出的碎片留在原地反而更好读。上限取 2 而不是 1 或 3：取 1 等价于严格口径；取 3 以上就压不住了——需要新建的文件里有相当一部分来自「一个文件里挤了 4~5 个私有组件」的那些文件。
+
+#### 为什么不用 `eslint-plugin-react` 的 `react/no-multi-comp`
+
+两个原因，任意一个都足以否掉它：
+
+1. **它没有「私有辅助 ≤ N」这一档。** `ignoreStateless: false` 的语义是「文件里出现第二个组件就报错」——那正是上表的严格口径，会把方案 C 下合规的 **73** 个文件（1 个对外 + 1~2 个私有）全判成 error。`ignoreStateless: true` 又走向另一个极端：函数组件一概不管，本仓全是函数组件，等于规则整个失效。中间那一档它不提供。
+2. **要为它新增一个 npm 依赖。** 本仓 `scripts/check-package-json.js` 要求所有依赖锁定精确版本（见 §7.2），多一个插件就多一处版本维护面，而它唯一相关的那条规则本来就用不上。
+
+写一条本地规则的成本反而更低：flat config 支持内联 plugin，规则实现就是仓库里的一个 `.js` 文件，口径可以精确对上本仓的取舍，豁免也能被单元测试覆盖。
+
+#### 「什么算一个 React 组件」——判定走 AST，不用正则
+
+拿正则扫源码的结果是 `EMAIL_ID`、`STATUS_FILTER_OPTIONS` 这类 ALL_CAPS 常量被当成组件，而 `memo(function Foo(){})` 这类包装反而扫不出来。判定分两步，**两步都成立**才算组件：
+
+1. **名字像组件**：PascalCase —— 首字母大写**且**含小写字母。「含小写字母」这一条专门排掉 SCREAMING_SNAKE_CASE 常量与 `API` / `URL` 这类纯大写缩写。
+2. **函数体像组件**：函数的所有 `return` 值都是 JSX 或空值（`null` / `undefined` / 裸 `return`），且其中至少有一个真的是 JSX。「至少一个 JSX」排掉 `const Foo = () => null` 的空壳；「所有 return 都是 JSX 或空值」排掉 PascalCase 命名的工厂函数（如 `const CaseColumns = () => ({...})`）。
+
+覆盖到的 AST 形态：
+
+| 写法 | AST 上怎么认 |
+| --- | --- |
+| `function Foo() { return <div/>; }` | `FunctionDeclaration` + `ReturnStatement` 的实参分类 |
+| `const Foo = () => <div/>;` | `VariableDeclarator` → `ArrowFunctionExpression`（表达式体直接分类） |
+| `const Foo = memo(...)` / `forwardRef(...)` / `React.memo(...)` | `CallExpression` 逐层剥到里面的函数，支持嵌套包装 |
+| `export default () => <div/>;` | 匿名默认导出：只计数，不参与命名检查 |
+| `export { Foo }` | `ExportNamedDeclaration` 的 specifier，回填到 `Foo` 的声明上 |
+| `cond ? <A/> : null`、`cond && <A/>`、`a ?? <B/>` | 逐个分支分类，只要没有「既非 JSX 也非空值」的分支就算 |
+| `foo as Bar`、`foo!` | `TSAsExpression` / `TSNonNullExpression` 先剥掉再判 |
+
+刻意保守的地方（宁可漏判，不可误判）：`return content;`（先算好再返回一个标识符）判不出来，会漏掉这个组件；class 组件不判（本仓全是函数组件）；**定义在另一个函数体内部的组件不算文件级组件**——它构不成对外契约，只看顶层声明。
+
+#### 豁免
+
+豁免写在规则实现里（`isExemptFile()`），与 `scripts/check-file-rules.js`、`scripts/check-tailwind.js` 把豁免写进脚本本体的做法一致，这样豁免本身也能被单元测试覆盖。
+
+- **`packages/ui/src/components/`（整文件豁免）** —— vendored 的 shadcn 组件原件。复合组件（`Card` / `CardHeader` / `CardTitle` …）就是它的**既定对外 API**，`table.tsx`、`dropdown-menu.tsx` 单文件导出 8~21 个组件。本仓已对该目录豁免 300 行门禁（`scripts/vendored-ui.js`），这里是同一条理由的延续：判定标准应当是「与 registry 一致」，改了就再也 `shadcn add <name> --diff` 不出来。规则直接复用 `isVendoredUiComponent()`，不另写一份路径判断。
+- **`*.test.tsx` / `*.spec.tsx`（整文件豁免）** —— 一个 spec 里为断言临时搭几个小组件是正常写法，与「对外 API 原子化」无关。
+- **生成物（整文件豁免）** —— 逐条列出完整路径（当前只有 `apps/web/src/routeTree.gen.ts`），不用 `*.gen.ts` 之类的后缀通配：豁免的依据是「这个文件由插件整体覆盖」，不是它的名字。与 §7.1 的 `GENERATED_FILES` 同一条理由。
+- **`/routes/` 下的文件（只豁免命名这一条）** —— file router 的文件名（`__root.tsx`、`$projectId.tsx`、`items.$id.tsx`）由框架强制约定，改不动；两条计数规则仍然适用。与 §7.1 跳过 `/routes/` 命名检查一致。
+- **`index.tsx`（只豁免命名这一条）** —— 入口/聚合位，文件名与组件名天然对不上；计数照常。
+
+#### 接入 `eslint.config.js`
+
+flat config 支持内联 plugin，不需要发包，也不需要新增依赖：
+
+```js
+	{
+		files: ["**/*.tsx"],
+		plugins: {
+			local: {
+				rules: {
+					"one-component-per-file": (
+						await import("./eslint-rules/one-component-per-file.js")
+					).oneComponentPerFile,
+				},
+			},
+		},
+		rules: {
+			// ⚠️ 存量违规拆完之前是 warn；清零后改成 "error"。
+			"local/one-component-per-file": "warn",
+		},
+	},
+```
+
+**为什么先接成 `warn`**：接上时全仓 79 个文件违规、116 条告警（27 条多导出 + 71 条私有超额 + 18 条命名不匹配）。直接上 `error` 会当场卡死所有人的 pre-commit（`lefthook.yml` 的 `eslint-rules` job）与 CI 的 eslint 步骤。门禁的价值是「不让新的违规进来」，存量拆分是另一件事：先 warn 让规则跑起来、把清单曝出来，拆完再升 `error`。**这一步不能忘——长期停在 warn 的规则等于没有门禁。**
+
+命名那一条报出来的 18 处不一定都靠改文件名解决：`run-attachment-gallery.tsx` 里是 `AttachmentGallery`，改组件名去贴文件名同样成立。规则只负责指出「两边对不上」，改哪一边由拆分时定。
+
+#### 规则自身的测试
+
+规则实现放 `eslint-rules/`，配套 `eslint-rules/one-component-per-file.test.mjs`，用 ESLint 自带的 `RuleTester` + `node:test`（与 §7.3 旁边的 `scripts/check-tailwind.test.mjs` 同一路数——门禁本身也是代码，也要有测试）：
+
+```bash
+node --test eslint-rules/one-component-per-file.test.mjs
+```
+
+必须覆盖的用例：单组件文件通过、1 导出 + 2 私有通过、1 导出 + 3 私有报错、2 导出报错、`export { A, B }` 形式的多导出报错、文件名不匹配报错、vendored 区豁免、测试文件豁免、路由文件跳过命名检查、`index.tsx` 跳过命名检查、ALL_CAPS 常量不被误判、不返回 JSX 的 PascalCase 函数不被误判、`memo()` / `forwardRef()` 包装能被识别、嵌套在组件内部的组件不计入文件级数量。
+
 ---
 
 ## 5. 配置 TypeScript（类型检查 / pre-push 用）
@@ -888,6 +991,8 @@ function main() {
 main();
 ```
 
+> 三个脚本之外还有一条**写在 ESLint 里**的仓库自有规则：`local/one-component-per-file`（一个文件一个对外组件 + ≤2 个私有辅助组件）。它需要 AST 判定「什么算 React 组件」，用正则扫源码会把 `EMAIL_ID` 这类 ALL_CAPS 常量误判成组件，所以没有做成第 4 个 `scripts/check-*.js`，而是作为本地 ESLint 规则接在 flat config 里。见 §4.3。
+
 ---
 
 ## 8. 配置 Lefthook（Git 钩子核心）
@@ -1146,6 +1251,7 @@ node scripts/check-tailwind.js    some/Component.tsx
 - `max-depth` — **warn**，嵌套 ≤ **4** 层
 - `no-console` — **warn**
 - `consistent-return` — **error**（返回值一致）
+- `local/one-component-per-file` — **warn**（本地规则，仅 `**/*.tsx`）：1 个对外组件 + ≤ **2** 个私有辅助组件，且文件名须为对外组件名的 kebab-case。存量拆分完成后升为 **error**。口径与豁免见 §4.3
 
 ### A.3 自定义脚本规则（`scripts/*.js`，pre-commit 执行）
 

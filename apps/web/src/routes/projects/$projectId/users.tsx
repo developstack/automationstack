@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { PageTransition } from "@/components/layout/page-transition";
-import { ProjectMembersTableSkeleton } from "@/components/project-members/project-members-table";
+import { ProjectMembersTableSkeleton } from "@/components/project-members/project-members-table-skeleton";
 import {
 	PROJECT_MEMBERS_MAIN,
 	ProjectMembersView,

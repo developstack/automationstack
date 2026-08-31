@@ -15,8 +15,9 @@
  * 所以默认只有一行摘要（几份 + 最近一份是什么时候），要挑哪一份再展开。
  *
  * 例外是只有一份的时候：那没什么可挑的，「继续编辑」「删除」直接摆出来，
- * 省掉一次纯粹为了展开而点的鼠标。两条路复用同一个 <CaseDraftActions>，
- * 不存在「展开里的删除和外面的删除行为不一致」这种事。
+ * 省掉一次纯粹为了展开而点的鼠标。两条路复用同一个 <CaseDraftActions>
+ * （case-draft-actions.tsx），不存在「展开里的删除和外面的删除行为不一致」
+ * 这种事。
  *
  * ⚠️ 清单会跟着 localStorage 实时更新（`useLocalCaseDrafts` 订阅了存储模块），
  * 所以在这条提示里删掉一份，它立刻就变；首帧仍一律判为「没有草稿」——SSR 页面
@@ -26,11 +27,11 @@
  * 滤掉了（下面的 `items`），打字过程中 500ms 防抖落盘的那次写入虽然会发通知，
  * 过完滤之后这里看到的清单一条都没变。**改这个过滤条件前先想想这一条。**
  */
-import { Button, buttonVariants } from "@automationstack/ui/components/button";
-import { Link } from "@tanstack/react-router";
+import { Button } from "@automationstack/ui/components/button";
 import { FilePenLineIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
+import { CaseDraftActions } from "@/components/cases/case-draft-actions";
 import {
 	caseDraftSavedLabel,
 	caseDraftTitle,
@@ -38,60 +39,6 @@ import {
 import { DRAFT_BANNER_CLASS } from "@/components/cases/case-draft-notice";
 import type { CaseDraft } from "@/components/cases/case-draft-parse";
 import { useLocalCaseDrafts } from "@/components/workspace/use-local-case-drafts";
-import { resumeDraftSearch } from "@/components/workspace/workspace-search";
-
-interface CaseDraftActionsProps {
-	draft: CaseDraft;
-	onDelete: (caseId: string) => void;
-	projectId: string;
-}
-
-/** 一份草稿的两个出口。只导航，绝不把内容填进当前这张表单。 */
-function CaseDraftActions({
-	draft,
-	onDelete,
-	projectId,
-}: CaseDraftActionsProps) {
-	const { caseId, moduleId } = draft;
-	const title = caseDraftTitle(draft);
-	const savedLabel = caseDraftSavedLabel(draft);
-
-	// 导航口径统一在 workspace-search.ts；这里只负责稳住引用，
-	// JSX 属性不能收每次渲染都新建的闭包。
-	const resume = useMemo(
-		() => resumeDraftSearch(moduleId, caseId),
-		[caseId, moduleId]
-	);
-	const handleDelete = useCallback(() => onDelete(caseId), [caseId, onDelete]);
-
-	return (
-		<>
-			{/*
-			 * 真 <Link>：它是一次导航（URL 上换一个 `draft`），做成按钮会丢掉
-			 * Cmd / 中键在新标签页打开的能力。aria-label 带上时间——同一个模块
-			 * 完全可能并排躺着好几份「未命名用例」。
-			 */}
-			<Link
-				aria-label={`继续编辑 ${savedLabel} 的草稿「${title}」`}
-				className={buttonVariants({ size: "xs", variant: "outline" })}
-				params={{ projectId }}
-				search={resume}
-				to="/projects/$projectId"
-			>
-				继续编辑
-			</Link>
-			<Button
-				aria-label={`删除 ${savedLabel} 的草稿「${title}」`}
-				onClick={handleDelete}
-				size="xs"
-				type="button"
-				variant="ghost"
-			>
-				删除
-			</Button>
-		</>
-	);
-}
 
 interface CaseDraftPickerSummaryProps {
 	expanded: boolean;

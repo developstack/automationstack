@@ -9,8 +9,6 @@ import {
 	TableRow,
 } from "@automationstack/ui/components/table";
 import { cn } from "@automationstack/ui/lib/utils";
-import { Link } from "@tanstack/react-router";
-import { useCallback } from "react";
 
 import { CaseCollaboratorsCell } from "@/components/cases/case-collaborators-cell";
 import {
@@ -18,9 +16,9 @@ import {
 	formatDateTime,
 	PRIORITY_BADGE_VARIANTS,
 } from "@/components/cases/case-meta";
+import { CaseNameCell } from "@/components/cases/case-name-cell";
 import { CaseStatusBadge } from "@/components/cases/case-status-badge";
-import { CaseTableEmpty } from "@/components/cases/case-table-states";
-import type { WorkspaceSearch } from "@/components/workspace/workspace-search";
+import { CaseTableEmpty } from "@/components/cases/case-table-empty";
 import {
 	type CaseCollaborators,
 	useCollaboratorsByCaseId,
@@ -61,42 +59,6 @@ function CaseTags({ tags }: { tags: string[] }) {
 	);
 }
 
-interface CaseNameCellProps {
-	testCase: TestCase;
-}
-
-/**
- * 用例名的目的地是真实 URL（?caseId=...，刷新可复原），所以必须是链接而不是按钮：
- * 否则 Cmd/中键新开标签、右键复制链接全部失效，读屏也会把「导航」播成「按钮」。
- *
- * 这里曾经在链接后面挂一枚琥珀色小圆点表示「有人在编辑」。协作列上线后就撤了：
- * 同一条信息在一行里编码两次，圆点还只能表达「在编辑」这一半，
- * 读者要在两处之间反复确认哪个才是全貌。协作状态现在只由协作列负责。
- */
-function CaseNameCell({ testCase }: CaseNameCellProps) {
-	const selectCase = useCallback(
-		(prev: WorkspaceSearch): WorkspaceSearch => ({
-			...prev,
-			caseId: testCase.id,
-			history: undefined,
-		}),
-		[testCase.id]
-	);
-
-	return (
-		<TableCell>
-			<Link
-				className="text-left font-medium hover:underline"
-				params={{ projectId: testCase.projectId }}
-				search={selectCase}
-				to="/projects/$projectId"
-			>
-				{testCase.name}
-			</Link>
-		</TableCell>
-	);
-}
-
 interface CaseRowProps {
 	/** 该用例上的其他成员（在看 / 在改）；没人时为 undefined。 */
 	collaborators: CaseCollaborators | undefined;
@@ -107,7 +69,7 @@ interface CaseRowProps {
 /** 选中行左侧的竖条：选中不能只靠底色，色盲用户要有形状线索。 */
 const ROW_MARKER = "border-l-2";
 
-/** 行高是骨架屏的折算依据：改这里要同步 case-table-states.tsx 的 CaseTableSkeleton。 */
+/** 行高是骨架屏的折算依据：改这里要同步 case-table-skeleton.tsx 的 CaseTableSkeleton。 */
 function CaseRow({ collaborators, selected, testCase }: CaseRowProps) {
 	// TableRow 基类自带 hover:bg-muted/50，选中行必须连 hover 态一起覆盖，
 	// 否则鼠标一划过，「选中」就被 hover 底色盖掉、看着像丢了选中。

@@ -18,12 +18,23 @@ export const CHART_SEAM = { stroke: "var(--card)", strokeWidth: 2 } as const;
  * 图表入场动画的时长与缓动。两张图共用，改这里就是同时改整页。
  *
  * recharts 的默认值对这一页是灾难：Pie 默认 1500ms（node_modules/recharts/lib/
- * polar/Pie.js:546），而概览页一次要画三个环，主内容区的进场只有 180ms
+ * polar/Pie.js:546），而概览页一次要画三个环，主内容区的进场只有 220ms
  * （page-transition.tsx 的 ENTER_DURATION_S）——文字第一帧就落位可读了，三个环
  * 还要再自转一秒多。同一份数据在同一张卡里给出两个「已经好了」的时刻。
  *
- * 400ms：环在主内容落位后约 220ms 收尾，视线还没离开这张卡；同时它正好是
- * recharts Bar 的原生默认值，柱图观感不变，变的只是这个数现在是写明的。
+ * 400ms，随页面进场从 180ms 调到 220ms 之后重算过一遍，结论是**维持 400ms**：
+ * 两条动画都从「真内容挂载」这一帧起算（页面进场是 motion 的 initial → animate，
+ * 图表进场是 recharts 自己的 react-smooth），所以两者的差值就是「环比文字晚多久
+ * 收尾」——原来是 400 − 180 = 220ms，现在是 400 − 220 = 180ms。缩了 40ms，仍在
+ * 「视线还没离开这张卡」的量级里，读起来只会更紧凑一点。
+ *
+ * 跟着页面加到 440ms 则不划算：那只是为了守住 220ms 这个从来就是「约」的数字，
+ * 代价是每次进概览都多等 40ms。维持 400ms 还顺带保住另一条：它正好是 recharts Bar
+ * 的原生默认值，柱图观感不变，变的只是这个数现在是写明的。
+ *
+ * 另外记一笔：这个搭配在此之前**从来没有真正生效过**。page-transition 的 key 曾经
+ * 读乐观的 location.pathname，进场与图表动画双双播在旧页面上，新页面两者都没有；
+ * 那个 bug 修掉之后，上面这套换算才第一次是真的。
  *
  * ease-out 而不是 recharts 默认的 ease：入场该第一帧就最快、尾巴收住；
  * ease 首尾都缓，起步那一下会让人觉得图「愣了一下才动」。
@@ -44,7 +55,13 @@ export const CHART_ANIMATION = {
  * 复用 page-transition.tsx 已经在用的 motion/react useReducedMotion，不另装依赖、
  * 也不自己写一份 matchMedia：两份实现迟早在 SSR 首帧的取值上分叉。
  * `!== true` 而不是 `=== false`：该 hook 在服务端与首帧返回 null，null 按「未表态」
- * 处理成放行，与 page-transition 的判定一致。
+ * 处理成放行，与 page-transition 里那句 `shouldReduceMotion === true` 取的是同一
+ * 套口径（那边 null 也落到常规档）。
+ *
+ * 这里是**整个关掉**而不是像页面进场那样缩到 120ms：图表入场是三个环各自转半圈，
+ * 属于会引起前庭不适的位移/旋转类动效，不是纯透明度的溶解，没有「换个短一点的版本」
+ * 这个选项。页面进场保留 120ms 的依据见 page-transition.tsx 的
+ * ENTER_TRANSITION_REDUCED。
  */
 export function useChartAnimation(): boolean {
 	return useReducedMotion() !== true;

@@ -1,9 +1,8 @@
 /**
  * Scalar-field / preconditions / tags portion of the version diff view.
  * Consumes the pure `diffCaseSnapshots` result; no fetching here.
+ * The tags row itself is rendered by `tags-section.tsx`.
  */
-import { Badge } from "@automationstack/ui/components/badge";
-
 import { CASE_TYPE_LABELS, STATUS_LABELS } from "@/components/cases/case-meta";
 
 import type {
@@ -12,7 +11,9 @@ import type {
 	TagsDiff,
 	TextFieldDiff,
 } from "./field-diff.ts";
-import { OldNewValue, TextDiff } from "./version-text-diff.tsx";
+import { OldNewValue } from "./old-new-value.tsx";
+import { TagsSection } from "./tags-section.tsx";
+import { TextDiff } from "./text-diff.tsx";
 
 const EMPTY_VALUE = "—";
 
@@ -73,51 +74,6 @@ function ScalarRowItem({ row }: { row: ScalarRow }) {
 				)}
 			</dd>
 		</div>
-	);
-}
-
-function TagBadges({
-	tags,
-	tone,
-}: {
-	tags: readonly string[];
-	tone: "add" | "del";
-}) {
-	const unique = [...new Set(tags)];
-	const className =
-		tone === "add"
-			? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-			: "border-rose-500/40 bg-rose-500/10 text-rose-700 line-through dark:text-rose-300";
-	return (
-		<>
-			{unique.map((tag) => (
-				<Badge className={className} key={`${tone}:${tag}`} variant="outline">
-					{tone === "add" ? "+" : "−"} {tag}
-				</Badge>
-			))}
-		</>
-	);
-}
-
-function TagsSection({ tags }: { tags: TagsDiff }) {
-	const hasAny = tags.added.length + tags.removed.length + tags.kept.length > 0;
-	return (
-		<section className="flex flex-col gap-1.5">
-			<h4 className="font-medium text-muted-foreground text-xs">标签</h4>
-			{hasAny ? (
-				<div className="flex flex-wrap items-center gap-1.5">
-					<TagBadges tags={tags.removed} tone="del" />
-					<TagBadges tags={tags.added} tone="add" />
-					{tags.kept.map((tag) => (
-						<Badge key={`kept:${tag}`} variant="secondary">
-							{tag}
-						</Badge>
-					))}
-				</div>
-			) : (
-				<span className="text-muted-foreground text-xs">无标签</span>
-			)}
-		</section>
 	);
 }
 

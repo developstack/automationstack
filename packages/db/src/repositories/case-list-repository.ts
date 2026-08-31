@@ -16,6 +16,7 @@ import {
 	type TestCase,
 	testCases,
 } from "../schema/test-cases";
+import { containsPattern, prefixPattern } from "./case-list-filter-core";
 import { getModuleSubtreeIds } from "./module-subtree";
 
 /**
@@ -38,6 +39,15 @@ export interface ListTestCasesFilter {
 	pageSize?: number;
 	priority?: CasePriority[];
 	projectId: string;
+	/**
+	 * sourceRef 前缀筛选（`like '<prefix>%'`）。
+	 *
+	 * 为生成场景而加：生成的用例 sourceRef 形如 `gen:<需求标识>#<用例名 slug>`，
+	 * 这个参数是「上一轮给这个需求生成了哪些用例」唯一的查询方式，也是重新生成
+	 * 前判断该 skip 还是 overwrite 的依据。sourceRef 为 null 的行不会命中
+	 * （SQL 里 null 与任何模式比较都是 null，即不匹配），这正是想要的语义。
+	 */
+	sourceRefPrefix?: string;
 	status?: CaseStatus;
 	/** 标签筛选，any-of 语义：命中任意一个即匹配；空数组视同不筛选。 */
 	tags?: string[];
@@ -97,8 +107,12 @@ async function buildListConditions(
 		conditions.push(buildTagsCondition(filter.tags));
 	}
 	if (filter.keyword) {
-		const escaped = filter.keyword.replace(/[%_\\]/g, "\\$&");
-		conditions.push(ilike(testCases.name, `%${escaped}%`));
+		conditions.push(ilike(testCases.name, containsPattern(filter.keyword)));
+	}
+	if (filter.sourceRefPrefix) {
+		conditions.push(
+			ilike(testCases.sourceRef, prefixPattern(filter.sourceRefPrefix))
+		);
 	}
 	return conditions;
 }

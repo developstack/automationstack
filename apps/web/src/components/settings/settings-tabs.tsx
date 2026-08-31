@@ -113,6 +113,19 @@ function SettingsTabTriggers() {
  * 由这一层统一给出：两态若各画一条 tab 条，条的高度、图标、可见项迟早会分叉，
  * 而 loader 慢的那一格正好会在 pending → 就绪之间把两条并排给人看一遍。
  *
+ * ## 这一行 className 是整页唯一的宽度与居中
+ *
+ * `mx-auto w-full max-w-4xl`：tab 条与四格面板同在这个根之下，于是它们共用同一
+ * 条左边缘、同一条右边缘、同一条中线——**切到哪一格，正文都在页面中线上**。
+ *
+ * 两条别改错的：
+ * - 别逐格 mx-auto。tab 条是 w-fit，它自己居中之后左边缘会落到面板左边缘右侧，
+ *   切一次 tab 就晃一次；面板若再各按各的 max-w 居中，就是每格一条左边缘。
+ * - 别给某一格单独留 max-w。那等于让这一页重新有两种宽度，而页面只能按最宽的
+ *   那一档居中，窄的那几格立刻偏离中线（这正是上一版 64px 偏移的成因）。
+ *   要调行长就调这里，四格一起动。宽度为什么落在 4xl：见
+ *   settings-tab-panels.tsx 顶部。
+ *
  * tab 条外面那层 overflow-x-auto：TabsList 是 inline-flex w-fit 且不换行，四格
  * 「图标 + 中文」在窄屏上未必装得下。让它在自己那一行里横向滚，而不是撑破内容列
  * 把整页顶出横向滚动条——后者会连带把下面的表单和表格一起推出视口。
@@ -123,7 +136,11 @@ export function SettingsTabs({ children }: { children: ReactNode }) {
 	const selectTab = useSelectTab();
 
 	return (
-		<Tabs className="min-h-0 flex-1" onValueChange={selectTab} value={tab}>
+		<Tabs
+			className="mx-auto min-h-0 w-full max-w-4xl flex-1"
+			onValueChange={selectTab}
+			value={tab}
+		>
 			<div className="shrink-0 overflow-x-auto">
 				<TabsList>
 					<SettingsTabTriggers />

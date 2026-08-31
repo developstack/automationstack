@@ -1,13 +1,15 @@
 ---
 name: testcase-migration
-description: 将存量测试用例（Excel/CSV/XMind/TestRail 等导出件）批量迁移导入本平台。触发场景：import test cases、migrate test cases、bulk-load test cases、导入用例、迁移测试用例、批量导入用例、用例入库。通过本仓库 .mcp.json 配置的平台 MCP 工具（list_projects/create_project/get_module_tree/ensure_module_path/import_test_cases/search_cases）完成解析、映射确认、建模块、分批导入与抽查。
+description: 将**已经写好的存量测试用例**（Excel/CSV/XMind/TestRail 等导出件）解析、规范化后批量迁移进本平台，并产出可核对的迁移汇总表。触发场景：导入用例、迁移测试用例、批量导入用例、用例入库、把这个 Excel/XMind 导进去、import test cases、migrate test cases、bulk-load test cases。通过 testcase-platform MCP 工具（list_projects/create_project/get_module_tree/ensure_module_path/read_cases/list_case_tags/import_test_cases/search_cases）完成解析、映射确认、建模块、分批导入与抽查。输入是已有用例文件，不是需求——用户给的若是需求文档/PRD/接口定义/用户故事，要新**设计**用例而不是搬运既有用例，改用 testcase-authoring。
 ---
 
 # 测试用例迁移 Skill
 
-> ✅ **服务端状态**：MCP 服务端已上线（apps/server `/mcp`，Streamable HTTP，无状态）。本文档「工具契约」一节与实现逐字对齐（`apps/server/src/mcp/tools/`）。日后实现若有变更，**必须回改本文档及 references/**。若调用工具时发现 MCP 服务器不可用，向用户说明服务端未启动（`pnpm dev` 或 `pnpm --filter server dev`），勿凭空模拟导入结果。
+> **事实来源**：本文「工具契约」一节与 `apps/server/src/mcp/tools/` 的实现逐字对齐；实现变更时**必须回改本文档及 references/**。调用工具失败时按「前置条件」第 4 条分诊，**不要凭空模拟导入结果**——编一份汇总表出来，用户要到平台里才发现一条都没进去。
 
 把用户提供的存量用例源文件解析、规范化后，经平台 MCP 工具批量导入，并产出可核对的迁移汇总表。
+
+**这个 skill 只搬运，不设计。**判据看输入的形状：手里是**已经写好的用例**（Excel/CSV/XMind/TestRail 导出件，每行/每个节点就是一条用例）→ 用本 skill；手里是**需求**（PRD、接口文档、用户故事、一段功能描述）→ 那要新设计用例，用 `testcase-authoring` skill。两者共用同一条写入通道（`testcase-platform:import_test_cases`）与同一套字段，区别在前半段：搬运做的是**字段映射**，设计做的是**从需求推导测试点**。源文件里只有用例标题没有步骤、用户又要求顺手补全步骤时，那一半已经是设计：切到 testcase-authoring 走它的两道闸门，不要在映射流程里顺手编步骤。
 
 ## 前置条件
 
@@ -15,9 +17,9 @@ description: 将存量测试用例（Excel/CSV/XMind/TestRail 等导出件）批
 2. 仓库根 `.mcp.json` 已指向 `http://localhost:3000/mcp`（本仓库已内置该配置）
 3. **环境变量 `AS_TOKEN` 已设置**为一枚平台 API token（`as_` 开头，在平台里生成）。
    `/mcp` 要求 `Authorization: Bearer <token>`，**MCP 的身份与权限就是这枚 token
-   所属用户的身份与权限**：导入只能落进该用户所属的项目，`list_projects` 也只
+   所属用户的身份与权限**：导入只能落进该用户所属的项目，`testcase-platform:list_projects` 也只
    列得出这些项目。没带或 token 无效时服务端返回 401，不存在任何默认身份。
-4. MCP 工具可用（`list_projects` 能正常返回）；不可用时先解决连接问题再开始迁移。
+4. MCP 工具可用（`testcase-platform:list_projects` 能正常返回）；不可用时先解决连接问题再开始迁移。
    两类失败的区分方式（**注意不是靠 HTTP 状态码**）：
    - **401**：token 缺失或失效。鉴权发生在建 MCP server 之前，所以这时**一个工具
      都不会被注册**，连 `tools/list` 都是空的——表现是「根本没有平台工具可用」。
@@ -29,18 +31,20 @@ description: 将存量测试用例（Excel/CSV/XMind/TestRail 等导出件）批
 
 ## 工具契约（与实现对齐）
 
-六个工具都返回 JSON 文本内容块；调用失败（如项目不存在）返回 `isError: true` 的文本结果，不会中断会话。
+八个工具都返回 JSON 文本内容块；调用失败（如项目不存在）返回 `isError: true` 的文本结果，不会中断会话。
 
 | 工具 | 入参 | 返回 |
 |---|---|---|
-| `list_projects` | 无 | `[{ id, name, description, createdAt, updatedAt }]` |
-| `create_project` | `name`(必填)、`description`(可选) | 新建项目对象（含 `id`） |
-| `get_module_tree` | `projectId` | **两个文本块**：① 缩进大纲（`- 名称 (id: …)`）② 扁平 JSON `[{ id, name, parentId, depth }]` |
-| `ensure_module_path` | `projectId`、`path`(字符串数组，1–10 段) | `{ moduleId, createdModuleIds }`——`moduleId` 是最深一级模块 id（用作用例的 `moduleId`）；`createdModuleIds` 只含本次真正新建的层级，幂等重跑为 `[]` |
-| `import_test_cases` | `projectId`、`onDuplicate`(**必填**)、`cases`(1–50 条；**逐条校验，非法行不影响整批**) | `{ created[], skipped[], errors[] }`，详见下 |
-| `search_cases` | `projectId`、`keyword`(必填)、`limit`(可选，默认 20，上限 50) | `[{ id, name, moduleId, priority, status, caseType, sourceRef, updatedAt }]`，按 `updatedAt` 倒序；`%`/`_` 按字面量转义 |
+| `testcase-platform:list_projects` | 无 | `[{ id, name, description, createdAt, updatedAt }]` |
+| `testcase-platform:create_project` | `name`(必填)、`description`(可选) | 新建项目对象（含 `id`） |
+| `testcase-platform:get_module_tree` | `projectId` | **两个文本块**：① 缩进大纲（`- 名称 (id: …, 3 cases / 2 active)`，零用例/无 active 的模块带 `←` 标记）② 扁平 JSON `[{ id, name, parentId, depth, caseCount, activeCaseCount, gap }]`。**计数含子孙模块**（用例一般挂在叶子上，中间层是文件夹）；`gap` 取 `"empty"`/`"no-active"`/`null`。迁移时用它判断目标模块是不是已经有一批同源用例 |
+| `testcase-platform:ensure_module_path` | `projectId`、`path`(字符串数组，1–10 段) | `{ moduleId, createdModuleIds }`——`moduleId` 是最深一级模块 id（用作用例的 `moduleId`）；`createdModuleIds` 只含本次真正新建的层级，幂等重跑为 `[]` |
+| `testcase-platform:import_test_cases` | `projectId`、`onDuplicate`(**必填**)、`cases`(1–50 条；**逐条校验，非法行不影响整批**) | `{ created[], skipped[], errors[] }`，详见下 |
+| `testcase-platform:read_cases` | `projectId`，可选 `moduleId`/`includeDescendants`/`keyword`/`status`/`priority[]`/`tags[]`/`sourceRefPrefix`/`detail`/`page`/`pageSize` | `{ detail, items[], page, pageSize, total }`。`detail: "full"` 才带 `preconditions`/`steps`，**每页默认 10 条、最多 20 条**。迁移时的用途只有一个：**导前**核对目标模块里是不是已经有内容相同、只是 sourceRef 对不上的用例（换过一次 sourceRef 规则就会这样，幂等键失灵，重跑会整批重复入库）|
+| `testcase-platform:list_case_tags` | `projectId` | 项目已用标签的去重排序数组。源文件里的标签先跟它对一遍，同义标签（`登录`/`用户登录`/`auth`）并存会稀释平台的标签过滤 |
+| `testcase-platform:search_cases` | `projectId`、`keyword`(必填)、`limit`(可选，默认 20，上限 50) | `[{ id, name, moduleId, priority, status, caseType, sourceRef, updatedAt }]`，按 `updatedAt` 倒序；`%`/`_` 按字面量转义 |
 
-### `import_test_cases` 返回结构
+### `testcase-platform:import_test_cases` 返回结构
 
 ```jsonc
 {
@@ -100,12 +104,12 @@ description: 将存量测试用例（Excel/CSV/XMind/TestRail 等导出件）批
 
 ### 3. 选定项目
 
-- `list_projects` → 展示已有项目，**优先引导复用**已有项目
-- 确无匹配且用户同意时才 `create_project`
+- `testcase-platform:list_projects` → 展示已有项目，**优先引导复用**已有项目
+- 确无匹配且用户同意时才 `testcase-platform:create_project`
 
 ### 4. 获取模块树并推导模块路径
 
-- `get_module_tree` 查看现状，规划源模块如何挂接（避免与已有模块重名歧义；同名即复用）
+- `testcase-platform:get_module_tree` 查看现状，规划源模块如何挂接（避免与已有模块重名歧义；同名即复用）
 - 为每条用例算出模块路径数组（如 `["订单", "支付", "退款"]`）
 
 ### 5. 规范化用例
@@ -114,13 +118,14 @@ description: 将存量测试用例（Excel/CSV/XMind/TestRail 等导出件）批
 
 ### 6. 建模块 + 分批导入
 
-- 对每个**去重后的**模块路径调用 `ensure_module_path`，缓存 `路径 → moduleId`
-- `import_test_cases` 分批提交，**每批 ≤50 条**，带确认过的 `onDuplicate` 策略
+- 对每个**去重后的**模块路径调用 `testcase-platform:ensure_module_path`，缓存 `路径 → moduleId`
+- `testcase-platform:import_test_cases` 分批提交，**每批 ≤50 条**，带确认过的 `onDuplicate` 策略
 - 每批记录返回的 created/skipped/errors（错误不中断，见「部分失败处理」）
 
 ### 7. 抽查
 
-`search_cases` 抽查 2-3 个关键字（覆盖不同模块/优先级），核对名称、模块、步骤是否正确入库。
+- `testcase-platform:search_cases` 抽查 2-3 个关键字（覆盖不同模块/优先级），核对名称、模块、优先级是否对得上。
+- **核对步骤正文必须用 `testcase-platform:read_cases(..., detail: "full")`**：`search_cases` 不返回 `steps`/`preconditions`，拿它去验「步骤是否正确入库」是验不了的——步骤拆分（编号配对、预期整体挂尾）是这套流程里最容易错的一环，至少抽 1-2 条读正文确认。
 
 ### 8. 输出迁移汇总表
 

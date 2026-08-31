@@ -12,7 +12,7 @@
  * platform-users/，文件名里的 platform- 前缀同理。
  *
  * 两个目录之间只有一处刻意的重复：那一行服务端错误（PlatformUserFormError 与
- * ProjectMemberFormError），理由写在 platform-user-form-fields.tsx。
+ * ProjectMemberFormError），理由写在 platform-user-form-error.tsx。
  */
 
 import { Button } from "@automationstack/ui/components/button";
@@ -28,10 +28,8 @@ import { useCallback, useState } from "react";
 
 import { useSession } from "@/components/auth/use-session";
 import { CreatePlatformUserDialog } from "@/components/platform-users/create-platform-user-dialog";
-import {
-	PlatformUsersTable,
-	PlatformUsersTableSkeleton,
-} from "@/components/platform-users/platform-users-table";
+import { PlatformUsersTable } from "@/components/platform-users/platform-users-table";
+import { PlatformUsersTableSkeleton } from "@/components/platform-users/platform-users-table-skeleton";
 
 /**
  * 非管理员的兜底空态。

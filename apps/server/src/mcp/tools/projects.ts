@@ -4,9 +4,12 @@ import { z } from "zod";
 import { type ApiClient, jsonResult, safeToolCall } from "./tool-helpers";
 
 const LIST_PROJECTS_DESCRIPTION =
-	"List all projects on the test-case platform (id, name, description, timestamps). " +
-	"Call this first when migrating test cases and prefer reusing an existing project " +
-	"over creating a new one.";
+	"List the projects the caller can reach on the test-case platform (id, name, " +
+	"description, timestamps). Call it first in any test-case task — writing cases " +
+	"or migrating them — both to pick the target project and because a successful " +
+	"call is the proof that the connection and the API token work. Prefer reusing " +
+	"an existing project over creating one. The project's description is free text " +
+	"the team maintains; read it, it often states the project's own conventions.";
 
 const CREATE_PROJECT_DESCRIPTION =
 	"Create a new project on the test-case platform and return it (including its id). " +

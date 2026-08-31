@@ -5,7 +5,7 @@
  * 显示，没贴图就不要显示了。直接显示在结果里面，为什么还要做一个附件这个模块
  * 呢？」）。所以图就是图：贴了就看得见，没贴什么都没有，不留标题也不留空框。
  *
- * 与 `run-attachment-row.tsx` 那份 40px 缩略图列表并存而不是取代它：**图能看，
+ * 与 `attachment-list.tsx` 那份 40px 缩略图列表并存而不是取代它：**图能看，
  * 别的看不了**。录屏、日志、zip 只有文件名与大小可读，摊成大图块毫无意义，
  * 那些仍然走列表行。分流在 `isViewableImage` 上，两边加起来正好是全集。
  */
@@ -13,7 +13,7 @@ import { Button } from "@automationstack/ui/components/button";
 import { Trash2Icon } from "lucide-react";
 import { useCallback } from "react";
 
-import type { AttachmentListItem } from "@/components/test-runs/run-attachment-row";
+import type { AttachmentListItem } from "@/components/test-runs/attachment-list";
 
 /** 高度写死一档：图的原始尺寸后端没返回，钉住高度至少让它加载完不把下面顶走。 */
 const IMAGE_HEIGHT_CLASS = "h-40";
@@ -58,7 +58,7 @@ function GalleryItem({
 				 * 配色变；图片内容本身什么颜色都可能有，描边只用来跟底色分开，不该带自己
 				 * 的色相——slate/zinc 之类的近黑同样不行，那仍是带色相的灰。
 				 */}
-				{/* biome-ignore lint/correctness/useImageSize: 附件表里没有像素尺寸——它只存 contentType/sizeBytes（服务端 HeadObject 读回来的），先例见 markdown-inline-render.tsx。猜一个宽高会给出错误的宽高比，图会先按错的比例撑开再跳回去，比不填更糟。这里用 h-40 把高度钉死，加载带来的位移只剩宽度那一维。 */}
+				{/* biome-ignore lint/correctness/useImageSize: 附件表里没有像素尺寸——它只存 contentType/sizeBytes（服务端 HeadObject 读回来的），先例见 image-node.tsx。猜一个宽高会给出错误的宽高比，图会先按错的比例撑开再跳回去，比不填更糟。这里用 h-40 把高度钉死，加载带来的位移只剩宽度那一维。 */}
 				<img
 					alt={fileName}
 					className={`${IMAGE_HEIGHT_CLASS} w-auto max-w-full rounded-md object-contain outline outline-black/10 dark:outline-white/10`}

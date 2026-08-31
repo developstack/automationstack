@@ -23,11 +23,11 @@
 ### 工具调用序列
 
 ```
-1. list_projects                          → 用户选择复用项目「商城平台」(projectId: pj-uuid)
-2. get_module_tree { projectId }          → 树中尚无「登录」分支
-3. ensure_module_path { projectId, path: ["登录", "账号密码登录"] }
+1. testcase-platform:list_projects                          → 用户选择复用项目「商城平台」(projectId: pj-uuid)
+2. testcase-platform:get_module_tree { projectId }          → 树中尚无「登录」分支
+3. testcase-platform:ensure_module_path { projectId, path: ["登录", "账号密码登录"] }
                                           → { moduleId: md-uuid }（缺失层级已创建）
-4. import_test_cases {
+4. testcase-platform:import_test_cases {
      projectId,
      onDuplicate: "skip",
      cases: [
@@ -59,7 +59,7 @@
        }
      ]
    }                                       → created 2 条（action: "created", version: 1）、skipped 0、errors 0
-5. search_cases { projectId, keyword: "密码错误" }   → 抽查命中，字段正确
+5. testcase-platform:search_cases { projectId, keyword: "密码错误" }   → 抽查命中，字段正确
 ```
 
 ### 重跑（幂等验证）
@@ -97,12 +97,12 @@
 ### 工具调用序列（要点）
 
 ```
-1. list_projects → 复用或 create_project { name: "商城平台" }
-2. get_module_tree { projectId }
-3. ensure_module_path { projectId, path: ["购物车", "加购", "商品详情页加购"] } → md-1
-   ensure_module_path { projectId, path: ["购物车", "加购", "列表页快捷加购"] } → md-2（仅建模块）
-   ensure_module_path { projectId, path: ["购物车", "结算"] } → md-3
-4. import_test_cases { projectId, onDuplicate: "skip", cases: [
+1. testcase-platform:list_projects → 复用或 testcase-platform:create_project { name: "商城平台" }
+2. testcase-platform:get_module_tree { projectId }
+3. testcase-platform:ensure_module_path { projectId, path: ["购物车", "加购", "商品详情页加购"] } → md-1
+   testcase-platform:ensure_module_path { projectId, path: ["购物车", "加购", "列表页快捷加购"] } → md-2（仅建模块）
+   testcase-platform:ensure_module_path { projectId, path: ["购物车", "结算"] } → md-3
+4. testcase-platform:import_test_cases { projectId, onDuplicate: "skip", cases: [
      { moduleId: md-1, name: "普通商品加购成功", priority: "P0",
        sourceRef: "购物车.xmind#购物车/加购/商品详情页加购/普通商品加购成功", steps: [...] },
      { moduleId: md-1, name: "库存不足时加购", priority: "P2", sourceRef: "...", steps: [...] },
@@ -114,7 +114,7 @@
          { "id": "<uuid>", "step": "点击结算", "expected": "跳转订单确认页" }
        ] }
    ] } → created 3 条、skipped 0、errors 0
-5. search_cases { projectId, keyword: "结算" } 抽查
+5. testcase-platform:search_cases { projectId, keyword: "结算" } 抽查
 ```
 
 ---
@@ -142,11 +142,11 @@ C102,"API returns 401 for expired token","Auth > Token",High,API,"Token expired"
 ### 工具调用序列（要点）
 
 ```
-1. list_projects → 选定 projectId
-2. get_module_tree { projectId }
-3. ensure_module_path { projectId, path: ["Auth", "Login"] } → md-a
-   ensure_module_path { projectId, path: ["Auth", "Token"] } → md-b
-4. import_test_cases { projectId, onDuplicate: "skip", cases: [
+1. testcase-platform:list_projects → 选定 projectId
+2. testcase-platform:get_module_tree { projectId }
+3. testcase-platform:ensure_module_path { projectId, path: ["Auth", "Login"] } → md-a
+   testcase-platform:ensure_module_path { projectId, path: ["Auth", "Token"] } → md-b
+4. testcase-platform:import_test_cases { projectId, onDuplicate: "skip", cases: [
      { moduleId: md-a, name: "Verify login with valid credentials",
        priority: "P0", caseType: "functional",
        preconditions: "User test01 exists", sourceRef: "testrail#C101",
@@ -163,7 +163,7 @@ C102,"API returns 401 for expired token","Auth > Token",High,API,"Token expired"
            "expected": "Response is 401 with error body" }
        ] }
    ] } → created 2 条、skipped 0、errors 0
-5. search_cases { projectId, keyword: "401" } 抽查
+5. testcase-platform:search_cases { projectId, keyword: "401" } 抽查
 ```
 
 ### 部分失败示例

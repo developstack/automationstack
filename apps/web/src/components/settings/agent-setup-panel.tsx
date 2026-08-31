@@ -1,18 +1,19 @@
 /**
- * 「本地 Agent 接入」那一格的正文：四节按「先有什么 → 怎么最快装上 → 手工怎么
- * 配 → 装完 agent 凭什么会用」的顺序排下来。
+ * 「本地 Agent 接入」那一格的正文。
  *
  * 这一格没有任何服务端状态，也没有表单：它是一份接入指南，唯一「算」出来的
  * 只有两个地址。所以既不取数、不需要骨架，也不带 key 随项目重挂。
+ *
+ * 它现在只做一件事：把两个地址填进 markdown，交给通用渲染器。四节（端点 /
+ * 安装 / 各家客户端 / skill）之间的分割线、标题层级、着重点全部由正文自己用
+ * markdown 表达——**要改文案请去 agent-setup-guide.md，不要回到这里加 JSX**。
+ * 这一层与那份文案之间只剩下两个占位符这一处约定，收口在 agent-setup-doc.ts。
  */
 import { env } from "@automationstack/env/web";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-import { AgentEndpointSection } from "@/components/settings/agent-endpoint-section";
-import { AgentInstallSection } from "@/components/settings/agent-install-section";
-import { buildMcpClients } from "@/components/settings/agent-mcp-clients";
-import { AgentMcpClientsSection } from "@/components/settings/agent-mcp-clients-section";
-import { AgentSkillSection } from "@/components/settings/agent-skill-section";
+import { DocMarkdown } from "@/components/docs/doc-markdown";
+import { buildAgentSetupDoc } from "@/components/settings/agent-setup-doc";
 
 /** 脚本是 apps/web/public 下的静态文件，路径与文件名一一对应。 */
 const SCRIPT_PATH = "/install-agent-skill.sh";
@@ -38,6 +39,13 @@ function buildMcpUrl(serverOrigin: string): string {
  * 用 effect 而不是在初值里读 window：这一页是 SSR 出来的，初值里读 window 会
  * 让服务端与首次客户端渲染给出两份不同的 HTML（hydration mismatch）。effect
  * 在挂载后才跑，两侧首帧都是同一份相对路径，随后才补成绝对地址。
+ *
+ * 它只喂给正文里的 `curl -O` 那一行——`curl` 拿不到浏览器的当前地址，必须给
+ * 绝对地址。正文里那条**下载链接**反过来用的是相对路径 `/install-agent-skill.sh`：
+ * `download` 属性对跨源 URL 会被浏览器静默忽略，而首帧还没跑 effect 时这里给出
+ * 的绝对地址是空 origin 拼出来的，两条理由都指向相对路径。渲染器据此加
+ * `download`（见 docs/doc-markdown.tsx 的 STATIC_ASSET_HREF），点一下是存到本地，
+ * 不是在新标签里摊开一屏源码。
  */
 function useScriptUrl(): string {
 	const [origin, setOrigin] = useState("");
@@ -50,14 +58,6 @@ function useScriptUrl(): string {
 export function AgentSetupPanel() {
 	const mcpUrl = buildMcpUrl(env.VITE_SERVER_URL);
 	const scriptUrl = useScriptUrl();
-	const clients = useMemo(() => buildMcpClients(mcpUrl), [mcpUrl]);
 
-	return (
-		<>
-			<AgentEndpointSection mcpUrl={mcpUrl} />
-			<AgentInstallSection mcpUrl={mcpUrl} scriptUrl={scriptUrl} />
-			<AgentMcpClientsSection clients={clients} />
-			<AgentSkillSection />
-		</>
-	);
+	return <DocMarkdown text={buildAgentSetupDoc({ mcpUrl, scriptUrl })} />;
 }

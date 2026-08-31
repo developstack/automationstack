@@ -2,7 +2,8 @@
  * 写剪贴板：所有「只读 + 一键复制」控件共用的那一份。
  *
  * 收拢前全仓有三份逐字节相同的实现，跨两个目录：settings/jira-webhook-url.tsx、
- * settings/agent-copy-block.tsx、api-tokens/api-token-plaintext.tsx。前两份的
+ * settings/agent-copy-block.tsx（已被 docs/doc-code-block.tsx 取代）、
+ * api-tokens/api-token-plaintext.tsx。前两份的
  * 注释说「各自独立演化的代价小于立一个中间层」，第三份的注释说「等哪次能一起动
  * 就该收进共用 utils」——三份从来没有分头演化过，倒是那段「非安全上下文里
  * navigator.clipboard 根本不存在」的坑得记在三个地方，下一个改的人只改一处，

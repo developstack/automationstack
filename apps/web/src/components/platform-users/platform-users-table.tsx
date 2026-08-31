@@ -6,7 +6,6 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@automationstack/ui/components/empty";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import {
 	Table,
 	TableBody,
@@ -16,7 +15,6 @@ import {
 	TableRow,
 } from "@automationstack/ui/components/table";
 import { useSuspenseQuery } from "@tanstack/react-query";
-
 import { formatDateTime } from "@/components/cases/case-meta";
 import { PLATFORM_ROLE_LABEL } from "@/components/platform-users/platform-user-meta";
 import { PlatformUserRowActions } from "@/components/platform-users/platform-user-row-actions";
@@ -70,26 +68,6 @@ function PlatformUsersEmpty() {
 				<EmptyDescription>点击「新建用户」创建第一个账号。</EmptyDescription>
 			</EmptyHeader>
 		</Empty>
-	);
-}
-
-const SKELETON_ROW_KEYS = ["r1", "r2", "r3", "r4"] as const;
-
-/**
- * 路由 pendingComponent 用的表格骨架。
- * 行高与真实行（TableCell 的 p-2 + 内容 20px）对齐，数据到达时表格不会长高。
- * 圆角覆盖成 rounded-none：替身要跟真身同形，而表格行是方角的。
- *
- * 「所属项目」那一列会让某些行比骨架高，这一点没法在骨架里预演——那一列的高度
- * 取决于每个人在几个项目里，而骨架的全部意义就是在数据到达之前占位。认了。
- */
-export function PlatformUsersTableSkeleton() {
-	return (
-		<output aria-busy="true" aria-label="用户列表加载中" className="grid gap-2">
-			{SKELETON_ROW_KEYS.map((key) => (
-				<Skeleton className="h-9 w-full rounded-none" key={key} />
-			))}
-		</output>
 	);
 }
 

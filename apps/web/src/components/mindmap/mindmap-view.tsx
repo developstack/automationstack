@@ -12,7 +12,8 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@automationstack/ui/components/empty";
-import { useQuery } from "@tanstack/react-query";
+import { cn } from "@automationstack/ui/lib/utils";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 
 import { orpc } from "@/utils/orpc";
@@ -63,6 +64,30 @@ function MindmapError({ scope }: { scope: MindmapScope }) {
 	);
 }
 
+/**
+ * 这一棵树的查询。单拎成 hook 有两个理由：下面那段取舍值得单独一段说明，
+ * 而 MindmapView 本身已经贴着 max-lines-per-function 的 50 行上限。
+ *
+ * keepPreviousData：切模块（作用域一变，queryKey 就变）时留住上一棵树，
+ * 画布不会先整块塌成骨架再涨回来。全站列表型查询都是这个约定——
+ * cases（case-list-view.tsx）、test-runs（test-run-list-view.tsx）、
+ * 用例挑选器（case-picker.tsx）三处在先，这里是最后一处补齐。
+ *
+ * 为什么在调用点加而不是加进 mindmapTreeQueryOptions：同步器
+ * （mindmap-sync-runner.ts）也用那份 options，它要的是「缓存里现在到底有没有
+ * 这一棵」，给它一份上一次的旧树会把同步写到错的作用域上。
+ *
+ * 换 key 重建画布与旧数据不冲突：画布挂载时先用旧快照初始化，新数据到达后由
+ * MindmapCanvas 里那个 syncExternal 的 effect 吸收（它本来就是为「别人改的、
+ * 从 invalidate 回来的数据」准备的），不需要第二次重建。
+ */
+function useMindmapTree(scope: MindmapScope) {
+	return useQuery({
+		...mindmapTreeQueryOptions(scope),
+		placeholderData: keepPreviousData,
+	});
+}
+
 export function MindmapView({ moduleId, projectId }: MindmapViewProps) {
 	const scope = useMemo(
 		() => createMindmapScope(projectId, moduleId),
@@ -71,7 +96,7 @@ export function MindmapView({ moduleId, projectId }: MindmapViewProps) {
 	const projectQuery = useQuery(
 		orpc.projects.get.queryOptions({ input: { id: projectId } })
 	);
-	const treeQuery = useQuery(mindmapTreeQueryOptions(scope));
+	const treeQuery = useMindmapTree(scope);
 
 	if (projectQuery.isError || treeQuery.isError) {
 		return <MindmapError scope={scope} />;
@@ -83,7 +108,17 @@ export function MindmapView({ moduleId, projectId }: MindmapViewProps) {
 	}
 
 	return (
-		<div className="flex h-full flex-col">
+		/*
+		 * 「这份是旧的，新的还在路上」：淡到 60%，与 case-table.tsx 的 STALE_CLASS
+		 * 逐字同款（transition-crossfade 只列 opacity 一个属性，只淡不动——
+		 * 位移或缩放会让整块画布晃一下，比原来的骨架还糟）。
+		 */
+		<div
+			className={cn(
+				"flex h-full flex-col transition-crossfade",
+				treeQuery.isPlaceholderData && "opacity-60"
+			)}
+		>
 			{isScopedMindmap(scope) ? (
 				<MindmapScopeBar
 					moduleName={tree.modules.at(0)?.name}

@@ -15,11 +15,11 @@ import {
 } from "@/components/settings/auto-submit-days";
 import {
 	SettingsFieldsSkeleton,
-	SettingsSection,
-	SettingsSectionError,
 	type SettingsSkeletonAction,
 	type SettingsSkeletonField,
-} from "@/components/settings/settings-section";
+} from "@/components/settings/settings-fields-skeleton";
+import { SettingsSection } from "@/components/settings/settings-section";
+import { SettingsSectionError } from "@/components/settings/settings-section-error";
 import { TestRunSettingsFields } from "@/components/settings/test-run-settings-fields";
 import { orpc } from "@/utils/orpc";
 

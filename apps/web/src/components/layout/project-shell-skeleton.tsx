@@ -1,14 +1,16 @@
 import { SecondaryPanel } from "@automationstack/ui/components/secondary-panel";
 import { SecondaryPanelProvider } from "@automationstack/ui/components/secondary-panel-context";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { Link, useParams } from "@tanstack/react-router";
 
-import { CaseTableSkeleton } from "@/components/cases/case-table-states";
+import { CaseTableSkeleton } from "@/components/cases/case-table-skeleton";
 import { AppShell } from "@/components/layout/app-shell";
-import { ProjectShellHeader } from "@/components/layout/project-shell";
+import { ProjectNameSkeleton } from "@/components/layout/project-name-skeleton";
+import { ProjectShellHeader } from "@/components/layout/project-shell-header";
 import { ProjectSidebar } from "@/components/layout/project-sidebar";
 import { readSecondaryPanelDefaultOpen } from "@/components/layout/sidebar-state";
 import { useIsCaseSection } from "@/components/layout/use-case-section";
+import { ModuleTreeSkeleton } from "@/components/skeletons/module-tree-skeleton";
+import { ToolbarSkeleton } from "@/components/skeletons/toolbar-skeleton";
 
 /**
  * 项目名未知时二级面板的可访问名。
@@ -17,83 +19,6 @@ import { useIsCaseSection } from "@/components/layout/use-case-section";
  * 可见的那一份由 header 顶掉（一条骨架），这里只剩读屏用的字符串。
  */
 const PANEL_FALLBACK_TITLE = "项目";
-
-/** 模块行骨架的稳定 key：条数固定，用下标当 key 会被 lint 拦下。 */
-const MODULE_ROW_KEYS = ["first", "second", "third"];
-
-/**
- * 侧栏骨架。行序与高度逐条折算自 module-tree.tsx 的真实行：
- * 「模块」标题行 → 模块行。
- * 标题行 = Button size="icon-xs" 的 24px（h-6），里面的 h2 只有 16px，不决定行高；
- * 模块行 = px-2 py-0.5（2+2）+ icon-xs 24px = 28px（h-7）；
- * 容器沿用真实树的 aside p-2（8px）+ gap-1（4px）。
- * 核对（按 3 条模块行算，共 4 行 3 道 gap）：
- * 8 + 24 + 28×3 + 4×3 + 8 = 136px，两边相等。
- *
- * 「项目概览」「测试评审和执行」两行已经不在这份骨架里：它们升级成一级侧栏的
- * 菜单项之后，二级面板里只剩用例相关的内容（见 module-tree.tsx）。
- *
- * 「未完成草稿」那一行同样不进骨架：它只在本机存着草稿时才存在，而这份骨架是
- * 服务端也要渲染的，猜它在等于让首帧多出一行、随后又凭空消失。
- *
- * 行数只能猜——真实条数正是还没拿到的那份数据。猜多猜少都只影响这一列自己的尾部：
- * 二级面板独立滚动，它长短几像素不会把顶栏和内容区顶得上下跳。
- *
- * aria-hidden 而不是再来一个 output：整块骨架只留 CaseTableSkeleton 自带的那一个
- * 播报区，同一次加载播两遍读屏只会更吵。
- */
-function ModuleTreeSkeleton() {
-	return (
-		<div aria-hidden="true" className="flex flex-col gap-1 p-2">
-			{/* 标题行是「模块」两个字 + 右端两颗图标按钮，整行大半是空的，骨架也别拉满宽 */}
-			<Skeleton className="h-6 w-16" />
-			{MODULE_ROW_KEYS.map((key) => (
-				<Skeleton className="h-7 w-full" key={key} />
-			))}
-		</div>
-	);
-}
-
-/**
- * 顶栏与二级面板标题行里代替项目名的那条。
- *
- * 两个使用点的就绪态现在同高，都是 20px，所以两处共用这一条 h-5：顶栏
- * （route.tsx 的 WorkspaceHeader）那处是 text-sm 的 h1；二级面板那处自切换器搬走
- * 之后退回原语的纯文本标题（`span.text-sm`，同为 20px，见 secondary-panel.tsx）。
- * 两处的行高又都由 min-h-12 的 48px 兜着——顶栏是 min-h-12 + py-1 + border-b
- * （4 + 32 + 4 + 1 = 41px，仍够不到 48px），面板标题行是 min-h-12 且无 py 无边框，
- * 灰条换成真文字时边框与下方内容一格不动。
- * 不写「加载中…」之类的占位文字：它会在项目名到达时被整段换掉，宽度跟着跳一次。
- */
-function ProjectNameSkeleton() {
-	return <Skeleton className="h-5 w-32" />;
-}
-
-/**
- * 用例列表工具栏的骨架。
- *
- * 同一条工具栏里的控件一律 32px（约定见 case-filters.tsx 顶部），所以这排一律 h-8：
- * 真实 32px vs 骨架 32px，底下隔着 gap-3 的表格不会上下挪。
- * 左右分组也照搬：左边筛选、右边计数与操作，justify-between 把它们推到两端。
- */
-function CaseToolbarSkeleton() {
-	return (
-		<div
-			aria-hidden="true"
-			className="flex flex-wrap items-center justify-between gap-2"
-		>
-			<div className="flex items-center gap-2">
-				{/* w-64 与真实搜索框（Input className="w-64"）同宽 */}
-				<Skeleton className="h-8 w-64" />
-				<Skeleton className="h-8 w-28" />
-			</div>
-			<div className="flex items-center gap-2">
-				<Skeleton className="h-8 w-24" />
-				<Skeleton className="h-8 w-28" />
-			</div>
-		</div>
-	);
-}
 
 /** 顶栏骨架：面包屑照旧是真文字，只有项目名是灰条。 */
 function ProjectHeaderSkeleton() {
@@ -135,7 +60,10 @@ function ProjectBodySkeleton() {
 			<div className="min-h-0 min-w-0 overflow-hidden">
 				{/* p-4 / gap-3 与 CaseListView 的 main 同款，内容到达时首行不位移 */}
 				<div className="flex min-h-0 flex-col gap-3 p-4">
-					<CaseToolbarSkeleton />
+					{/* 左组不折行、右组 gap-2，与 case-list-skeleton.tsx 那份同款：
+					    冷启动进项目时先显示这份父路由骨架、紧接着才轮到子路由那份，
+					    两份宽度不同的话灰条会原地错动一次。 */}
+					<ToolbarSkeleton endGap="gap-2" startWrap={false} />
 					{/*
 					 * 吃默认行数（= CASE_PAGE_SIZE），刻意与页面级那份
 					 * case-list-skeleton.tsx 保持同值：冷启动进项目时先显示这份
@@ -183,7 +111,10 @@ export function ProjectShellSkeleton() {
 						header={<ProjectNameSkeleton />}
 						title={PANEL_FALLBACK_TITLE}
 					>
-						<ModuleTreeSkeleton />
+						{/* 三行模块 + 那条「模块」小标题；aria-hidden（label 省掉）：
+						    整块骨架只留 CaseTableSkeleton 自带的那一个播报区，
+						    同一次加载播两遍读屏只会更吵。 */}
+						<ModuleTreeSkeleton rows={3} title={true} />
 					</SecondaryPanel>
 				) : null}
 				<div className="grid min-h-0 min-w-0 flex-1 grid-rows-1">

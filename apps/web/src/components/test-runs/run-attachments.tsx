@@ -17,18 +17,17 @@
  *
  * 这个文件只剩编排。三条入口共用的状态在 `run-attachment-picker.ts`，
  * 上传区的 DOM 在 `run-attachment-dropzone.tsx`，图在 `run-attachment-gallery.tsx`，
- * 非图片附件的列表行在 `run-attachment-row.tsx`。
+ * 非图片附件的列表在 `attachment-list.tsx`、其中的一行在 `attachment-row.tsx`。
  */
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useCallback } from "react";
 
+import { AttachmentList } from "@/components/test-runs/attachment-list";
 import { AttachmentDropZone } from "@/components/test-runs/run-attachment-dropzone";
 import {
 	AttachmentGallery,
 	isViewableImage,
 } from "@/components/test-runs/run-attachment-gallery";
 import { useAttachmentPicker } from "@/components/test-runs/run-attachment-picker";
-import { AttachmentList } from "@/components/test-runs/run-attachment-row";
 import {
 	useAttachmentList,
 	useRemoveAttachment,
@@ -88,7 +87,11 @@ export function RunAttachments({
 					可以让管理员在服务端补上 R2 配置后再补传。
 				</p>
 			) : null}
-			{listQuery.isPending ? <Skeleton className="h-14 w-full" /> : null}
+			{/*
+			 * 加载态不摆骨架——这正是本文件开头那句「为一个多半空着的区块先闪一段
+			 * 骨架屏更吵」的直接后果，此前那条 `h-14 w-full` 与它自相矛盾：
+			 * 绝大多数用例一张图都没有，灰条闪完随即消失，等于凭空多一次跳动。
+			 */}
 			<AttachmentGallery
 				items={images}
 				onRemove={handleRemove}

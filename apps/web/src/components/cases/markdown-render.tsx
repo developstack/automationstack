@@ -15,156 +15,36 @@
  * 行高、颜色是为长文档调的，而这段内容要么挤在分栏预览里、要么挤在详情抽屉里，
  * 周围全是 `text-sm`。手写十来个类比覆盖一整套 prose 变量便宜得多。
  *
+ * ## 与 components/docs/ 那套的分工
+ *
+ * 全仓有两条 markdown 链路，别合并，也别在这里「顺手支持一下表格」：
+ * 这一条服务**用户敲进来的用例正文**（所见即所得、原文切片、`whitespace-pre-wrap`、
+ * 表格与分隔线一律降级成原文）；`components/docs/doc-markdown.tsx` 那条服务
+ * **我们自己写的产品内文档**（标准 CommonMark + GFM，`---` 真的画成分割线）。
+ * 两边的正确性标准是相反的，理由分别写在各自文件顶部。
+ *
  * ## SSR
  *
  * `/projects/$projectId` 会 SSR，因此本文件及其依赖**不许 import 任何
  * `@codemirror/*`**（`@codemirror/view` 在 import 期就读 `navigator`）。
  * 语法树来自 `markdown-parser.ts` 里那个与编辑器共用的裸 lezer parser。
+ *
+ * ## 本文件只剩入口
+ *
+ * 块级节点的渲染在 `block.tsx`（Block / ListBlocks / ListNode 三者互相递归，
+ * 必须同处一个文件），标题在 `heading.tsx`，行内节点在
+ * `markdown-inline-render.tsx`。上面这几条约束对它们同样成立。
  */
 import { type ReactElement, useMemo } from "react";
 
-import {
-	type MarkdownBlock,
-	type MarkdownListItem,
-	parseMarkdownDoc,
-} from "@/components/cases/markdown-doc";
-import {
-	InlineNodes,
-	type MarkdownImageUrls,
-} from "@/components/cases/markdown-inline-render";
+import { Block } from "@/components/cases/block";
+import { parseMarkdownDoc } from "@/components/cases/markdown-doc";
+import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 
 export interface MarkdownRenderProps {
 	/** attachment id → 15 分钟签名 URL；缺失表示还没查到或已失效。 */
 	imageUrls?: MarkdownImageUrls;
 	text: string;
-}
-
-/**
- * 标题字号只拉开到 4 级，且都比 prose 保守：这段内容住在 `text-sm` 的上下文里，
- * 一个 `text-2xl` 的 h1 会把整块内容的重心从正文挪到标题上。
- */
-const HEADING_CLASS: Record<number, string> = {
-	1: "mt-2 font-semibold text-base",
-	2: "mt-2 font-semibold text-sm",
-	3: "mt-2 font-semibold text-sm",
-	4: "mt-2 font-medium text-sm",
-};
-
-/**
- * `whitespace-pre-wrap` 是这一页的关键类。
- *
- * 编辑器里存的就是原文，用户按下的每一个回车都在字符串里；markdown 的标准做法
- * 是把单个换行折叠成空格，那会让「所见（编辑器里三行）」与「所得（预览里一行）」
- * 对不上。保留换行同时也让硬换行（HardBreak 的原文 `"  \n"`）不需要任何特殊处理
- * ——它作为纯文本原样带过来，在这里就是一次换行，一个字符都没丢。
- */
-const TEXT_FLOW_CLASS = "whitespace-pre-wrap break-words";
-
-function ListBlocks({
-	blocks,
-	imageUrls,
-}: {
-	blocks: readonly MarkdownBlock[];
-	imageUrls: MarkdownImageUrls | undefined;
-}): ReactElement {
-	return (
-		<>
-			{blocks.map((block) => (
-				<Block block={block} imageUrls={imageUrls} key={block.from} />
-			))}
-		</>
-	);
-}
-
-function ListNode({
-	imageUrls,
-	items,
-	ordered,
-}: {
-	imageUrls: MarkdownImageUrls | undefined;
-	items: readonly MarkdownListItem[];
-	ordered: boolean;
-}): ReactElement {
-	const className = ordered
-		? "list-decimal space-y-1 pl-5"
-		: "list-disc space-y-1 pl-5";
-	const children = items.map((item) => (
-		<li key={item.from}>
-			<ListBlocks blocks={item.blocks} imageUrls={imageUrls} />
-		</li>
-	));
-	return ordered ? (
-		<ol className={className}>{children}</ol>
-	) : (
-		<ul className={className}>{children}</ul>
-	);
-}
-
-/**
- * key 一律用源码偏移量 `from`，不用数组下标：在正文开头插入一个字符会让所有
- * 下标整体错位，React 就会把第 2 段的 DOM 复用给第 1 段，正在加载的图片会闪一下。
- */
-function Block({
-	block,
-	imageUrls,
-}: {
-	block: MarkdownBlock;
-	imageUrls: MarkdownImageUrls | undefined;
-}): ReactElement {
-	switch (block.kind) {
-		case "paragraph":
-			return (
-				<p className={TEXT_FLOW_CLASS}>
-					<InlineNodes imageUrls={imageUrls} nodes={block.children} />
-				</p>
-			);
-		case "heading":
-			return (
-				<Heading level={block.level}>
-					<InlineNodes imageUrls={imageUrls} nodes={block.children} />
-				</Heading>
-			);
-		case "code":
-			return (
-				<pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
-					<code>{block.text}</code>
-				</pre>
-			);
-		case "list":
-			return (
-				<ListNode
-					imageUrls={imageUrls}
-					items={block.items}
-					ordered={block.ordered}
-				/>
-			);
-		default:
-			return (
-				<blockquote className="border-muted-foreground/40 border-l-2 pl-3 text-muted-foreground">
-					<ListBlocks blocks={block.blocks} imageUrls={imageUrls} />
-				</blockquote>
-			);
-	}
-}
-
-function Heading({
-	children,
-	level,
-}: {
-	children: ReactElement;
-	level: number;
-}): ReactElement {
-	const className = `${HEADING_CLASS[level] ?? HEADING_CLASS[4]} ${TEXT_FLOW_CLASS}`;
-	if (level === 1) {
-		return <h1 className={className}>{children}</h1>;
-	}
-	if (level === 2) {
-		return <h2 className={className}>{children}</h2>;
-	}
-	if (level === 3) {
-		return <h3 className={className}>{children}</h3>;
-	}
-	return <h4 className={className}>{children}</h4>;
 }
 
 export function MarkdownRender({

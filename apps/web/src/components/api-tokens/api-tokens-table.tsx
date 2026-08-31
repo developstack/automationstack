@@ -6,7 +6,6 @@ import {
 	EmptyHeader,
 	EmptyTitle,
 } from "@automationstack/ui/components/empty";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import {
 	Table,
 	TableBody,
@@ -97,39 +96,6 @@ function ApiTokensEmpty() {
 				<EmptyDescription>{EMPTY_DESCRIPTION}</EmptyDescription>
 			</EmptyHeader>
 		</Empty>
-	);
-}
-
-const SKELETON_ROW_KEYS = ["r1", "r2", "r3"] as const;
-
-/**
- * 路由 pendingComponent 用的表格骨架。折算法与 case-table-states.tsx 的
- * `CaseTableSkeleton` 同源，逐段对着真身算：
- * - 表头 = TableHead 的 h-10（40px）+ TableHeader 的 `[&_tr]:border-b` 1px
- *   （mb-px）= 41px。原先整条表头没画，等于凭空少 41px；
- * - 数据行 = TableCell 的 p-2（上下各 8px）+ 行内最高的内容 = 44px（h-11）
- *   + TableRow 的 border-b 1px（mt-px）。最高的内容是行尾那颗「吊销」按钮
- *   （ApiTokenRowActions 用的是 size="sm"，h-7 = 28px），不是 Badge 的 h-5；
- *   原先按 20px 内容折出 h-9（36px），每行少 9px。
- * 合起来：三行真身 41 + 3 × 45 = 176px，原先的骨架是 3 × 36 + 两条 gap-2
- * = 124px，数据到达那一帧下面的内容要往下掉 52px。行与行之间因此也不能再留
- * gap，边框由 mt-px 自己顶出来。
- *
- * 圆角覆盖成 rounded-none 的理由同 members-table：替身要跟真身同形，
- * 而表格行是方角的。
- */
-export function ApiTokensTableSkeleton() {
-	return (
-		<output
-			aria-busy="true"
-			aria-label="Token 列表加载中"
-			className="flex flex-col"
-		>
-			<Skeleton className="mb-px h-10 w-full rounded-none" />
-			{SKELETON_ROW_KEYS.map((key) => (
-				<Skeleton className="mt-px h-11 w-full rounded-none" key={key} />
-			))}
-		</output>
 	);
 }
 

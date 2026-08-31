@@ -7,7 +7,6 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import { Badge } from "@automationstack/ui/components/badge";
 import { Checkbox } from "@automationstack/ui/components/checkbox";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import {
 	Table,
 	TableBody,
@@ -17,7 +16,6 @@ import {
 	TableRow,
 } from "@automationstack/ui/components/table";
 import { useCallback } from "react";
-
 import { PRIORITY_BADGE_VARIANTS } from "@/components/cases/case-meta";
 import { CaseStatusBadge } from "@/components/cases/case-status-badge";
 
@@ -60,24 +58,7 @@ function PickerRow({ onToggle, selected, testCase }: PickerRowProps) {
 	);
 }
 
-const SKELETON_ROW_KEYS = ["r1", "r2", "r3", "r4", "r5", "r6"] as const;
-
-export function PickerTableSkeleton() {
-	return (
-		<output
-			aria-busy="true"
-			aria-label="用例列表加载中"
-			className="flex flex-col"
-		>
-			<Skeleton className="mb-px h-10 w-full rounded-none" />
-			{SKELETON_ROW_KEYS.map((key) => (
-				<Skeleton className="mt-px h-9 w-full rounded-none" key={key} />
-			))}
-		</output>
-	);
-}
-
-interface PickerTableProps {
+interface CasePickerTableProps {
 	cases: TestCase[];
 	onToggle: (caseId: string) => void;
 	onTogglePage: () => void;
@@ -85,13 +66,13 @@ interface PickerTableProps {
 	selectedIds: ReadonlySet<string>;
 }
 
-export function PickerTable({
+export function CasePickerTable({
 	cases,
 	onToggle,
 	onTogglePage,
 	pageAllSelected,
 	selectedIds,
-}: PickerTableProps) {
+}: CasePickerTableProps) {
 	if (cases.length === 0) {
 		return (
 			<p className="px-2 py-8 text-center text-muted-foreground text-sm">

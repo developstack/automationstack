@@ -6,12 +6,14 @@
  * 展开赋值的回调——那正是它当初撑到 400 行的一半原因。拆分本身是为了让
  * `run-case-list.tsx` 回到仓库 300 行的上限之内。
  *
- * 文件内部再分三层，为的是让 `RunCaseFilters` 回到 eslint 的 50 行函数上限：
+ * 再分三层，为的是让 `RunCaseFilters` 回到 eslint 的 50 行函数上限：
  * - `useFilterHandlers`：三个「换掉 filter 的某一个字段」的回调。抽成自定义
  *   hook 而不是搬进各自的下拉组件里——三个 useCallback 的调用顺序、依赖数组
  *   都原样保留在同一个位置，只是换了个地方书写；搬进子组件则会改变它们的
  *   执行时机与身份（子组件条件渲染时 hook 甚至可能不执行）。
- * - 三个 `*Filter` 组件：一个下拉的完整壳子（trigger + content）。
+ * - 三个 `*Filter` 组件：一个下拉的完整壳子（trigger + content）。指派人那个
+ *   按「一个文件最多 2 个私有辅助组件」搬去了 `assignee-filter-select.tsx`，
+ *   另外两个仍在本文件里。
  * - `RunCaseFilters`：只负责把三者按顺序摆进同一行。
  *
  * 三个下拉没有合并成一个泛型组件：它们的 `SelectContent` 里「兜底项 + 列表项」
@@ -30,6 +32,7 @@ import {
 } from "@automationstack/ui/components/select";
 import { useCallback } from "react";
 
+import { AssigneeFilterSelect } from "@/components/test-runs/assignee-filter-select";
 import type {
 	AssigneeFilter,
 	ModuleOption,
@@ -42,12 +45,6 @@ import {
 
 const ALL_MODULES = "all";
 const ALL_RESULTS = "all";
-
-const ASSIGNEE_OPTIONS: readonly { label: string; value: AssigneeFilter }[] = [
-	{ label: "全部人", value: "all" },
-	{ label: "指派给我", value: "mine" },
-	{ label: "未指派", value: "unassigned" },
-];
 
 /**
  * 三个筛选回调。留在组件渲染的原位置、原顺序调用，仅仅换了书写位置。
@@ -91,9 +88,10 @@ function useFilterHandlers(
 }
 
 /**
- * 三个下拉都定义在模块顶层，不在 `RunCaseFilters` 内部：写在组件内部的话，
- * 父组件每次重渲染都会造出一个新的组件类型，React 认不出是同一个，会把下拉
- * 整个卸载重建——展开着的浮层会被一并关掉。
+ * 三个下拉都定义在模块顶层，不在 `RunCaseFilters` 内部（第三个的同款说明在
+ * `assignee-filter-select.tsx`）：写在组件内部的话，父组件每次重渲染都会造出
+ * 一个新的组件类型，React 认不出是同一个，会把下拉整个卸载重建——展开着的
+ * 浮层会被一并关掉。
  */
 function ResultFilter({
 	onValueChange,
@@ -158,33 +156,6 @@ function ModuleFilter({
 				{moduleOptions.map((option) => (
 					<SelectItem key={option.id} value={option.id}>
 						{option.name}
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
-	);
-}
-
-function AssigneeFilterSelect({
-	onValueChange,
-	value,
-}: {
-	onValueChange: (next: string | null) => void;
-	value: AssigneeFilter;
-}) {
-	return (
-		<Select
-			items={ASSIGNEE_OPTIONS}
-			onValueChange={onValueChange}
-			value={value}
-		>
-			<SelectTrigger aria-label="按指派人筛选" size="sm">
-				<SelectValue />
-			</SelectTrigger>
-			<SelectContent>
-				{ASSIGNEE_OPTIONS.map((option) => (
-					<SelectItem key={option.value} value={option.value}>
-						{option.label}
 					</SelectItem>
 				))}
 			</SelectContent>

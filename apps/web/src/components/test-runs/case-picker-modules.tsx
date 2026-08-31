@@ -7,12 +7,12 @@
  * 「把范围缩到某个模块」这一件事，所以是一棵只读的、纯受控的树。
  */
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { cn } from "@automationstack/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { FolderIcon, LayersIcon } from "lucide-react";
 import { useCallback } from "react";
 
+import { ModuleTreeSkeleton } from "@/components/skeletons/module-tree-skeleton";
 import { orpc } from "@/utils/orpc";
 
 /** 行样式与侧栏那棵树同档：选中态除了底色还有左侧 2px 指示条，不只靠颜色。 */
@@ -75,22 +75,6 @@ function ModuleOption({ node, onSelect, selectedModuleId }: ModuleOptionProps) {
 	);
 }
 
-const SKELETON_KEYS = ["m1", "m2", "m3", "m4"] as const;
-
-function ModulesFallback() {
-	return (
-		<output
-			aria-busy="true"
-			aria-label="模块树加载中"
-			className="flex flex-col gap-1 p-2"
-		>
-			{SKELETON_KEYS.map((key) => (
-				<Skeleton className="h-7 w-full" key={key} />
-			))}
-		</output>
-	);
-}
-
 interface CasePickerModulesProps {
 	onSelect: (moduleId: string | undefined) => void;
 	projectId: string;
@@ -115,7 +99,7 @@ export function CasePickerModules({
 	const selectAll = useCallback(() => onSelect(undefined), [onSelect]);
 
 	if (!treeQuery.data) {
-		return <ModulesFallback />;
+		return <ModuleTreeSkeleton label="模块树加载中" rows={4} title={false} />;
 	}
 
 	return (

@@ -1,42 +1,6 @@
-import { Skeleton } from "@automationstack/ui/components/skeleton";
-
 import { CASE_PAGE_SIZE } from "@/components/cases/case-list-query";
-import { CaseTableSkeleton } from "@/components/cases/case-table-states";
-
-/**
- * 工具栏骨架。
- *
- * 为什么非摆不可：工具栏是 main 这列 flex 的第一行，省掉它表格骨架就顶到最上面，
- * 数据到达时整张表要连着 32px 的工具栏加 gap-3 一起往下挪 44px。
- * 同一条工具栏里的控件一律 32px（约定见 case-filters.tsx 顶部），所以这排一律 h-8：
- * 真实 32px vs 骨架 32px，底下的表格不会上下跳。
- * 左右分组照搬 CaseListToolbar 的 justify-between，两端各自贴边；灰条宽度与真实控件
- * 对不齐只会横向差一点，不构成跳动，所以不去逐个控件描它的宽度。
- *
- * 尺寸刻意与 layout/project-shell-skeleton.tsx 里那份保持一致：冷启动进项目时
- * 先显示父路由的骨架、紧接着才轮到这一份，两份宽度不同的话灰条会原地错动一次。
- *
- * aria-hidden 而不是再来一个 output：整块骨架只留 CaseTableSkeleton 自带的那一个
- * 播报区，同一次加载播两遍读屏只会更吵。
- */
-function CaseListToolbarSkeleton() {
-	return (
-		<div
-			aria-hidden="true"
-			className="flex flex-wrap items-center justify-between gap-2"
-		>
-			<div className="flex items-center gap-2">
-				{/* w-64 与真实搜索框（Input className="w-64"）同宽 */}
-				<Skeleton className="h-8 w-64" />
-				<Skeleton className="h-8 w-28" />
-			</div>
-			<div className="flex items-center gap-2">
-				<Skeleton className="h-8 w-24" />
-				<Skeleton className="h-8 w-28" />
-			</div>
-		</div>
-	);
-}
+import { CaseTableSkeleton } from "@/components/cases/case-table-skeleton";
+import { ToolbarSkeleton } from "@/components/skeletons/toolbar-skeleton";
 
 /**
  * 用例列表 main 内部的加载态：工具栏一条 + 表格骨架，与 CaseListView 就绪态的
@@ -49,7 +13,12 @@ function CaseListToolbarSkeleton() {
 export function CaseListSkeleton() {
 	return (
 		<>
-			<CaseListToolbarSkeleton />
+			{/*
+			 * 左组不折行、右组 gap-2，与就绪态的 CaseListToolbar 同款；尺寸刻意与
+			 * layout/project-shell-skeleton.tsx 里那处调用保持一致：冷启动进项目时
+			 * 先显示父路由的骨架、紧接着才轮到这一份，两份不同的话灰条会原地错动一次。
+			 */}
+			<ToolbarSkeleton endGap="gap-2" startWrap={false} />
 			{/*
 			 * 显式写出 CASE_PAGE_SIZE 而不是吃默认值：这里是页面级骨架，等的就是
 			 * 整整一页用例，行数与页大小是同一个事实，摆在调用点上那边改了这边

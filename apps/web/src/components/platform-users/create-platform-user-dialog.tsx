@@ -20,10 +20,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
 
-import {
-	PlatformUserField,
-	PlatformUserFormError,
-} from "@/components/platform-users/platform-user-form-fields";
+import { PlatformUserField } from "@/components/platform-users/platform-user-field";
+import { PlatformUserFormError } from "@/components/platform-users/platform-user-form-error";
 import {
 	isUserRole,
 	PASSWORD_HINT,

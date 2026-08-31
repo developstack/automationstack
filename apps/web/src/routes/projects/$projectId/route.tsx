@@ -6,10 +6,8 @@ import {
 	useRouterState,
 } from "@tanstack/react-router";
 
-import {
-	ProjectShell,
-	ProjectShellHeader,
-} from "@/components/layout/project-shell";
+import { ProjectShell } from "@/components/layout/project-shell";
+import { ProjectShellHeader } from "@/components/layout/project-shell-header";
 import { ProjectShellSkeleton } from "@/components/layout/project-shell-skeleton";
 import { PresenceAvatars } from "@/realtime/presence-avatars";
 import { RealtimeProvider } from "@/realtime/realtime-provider";

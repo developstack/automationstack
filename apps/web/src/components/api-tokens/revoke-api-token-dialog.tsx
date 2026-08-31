@@ -10,7 +10,7 @@ import {
 	AlertDialogTitle,
 } from "@automationstack/ui/components/alert-dialog";
 
-import { ApiTokenFormError } from "@/components/api-tokens/api-token-form-fields";
+import { ApiTokenFormError } from "@/components/api-tokens/api-token-form-error";
 import type { ApiTokenActions } from "@/components/api-tokens/use-api-token-actions";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 

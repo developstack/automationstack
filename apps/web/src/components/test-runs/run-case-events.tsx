@@ -8,20 +8,18 @@
  *
  * 分两层是因为用户问的是两个粒度不同的问题：
  *
- * 1. 「这条现在算谁的账」——`RunCaseLastVerdict`，一行小字常驻在结论按钮旁边，
- *    不用点开就能看见。它只回答最后一次。
+ * 1. 「这条现在算谁的账」——`RunCaseLastVerdict`（住在 `run-case-last-verdict.tsx`），
+ *    一行小字常驻在结论按钮旁边，不用点开就能看见。它只回答最后一次。
  * 2. 「谁判过通过、又是谁打回的」——`RunCaseEvents`，完整时间线，默认折叠。
  *    单值字段答不了这个问题（每次改判都把上一次覆盖掉），只能问流水表。
  */
 
-import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 import { Button } from "@automationstack/ui/components/button";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@automationstack/ui/components/collapsible";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon } from "lucide-react";
 
@@ -37,51 +35,7 @@ import { type client, orpc } from "@/utils/orpc";
  * 那个账号被删了（外键 `set null`）。署名丢了，但「有人在那一刻判了这条」这个
  * 事实还在，所以要说出来，不能留白，更不能说成「未知」。
  */
-const DELETED_ACTOR = "已注销的账号";
-
-export interface RunCaseLastVerdictProps {
-	executedAt: Date | null;
-	executedByName: string | null;
-	result: TestRunCaseResult;
-}
-
-/**
- * 常驻的一行：最后一次是谁、几点、判成了什么。
- *
- * 刻意做成一行小字而不是卡片/边框块：这一页刚刚才把失败专属的三块
- * （说明 / 附件 / 缺陷）收起来过，再加一个有框的区块等于把杂乱又加回去。
- *
- * `untested` 一档整行不显示：后端回退成未测时会把 `executedAt` / `executedBy`
- * 一并清空（见 `buildResultPatch`），此时没有「最后一次判定」这回事——
- * 显示成「未知」是在暗示数据丢了，而实际上是这条用例现在确实没有判定。
- * `executedAt` 为 null 时同样整行不显示，理由相同（不该发生，但不猜）。
- */
-export function RunCaseLastVerdict({
-	executedAt,
-	executedByName,
-	result,
-}: RunCaseLastVerdictProps) {
-	if (result === "untested" || executedAt === null) {
-		return null;
-	}
-	return (
-		<p className="text-muted-foreground text-xs">
-			{`最后由 ${executedByName ?? DELETED_ACTOR} 于 ${formatDateTime(executedAt)} 判定为 `}
-			{/*
-			 * 结论只加 font-medium，不加引号也不加颜色。
-			 *
-			 * 原先写的是「判为「通过」」：一句中文里再套一层引号，读的人要先分清
-			 * 哪对引号是句子的、哪对是值的。去掉引号之后「判为通过」会黏成一团，
-			 * 所以动词补成「判定为」——多一个字，断句就回来了。
-			 *
-			 * 颜色不给：这一行是灰色小字，通篇只有它变色会把视线从上面那颗真正的
-			 * 结论徽章上抢走，而徽章才是这一屏读结论的地方（形状 + 底色 + 文字
-			 * 三重编码，见 `test-run-meta.ts` 的 RESULT_ICONS）。
-			 */}
-			<span className="font-medium">{RESULT_LABELS[result]}</span>
-		</p>
-	);
-}
+export const DELETED_ACTOR = "已注销的账号";
 
 /** 列表行的形状直接取过程返回值本身（先例：mindmap-tree-input 的 MindmapTreeData）。 */
 type RunCaseEventEntry = Awaited<
@@ -155,7 +109,11 @@ export function RunCaseEvents({ runCaseId }: { runCaseId: string }) {
 			    收起过程中露出一条空白带。 */}
 			<CollapsibleContent className="collapsible-panel">
 				<div className="pb-2">
-					{eventsQuery.isPending ? <Skeleton className="h-16 w-full" /> : null}
+					{/*
+					 * 加载态不摆骨架，理由与 run-events.tsx 那处逐字相同：查询一直挂着
+					 * （见组件文档末尾那段），点开时数据早已到位；条数 0..N 不定，
+					 * 折叠区向下展开，灰条既预告不了形状也挡不住任何位移。
+					 */}
 					{eventsQuery.data?.length === 0 && (
 						<p className="text-muted-foreground text-sm">
 							这条用例还没有人判过结论。

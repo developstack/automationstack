@@ -1,4 +1,3 @@
-import { Badge } from "@automationstack/ui/components/badge";
 import {
 	Card,
 	CardContent,
@@ -7,28 +6,20 @@ import {
 	CardTitle,
 } from "@automationstack/ui/components/card";
 import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@automationstack/ui/components/table";
-import {
 	CircleCheckIcon,
 	CircleHelpIcon,
 	TriangleAlertIcon,
 } from "lucide-react";
 import { lazy, Suspense } from "react";
 
-import { PRIORITY_BADGE_VARIANTS } from "@/components/cases/case-meta";
 import {
 	REPORT_BARS_BOX,
 	reportPriorityHeightPx,
 } from "@/components/overview/chart-box";
-import { formatRate, RATE_UNKNOWN } from "@/components/test-runs/rate-format";
+import { RATE_UNKNOWN } from "@/components/test-runs/rate-format";
 import type { ReportPriorityStat } from "@/components/test-runs/report-meta";
 import type { ReportPriorityBarsProps } from "@/components/test-runs/report-priority-bars-chart";
+import { ReportPriorityTable } from "@/components/test-runs/report-priority-table";
 
 /**
  * 柱图真身走动态 import：它静态引用 recharts，而这张卡本身（P0 结论 + 表格）是首屏
@@ -109,45 +100,6 @@ function P0Verdict({ stat }: { stat: ReportPriorityStat | undefined }) {
 	);
 }
 
-function PriorityTable({ rows }: { rows: readonly ReportPriorityStat[] }) {
-	return (
-		<Table>
-			<TableHeader>
-				<TableRow>
-					<TableHead className="w-16">优先级</TableHead>
-					<TableHead className="w-16 text-right">总数</TableHead>
-					<TableHead className="w-16 text-right">通过</TableHead>
-					<TableHead className="w-16 text-right">失败</TableHead>
-					<TableHead className="text-right">通过率</TableHead>
-				</TableRow>
-			</TableHeader>
-			<TableBody>
-				{rows.map((row) => (
-					<TableRow key={row.priority}>
-						<TableCell>
-							<Badge variant={PRIORITY_BADGE_VARIANTS[row.priority]}>
-								{row.priority}
-							</Badge>
-						</TableCell>
-						<TableCell className="text-right tabular-nums">
-							{row.total}
-						</TableCell>
-						<TableCell className="text-right tabular-nums">
-							{row.passed}
-						</TableCell>
-						<TableCell className="text-right tabular-nums">
-							{row.failed}
-						</TableCell>
-						<TableCell className="text-right tabular-nums">
-							{formatRate(row.passRate)}
-						</TableCell>
-					</TableRow>
-				))}
-			</TableBody>
-		</Table>
-	);
-}
-
 interface ReportPriorityCardProps {
 	className?: string;
 	priorities: readonly ReportPriorityStat[];
@@ -189,7 +141,7 @@ export function ReportPriorityCard({
 				) : (
 					<>
 						{chartRows.length > 0 ? <PriorityBars rows={chartRows} /> : null}
-						<PriorityTable rows={priorities} />
+						<ReportPriorityTable rows={priorities} />
 					</>
 				)}
 			</CardContent>

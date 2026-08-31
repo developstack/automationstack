@@ -96,6 +96,22 @@ jobs:
           node scripts/check-tailwind.js $files
           node scripts/check-file-rules.js $files
 
+      # 门禁脚本自己的单测。它们是 `node --test` 的 .test.mjs，落在 scripts/ 与
+      # eslint-rules/ 下；而 vitest 每个 project 的 include 都是 `src/**/*.test.ts`，
+      # 所以 `pnpm test` 一个都跑不到——不在这里跑，就是谁都不跑。
+      # 门禁自身写错（比如豁免写宽了、判定漏了一类）不会有任何信号，
+      # 而门禁失灵的表现恰恰是「全绿」，本仓在假绿上翻过车，这道必须有。
+      - name: 门禁脚本自测
+        run: node --test scripts/*.test.mjs eslint-rules/*.test.mjs
+
+      # apps/web/public/install-agent-skill.sh 里内嵌着 .claude/skills/ 两个 skill
+      # 的正文（它是发给用户的单文件离线安装器，正文必须在它自己肚子里）。
+      # 内嵌的那份是生成物：改了 skill 却忘了重新生成，用户装到的就是旧的一套，
+      # 而这种漂移在本地看不出来——所以在这里卡一道。
+      # 失败时的修法：node scripts/build-install-agent-skill.js
+      - name: 安装脚本内嵌的 skill 未漂移
+        run: node scripts/build-install-agent-skill.js --check
+
   docker:
     name: 构建镜像 (${{ matrix.app }})
     needs: check

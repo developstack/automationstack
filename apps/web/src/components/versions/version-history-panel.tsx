@@ -5,18 +5,13 @@
  * them to the pure diff helpers. Defaults to "current vs previous".
  */
 import { Button } from "@automationstack/ui/components/button";
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyTitle,
-} from "@automationstack/ui/components/empty";
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { orpc } from "@/utils/orpc";
 
+import { HistoryEmpty } from "./history-empty.tsx";
 import type { CaseVersionRow } from "./version-list.tsx";
 import { VersionList } from "./version-list.tsx";
 import { VersionRollbackDialog } from "./version-rollback-dialog.tsx";
@@ -120,17 +115,6 @@ function HistorySkeleton() {
 			<Skeleton className="h-16 w-full" />
 			<Skeleton className="h-16 w-full" />
 		</div>
-	);
-}
-
-function HistoryEmpty() {
-	return (
-		<Empty>
-			<EmptyHeader>
-				<EmptyTitle>暂无版本记录</EmptyTitle>
-				<EmptyDescription>保存一次用例后即可看到版本历史。</EmptyDescription>
-			</EmptyHeader>
-		</Empty>
 	);
 }
 

@@ -41,6 +41,11 @@ const listCasesSchema = z.object({
 	pageSize: z.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
 	priority: z.array(casePrioritySchema).optional(),
 	projectId: z.uuid(),
+	/**
+	 * sourceRef 前缀筛选。生成场景靠它回答「上一轮给这个需求生成了哪些用例」——
+	 * 生成的 sourceRef 形如 `gen:<需求标识>#<用例名 slug>`，前缀即需求标识。
+	 */
+	sourceRefPrefix: z.string().min(1).optional(),
 	status: caseStatusSchema.optional(),
 	/** 标签筛选（any-of：命中任意一个即匹配）；空数组等同不筛选。 */
 	tags: z.array(z.string()).optional(),

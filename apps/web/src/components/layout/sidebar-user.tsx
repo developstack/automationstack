@@ -12,11 +12,9 @@ import {
 } from "@automationstack/ui/components/sidebar-menu";
 import { ChevronsUpDownIcon } from "lucide-react";
 
-import {
-	UserAvatar,
-	UserMenuItems,
-	useUserMenu,
-} from "@/components/layout/user-menu";
+import { UserAvatar } from "@/components/layout/user-avatar";
+import { useUserMenu } from "@/components/layout/user-menu";
+import { UserMenuItems } from "@/components/layout/user-menu-items";
 
 const ROLE_LABEL = { admin: "管理员", member: "成员" } as const;
 

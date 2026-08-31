@@ -8,7 +8,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@automationstack/ui/components/popover";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { TagIcon } from "lucide-react";
 import { useCallback } from "react";
@@ -47,7 +46,12 @@ interface TagOptionsProps {
 
 function TagOptions({ loading, onToggle, options, selected }: TagOptionsProps) {
 	if (loading) {
-		return <Skeleton className="h-16 w-full" />;
+		/*
+		 * 不摆骨架：候选项是一片自动折行的标签按钮，几个、多宽全由数据决定，
+		 * 一条 h-16 的灰条预告不了其中任何一样；而这块内容住在 Popover 里，
+		 * 浮层每次打开都按内容自己定尺寸，本来就不存在把别的东西顶动这回事。
+		 */
+		return null;
 	}
 	if (options.length === 0) {
 		return (

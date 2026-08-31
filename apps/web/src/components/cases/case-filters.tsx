@@ -2,7 +2,6 @@ import type {
 	CasePriority,
 	CaseStatus,
 } from "@automationstack/db/schema/test-cases";
-import { Button } from "@automationstack/ui/components/button";
 import { Input } from "@automationstack/ui/components/input";
 import {
 	Select,
@@ -13,12 +12,9 @@ import {
 } from "@automationstack/ui/components/select";
 import { type ChangeEvent, useCallback, useEffect, useState } from "react";
 
-import {
-	type CaseOption,
-	PRIORITY_VALUES,
-	STATUS_OPTIONS,
-} from "@/components/cases/case-meta";
+import { type CaseOption, STATUS_OPTIONS } from "@/components/cases/case-meta";
 import { CaseTagFilter } from "@/components/cases/case-tag-filter";
+import { PriorityFilter } from "@/components/cases/priority-filter";
 
 const KEYWORD_DEBOUNCE_MS = 300;
 const ALL_STATUS = "all";
@@ -100,56 +96,6 @@ function StatusFilter({ onChange, status }: StatusFilterProps) {
 				))}
 			</SelectContent>
 		</Select>
-	);
-}
-
-interface PriorityToggleProps {
-	active: boolean;
-	onToggle: (priority: CasePriority) => void;
-	value: CasePriority;
-}
-
-function PriorityToggle({ active, onToggle, value }: PriorityToggleProps) {
-	const handleClick = useCallback(() => onToggle(value), [onToggle, value]);
-	return (
-		<Button
-			aria-pressed={active}
-			onClick={handleClick}
-			type="button"
-			variant={active ? "default" : "outline"}
-		>
-			{value}
-		</Button>
-	);
-}
-
-interface PriorityFilterProps {
-	onChange: (priority: CasePriority[]) => void;
-	priority: CasePriority[];
-}
-
-function PriorityFilter({ onChange, priority }: PriorityFilterProps) {
-	const handleToggle = useCallback(
-		(value: CasePriority) =>
-			onChange(
-				priority.includes(value)
-					? priority.filter((item) => item !== value)
-					: [...priority, value]
-			),
-		[onChange, priority]
-	);
-
-	return (
-		<fieldset aria-label="按优先级筛选" className="flex items-center gap-1">
-			{PRIORITY_VALUES.map((value) => (
-				<PriorityToggle
-					active={priority.includes(value)}
-					key={value}
-					onToggle={handleToggle}
-					value={value}
-				/>
-			))}
-		</fieldset>
 	);
 }
 

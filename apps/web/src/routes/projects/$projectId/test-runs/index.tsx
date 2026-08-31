@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { PageTransition } from "@/components/layout/page-transition";
-import { TestRunListPageSkeleton } from "@/components/test-runs/test-run-list-skeleton";
+import { TestRunListPageSkeleton } from "@/components/test-runs/test-run-list-page-skeleton";
 import {
 	TEST_RUN_LIST_MAIN,
 	TestRunListView,

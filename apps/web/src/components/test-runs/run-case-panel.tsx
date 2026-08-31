@@ -17,18 +17,17 @@
  * 而原先那种「滚到底才找得到入口」每条用例都要付一次。
  *
  * 本文件只剩「这一栏由哪几段、按什么顺序组成」；各段的具体画法在
- * `run-case-panel-sections.tsx`、`run-case-heading.tsx` 与 `run-case-verdict-panel.tsx`。
+ * `run-case-content.tsx`、`run-case-steps-block.tsx`、`run-case-heading.tsx`
+ * 与 `run-case-verdict-panel.tsx`。
  */
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 
 import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
+import { RunCaseContent } from "@/components/test-runs/run-case-content";
 import { RunCaseEvents } from "@/components/test-runs/run-case-events";
 import { RunCaseHeading } from "@/components/test-runs/run-case-heading";
-import {
-	RunCaseContent,
-	RunCaseStepsBlock,
-} from "@/components/test-runs/run-case-panel-sections";
+import { RunCaseStepsBlock } from "@/components/test-runs/run-case-steps-block";
 import { RunCaseVerdictPanel } from "@/components/test-runs/run-case-verdict-panel";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
 import {

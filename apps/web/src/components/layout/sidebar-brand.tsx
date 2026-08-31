@@ -2,6 +2,10 @@
  * 一级侧栏顶部的品牌区。两条一级侧栏都在用：项目侧栏（project-sidebar.tsx）与
  * 平台侧栏（platform-sidebar.tsx）。单独成一份正是为了这个：两栏在同一次会话里
  * 来回换，品牌行的高度、内边距、收起态行为但凡差一点，换栏时顶部就会跳一下。
+ *
+ * ⚠️ 因此这一份服务**两个场景**：展开态那行品牌链接（指向 /projects）改一处即
+ * 两栏同时生效，别在某一条侧栏里另写一份「自己的」品牌行——那正是这个文件当初
+ * 被抽出来要避免的事。
  */
 import {
 	SidebarHeader,
@@ -13,6 +17,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 } from "@automationstack/ui/components/sidebar-menu";
+import { Link } from "@tanstack/react-router";
 import { FlaskConicalIcon, PanelLeftOpenIcon } from "lucide-react";
 
 /**
@@ -25,11 +30,23 @@ import { FlaskConicalIcon, PanelLeftOpenIcon } from "lucide-react";
 export const BRAND_NAME = "测试用例平台";
 
 /**
- * 展开态的品牌行：左边是标识，右边是那颗常驻的收起按钮。
+ * 展开态的品牌行：左边是**指向项目列表的链接**，右边是那颗常驻的收起按钮。
  *
  * 标识这块不再是开关。整行可点、且只在悬停时才把 logo 换成方向图标，等于把
  * 「这里可以收起」藏进了必须先碰一下才看得见的状态里；拆出一颗独立的
  * SidebarTrigger 之后，入口静止时就摆在那儿，不必先猜。
+ *
+ * 腾出来的这块随后落到「回到项目列表」上——这是绝大多数产品里 logo 的默认含义，
+ * 而本仓两条一级侧栏共用这一份（见文件头），所以一处改动同时给到平台侧栏与项目
+ * 侧栏：在项目里点它 = 退回选项目那一步，在项目列表页点它 = 原地不动。
+ *
+ * 用 TanStack 的 `<Link>` 而不是 `<a href>`：后者是一次整页导航，会把路由缓存、
+ * 已取到的 query 与侧栏折叠状态全部丢掉重来。
+ *
+ * 外形直接借 SidebarMenuButton（同一颗 cva 变体）而不是自己写 hover/焦点环：
+ * 下面每一行导航都长这样，品牌行另写一套的话，同一列里就会出现两种悬停语言。
+ * 不传 isActive：这不是导航项，停在 /projects 时给它一条选中竖条，会让人以为
+ * 品牌区是第三个可选中的去处。
  *
  * size 显式写 icon 而不是省略：Button 的 icon 档现在本身就是 32px（见
  * packages/ui/src/components/button.tsx 顶部的台阶说明），与下面每一行导航
@@ -41,11 +58,20 @@ function SidebarBrandRow() {
 	return (
 		// 收起态交给下面那颗品牌格：图标轨只有 32px 宽，塞不下第二个可点目标
 		<div className="flex items-center gap-1 group-data-[collapsible=icon]:hidden">
-			{/* min-w-0 不能省：flex 子项的 min-width 默认是 auto，truncate 在里面不生效 */}
-			<div className="flex min-w-0 flex-1 items-center gap-2 px-2">
-				<FlaskConicalIcon aria-hidden="true" className="size-4 shrink-0" />
-				<span className="truncate font-medium text-sm">{BRAND_NAME}</span>
-			</div>
+			{/*
+			 * min-w-0 不能省：flex 子项的 min-width 默认是 auto，基类里那条
+			 * [&>span:last-child]:truncate 在里面不生效。
+			 * text-sm 盖掉基类的 text-xs：品牌名比导航项高一档，这是搬进链接之前
+			 * 就有的字号，不该因为换了外壳而缩水。
+			 */}
+			<SidebarMenuButton
+				className="min-w-0 flex-1 text-sm"
+				render={<Link to="/projects" />}
+			>
+				{/* 尺寸与 shrink 由基类的 [&_svg]:size-4 [&_svg]:shrink-0 给 */}
+				<FlaskConicalIcon aria-hidden="true" />
+				<span className="font-medium">{BRAND_NAME}</span>
+			</SidebarMenuButton>
 			<SidebarTrigger className="size-8 shrink-0" size="icon" />
 		</div>
 	);

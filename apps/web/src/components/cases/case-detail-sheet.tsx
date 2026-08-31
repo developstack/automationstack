@@ -1,5 +1,4 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
-import { Button } from "@automationstack/ui/components/button";
 import { Separator } from "@automationstack/ui/components/separator";
 import {
 	Sheet,
@@ -8,22 +7,18 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@automationstack/ui/components/sheet";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
-import { PencilIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
 	CaseAttachmentProvider,
-	useCaseAttachments,
 	useCaseEditAttachments,
 } from "@/components/cases/case-attachment-context";
 import { CaseConflictAlert } from "@/components/cases/case-conflict-alert";
-import { CaseDeleteButton } from "@/components/cases/case-delete-button";
 import {
-	CASE_EDITOR_FORM_ID,
 	type CaseEditor,
 	useCaseEditor,
 } from "@/components/cases/case-detail-body";
+import { CaseDetailHeader } from "@/components/cases/case-detail-header";
 import { CaseDetailTabs } from "@/components/cases/case-detail-tabs";
 import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
 import { caseToFormValues } from "@/components/cases/case-meta";
@@ -36,90 +31,17 @@ import { CaseEditingNotice } from "@/realtime/editing-notice";
 import { useCasePresence } from "@/realtime/use-editing";
 import { orpc } from "@/utils/orpc";
 
-interface CaseDetailActionsProps {
-	editor: CaseEditor;
-	/** 走守卫的「取消编辑」，不是 editor.stopEditing 本身。 */
-	onStopEditing: () => void;
-}
-
-function CaseDetailActions({ editor, onStopEditing }: CaseDetailActionsProps) {
-	/**
-	 * 贴图还没传完时禁用保存。不禁的话，用户在上传完成前点保存，正文里的
-	 * `![](uploading:<token>)` 会被原样存进去：抽屉退出编辑态之后，上传回来时
-	 * 既找不到编辑器也找不到那份表单值，正文里就永久留下一处渲染成
-	 * 「图片上传中…」的死引用，还会被冻进这次保存产生的版本快照。
-	 * 第二道防线（回车绕过按钮）在 `case-detail-body.tsx` 的 handleSave 里。
-	 */
-	const { uploading } = useCaseAttachments();
-
-	if (editor.form) {
-		return (
-			<div className="flex items-center gap-2">
-				{uploading ? (
-					<span className="text-muted-foreground text-xs">图片上传中…</span>
-				) : null}
-				<Button onClick={onStopEditing} size="sm" variant="ghost">
-					取消
-				</Button>
-				<Button
-					disabled={editor.saving || uploading}
-					form={CASE_EDITOR_FORM_ID}
-					size="sm"
-					type="submit"
-				>
-					{editor.saving ? "保存中…" : "保存"}
-				</Button>
-			</div>
-		);
-	}
-
-	return (
-		<div className="flex items-center gap-2">
-			<Button onClick={editor.startEditing} size="sm" variant="outline">
-				<PencilIcon data-icon="inline-start" />
-				编辑
-			</Button>
-		</div>
-	);
-}
-
-interface CaseDetailHeaderProps {
-	editor: CaseEditor;
-	onClose: () => void;
-	onStopEditing: () => void;
-	testCase: TestCase;
-}
-
-function CaseDetailHeader({
-	editor,
-	onClose,
-	onStopEditing,
-	testCase,
-}: CaseDetailHeaderProps) {
-	return (
-		<SheetHeader>
-			<SheetTitle>{testCase.name}</SheetTitle>
-			<SheetDescription>
-				保存时会基于 v{testCase.currentVersion} 做乐观锁校验。
-			</SheetDescription>
-			<div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-				<CaseDeleteButton
-					caseId={testCase.id}
-					caseName={testCase.name}
-					onDeleted={onClose}
-				/>
-				<CaseDetailActions editor={editor} onStopEditing={onStopEditing} />
-			</div>
-		</SheetHeader>
-	);
-}
-
 function CaseDetailPending() {
 	return (
 		<SheetHeader>
 			<SheetTitle>用例详情</SheetTitle>
 			<SheetDescription>加载中…</SheetDescription>
-			<Skeleton className="h-40 w-full" />
+			{/*
+			 * 描述那一行已经把「加载中」说出来了，下面不再压一块 h-40 的灰砖：
+			 * 真身是一整份长短由内容决定的表单（标题、步骤、预期、标签、版本信息），
+			 * 160px 既不等于它、也挡不住它到达时的位移，只是把一句已经说清楚的话
+			 * 用一大块灰色再喊一遍。
+			 */}
 		</SheetHeader>
 	);
 }

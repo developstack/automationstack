@@ -10,7 +10,7 @@ import {
 	AlertDialogTitle,
 } from "@automationstack/ui/components/alert-dialog";
 
-import { PlatformUserFormError } from "@/components/platform-users/platform-user-form-fields";
+import { PlatformUserFormError } from "@/components/platform-users/platform-user-form-error";
 import type { PlatformUserConfirmKind } from "@/components/platform-users/platform-user-meta";
 import type { PlatformUserActions } from "@/components/platform-users/use-platform-user-actions";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";

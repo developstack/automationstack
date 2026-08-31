@@ -28,8 +28,9 @@ import { workspaceSearchSchema } from "@/components/workspace/workspace-search";
  *
  * 代价（明确记下来）：URL 上直接带着筛选参数进来时（分享/收藏一个已筛选的视图），
  * loader 预取的是该模块未筛选的第一页，与组件真正要的那份 key 不同，会多一次请求，
- * 首屏由组件自己那份 CaseTableSkeleton（case-list-view.tsx 里 listQuery.data 为空
- * 的分支）兜住。这一档访问很少，换来的是每天几十上百次的页内操作不再闪。
+ * 那一次请求期间工具栏之下会短暂空一块——组件里 listQuery.data 为空的那一档现在
+ * 什么都不渲染（理由见 case-list-view.tsx 该分支的注释：下面那份骨架刚刚才放过一遍，
+ * 同一次加载不放两遍灰条）。这一档访问很少，换来的是每天几十上百次的页内操作不再闪。
  */
 const caseListLoaderDeps = ({ search }: { search: WorkspaceSearch }) => ({
 	moduleId: search.moduleId,

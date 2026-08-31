@@ -5,18 +5,16 @@ import {
 	SidebarMenuItem,
 } from "@automationstack/ui/components/sidebar-menu";
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-	ClipboardListIcon,
-	LayoutDashboardIcon,
-	ListChecksIcon,
-	SettingsIcon,
-	UsersIcon,
-} from "lucide-react";
+import { LayoutDashboardIcon, ListChecksIcon } from "lucide-react";
 
 import { isCaseSectionPathname } from "@/components/layout/case-section-path";
+import { ProjectSettingsNavItem } from "@/components/layout/project-settings-nav-item";
+import { ProjectUsersNavItem } from "@/components/layout/project-users-nav-item";
+import { TestRunsNavItem } from "@/components/layout/test-runs-nav-item";
 
 /**
- * 项目内一级侧栏的导航组，以及组成它的那几项。
+ * 项目内一级侧栏的导航组，以及留在这份文件里的头两项。
+ * 另外三项（测试任务、成员、设置）各自成文件，接的是同一份 props。
  *
  * 每一项单独一个组件而不是由一份数组渲染，
  * 因为 `to` 在 TanStack Router 里是**按路由树校验过的字面量**，塞进数组就只能
@@ -83,90 +81,6 @@ function CasesNavItem({ pathname, projectId }: NavItemProps) {
 			>
 				<ListChecksIcon aria-hidden="true" />
 				<span>用例管理</span>
-			</SidebarMenuButton>
-		</SidebarMenuItem>
-	);
-}
-
-function TestRunsNavItem({ pathname, projectId }: NavItemProps) {
-	return (
-		<SidebarMenuItem>
-			<SidebarMenuButton
-				aria-label="测试任务"
-				/*
-				 * 按前缀算：详情 /test-runs/<id> 与报告 /test-runs/<id>/report 都在这一支
-				 * 下面，人在它们上面时这一行同样要亮着。
-				 */
-				isActive={pathname.startsWith(`/projects/${projectId}/test-runs`)}
-				render={
-					<Link params={{ projectId }} to="/projects/$projectId/test-runs" />
-				}
-				tooltip="测试任务"
-			>
-				<ClipboardListIcon aria-hidden="true" />
-				<span>测试任务</span>
-			</SidebarMenuButton>
-		</SidebarMenuItem>
-	);
-}
-
-/**
- * 设置。
- *
- * 这一项曾经指向全局的 /settings，把当前项目通过 search 带过去；那时它是**离开**
- * 项目外壳的出口——落地后渲染的是另一套外壳（AppShell + 全局侧栏），这条侧栏根本
- * 不在屏幕上，所以当时刻意不给 isActive，算一个永远为假的高亮只会留下死代码。
- * 设置页如今就在项目里（/projects/<id>/settings，四个顶级路由已合并进它的五格
- * tab），这一项与上面三项一样是项目内部的一站，高亮该照常亮。
- *
- * 按前缀算：五格 tab 只落在 search 的 `tab` 上，pathname 自始至终是这一条；
- * 前缀写法同时兜住将来在设置底下再长出子路由的情况。
- *
- * activeOptions 不给（即默认的前缀判定）：与「项目管理」「用例管理」那两项不同，
- * 这一项的落点没有更深的子页面可去，前缀为真时人就在这一页上，
- * aria-current="page" 是真话。
- */
-function ProjectSettingsNavItem({ pathname, projectId }: NavItemProps) {
-	return (
-		<SidebarMenuItem>
-			<SidebarMenuButton
-				aria-label="设置"
-				isActive={pathname.startsWith(`/projects/${projectId}/settings`)}
-				render={
-					<Link params={{ projectId }} to="/projects/$projectId/settings" />
-				}
-				tooltip="设置"
-			>
-				<SettingsIcon aria-hidden="true" />
-				<span>设置</span>
-			</SidebarMenuButton>
-		</SidebarMenuItem>
-	);
-}
-
-/**
- * 成员。
- *
- * 对**所有**项目成员可见，不按角色隐藏：普通成员点进去看到的是一份只读名单，
- * 那正是他需要的（队友是谁、找谁要权限）。按角色藏掉这一项会让人以为平台压根
- * 没有成员管理这回事，于是去问一个本来就有答案的问题；能不能改由页面里的操作
- * 控件回答，而不是由「这一项在不在」回答。
- *
- * 按前缀算，理由同「设置」那一项：这一支目前没有更深的子页面，将来长出来了
- * （比如某个成员的详情）前缀写法也仍然对。activeOptions 不给（即默认的前缀
- * 判定）：前缀为真时人就在这一页上，aria-current="page" 是真话。
- */
-function ProjectUsersNavItem({ pathname, projectId }: NavItemProps) {
-	return (
-		<SidebarMenuItem>
-			<SidebarMenuButton
-				aria-label="成员"
-				isActive={pathname.startsWith(`/projects/${projectId}/users`)}
-				render={<Link params={{ projectId }} to="/projects/$projectId/users" />}
-				tooltip="成员"
-			>
-				<UsersIcon aria-hidden="true" />
-				<span>成员</span>
 			</SidebarMenuButton>
 		</SidebarMenuItem>
 	);

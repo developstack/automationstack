@@ -10,15 +10,13 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useCallback, useState } from "react";
 
-import {
-	ApiTokenFormError,
-	TokenNameField,
-} from "@/components/api-tokens/api-token-form-fields";
+import { ApiTokenFormError } from "@/components/api-tokens/api-token-form-error";
 import {
 	TOKEN_NAME_HINT,
 	validateTokenName,
 } from "@/components/api-tokens/api-token-meta";
 import { ApiTokenPlaintext } from "@/components/api-tokens/api-token-plaintext";
+import { TokenNameField } from "@/components/api-tokens/token-name-field";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 import { orpc } from "@/utils/orpc";
 

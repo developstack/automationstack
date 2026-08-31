@@ -12,11 +12,17 @@ import { createQueryClient, orpc } from "./utils/orpc";
 const NOT_FOUND_TITLE = "页面不存在 · 测试用例平台";
 
 /*
- * 导航多久没结束才显示 pending（默认 1000ms 太迟：1 秒内的导航全程没有任何反馈，
- * 点完像是没点动）。200ms 是「还算即时」与「已经开始等」的分界：低于它人感知不到
- * 延迟，摆个加载态反而是多余的一次闪动。
+ * 导航多久没结束才显示 pending。TanStack 的默认值是 1000ms，对本仓太迟：1 秒内的
+ * 导航全程没有任何反馈，点完像是没点动。这里一度砍到 200ms，是往「早给反馈」那头
+ * 调过了头——阈值只管「多久之后开始显示」，下面的 PENDING_MIN_MS 还会强制它至少
+ * 停满 300ms，于是一次 210ms 就返回的导航（本该是无感的）会被摆上一屏灰板并停满
+ * 300ms，硬插一次闪屏，总时长反而从 210ms 拉到 510ms。
+ *
+ * 回调到 300ms：这一档以下的导航直接出内容，不再有中间态；这一档以上的才值得
+ * 花 300ms 的骨架去交代「在等」。配合下面的 defaultPreload: "intent"（悬停 50ms
+ * 就开始预取），绝大多数导航根本走不到这个阈值。
  */
-const PENDING_DELAY_MS = 200;
+const PENDING_DELAY_MS = 300;
 /*
  * pending 一旦显示就至少停留这么久（默认 500ms 偏长）。缺了它，恰好在阈值附近
  * 返回的导航会让骨架亮一帧就消失——那种闪烁比全程不显示更糟。300ms 是能被看成
@@ -78,7 +84,7 @@ export const getRouter = () => {
 		 *
 		 * 补上之后，鼠标停在链接上 50ms（defaultPreloadDelay 默认值）就开始跑
 		 * loader，等真的点下去时数据多半已经在缓存里，导航根本进不了上面
-		 * PENDING_DELAY_MS 那 200ms 的阈值，也就不会闪一下骨架——各路由的
+		 * PENDING_DELAY_MS 那 300ms 的阈值，也就不会闪一下骨架——各路由的
 		 * pendingComponent 是给冷路径兜底的，不该是常态。
 		 *
 		 * 取 "intent" 而不是 "viewport"：侧栏和表格里同屏可见的链接动辄几十条，

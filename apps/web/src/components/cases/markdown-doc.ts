@@ -20,7 +20,7 @@ import {
 
 export interface MarkdownListItem {
 	blocks: MarkdownBlock[];
-	/** 源码偏移量。渲染时当 React key 用——见 `markdown-render.tsx` 的说明。 */
+	/** 源码偏移量。渲染时当 React key 用——见 `block.tsx` 的说明。 */
 	from: number;
 }
 

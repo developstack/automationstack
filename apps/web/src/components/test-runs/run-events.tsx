@@ -11,7 +11,6 @@ import {
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@automationstack/ui/components/collapsible";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDownIcon } from "lucide-react";
 
@@ -83,7 +82,13 @@ export function RunEvents({ runId }: { runId: string }) {
 			    收起过程中露出一条空白带。 */}
 			<CollapsibleContent className="collapsible-panel">
 				<div className="px-4 pb-4">
-					{eventsQuery.isPending ? <Skeleton className="h-16 w-full" /> : null}
+					{/*
+					 * 加载态不摆骨架。这条查询从页面挂载起就一直挂着（不做「展开才查」，
+					 * 理由见组件文档），用户点开这块折叠区时数据早就到了；那条
+					 * `h-16 w-full` 的灰条唯一能出现的时机是页面刚开就立刻点开这里，
+					 * 而它也预告不了任何形状——事件条数 0..N 都可能，面板又在整页
+					 * 最底下向下展开，没有任何东西会被它顶动。
+					 */}
 					{eventsQuery.data?.length === 0 && (
 						<p className="text-muted-foreground text-sm">暂无状态变更。</p>
 					)}

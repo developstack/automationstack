@@ -1,0 +1,80 @@
+/**
+ * 四个用例工具的描述文本。
+ *
+ * 单独成文件不是为了「整洁」：这些字符串是**每个会话、每次 `tools/list` 都要
+ * 付的 token**，也是没有装 skill 的 agent 判断「该调哪个工具」的唯一依据。
+ * 它们和注册代码的改动节奏完全不同（描述会因为 agent 的实际误用而反复调，
+ * 注册代码几乎不动），混在一起改一个就要把另一个重读一遍。
+ *
+ * 写法遵循一条判据：**描述要写清「什么时候用它」和「什么时候不该用它」**，
+ * 不写成 API 文档。完整的字段语义、错误对照表、映射规则属于 skill 的
+ * references（`.claude/skills/` 下的两个 skill），在这里重写一遍只会两处漂移。
+ */
+
+export const READ_CASES_DESCRIPTION =
+	"Read existing test cases of a project, with their bodies. This is the tool " +
+	"to call BEFORE writing any new case: it is the only way to learn how this " +
+	"project actually writes cases (step granularity, naming, how specific the " +
+	"expected results are) and the only way to tell whether a case you are about " +
+	"to write already exists in another wording. " +
+	"Filters: moduleId (+ includeDescendants), keyword (name substring), status, " +
+	"priority[], tags[] (any-of), sourceRefPrefix (prefix match on sourceRef — " +
+	"use 'gen:<requirement-id>#' to list what a previous generation run produced " +
+	"for that requirement). " +
+	"detail: 'summary' (default) returns id/name/moduleId/priority/status/" +
+	"caseType/tags/sourceRef/maintainer/updatedAt; 'full' adds preconditions and " +
+	"steps, and is capped at 10 rows per page by default (20 max) because case " +
+	"bodies are expensive — page through them rather than asking for everything. " +
+	"Returns {detail, items[], page, pageSize, total}. " +
+	"Do not use it to check whether one specific case landed after an import — " +
+	"search_cases is cheaper for that.";
+
+export const LIST_CASE_TAGS_DESCRIPTION =
+	"List every tag already used by cases in a project (deduplicated, sorted). " +
+	"Call it before tagging newly written cases and reuse what is there: tags are " +
+	"a free-text vocabulary, so an agent that invents its own wording each run " +
+	"('登录' / '用户登录' / 'auth') quietly degrades the project's tag filter, and " +
+	"cleaning that up afterwards is manual work for the user. Returns string[]. " +
+	"An empty array means the project has no tags yet, not that the call failed.";
+
+export const IMPORT_TEST_CASES_DESCRIPTION =
+	"Write test cases into a project — the single write path, shared by migrating " +
+	"existing cases and by cases newly designed from a requirement. At most 50 per " +
+	"call; split larger sets into batches. " +
+	"Each case needs a moduleId (from ensure_module_path or get_module_tree) and a " +
+	"name, and should carry a stable sourceRef, unique per project: it is the " +
+	"idempotency key, so a re-run updates or skips instead of duplicating. For " +
+	"cases designed from a requirement, use 'gen:<requirement-id>#<slug-of-case-" +
+	"name>' and agree the requirement id with the user first, so the same " +
+	"requirement produces the same keys next time. " +
+	"Fields: priority P0-P3 (default P2 — for newly designed cases set it " +
+	"explicitly, an all-P2 batch carries no prioritisation), caseType " +
+	"functional|interface|performance|security|compatibility|other, status " +
+	"draft|active|deprecated, preconditions, steps [{id, step, expected}] (id must " +
+	"be a unique non-empty string, e.g. a uuid), tags, maintainer. " +
+	"Newly designed cases go in as status 'draft' (the default): the platform's " +
+	"case list filters on status, so draft is where a human reviews them before " +
+	"they count as the project's real coverage. Writing 'active' directly puts " +
+	"unreviewed AI output into the live suite. " +
+	"onDuplicate (required) decides what happens when a sourceRef already exists: " +
+	"'skip' leaves the existing case untouched (use it to fill gaps), 'overwrite' " +
+	"updates it through the version-snapshot pipeline so the change is revertible " +
+	"(use it when the requirement changed) — note it updates content only and does " +
+	"NOT move the case to a different moduleId — and 'create-anyway' creates a " +
+	"second case with sourceRef forced to null, which permanently drops that case " +
+	"out of the idempotency scheme; avoid it for generated cases. " +
+	"Rows are validated and executed independently: a malformed or failing row is " +
+	"reported in 'errors' with its index in the batch and the offending field, and " +
+	"never rejects the other rows. " +
+	"Result: {created[] (action created|overwritten, caseId, version), skipped[], " +
+	"errors[] (index, name, sourceRef, message)}.";
+
+export const SEARCH_CASES_DESCRIPTION =
+	"Look up cases in a project by a case-insensitive substring of their name " +
+	"(%/_ are matched literally). Returns up to 'limit' summary rows (id, name, " +
+	"moduleId, priority, status, caseType, sourceRef, updatedAt), newest-updated " +
+	"first. It answers one question: is this particular case there? Typical use is " +
+	"spot-checking after an import batch. " +
+	"It never returns steps or preconditions, so it cannot tell you how this " +
+	"project writes cases and cannot be used to judge whether a new case " +
+	"duplicates an existing one — use read_cases with detail 'full' for that.";

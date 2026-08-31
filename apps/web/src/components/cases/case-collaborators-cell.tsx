@@ -37,7 +37,7 @@ const CLAUSE_SEPARATOR = "；";
  *
  * 数据行高 = TableCell 的 p-2（8+8=16px）+ 该行最高的那块内容。当前最高的是
  * 优先级/状态列的 Badge（h-5 = 20px），其余单元格是 text-sm，行高也正好 20px，
- * 所以行是 36px，加 TableRow 的 border-b 1px = 37px——case-table-states.tsx 的
+ * 所以行是 36px，加 TableRow 的 border-b 1px = 37px——case-table-skeleton.tsx 的
  * CaseTableSkeleton 就是按这个数折算 41 + 6×37 = 263px 的。
  * size-5 = 20px 与 Badge 齐平：20 + 16 = 36px，行高分毫不动。顶栏那枚 size-6
  * （24px）会把行顶到 24 + 16 = 40px，数据到达那一帧整张表要往下跳 4px×行数。

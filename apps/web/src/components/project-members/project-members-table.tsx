@@ -1,6 +1,5 @@
 import type { ProjectMemberView } from "@automationstack/db/repositories/project-members-repository";
 import { Badge } from "@automationstack/ui/components/badge";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import {
 	Table,
 	TableBody,
@@ -9,7 +8,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@automationstack/ui/components/table";
-
 import { formatDateTime } from "@/components/cases/case-meta";
 import { PROJECT_ROLE_LABEL } from "@/components/project-members/project-member-meta";
 import { ProjectMemberRowActions } from "@/components/project-members/project-member-row-actions";
@@ -52,24 +50,6 @@ function ProjectMemberRow({
 				</TableCell>
 			) : null}
 		</TableRow>
-	);
-}
-
-const SKELETON_ROW_KEYS = ["r1", "r2", "r3", "r4"] as const;
-
-/**
- * 路由 pendingComponent 用的表格骨架。
- * 行高与真实行（TableCell 的 p-2 + 内容 20px）对齐，数据到达时表格不会长高。
- * 圆角覆盖成 rounded-none 的理由同 members-table：替身要跟真身同形，
- * 而表格行是方角的。
- */
-export function ProjectMembersTableSkeleton() {
-	return (
-		<output aria-busy="true" aria-label="成员列表加载中" className="grid gap-2">
-			{SKELETON_ROW_KEYS.map((key) => (
-				<Skeleton className="h-9 w-full rounded-none" key={key} />
-			))}
-		</output>
 	);
 }
 

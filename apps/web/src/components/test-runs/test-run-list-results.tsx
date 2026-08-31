@@ -16,7 +16,6 @@ import {
 } from "@automationstack/ui/components/empty";
 import { ClipboardListIcon } from "lucide-react";
 
-import { TestRunListSkeleton } from "@/components/test-runs/test-run-list-skeleton";
 import { TestRunTable } from "@/components/test-runs/test-run-table";
 import type { TestRunsSearch } from "@/components/test-runs/test-runs-search";
 
@@ -60,7 +59,17 @@ export function TestRunListResults({
 	search,
 }: TestRunListResultsProps) {
 	if (!loaded) {
-		return <TestRunListSkeleton />;
+		/*
+		 * 什么都不渲染，**不再摆第二份表格骨架**。这一档只在一种情况下走到：
+		 * URL 上直接带着关键词进来（loaderDeps 只取 runStatus，理由见
+		 * routes/…/test-runs/index.tsx），loader 预取的 key 与这里要的对不上。
+		 * 那一刻屏幕上刚放完路由的 pendingComponent（TestRunListPageSkeleton），
+		 * 再摆一份长得一样、DOM 却是新挂的骨架，等于同一次加载放两遍灰条。
+		 *
+		 * 这个早返回本身不能删：删了会掉进下面的 `items.length === 0` 分支，
+		 * 在数据还没到的时候宣布「还没有测试任务」——那是句假话。
+		 */
+		return null;
 	}
 	if (items.length === 0) {
 		// 两个筛选任意一个还挂着，这个「空」就是筛出来的，不是真的没数据。

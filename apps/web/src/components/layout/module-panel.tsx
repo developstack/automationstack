@@ -1,22 +1,8 @@
 import { SecondaryPanel } from "@automationstack/ui/components/secondary-panel";
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { Suspense } from "react";
 
+import { ModuleTreeSkeleton } from "@/components/skeletons/module-tree-skeleton";
 import { ModuleTree } from "@/components/workspace/module-tree";
-
-/** 骨架行的稳定 key：条数固定，用下标当 key 会被 lint 拦下。 */
-const MODULE_SKELETON_KEYS = ["title", "all-cases", "first", "second"];
-
-function ModuleTreeFallback() {
-	return (
-		// h-7 与 ModuleTree 的行高同档，数据到达时不会整块跳一格
-		<div aria-hidden="true" className="flex flex-col gap-1 p-2">
-			{MODULE_SKELETON_KEYS.map((key) => (
-				<Skeleton className="h-7 w-full" key={key} />
-			))}
-		</div>
-	);
-}
 
 interface ModulePanelProps {
 	projectId: string;
@@ -43,7 +29,7 @@ export function ModulePanel({ projectId, projectName }: ModulePanelProps) {
 			 * 模块树的 useSuspenseQuery 会挂起。没有这层边界，挂起会一路冒泡到
 			 * 根布局，把整个外壳（导航、用户区、主内容）一起变成空白。
 			 */}
-			<Suspense fallback={<ModuleTreeFallback />}>
+			<Suspense fallback={<ModuleTreeSkeleton rows={4} title={false} />}>
 				<ModuleTree projectId={projectId} />
 			</Suspense>
 		</SecondaryPanel>

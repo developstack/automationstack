@@ -1,20 +1,14 @@
-import type {
-	CasePriority,
-	TestCase,
-} from "@automationstack/db/schema/test-cases";
+import type { CasePriority } from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { getRouteApi } from "@tanstack/react-router";
 import { PlusIcon } from "lucide-react";
 import { useCallback } from "react";
 
-import { CaseCreateSheet } from "@/components/cases/case-create-sheet";
-import { CaseDetailSheet } from "@/components/cases/case-detail-sheet";
 import { CaseFilters } from "@/components/cases/case-filters";
+import { CaseListOverlays } from "@/components/cases/case-list-overlays";
 import { caseListInput } from "@/components/cases/case-list-query";
-import { CasePagination } from "@/components/cases/case-pagination";
-import { CaseTable } from "@/components/cases/case-table";
-import { CaseTableSkeleton } from "@/components/cases/case-table-states";
+import { CaseListResult } from "@/components/cases/case-list-result";
 import { PageTransition } from "@/components/layout/page-transition";
 import type { WorkspaceNavigation } from "@/components/workspace/use-workspace-navigation";
 import { useWorkspaceNavigation } from "@/components/workspace/use-workspace-navigation";
@@ -107,73 +101,6 @@ function CaseListToolbar(props: CaseListToolbarProps) {
 	);
 }
 
-interface CaseListResultProps {
-	filtered: boolean;
-	navigation: WorkspaceNavigation;
-	result: { items: TestCase[]; page: number; total: number };
-	selectedCaseId: string | undefined;
-	/** 当前展示的是上一次查询留下的结果，新数据还在路上。 */
-	stale: boolean;
-}
-
-/** Table plus paginator; only rendered once the first page has loaded. */
-function CaseListResult(props: CaseListResultProps) {
-	const { navigation, result } = props;
-	return (
-		<>
-			<CaseTable
-				cases={result.items}
-				filtered={props.filtered}
-				onClearFilters={navigation.clearFilters}
-				selectedCaseId={props.selectedCaseId}
-				stale={props.stale}
-			/>
-			<CasePagination
-				onPageChange={navigation.setPage}
-				page={result.page}
-				total={result.total}
-			/>
-		</>
-	);
-}
-
-interface CaseListOverlaysProps {
-	navigation: WorkspaceNavigation;
-	projectId: string;
-	search: WorkspaceSearch;
-}
-
-/**
- * 详情抽屉与新建抽屉：都脱离文档流，不参与 main 的间距计算。
- *
- * 新建抽屉的开合读的是 URL 上的 `create`，不是本组件的 state：侧栏的
- * 「未完成草稿」要能把人送回某个模块的新建抽屉，而侧栏挂在父路由的 layout 上，
- * 够不到这里的 state（理由与参数定义见 workspace-search.ts）。
- * 顺带的好处是深链、后退/前进都能还原抽屉，与详情抽屉的行为对齐。
- */
-function CaseListOverlays(props: CaseListOverlaysProps) {
-	const { navigation, search } = props;
-	return (
-		<>
-			<CaseDetailSheet
-				caseId={search.caseId}
-				historyOpen={search.history === true}
-				onClose={navigation.closeCase}
-				onToggleHistory={navigation.setHistory}
-			/>
-			<CaseCreateSheet
-				draftId={search.draft}
-				moduleId={search.moduleId}
-				onClose={navigation.closeCreate}
-				// selectCase 会顺手清掉 create，抽屉随之关闭，不必再单独收一次。
-				onCreated={navigation.selectCase}
-				open={search.create === true}
-				projectId={props.projectId}
-			/>
-		</>
-	);
-}
-
 interface CaseListViewProps {
 	projectId: string;
 }
@@ -230,9 +157,23 @@ export function CaseListView({ projectId }: CaseListViewProps) {
 					selectedCaseId={search.caseId}
 					stale={listQuery.isPlaceholderData}
 				/>
-			) : (
-				<CaseTableSkeleton />
-			)}
+			) : /*
+			 * 这一档刻意什么都不渲染，**不再摆第二份表格骨架**。
+			 *
+			 * 它此前只在一种情况下亮：URL 上直接带着筛选参数进来（分享/收藏一个
+			 * 已筛选的视图），loader 预取的 key 与这里要的那份对不上。而那一刻
+			 * 屏幕上刚刚放完路由的 pendingComponent（同一份 CaseListSkeleton，
+			 * 见 routes/projects/$projectId/index.tsx），再摆一份长得一样、DOM
+			 * 却是新挂的骨架，等于同一次加载连着放两遍灰条。
+			 *
+			 * 其余所有页内操作（改筛选、翻页、开抽屉）根本走不到这里：
+			 * keepPreviousData 会把上一份结果留在屏幕上，由 case-table.tsx 的
+			 * STALE_CLASS 淡到 60% 表示「还在取新的」——那才是这一页的加载态。
+			 *
+			 * 代价说清楚：那种深链首屏上，工具栏之下会短暂空一块（一次请求的
+			 * 时间），而不是一片灰条。
+			 */
+			null}
 			<CaseListOverlays
 				navigation={navigation}
 				projectId={projectId}

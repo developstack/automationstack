@@ -30,14 +30,11 @@ import {
 } from "@automationstack/ui/components/collapsible";
 import { ChevronDownIcon } from "lucide-react";
 
-import { RunAttachments } from "@/components/test-runs/run-attachments";
-import { RunCaseLastVerdict } from "@/components/test-runs/run-case-events";
-import { VerdictBody } from "@/components/test-runs/run-case-verdict-body";
-import { RunDefectPanel } from "@/components/test-runs/run-defect-panel";
+import { RunCaseLastVerdict } from "@/components/test-runs/run-case-last-verdict";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
-import { VerdictComment } from "@/components/test-runs/run-verdict-comment";
-import { canPickCaseVerdict } from "@/components/test-runs/run-verdict-entry";
-import { VERDICT_SHORTCUT_KEYS } from "@/components/test-runs/test-run-meta";
+import { VerdictEvidence } from "@/components/test-runs/verdict-evidence";
+import { VerdictPanelDecision } from "@/components/test-runs/verdict-panel-decision";
+import { VerdictPanelNotes } from "@/components/test-runs/verdict-panel-notes";
 
 /**
  * 折叠条：标题 + 随开合旋转的箭头。
@@ -65,47 +62,6 @@ function VerdictPanelTrigger() {
 	);
 }
 
-interface VerdictPanelNotesProps {
-	canConclude: boolean;
-	editing: boolean;
-	hasSteps: boolean;
-	locked: boolean;
-}
-
-/** 面板顶部两句提示：待评审阶段的说明，以及非分步形态的快捷键说明。 */
-function VerdictPanelNotes({
-	canConclude,
-	editing,
-	hasSteps,
-	locked,
-}: VerdictPanelNotesProps) {
-	return (
-		<>
-			{!(canConclude || locked) && (
-				<p className="text-muted-foreground text-sm">
-					该测试任务还在待评审阶段，评审完成后才能打结论；现在可以增删用例。
-				</p>
-			)}
-			{/*
-			 * 提示与键同真同假：两边都问 `canPickCaseVerdict`。
-			 *
-			 * 这里原先写的是 `canConclude && !hasSteps`，理由是当时 P/F/B/S 挂在页面
-			 * 一层、看不见本面板的读 / 改态，在结果页面上照样生效——提示藏起来而键还
-			 * 活着，就成了按下去会悄悄改写结论的隐形快捷键。那个「键还活着」本身才是
-			 * bug：监听已经搬进 `RunCasePanel`、与四颗按钮同源，所以提示也跟着回到同
-			 * 一条判据上。三处（按钮 / 键 / 这行提示）从此只有一份真话。
-			 */}
-			{canPickCaseVerdict({ editing, hasSteps }) ? (
-				<p className="text-muted-foreground text-xs">
-					快捷键 {VERDICT_SHORTCUT_KEYS.passed} / {VERDICT_SHORTCUT_KEYS.failed}{" "}
-					/ {VERDICT_SHORTCUT_KEYS.blocked} / {VERDICT_SHORTCUT_KEYS.skipped}
-					，通过/跳过自动跳下一条，失败/阻塞留在本条填写说明
-				</p>
-			) : null}
-		</>
-	);
-}
-
 export interface RunCaseVerdictPanelProps {
 	canConclude: boolean;
 	/** 结果页面 / 修改页面，由 `useVerdictEditingMode` 给出（已含一票否决）。 */
@@ -120,103 +76,6 @@ export interface RunCaseVerdictPanelProps {
 	onStorageUnavailable: () => void;
 	projectId: string;
 	storageUnavailable: boolean;
-}
-
-interface VerdictEvidenceProps {
-	editing: boolean;
-	onStorageUnavailable: () => void;
-	projectId: string;
-	runCase: RunCaseDetail["runCase"];
-	storageUnavailable: boolean;
-}
-
-/**
- * 这次执行留下的证据：缺陷与附件。
- *
- * 拆出来是为了压住 `VerdictPanelBody` 的行数，但切口不是随便找的——这两块共用
- * 同一条规则：**结果页面上有内容才出现，没有就整块不渲染；修改页面上一律给入口**。
- * 上面那几块（提示 / 谁判的 / 判定入口 / 说明）各有各的显隐条件，跟它们不是一类。
- *
- * 两块都自己决定显不显示（`RunDefectPanel` 看有没有关联，`RunAttachments` 看列表
- * 长度——只有它查得到有几条），所以这里不包边框也不加标题：外面套一层就得先知道
- * 「里面到底有没有东西」，而附件那一条谁也替不了它回答。
- */
-function VerdictEvidence({
-	editing,
-	onStorageUnavailable,
-	projectId,
-	runCase,
-	storageUnavailable,
-}: VerdictEvidenceProps) {
-	return (
-		<>
-			<RunDefectPanel
-				defectKey={runCase.defectKey}
-				defectStatus={runCase.defectStatus}
-				defectTitle={runCase.defectTitle}
-				defectUrl={runCase.defectUrl}
-				editing={editing}
-				projectId={projectId}
-				runCaseId={runCase.id}
-			/>
-			<RunAttachments
-				editing={editing}
-				onStorageUnavailable={onStorageUnavailable}
-				runCaseId={runCase.id}
-				storageUnavailable={storageUnavailable}
-			/>
-		</>
-	);
-}
-
-interface VerdictPanelDecisionProps {
-	canConclude: boolean;
-	editing: boolean;
-	hasSteps: boolean;
-	onCommentSave: (comment: string | null) => void;
-	onPick: (result: TestRunCaseResult) => void;
-	runCase: RunCaseDetail["runCase"];
-}
-
-/**
- * 结论本身：判定入口 + 说明。
- *
- * 判定入口只在修改页面出现——结果页面上「判成了什么」已经写在用例名旁边的
- * 徽章上，再摆一排按钮既多余又容易误触（尤其是分步形态下，用例级按钮会把
- * 逐步判定盖掉，那条不变量见 `run-case-verdict-body.tsx`）。
- *
- * 说明两态都渲染，因为它两态**长得不一样**：结果页面是一段可选可复制的文字、
- * 空就不画，修改页面才是 textarea。这个二选一由 `VerdictComment` 自己完成，
- * 它同时看得见本地草稿，是唯一能判断「有没有还没保存的字」的地方。
- */
-function VerdictPanelDecision({
-	canConclude,
-	editing,
-	hasSteps,
-	onCommentSave,
-	onPick,
-	runCase,
-}: VerdictPanelDecisionProps) {
-	return (
-		<>
-			{editing ? (
-				<VerdictBody
-					canConclude={canConclude}
-					editing={editing}
-					hasSteps={hasSteps}
-					onPick={onPick}
-					runCase={runCase}
-				/>
-			) : null}
-			<VerdictComment
-				comment={runCase.comment}
-				editable={editing && !hasSteps}
-				onCommentSave={onCommentSave}
-				result={runCase.result}
-				runCaseId={runCase.id}
-			/>
-		</>
-	);
 }
 
 /**

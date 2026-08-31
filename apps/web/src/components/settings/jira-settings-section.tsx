@@ -6,29 +6,27 @@
  * 「没配」与「配了但解不开」在类型上分成了两件事，这里照着分开渲染——
  * 把前者也画成红条，等于告诉每一个没接 Jira 的团队他们坏了。
  *
- * 六格字段本身在 `jira-settings-fields.tsx`；留在这里的是表单的骨架与它的
+ * 六格字段本身在 `jira-config-fields.tsx`；留在这里的是表单的骨架与它的
  * 两个 hook 调用。两个 hook 必须在这一层、按这个顺序调用：`useFieldHandlers`
  * 吃的是 `useJiraConfigForm` 给出的 `patch`，把它们中的任何一个挪进子组件，
  * 表单实例就会跟着子树的挂载/卸载走，正在输入的内容会在重挂时整份丢掉。
  */
 import type { JiraConfigState } from "@automationstack/api/routers/jira";
-import { Button } from "@automationstack/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
-import { TriangleAlertIcon } from "lucide-react";
 import { useCallback } from "react";
 
+import { CredentialProblemNotice } from "@/components/settings/credential-problem-notice";
+import { JiraConfigFields } from "@/components/settings/jira-config-fields";
+import { JiraConfigFormActions } from "@/components/settings/jira-config-form-actions";
 import { JiraConnectionResult } from "@/components/settings/jira-connection-result";
-import {
-	JiraConfigFields,
-	useFieldHandlers,
-} from "@/components/settings/jira-settings-fields";
+import { useFieldHandlers } from "@/components/settings/jira-field-group";
 import {
 	SettingsFieldsSkeleton,
-	SettingsSection,
-	SettingsSectionError,
 	type SettingsSkeletonAction,
 	type SettingsSkeletonField,
-} from "@/components/settings/settings-section";
+} from "@/components/settings/settings-fields-skeleton";
+import { SettingsSection } from "@/components/settings/settings-section";
+import { SettingsSectionError } from "@/components/settings/settings-section-error";
 import { useJiraConfigForm } from "@/components/settings/use-jira-config-form";
 import { orpc } from "@/utils/orpc";
 
@@ -38,7 +36,7 @@ const SECTION_DESCRIPTION =
 	"配置后，失败用例可一键建 issue、粘贴链接反向关联，并由 webhook 同步 issue 状态。未配置也不影响测试任务的任何功能。";
 
 /**
- * 骨架逐项对着 jira-settings-fields.tsx 的 `JiraConfigFields` 填。
+ * 骨架逐项对着 jira-config-fields.tsx 的 `JiraConfigFields` 填。
  *
  * **六格，不是五格**：站点 URL / 邮箱 / API Token / project key / 默认 issue
  * 类型 / Webhook 密钥。原先漏的是最后那格密钥——它在 `JiraWebhookFields` 里，
@@ -62,7 +60,7 @@ const SKELETON_FIELDS: readonly SettingsSkeletonField[] = [
 ];
 
 /**
- * 提交行是**两颗**按钮，见下面的 `JiraConfigFormActions`。宽度按 Button
+ * 提交行是**两颗**按钮，见 jira-config-form-actions.tsx。宽度按 Button
  * default 档折算（汉字 text-sm 14px + px-2.5 两侧 20px）：
  * 「测试连接」4 字 = 76px，取最近的标准档 w-20（80px，横向差 4px，且这一行是
  * 右对齐的，差值只落在占位块的左缘）；「保存」2 字 = 48px = w-12。
@@ -71,64 +69,6 @@ const SKELETON_ACTIONS: readonly SettingsSkeletonAction[] = [
 	{ id: "test-connection", width: "w-20" },
 	{ id: "save", width: "w-12" },
 ];
-
-function CredentialProblemNotice({ reason }: { reason: string }) {
-	const detail =
-		reason === "master-key-missing"
-			? "服务端未配置 SECRET_ENCRYPTION_KEY，已存的 API Token 解不开。补上该环境变量后即可恢复，数据没有损坏。"
-			: "已存的 API Token 解不开——主密钥被换过了，旧密文找不回来。请重新填写一次 API Token 并保存。";
-
-	return (
-		// role="status" 而不是 alert：它一进页面就在那儿，不是刚刚发生的事
-		<div
-			className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-destructive text-xs"
-			role="status"
-		>
-			{/*
-			 * 不加 mt-0.5：外层是 text-xs（行高 16px），图标 size-4 也是 16px，
-			 * items-start 下两个盒子本来就顶齐；那 2px 是净错位，不是补偿。
-			 */}
-			<TriangleAlertIcon aria-hidden="true" className="size-4 shrink-0" />
-			<div className="flex flex-col gap-1">
-				<p className="font-medium">当前 Jira 凭据不可用</p>
-				<p>{detail}</p>
-			</div>
-		</div>
-	);
-}
-
-/**
- * 「测试连接」与「保存」并排在表单末尾。
- *
- * 两颗按钮的禁用条件不对称，是有意的：保存进行中连测试也一并禁掉，因为保存
- * 改的正是自检要读的那份配置，此时再发一次自检，回来的结果说的是改之前还是
- * 改之后都讲不清；反过来自检是只读的，测试进行中不挡保存。
- */
-function JiraConfigFormActions({
-	onTest,
-	pending,
-	testPending,
-}: {
-	onTest: () => void;
-	pending: boolean;
-	testPending: boolean;
-}) {
-	return (
-		<div className="flex justify-end gap-2">
-			<Button
-				disabled={pending || testPending}
-				onClick={onTest}
-				type="button"
-				variant="outline"
-			>
-				{testPending ? "测试中…" : "测试连接"}
-			</Button>
-			<Button disabled={pending} type="submit">
-				{pending ? "保存中…" : "保存"}
-			</Button>
-		</div>
-	);
-}
 
 function JiraConfigFormView({
 	projectId,

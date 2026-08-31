@@ -102,7 +102,7 @@ export function hasCaseFilters(search: WorkspaceSearch): boolean {
 /**
  * 「继续编辑某一份草稿」这次导航：选中它所属的模块 + 打开新建抽屉 + 指名是哪一份。
  *
- * 与模块树的选模块链接同一套写法（module-node-links.tsx）：换模块要清掉详情
+ * 与模块树的选模块链接同一套写法（use-select-module-search.ts）：换模块要清掉详情
  * 选中与页码。抽出来放在这里，是因为两个入口要走同一条路——侧栏的草稿清单
  * （case-drafts-dialog.tsx）和抽屉顶部的提示（cases/case-draft-picker.tsx）。
  * 两边各写一份，迟早会有一边忘了清 page 或忘了带 draft。
