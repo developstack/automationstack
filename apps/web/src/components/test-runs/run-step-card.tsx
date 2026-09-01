@@ -37,10 +37,16 @@ import {
 	CardTitle,
 } from "@automationstack/ui/components/card";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { type ChangeEvent, useCallback } from "react";
+import { type ChangeEvent, useCallback, useMemo } from "react";
 
-import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
+import { parseMarkdownDoc } from "@/components/cases/markdown-doc";
+import type { MarkdownInline } from "@/components/cases/markdown-inline";
+import {
+	InlineNodes,
+	type MarkdownImageUrls,
+} from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
+import { TEXT_FLOW_CLASS } from "@/components/cases/markdown-text-flow";
 import { ICON_MOTION } from "@/components/test-runs/run-case-result-badge";
 import { StepCardFooter } from "@/components/test-runs/step-card-footer";
 import {
@@ -83,12 +89,46 @@ function StepResultBadge({
 }
 
 /**
+ * 预期正文只有一个段落时交出它的行内节点，否则返回 null（调用点退回块级渲染）。
+ * 空正文按「零个行内节点」算——「预期：」照样是完整的一行，不必为它走块级那条路。
+ */
+function soleParagraphNodes(text: string): MarkdownInline[] | null {
+	const blocks = parseMarkdownDoc(text);
+	if (blocks.length > 1) {
+		return null;
+	}
+	const [only] = blocks;
+	if (only === undefined) {
+		return [];
+	}
+	return only.kind === "paragraph" ? only.children : null;
+}
+
+/**
  * 正文两块：操作步骤（深、text-sm）+ 预期（浅、text-xs）。
  *
- * 「预期：」是行内前缀而不是小标题：`shrink-0` 的前缀配 `min-w-0` 的正文，
- * 单行预期与前缀同排，多行预期从第二行起自然缩进对齐，两种都不会撑破卡片。
+ * ## 「预期：」必须和预期正文在同一个文本流里
  *
- * ## 两处刚被用户点名的数值
+ * 上一版把这里排成两列（`flex` + `shrink-0` 的前缀 + `min-w-0 flex-1` 的正文），
+ * 两半的基线对不上：容器上的 `text-xs` 连同它自带的 1rem 行高一起喂给了前缀，
+ * 右边 `MarkdownRender` 的根节点却是 `leading-relaxed`（1.625 × 12px = 19.5px），
+ * 两个行框各自把文字垂直居中，字形因此差了 (19.5 − 16) / 2 ≈ 1.75px。
+ * 用户原话：「预期和内容都没对齐。歪掉了。」
+ *
+ * 修法不是把两边的行高调成一样——那是拿数值去凑，两侧任何一处字号或 leading
+ * 再动一次就再歪一次。这里让前缀作为**行内文本**落进预期段落自己的那个 `<p>`：
+ * 同一个行框内部不存在「两半对齐」这件事，也就坏不了。顺带多行预期从第二行起
+ * 顶格续排，不再吊在前缀右边缩成一条窄栏（用户原话「为什么不能只写成一行呢」）。
+ *
+ * ## 两条分支
+ *
+ * `step.expected` 是完整 markdown，可能不止一个块。单段落（最常见，含软换行的
+ * 多行文本）走行内分支；空行分段、列表、代码块这些块级结构塞不进一个 `<p>`，
+ * 退回块级渲染、前缀单独成行——那条路上前缀与正文是上下两个块，同样没有横向
+ * 对齐可歪。`whitespace-pre-wrap` 由 `TEXT_FLOW_CLASS` 带进来，与块级分支里
+ * 段落用的是同一个常量：预期里的换行是用户敲进去的，一个都不能折叠掉。
+ *
+ * ## 两处被用户点名过的数值
  *
  * `mt-1` 而不是原来的 `mt-3`：步骤与它的预期是**同一件事的两半**，隔开 12px 之后
  * 它们之间的距离已经接近卡片与卡片之间的 `gap-3`，读起来像两个并列的块，
@@ -101,16 +141,9 @@ function StepResultBadge({
  * 注意这一档 `text-xs` 是**卡片内部**的层级，不走面板级的 `RUN_SECTION_TEXT`
  * 口径（见 `run-panel-typography.ts`）；下面的失败原因跟这一档对齐。
  *
- * ## 预期正文必须显式传 textSize，容器上的 text-xs 管不到它
- *
- * 容器那句 `text-xs` 只喂饱了「预期：」这个纯文本前缀。右边的正文走
- * `MarkdownRender`，而它的根节点把 `text-sm` **写死**在自己身上（理由见那个文件
- * 的头注释：正文里混着 pre / code / 标题，需要一个不随调用点漂移的基准），
- * 继承下来的 xs 会被它原样顶掉——于是同一行里前缀 xs、正文 sm。第一版只改到了
- * 前缀那一半，用户在真实页面上一眼看出来了。
- *
- * 修法是给 MarkdownRender 传 `textSize="xs"` 把**它的基准**挪下来，而不是在外面
- * 加权重去压它。上面的步骤正文不传，保持默认 sm，两者的一号差距因此成立。
+ * 行内分支把 xs 直接写在那个 `<p>` 上就够了（前缀和正文同属一个元素，没有第二个
+ * 基准可漂）；块级分支仍要给 `MarkdownRender` 传 `textSize="xs"`——它的根节点把
+ * 字号写死在自己身上，继承下来的 xs 会被原样顶掉（理由见那个文件的头注释）。
  */
 function StepCardBody({
 	imageUrls,
@@ -119,21 +152,34 @@ function StepCardBody({
 	imageUrls: MarkdownImageUrls;
 	step: CaseStep;
 }) {
+	// 这次解析只用来选分支。真走块级分支时 MarkdownRender 会按原文自己再 memo 一次，
+	// 多出来的那次解析只发生在少见的多块预期上，不值得为它把解析结果一路传下去。
+	const inlineNodes = useMemo(
+		() => soleParagraphNodes(step.expected),
+		[step.expected]
+	);
 	return (
 		<>
 			<div className="text-foreground">
 				<MarkdownRender imageUrls={imageUrls} text={step.step} />
 			</div>
-			<div className="mt-1 flex gap-1 text-muted-foreground text-xs">
-				<span className="shrink-0">预期：</span>
-				<div className="min-w-0 flex-1">
+			{inlineNodes === null ? (
+				<div className="mt-1 space-y-1 text-muted-foreground text-xs leading-relaxed">
+					<p>预期：</p>
 					<MarkdownRender
 						imageUrls={imageUrls}
 						text={step.expected}
 						textSize="xs"
 					/>
 				</div>
-			</div>
+			) : (
+				<p
+					className={`mt-1 text-muted-foreground text-xs leading-relaxed ${TEXT_FLOW_CLASS}`}
+				>
+					预期：
+					<InlineNodes imageUrls={imageUrls} nodes={inlineNodes} />
+				</p>
+			)}
 		</>
 	);
 }
