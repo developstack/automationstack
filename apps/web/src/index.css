@@ -120,3 +120,25 @@
 	font-size: 0.75rem;
 	line-height: 1rem;
 }
+
+/*
+ * Console 日志里 warn 那一档的字色。
+ *
+ * 为什么不复用 --result-blocked（那也是黄的）：theme.css 里那四支是**测试结论**
+ * 的语义色（通过/失败/阻塞/跳过），把它借给浏览器控制台的警告等于让同一个黄
+ * 同时代表两件毫不相干的事，图例一旦并排出现就解释不清了。而且那一支
+ * （#FFD758，L≈0.891）是给图表色块用的，当作亮底上的正文色远不到 4.5:1。
+ *
+ * 这里两档各自压到能读的亮度：亮色 L=0.55 压 --background（≈#FFF）约 4.9:1，
+ * 暗色 L=0.82 压暗色 --background（oklch(0.145 0 0)）约 9:1，都过 WCAG AA 正文档。
+ * 色相 75 是琥珀，与 --destructive 的红拉开得够远，扫一眼分得出 WARN 和 ERROR。
+ *
+ * 写成 @utility 而不是 text-[oklch(...)]：本仓 Tailwind 门禁禁任意值语法，
+ * 而且颜色写进类名后暗色档就没地方挂了。
+ */
+@utility text-console-warn {
+	color: oklch(0.55 0.13 75);
+	.dark & {
+		color: oklch(0.82 0.13 75);
+	}
+}

@@ -10,6 +10,8 @@ services:
         # 对已经发到浏览器的那份 JS 毫无影响——换域名等于重新 build，不是重启。
         # 默认值与 .github/workflows/ci.yml 的 build-args 保持一致，两处都要改。
         VITE_SERVER_URL: http://localhost:3000
+        # farm 的地址，同样是构建期烘焙（接入指南页的示例代码从它拼）。
+        VITE_FARM_URL: http://localhost:3002
     init: true
     ports:
       - "3001:3001"
@@ -66,6 +68,12 @@ services:
       CORS_ORIGIN: http://localhost:3001
       # 容器之间走服务名 + 容器内端口 5432，与下面把宿主端口挪到 5433 无关。
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/automationstack
+      # 会话产物的下载链接由 packages/api 拼，而那段代码跑在 server 进程里、读的是
+      # farm 那份 env（FARM_PUBLIC_URL）。所以 server 也得知道 farm 对外是哪个地址。
+      # 刻意**不是** http://farm:3002：这个 URL 最终会进浏览器的地址栏，容器服务名
+      # 在浏览器那边解析不了。填的是 farm 发布到宿主的那个端口，换域名时和 web 的
+      # VITE_FARM_URL 成对地改。
+      FARM_PUBLIC_URL: http://localhost:3002
     healthcheck:
       test:
         [
@@ -87,6 +95,60 @@ services:
       # 这一条在 migrate 之后是冗余的，但刻意保留：depends_on 的传递性只保证
       # 「migrate 启动那一刻 postgres 是健康的」，把门槛写在 server 自己身上，
       # 读的人不用跳到 migrate 才能推出 server 的前置条件。
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # 浏览器设备农场（plan phase4）。独立于 server 的第二个 Node 服务：
+  # 它要挂宿主的 docker.sock，权限边界必须和主 API 隔离（plan §2 D3）。
+  farm:
+    build:
+      context: .
+      dockerfile: apps/farm/Dockerfile
+    init: true
+    ports:
+      # 测试脚本（selenium 的 remote URL / playwright 的 connectOverCDP）
+      # 直接打这个端口，所以必须发布到宿主。
+      - "3002:3002"
+    env_file:
+      # FARM_* 与共享的 SESSION_SECRET 等从这里来，清单见 apps/farm/.env.example。
+      - path: apps/farm/.env
+        required: false
+    volumes:
+      # ⚠️ 挂 docker.sock == 把宿主 root 等价权限交给这个容器。
+      # 这是刻意的：farm 的全部工作就是按会话拉起/销毁浏览器容器。
+      # 它起的浏览器容器是 **compose 之外的 sibling 裸容器**（由宿主 daemon 创建，
+      # 不受 compose 管理、docker compose down 也带不走它们——回收靠 farm 的 reaper
+      # 按 label as.farm.managed 扫）。不用 DinD：要 privileged、镜像缓存还独立，
+      # 明确不采用（plan §8）。
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # 与 server 同一个库；容器之间走服务名 + 容器内端口 5432。
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/automationstack
+      # 容器化部署走 container-ip：farm 自己在容器里，浏览器容器挂进同一张
+      # compose 网络后可以直连容器 IP 的 4444/9222，省一跳，浏览器容器也不必
+      # 发布任何宿主端口。（本地 `pnpm dev` 跑 farm 时相反，用默认的
+      # published-port——macOS 的 Docker Desktop 连不通容器 IP。）
+      FARM_ENDPOINT_MODE: container-ip
+      # compose 默认网络的实际名字 = <project>_default，本文件顶部 name: automationstack。
+      # 改了项目名这里要跟着改，否则浏览器容器会被挂到一张 farm 够不着的网上。
+      FARM_DOCKER_NETWORK: automationstack_default
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3002/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      # 迁移跑完再起：farm 起来就要读写 farm_* 表，空库上是一路 500。
+      migrate:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
     restart: unless-stopped

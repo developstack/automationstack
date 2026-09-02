@@ -12,9 +12,15 @@
 | [`nodejs/`](./nodejs) | Node.js + 内置 `node:test` | ✅ 可跑 |
 | [`python/`](./python) | Python + pytest 插件 | ✅ 可跑 |
 | [`jdk/`](./jdk) | Java + JUnit 5 | ✅ 可跑 |
+| [`farm-selenium/`](./farm-selenium) | Node.js + selenium-webdriver | 🚧 phase4 浏览器农场 |
+| [`farm-playwright/`](./farm-playwright) | Node.js + playwright-core（CDP） | 🚧 phase4 浏览器农场 |
 
-三份示例用的是**同一套种子数据、同一个对账单契约**，只是语言不同。
+前三份示例用的是**同一套种子数据、同一个对账单契约**，只是语言不同。
 先看哪一份都行。
+
+后两份（`farm-*`）证明的是另一件事，别和上面三份混在一起看：它们不上报结论，
+而是把**浏览器本身**搬到平台上跑——脚本改一行连接地址，浏览器就在平台按会话
+拉起的一次性容器里执行，平台顺带把网络、console、截图录下来。
 
 ## 这些示例证明了什么
 

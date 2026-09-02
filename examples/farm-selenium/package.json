@@ -1,0 +1,13 @@
+{
+  "name": "@automationstack/example-farm-selenium",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Selenium 脚本改一行 remote URL，就跑在平台的浏览器设备农场里",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/main.mjs"
+  },
+  "devDependencies": {
+    "selenium-webdriver": "4.48.0"
+  }
+}

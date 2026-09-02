@@ -5,6 +5,7 @@ import { apiTokensRouter } from "./api-tokens";
 import { authRouter } from "./auth";
 import { caseAttachmentsRouter } from "./case-attachments";
 import { casesRouter } from "./cases";
+import { farmRouter } from "./farm";
 import { jiraRouter } from "./jira";
 import { mindmapRouter } from "./mindmap";
 import { modulesRouter } from "./modules";
@@ -21,6 +22,7 @@ export const appRouter = {
 	auth: authRouter,
 	caseAttachments: caseAttachmentsRouter,
 	cases: casesRouter,
+	farm: farmRouter,
 	healthCheck: publicProcedure.handler(() => "OK"),
 	jira: jiraRouter,
 	mindmap: mindmapRouter,

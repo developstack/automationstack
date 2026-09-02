@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@automationstack/config": "workspace:*",
+    "@automationstack/farm-node-protocol": "workspace:*",
     "@types/pg": "8.23.1",
     "drizzle-kit": "0.31.10",
     "typescript": "catalog:"

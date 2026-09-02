@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "dev:web": "turbo run dev -F web --",
     "dev:server": "turbo run dev -F server --",
+    "dev:farm": "turbo run dev -F farm --",
     "db:push": "turbo run db:push -F @automationstack/db --",
     "db:studio": "turbo run db:studio -F @automationstack/db --",
     "db:generate": "turbo run db:generate -F @automationstack/db --",

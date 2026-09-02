@@ -7,6 +7,8 @@
     "check-types": "tsc --noEmit"
   },
   "exports": {
+    "./farm": "./src/farm.ts",
+    "./node-agent": "./src/node-agent.ts",
     "./server": "./src/server.ts",
     "./web": "./src/web.ts"
   },

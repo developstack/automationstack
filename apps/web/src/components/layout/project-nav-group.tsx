@@ -55,7 +55,7 @@ function OverviewNavItem({ pathname, projectId }: NavItemProps) {
 
 /*
  * 「用例管理」的去处是项目根路径本身，而其余三项都长在它下面，所以这一项**不能**
- * 按前缀算——前缀匹配会让四项在任何项目内页面上同时高亮。判据单独抽在
+ * 按前缀算——前缀匹配会让其余各项在任何项目内页面上同时高亮。判据单独抽在
  * case-section-path.ts 里（项目根路径，或脑图页），二级模块面板也用同一份。
  *
  * activeOptions.exact 不能省，而且它与 isActive 刻意不同步：Link 默认按前缀判定活动态，

@@ -1,0 +1,29 @@
+{
+  "name": "node-agent",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsdown",
+    "check-types": "tsc --noEmit",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.mjs"
+  },
+  "dependencies": {
+    "@automationstack/browser-slots": "workspace:*",
+    "@automationstack/env": "workspace:*",
+    "@automationstack/farm-node-protocol": "workspace:*",
+    "dockerode": "catalog:",
+    "ws": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@automationstack/config": "workspace:*",
+    "@types/dockerode": "catalog:",
+    "@types/node": "catalog:",
+    "@types/ws": "catalog:",
+    "tsdown": "0.22.14",
+    "tsx": "4.23.12",
+    "typescript": "catalog:"
+  }
+}

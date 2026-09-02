@@ -29,6 +29,14 @@ allowBuilds:
   #   [ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: edgedriver@6.3.0, geckodriver@6.1.1
   edgedriver: false
   geckodriver: false
+  # 下面两条随 dockerode → docker-modem → ssh2 传进来（apps/farm 要连 Docker daemon）。
+  # 写 false：这两个 build 产的都是**可选的原生加速**，不是功能开关——
+  # ssh2 的 native binding 只加速加密运算，cpu-features 只是给它探 CPU 指令集；
+  # 装不上时 ssh2 自己回落到纯 JS 实现，`ssh://` 形态的 FARM_DOCKER_HOST 照样能连。
+  # 换来的是少两处编译期供应链面（cpu-features 是要过 node-gyp 的原生扩展）。
+  # 而默认根本走不到它们：FARM_DOCKER_HOST 默认是本地 unix socket。
+  cpu-features: false
+  ssh2: false
 catalog:
   dotenv: 17.4.2
   zod: 4.4.3
@@ -47,6 +55,16 @@ catalog:
   "@orpc/client": 1.15.0
   "@types/react": 19.2.18
   "@types/react-dom": 19.2.4
+  # apps/farm 用：dockerode 钉 4.x 而不是 5.x —— DefinitelyTyped 的
+  # @types/dockerode 仍然只跟到 4（4.0.1 发布于 dockerode 5 之前），
+  # 混搭会让 provider 那层的类型和真实 API 悄悄错位。两个大版本的依赖树
+  # 一样重（都拖 @grpc/grpc-js + protobufjs，后者的 build 已在 allowBuilds 里表过态）。
+  dockerode: 4.0.12
+  "@types/dockerode": 4.0.1
+  # ws 与 apps/server 里那份字面量 8.21.3 同版本：两个 app 都要跑 WS，
+  # 版本漂开只会白装两份。server 的字面量没顺手改成 catalog:，那是它的改动面。
+  ws: 8.21.3
+  "@types/ws": 8.18.1
 # 24 小时冷静期。**这个值和 pnpm 11 的内置默认值一模一样，删掉它却会改变行为**——
 # 所以它看着冗余，其实是这段配置里唯一一个开关。别当成 noise 清掉。
 #

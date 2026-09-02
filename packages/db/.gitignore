@@ -33,3 +33,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+# 源码直出包（exports 指向 src/*.ts）：src/ 旁的 .js 会被 vite/vitest 扩展名优先级
+# 抢在 .ts 前解析，静默跑陈旧编译产物（2026-09-01 在 env 包真的发生过）。
+src/**/*.js

@@ -1,0 +1,27 @@
+{
+  "name": "@automationstack/farm-node-protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./capabilities": "./src/capabilities.ts",
+    "./control": "./src/control.ts",
+    "./frame": "./src/frame.ts",
+    "./mux": "./src/mux.ts",
+    "./mux-stream": "./src/mux-stream.ts",
+    "./rpc": "./src/rpc.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@automationstack/config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/ws": "catalog:",
+    "typescript": "catalog:",
+    "ws": "catalog:"
+  }
+}

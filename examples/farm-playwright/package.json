@@ -1,0 +1,13 @@
+{
+  "name": "@automationstack/example-farm-playwright",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Playwright 用 connectOverCDP 连上平台的浏览器设备农场",
+  "type": "module",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/main.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.1"
+  }
+}

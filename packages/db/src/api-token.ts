@@ -100,10 +100,22 @@ export interface GeneratedApiToken {
 	tokenHash: string;
 }
 
+/**
+ * 凭据明文里**前缀之后**的那一段：32 字节 CSPRNG 的 base64url。
+ *
+ * 单独导出是因为它有第二个消费者——实机节点凭据（`farm-node-token.ts`，plan §12）。
+ * 两种凭据只有前缀不同，随机源、字节数与字母表必须是同一份：复制一遍等于让两条
+ * 凭据链路各带一套，改了一处永远不会有人发现另一处没跟上。
+ */
+export function generateTokenRandomBody(): string {
+	return toBase64Url(
+		crypto.getRandomValues(new Uint8Array(TOKEN_RANDOM_BYTES))
+	);
+}
+
 /** 生成一枚新 token。`plaintext` 是这辈子唯一一次能拿到明文的地方。 */
 export async function generateApiToken(): Promise<GeneratedApiToken> {
-	const random = crypto.getRandomValues(new Uint8Array(TOKEN_RANDOM_BYTES));
-	const plaintext = `${API_TOKEN_PREFIX}${toBase64Url(random)}`;
+	const plaintext = `${API_TOKEN_PREFIX}${generateTokenRandomBody()}`;
 	return {
 		plaintext,
 		prefix: extractApiTokenPrefix(plaintext),

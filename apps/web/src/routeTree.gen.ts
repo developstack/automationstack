@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BrowsersRouteImport } from './routes/browsers'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as NodesRouteImport } from './routes/nodes'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsProjectIdRouteRouteImport } from './routes/projects/$projectId/route'
@@ -28,9 +30,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BrowsersRoute = BrowsersRouteImport.update({
+  id: '/browsers',
+  path: '/browsers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NodesRoute = NodesRouteImport.update({
+  id: '/nodes',
+  path: '/nodes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UsersRoute = UsersRouteImport.update({
@@ -97,7 +109,9 @@ const ProjectsProjectIdTestRunsRunIdReportRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/browsers': typeof BrowsersRoute
   '/login': typeof LoginRoute
+  '/nodes': typeof NodesRoute
   '/users': typeof UsersRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
   '/projects/': typeof ProjectsIndexRoute
@@ -112,7 +126,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/browsers': typeof BrowsersRoute
   '/login': typeof LoginRoute
+  '/nodes': typeof NodesRoute
   '/users': typeof UsersRoute
   '/projects': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
@@ -127,7 +143,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/browsers': typeof BrowsersRoute
   '/login': typeof LoginRoute
+  '/nodes': typeof NodesRoute
   '/users': typeof UsersRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
   '/projects/': typeof ProjectsIndexRoute
@@ -144,7 +162,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/browsers'
     | '/login'
+    | '/nodes'
     | '/users'
     | '/projects/$projectId'
     | '/projects/'
@@ -159,7 +179,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/browsers'
     | '/login'
+    | '/nodes'
     | '/users'
     | '/projects'
     | '/projects/$projectId/mindmap'
@@ -173,7 +195,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/browsers'
     | '/login'
+    | '/nodes'
     | '/users'
     | '/projects/$projectId'
     | '/projects/'
@@ -189,7 +213,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BrowsersRoute: typeof BrowsersRoute
   LoginRoute: typeof LoginRoute
+  NodesRoute: typeof NodesRoute
   UsersRoute: typeof UsersRoute
   ProjectsProjectIdRouteRoute: typeof ProjectsProjectIdRouteRouteWithChildren
   ProjectsIndexRoute: typeof ProjectsIndexRoute
@@ -204,11 +230,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/browsers': {
+      id: '/browsers'
+      path: '/browsers'
+      fullPath: '/browsers'
+      preLoaderRoute: typeof BrowsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nodes': {
+      id: '/nodes'
+      path: '/nodes'
+      fullPath: '/nodes'
+      preLoaderRoute: typeof NodesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users': {
@@ -323,7 +363,9 @@ const ProjectsProjectIdRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BrowsersRoute: BrowsersRoute,
   LoginRoute: LoginRoute,
+  NodesRoute: NodesRoute,
   UsersRoute: UsersRoute,
   ProjectsProjectIdRouteRoute: ProjectsProjectIdRouteRouteWithChildren,
   ProjectsIndexRoute: ProjectsIndexRoute,

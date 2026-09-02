@@ -13,6 +13,8 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { FolderKanbanIcon } from "lucide-react";
 
 import { useSession } from "@/components/auth/use-session";
+import { FarmBrowsersNavItem } from "@/components/layout/farm-browsers-nav-item";
+import { FarmNodesNavItem } from "@/components/layout/farm-nodes-nav-item";
 import { PlatformUsersNavItem } from "@/components/layout/platform-users-nav-item";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
 import { SidebarUser } from "@/components/layout/sidebar-user";
@@ -65,13 +67,13 @@ function ProjectsNavItem({ pathname }: { pathname: string }) {
 /**
  * 平台层的一级去处。
  *
- * 不加组标题：全组最多两项，再没有第二组要跟它区分，标题除了占掉一行什么也没说
+ * 不加组标题：全组最多四项，再没有第二组要跟它区分，标题除了占掉一行什么也没说
  * （与 ProjectNavGroup 同一条约定）。
  *
- * 会话还在路上（`isPending`）时按「不是 admin」渲染，也就是先不画「用户」那一行
- * ：反过来先画、拿到会话再撤掉，普通成员会看见一行一闪而过的入口，比晚一拍出现
- * 更糟。admin 那一拍的代价只是这一行稍晚落位，而它下面就是用户区，不会把已经读
- * 到的内容顶走。
+ * 会话还在路上（`isPending`）时按「不是 admin」渲染，也就是先不画「用户」「节点」
+ * 「镜像库」那三行：反过来先画、拿到会话再撤掉，普通成员会看见一闪而过的入口，比晚一拍出现
+ * 更糟。admin 那一拍的代价只是这三行稍晚落位，而它们下面就是用户区，不会把已经读
+ * 到的内容顶走。三项同进同出，共用一个 admin 判定的 Fragment。
  */
 function PlatformNavGroup() {
 	const pathname = useRouterState({ select: selectPathname });
@@ -82,7 +84,17 @@ function PlatformNavGroup() {
 			<SidebarMenu>
 				<ProjectsNavItem pathname={pathname} />
 				{user?.role === "admin" ? (
-					<PlatformUsersNavItem pathname={pathname} />
+					<>
+						<PlatformUsersNavItem pathname={pathname} />
+						{/*
+						 * 节点排在镜像库**之前**（plan §12 的模型转向）：主体是机器，
+						 * 「这台机器上有哪些浏览器」由它自己探出来上报，镜像库降格成
+						 * docker 后端拉镜像时查的那本目录。排在前面的那一项是这一层的
+						 * 主入口，顺序说反了，人会先去目录里找一个根本不在那儿的答案。
+						 */}
+						<FarmNodesNavItem pathname={pathname} />
+						<FarmBrowsersNavItem pathname={pathname} />
+					</>
 				) : null}
 			</SidebarMenu>
 		</SidebarGroup>
