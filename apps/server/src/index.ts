@@ -1,12 +1,15 @@
 import { createContext } from "@automationstack/api/context";
+import { runWithClientIp } from "@automationstack/api/lib/request-client-ip";
 import { appRouter } from "@automationstack/api/routers/index";
 import { env } from "@automationstack/env/server";
 import { serve } from "@hono/node-server";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { OpenAPIReferencePlugin } from "@orpc/openapi/plugins";
 import { onError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
@@ -15,6 +18,7 @@ import { registerIngestRoutes } from "./ingest/routes";
 import { registerJiraWebhook } from "./jira/webhook";
 import { getJobsStatus, startJobs, stopJobs } from "./jobs/boss";
 import { handleMcpRequest } from "./mcp/server";
+import { requestBodyLimit } from "./middleware/request-body-limit";
 import { responseCompression } from "./middleware/response-compression";
 import {
 	realtimeWebSocketHandler,
@@ -49,6 +53,17 @@ app.use(
  * 后续中间件不会被执行，压缩因此天然碰不到 WebSocket。
  */
 app.use("/*", responseCompression());
+
+/**
+ * 请求体上限必须挂在**这个位置**：在下面所有会读请求体的东西之前
+ * （Jira webhook 的原始体、ingest 的三条 POST、以及 oRPC 的输入管道），
+ * 又在 cors 之后——否则 413 不带 CORS 头，浏览器只能看到一个不可读的失败。
+ *
+ * 它在 oRPC 之前生效这一点是关键：oRPC 的 StandardHandler 会在
+ * `requireUser` 跑起来之前就把体读完，所以「未认证请求」的体大小是这里、
+ * 也只能是这里说了算。额度按路由族分档，取值理由见 request-body-limit.ts。
+ */
+app.use("/*", requestBodyLimit());
 
 /**
  * Jira webhook 注册在 oRPC 中间件**之前**：它是外部系统发来的、没有会话
@@ -101,22 +116,49 @@ function withCookies(response: Response, cookies: string[]): Response {
 	});
 }
 
+/**
+ * 取**socket 层**的对端地址，刻意**不读 `X-Forwarded-For` 之类的头**。
+ *
+ * 这个地址是 `auth.login` 限流的分桶依据（见
+ * `packages/api/src/lib/login-rate-limit.ts`），而转发头是客户端能随手伪造的
+ * 一行文本：只要读它，攻击者每个请求换一个 XFF 就能把限流整个绕过去，
+ * 那道闸就成了摆设。转发头只有在**可信反代之后**、且明确知道要剥掉几跳时
+ * 才有意义；当前 compose 里 server 前面根本没有反代，socket 地址就是真地址。
+ * 日后真在前面放了反代，要改的是这一个函数，并且必须同时定下「信任几跳」。
+ *
+ * 取不到时返回 null 而不是编一个占位地址：见 `request-client-ip.ts`。
+ */
+function readClientIp(c: Context): string | null {
+	try {
+		return getConnInfo(c).remote.address ?? null;
+	} catch {
+		return null;
+	}
+}
+
 app.use("/*", async (c, next) => {
 	const context = await createContext({ context: c });
+	const clientIp = readClientIp(c);
 
-	const rpcResult = await rpcHandler.handle(c.req.raw, {
-		context,
-		prefix: "/rpc",
-	});
+	// 只把 oRPC 的分发包在这个作用域里：handler 够不到 Request，
+	// 来源地址只能这样传进去（`runWithClientIp` 的注释解释了为什么不是 context）。
+	const rpcResult = await runWithClientIp(clientIp, () =>
+		rpcHandler.handle(c.req.raw, {
+			context,
+			prefix: "/rpc",
+		})
+	);
 
 	if (rpcResult.matched) {
 		return withCookies(rpcResult.response, context.cookies);
 	}
 
-	const apiResult = await apiHandler.handle(c.req.raw, {
-		context,
-		prefix: "/api-reference",
-	});
+	const apiResult = await runWithClientIp(clientIp, () =>
+		apiHandler.handle(c.req.raw, {
+			context,
+			prefix: "/api-reference",
+		})
+	);
 
 	if (apiResult.matched) {
 		return withCookies(apiResult.response, context.cookies);
