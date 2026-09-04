@@ -2,6 +2,10 @@ import { and, asc, count, eq, gt, gte, isNull, ne, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import { type Module, modules } from "../schema/modules";
+import {
+	checkModuleDeleteBlock,
+	type RemoveModuleResult,
+} from "./module-delete-guard";
 import { getModuleSubtreeIds } from "./module-subtree";
 import type { DbTransaction } from "./repository-types";
 
@@ -242,14 +246,18 @@ export async function reorderModulesInTx(
 	return { kind: "ok" };
 }
 
-/** 返回被删除的模块行（调用方据此拿到 projectId），不存在时返回 null。 */
+/** 删除模块及其整棵子树；返回 removed / not-found / blocked，口径与理由见 module-delete-guard.ts。 */
 export async function removeModuleInTx(
 	tx: DbTransaction,
 	id: string
-): Promise<Module | null> {
+): Promise<RemoveModuleResult> {
 	const current = await getModuleInTx(tx, id);
 	if (!current) {
-		return null;
+		return { kind: "not-found" };
+	}
+	const blocked = await checkModuleDeleteBlock(tx, current);
+	if (blocked) {
+		return blocked;
 	}
 	await tx.delete(modules).where(eq(modules.id, id));
 	await closeSlot(
@@ -257,7 +265,7 @@ export async function removeModuleInTx(
 		{ parentId: current.parentId, projectId: current.projectId },
 		current.sortOrder
 	);
-	return current;
+	return { kind: "removed", module: current };
 }
 
 export function createModule(
@@ -285,6 +293,6 @@ export function reorderModules(
 	return db.transaction((tx) => reorderModulesInTx(tx, input));
 }
 
-export function removeModule(id: string): Promise<Module | null> {
+export function removeModule(id: string): Promise<RemoveModuleResult> {
 	return db.transaction((tx) => removeModuleInTx(tx, id));
 }

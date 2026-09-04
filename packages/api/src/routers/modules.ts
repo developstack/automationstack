@@ -1,3 +1,4 @@
+import { describeModuleDeleteBlock } from "@automationstack/db/repositories/module-delete-guard";
 import { ensureModulePath } from "@automationstack/db/repositories/module-path-repository";
 import {
 	createModule,
@@ -148,20 +149,26 @@ export const modulesRouter = {
 			return moved;
 		}),
 	remove: protectedProcedure
-		.errors({ NOT_FOUND: {} })
+		.errors({ CONFLICT: {}, NOT_FOUND: {} })
 		.input(z.object({ id: z.uuid() }))
 		.use(requireModuleMember, toModuleScope)
 		.handler(async ({ context, errors, input }) => {
-			const removed = await removeModule(input.id);
-			if (!removed) {
+			const result = await removeModule(input.id);
+			if (result.kind === "not-found") {
 				throw errors.NOT_FOUND({ message: "模块不存在" });
+			}
+			// 与删用例同一条规矩（plan §3.4），只是范围是整棵子树：模块删除会级联
+			// 到子树里的每一条用例，其中只要有一条被测试任务引用就整体拒绝。
+			// CONFLICT 与 cases.remove 的被引用分支保持同一个错误码。
+			if (result.kind === "blocked") {
+				throw errors.CONFLICT({ message: describeModuleDeleteBlock(result) });
 			}
 			publishInvalidate({
 				action: "delete",
 				context,
 				entity: "module",
-				ids: [removed.id],
-				projectId: removed.projectId,
+				ids: [result.module.id],
+				projectId: result.module.projectId,
 			});
 			return { id: input.id };
 		}),

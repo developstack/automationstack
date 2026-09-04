@@ -16,6 +16,7 @@ import {
 	type MindmapOperation,
 	resolveBatchProjectId,
 } from "./mindmap-operations";
+import { describeModuleDeleteBlock } from "./module-delete-guard";
 import {
 	createModuleInTx,
 	moveModuleInTx,
@@ -89,6 +90,31 @@ function resolveId(idMap: Map<string, string>, id: string): string {
 	return idMap.get(id) ?? id;
 }
 
+/**
+ * 删模块被引用挡住时**整批拒绝**，而不是跳过它继续。
+ *
+ * 画布本身就是乐观 UI（mindmap-sync-runner.ts：`operation` 事件到达时
+ * mind-elixir 已经把节点从画布上删掉了）。跳过会留下「画布上没了、库里还在」
+ * 的第三种不一致状态，而这条链路没有任何逆操作能把画布单独回滚回去；
+ * 整批回滚 + 前端重取服务端数据，是这里唯一自洽的收场。
+ *
+ * blocked 直接把人话原因当 reason 上抛（router 拼成
+ * 「批量操作第 N 项失败：…」），用户才知道是**哪个模块**被哪些用例挡住，
+ * 而不是只看到一句通用失败。
+ */
+async function applyRemoveModuleOp(
+	tx: DbTransaction,
+	moduleId: string
+): Promise<string | null> {
+	const removed = await removeModuleInTx(tx, moduleId);
+	if (removed.kind === "removed") {
+		return null;
+	}
+	return removed.kind === "blocked"
+		? describeModuleDeleteBlock(removed)
+		: removed.kind;
+}
+
 async function applyModuleOp(
 	tx: DbTransaction,
 	op: MindmapModuleOperation,
@@ -119,8 +145,7 @@ async function applyModuleOp(
 		});
 		return result.kind === "ok" ? null : result.kind;
 	}
-	const removed = await removeModuleInTx(tx, resolveId(idMap, op.id));
-	return removed ? null : "not-found";
+	return applyRemoveModuleOp(tx, resolveId(idMap, op.id));
 }
 
 async function applyCaseOp(
