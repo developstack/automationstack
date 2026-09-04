@@ -57,7 +57,15 @@ export function DeleteProjectDialog({
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel>取消</AlertDialogCancel>
+					{/*
+					 * 「取消」自己就是关闭触发器：提交中不禁用的话，弱网下点了删除再点取消，
+					 * 框会立刻关掉像是没发生过，几秒后请求照样成功——一个不可恢复的动作
+					 * （项目连同模块与用例一起没了）就这样在用户以为已经撤回之后执行了。
+					 * 与 revoke-api-token-dialog / project-member-confirm-dialog 同一种写法。
+					 */}
+					<AlertDialogCancel disabled={remove.isPending}>
+						取消
+					</AlertDialogCancel>
 					<AlertDialogAction
 						disabled={remove.isPending}
 						onClick={handleConfirm}

@@ -8,18 +8,22 @@ import {
 	TableHeader,
 	TableRow,
 } from "@automationstack/ui/components/table";
+import { useCurrentUser } from "@/components/auth/use-session";
 import { formatDateTime } from "@/components/cases/case-meta";
 import { PROJECT_ROLE_LABEL } from "@/components/project-members/project-member-meta";
 import { ProjectMemberRowActions } from "@/components/project-members/project-member-row-actions";
 
 interface ProjectMemberRowProps {
 	canManage: boolean;
+	/** 这一行就是当前登录者自己；行尾菜单据此收掉「移出项目」。 */
+	isSelf: boolean;
 	member: ProjectMemberView;
 	projectId: string;
 }
 
 function ProjectMemberRow({
 	canManage,
+	isSelf,
 	member,
 	projectId,
 }: ProjectMemberRowProps) {
@@ -46,7 +50,11 @@ function ProjectMemberRow({
 			</TableCell>
 			{canManage ? (
 				<TableCell className="text-right">
-					<ProjectMemberRowActions member={member} projectId={projectId} />
+					<ProjectMemberRowActions
+						isSelf={isSelf}
+						member={member}
+						projectId={projectId}
+					/>
 				</TableCell>
 			) : null}
 		</TableRow>
@@ -73,6 +81,15 @@ export function ProjectMembersTable({
 	members,
 	projectId,
 }: ProjectMembersTableProps) {
+	/*
+	 * 「哪一行是我」只在这里取一次会话，再往下传：每行各自取一次是同一份数据
+	 * 挂 N 个订阅，也会让「表头以为有权限、行尾以为没有」这类分叉多一个入口。
+	 * 这张表只在登录闸门之内渲染，所以用 useCurrentUser 而不是 useSession——
+	 * 拿不到用户是接线错了，该当场抛，不该悄悄按「不是自己」渲染出一颗
+	 * 谁都点得下去的「移出项目」。
+	 */
+	const currentUser = useCurrentUser();
+
 	return (
 		<Table>
 			<TableHeader>
@@ -93,6 +110,7 @@ export function ProjectMembersTable({
 				{members.map((member) => (
 					<ProjectMemberRow
 						canManage={canManage}
+						isSelf={member.userId === currentUser.id}
 						key={member.userId}
 						member={member}
 						projectId={projectId}

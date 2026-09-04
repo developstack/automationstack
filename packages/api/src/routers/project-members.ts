@@ -49,6 +49,20 @@ const routerErrors = {
 const OWNER_REQUIRED_MESSAGE = "只有项目 owner 能管理成员";
 
 /**
+ * 自己不能把自己移出项目——与 `routers/users.ts` 拦「不能停用自己的账号」、
+ * 「不能取消自己的管理员身份」是同一条思路：**别让人一键拿掉自己脚下的地板**。
+ * 拿掉之后当前这一页会立刻变成 FORBIDDEN，而这一页本身没有任何回到有权限
+ * 状态的出口，只能去找别人把自己加回来。
+ *
+ * **平台 admin 不豁免**，这是显式决定而不是漏判：这个菜单是「把**别人**移出
+ * 项目」的管理入口，产品里根本没有「主动退出项目」这个动作，给 admin 开个口子
+ * 等于让同一颗按钮对不同的人有两种含义。admin 真要把自己从名单上拿掉，找项目里
+ * 另一个 owner 移一下即可——他反正靠平台角色照样进得来（`canEnterProject`），
+ * 拿不掉名单不影响他做任何事。
+ */
+const SELF_REMOVE_MESSAGE = "不能把自己移出项目";
+
+/**
  * 这次改动会不会把项目的最后一个 owner 拿掉。
  *
  * 真发生了，项目就再没人能加人、改名、删除，只有平台 admin 能救——与
@@ -127,6 +141,9 @@ export const projectMembersRouter = {
 		.handler(async ({ context, errors, input }) => {
 			if (!canAdministerProject(context.projectAccess)) {
 				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
+			}
+			if (input.userId === context.user.id) {
+				throw errors.BAD_REQUEST({ message: SELF_REMOVE_MESSAGE });
 			}
 			if (await wouldRemoveLastOwner(input.projectId, input.userId)) {
 				throw errors.BAD_REQUEST({
