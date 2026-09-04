@@ -85,6 +85,68 @@ function actorName(context: Context): string | null {
 	return context.actor?.name ?? null;
 }
 
+/**
+ * 批量失败原因里可能出现的枚举码。
+ *
+ * 逐条来自 repository 的失败分支：createModule / moveModule 的
+ * `invalid-parent` 与 `cycle`、各种 `not-found`、createCase 的 `duplicate-id`
+ * 与 `invalid-module`、renameCase 的 `conflict`、删用例的 `blocked`，
+ * 外加 `runMindmapBatch` 自己的 `batch-limit-exceeded`。
+ * 写成联合类型是为了让下面那张表少一条就编译不过——漏翻的表现不是报错，
+ * 而是用户在画布上看到一个英文枚举。
+ */
+type MindmapBatchReasonCode =
+	| "batch-limit-exceeded"
+	| "blocked"
+	| "conflict"
+	| "cycle"
+	| "duplicate-id"
+	| "invalid-module"
+	| "invalid-parent"
+	| "not-found";
+
+/**
+ * 枚举码 → 人话。措辞与单条路径上的同类拒绝对齐（删用例那条见
+ * `routers/cases.ts`），两边说法漂移会让同一件事在列表里和脑图里读起来
+ * 像两个不同的问题。
+ *
+ * 批量路径丢掉了结构化数据（repository 只上抛一个码），所以这里说不出
+ * 「被几个测试任务引用」这种数字，只能说清是什么性质的拒绝。
+ */
+const REASON_MESSAGES: Record<string, string> = {
+	"batch-limit-exceeded": `一次最多提交 ${MINDMAP_BATCH_LIMIT} 个操作，请分批保存`,
+	blocked: "该用例被测试任务引用，无法删除；可改为「废弃」状态",
+	conflict: "该用例已被他人修改，请刷新后重试",
+	cycle: "不能把模块移动到它自己的子模块下",
+	"duplicate-id": "该节点已经存在，无需重复创建",
+	"invalid-module": "目标模块不存在或不属于该项目",
+	"invalid-parent": "目标父模块不存在或不属于该项目",
+	"not-found": "目标节点已不存在，可能已被他人删除",
+} satisfies Record<MindmapBatchReasonCode, string>;
+
+/** 枚举码的形状：全小写字母加连字符。已经翻好的中文句子不会命中。 */
+const REASON_CODE_PATTERN = /^[a-z][a-z-]*$/;
+
+const UNKNOWN_REASON_MESSAGE = "该操作被服务端拒绝";
+
+/**
+ * 把批量失败原因换成用户读得懂的一句话。
+ *
+ * 有一类 reason **本来就是人话**：删模块被引用挡住时，repository 上抛的是
+ * `describeModuleDeleteBlock` 拼好的整句（要点名是哪个模块、被哪些用例挡住，
+ * 那些结构化数据到不了这一层，只能在那边拼）。这种原样透出，别再翻一次。
+ *
+ * 剩下认不出来的：长得像枚举码就说明是新增了失败分支却忘了补这张表，
+ * 给通用文案而不是把码甩给用户——码对用户没有任何意义。
+ */
+export function describeMindmapBatchReason(reason: string): string {
+	const message = REASON_MESSAGES[reason];
+	if (message !== undefined) {
+		return message;
+	}
+	return REASON_CODE_PATTERN.test(reason) ? UNKNOWN_REASON_MESSAGE : reason;
+}
+
 export const mindmapRouter = {
 	/**
 	 * 批量应用画布上的改动。授权走 `requireMindmapBatchMember`：整批必须落在
@@ -101,8 +163,10 @@ export const mindmapRouter = {
 				actorName(context)
 			);
 			if (result.kind === "failed") {
+				// 这句是用户唯一能看到的解释：整批被回滚了，前端只能重取服务端数据，
+				// 没有第二层界面去展开原因。所以码必须在这里翻成人话。
 				throw errors.BAD_REQUEST({
-					message: `批量操作第 ${result.index + 1} 项失败：${result.reason}`,
+					message: `批量操作第 ${result.index + 1} 项失败：${describeMindmapBatchReason(result.reason)}`,
 				});
 			}
 			publishMindmapInvalidations({

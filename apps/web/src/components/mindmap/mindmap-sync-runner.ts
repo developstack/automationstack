@@ -42,6 +42,7 @@ import {
 } from "./mindmap-refresh-merge.ts";
 import type { MindmapScope } from "./mindmap-scope.ts";
 import { mindmapTreeQueryOptions } from "./mindmap-scope-query.ts";
+import { describeMindmapSyncFailure } from "./mindmap-sync-error.ts";
 import { MindmapSyncQueue } from "./mindmap-sync-queue.ts";
 import {
 	type MindmapProject,
@@ -71,7 +72,6 @@ export interface MindmapSyncRunnerDeps {
 
 type IdMap = Readonly<Record<string, string>>;
 
-const SYNC_FAILED_MESSAGE = "脑图同步失败，已恢复为服务端数据";
 const REFRESH_FAILED_MESSAGE = "脑图刷新失败，请重新进入页面";
 
 function expandedCasesMessage(dropped: number): string {
@@ -212,7 +212,7 @@ export class MindmapSyncRunner {
 		this.inFlight += 1;
 		this.queue
 			.enqueue(plan.keys, () => this.send(plan))
-			.catch(() => this.fail())
+			.catch((error: unknown) => this.fail(error))
 			.finally(() => {
 				this.inFlight -= 1;
 				this.merge.retry();
@@ -278,8 +278,9 @@ export class MindmapSyncRunner {
 		queryClient.invalidateQueries({ queryKey: orpc.cases.key() });
 	}
 
-	private fail(): void {
-		this.deps.notifyError(SYNC_FAILED_MESSAGE);
+	/** 整批被服务端拒绝：先把原因说清楚，再让服务端数据覆盖画布。 */
+	private fail(error: unknown): void {
+		this.deps.notifyError(describeMindmapSyncFailure(error));
 		this.rebuild().catch(() => this.deps.notifyError(REFRESH_FAILED_MESSAGE));
 	}
 }
