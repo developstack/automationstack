@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pytest-automationstack"
-version = "0.1.0"
+version = "1.0.0"
 description = "pytest 插件：把一轮结果交给 automationstack-sdk 批量上报并打印对账单"
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "UNLICENSED" }
+license = { text = "Apache-2.0" }
 
 # 只有这两个。核心包扛业务逻辑，pytest 提供钩子——本包自己一个依赖都不需要。
 # 核心包**不**反过来依赖 pytest：不装 pytest 也能用它上报（§7.3）。

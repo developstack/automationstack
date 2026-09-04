@@ -85,7 +85,7 @@ from .route_paths import (
 )
 from .submit_execution import submit_execution
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 __all__ = [
     "ATTACHMENTS_PER_BATCH",

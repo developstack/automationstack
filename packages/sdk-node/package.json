@@ -1,7 +1,8 @@
 {
   "name": "@automationstack/sdk",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "把一轮自动化测试结果批量上报到 automationstack 的 ingest 端点，并原样打印对账单",
+  "license": "Apache-2.0",
   "type": "module",
   "repository": {
     "type": "git",

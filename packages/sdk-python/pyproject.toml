@@ -6,13 +6,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "automationstack-sdk"
-version = "0.1.0"
+version = "1.0.0"
 description = "把一轮自动化测试结果批量上报到 automationstack 的 ingest 端点，并原样打印对账单"
 readme = "README.md"
 # 3.9 是 macOS 自带的那个版本，QA 的本机上常常就是它，砍掉它等于逼人先装 Python。
 # 代价是全库 `from __future__ import annotations` + 不用 `X | Y` 写法。
 requires-python = ">=3.9"
-license = { text = "UNLICENSED" }
+license = { text = "Apache-2.0" }
 
 # ⚠️ 这里必须一直是空的。
 # 附件走预签名 PUT（D28），只需要标准库的 urllib；幂等键只需要 hashlib/uuid。

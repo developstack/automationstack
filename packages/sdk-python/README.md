@@ -25,7 +25,7 @@ pip install "git+ssh://git@github.com/automationstack/automationstack@<tag>#subd
 pip install "git+ssh://git@github.com/automationstack/automationstack@<tag>#subdirectory=packages/sdk-pytest"
 ```
 
-`<tag>` 用发布 tag（如 `sdk-python-v0.1.0`），不要用 `main`：
+`<tag>` 用发布 tag（如 `sdk-python-v1.0.0`），不要用 `main`：
 `main` 上的契约可能比你部署的那套平台新，而 SDK 与服务端是同一份契约的两端。
 
 写进 `requirements.txt` 时把整串原样贴进去即可；用 uv 的话是

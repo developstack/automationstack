@@ -8,7 +8,7 @@
 测试时，不用维护两套 secret，也不用记两套行为。
 
 ```
-坐标  org.automationstack:sdk:0.1.0
+坐标  org.automationstack:sdk:1.0.0
 要求  Java 21+
 依赖  零。一个都没有。
 ```
@@ -74,7 +74,7 @@ export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx   # 占位符，换成你自己的
   <dependency>
     <groupId>org.automationstack</groupId>
     <artifactId>sdk</artifactId>
-    <version>0.1.0</version>
+    <version>1.0.0</version>
   </dependency>
 </dependencies>
 ```
@@ -98,7 +98,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation("org.automationstack:sdk:0.1.0")
+    testImplementation("org.automationstack:sdk:1.0.0")
 }
 ```
 </details>

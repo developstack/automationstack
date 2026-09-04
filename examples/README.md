@@ -37,25 +37,47 @@
 
 ### 1. 起数据库
 
-Postgres 需要在 `5432` 上跑着：
+仓库自带的 compose 里就有一个 Postgres，用它最省事：
 
 ```bash
-pg_isready                     # 期望：accepting connections
+cp .env.example .env      # 填 POSTGRES_PASSWORD，它没有兜底值，留空起不来
+pnpm db:start             # = docker compose up -d postgres
 ```
 
-如果没起——**这台机器上的 Postgres 是 Homebrew 装的，不是 docker**：
+它在**宿主机的 5433** 上（不是 5432）。5432 在开发机上常年被别的 Postgres 占着，
+撞上去的典型症状是「你以为连的是容器、其实连的是本机那个库」。
+这个端口只发布在 `127.0.0.1`，外部机器连不上。
 
 ```bash
-brew services start postgresql@18
+pg_isready -h 127.0.0.1 -p 5433    # 期望：accepting connections
 ```
 
-⚠️ 仓库根的 `package.json` 里有个 `db:start`，那条是 `docker compose up -d postgres`，
-只在用 docker 那套的机器上有意义，别照着跑。
+<details>
+<summary>已经有一个本机 Postgres，不想用 docker</summary>
+
+也可以，示例不关心库是谁起的，只关心 `apps/server/.env` 里的 `DATABASE_URL`
+连得上、并且那个库跑过迁移。用本机实例时把下面第 2 步里的端口换成它实际监听的端口
+（Homebrew 装的通常是 5432），别去改 `docker-compose.yml`。
+
+</details>
 
 ### 2. 装依赖 + 建库结构
 
 ```bash
 pnpm install
+cp apps/server/.env.example apps/server/.env
+```
+
+编辑 `apps/server/.env`，把 `DATABASE_URL` 指向上一步那个库：
+
+```
+DATABASE_URL=postgresql://postgres:<你在根 .env 里填的口令>@localhost:5433/automationstack
+```
+
+`CORS_ORIGIN=http://localhost:3001` 和 `SESSION_SECRET`（≥32 字符，
+`openssl rand -base64 32`）也是必填的，缺了 server 起不来。然后建表：
+
+```bash
 pnpm db:migrate
 ```
 

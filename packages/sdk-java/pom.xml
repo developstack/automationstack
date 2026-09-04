@@ -6,7 +6,7 @@
 
   <groupId>org.automationstack</groupId>
   <artifactId>sdk</artifactId>
-  <version>0.1.0</version>
+  <version>1.0.0</version>
   <packaging>jar</packaging>
 
   <name>automationstack-sdk</name>
@@ -14,6 +14,19 @@
     把自动化测试结果批量上报到 automationstack 的框架无关 SDK。
     与 packages/sdk-node、packages/sdk-python 是同一份规范的三份实现。
   </description>
+
+  <!--
+    Maven 不会去仓库根找 LICENSE，POM 里不写这一段的话，
+    GitHub Packages 上的包页面和下游的 license 审计工具都读不到授权信息。
+    正文在仓库根的 LICENSE，这里只是那份文件的元数据指针。
+  -->
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
   <properties>
     <maven.compiler.release>21</maven.compiler.release>

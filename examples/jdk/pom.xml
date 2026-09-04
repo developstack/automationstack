@@ -6,7 +6,7 @@
 
   <groupId>org.automationstack.example</groupId>
   <artifactId>automationstack-example-jdk</artifactId>
-  <version>0.1.0</version>
+  <version>1.0.0</version>
 
   <name>automationstack-example-jdk</name>
   <description>Java + JUnit 5 接入 automationstack 的最小可跑工程。</description>
@@ -28,7 +28,7 @@
     <dependency>
       <groupId>org.automationstack</groupId>
       <artifactId>sdk</artifactId>
-      <version>0.1.0</version>
+      <version>1.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
