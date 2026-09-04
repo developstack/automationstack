@@ -5,13 +5,19 @@ import { defineConfig } from "vitest/config";
  * 单一根级 vitest 配置 + `projects`。
  *
  * 为什么不走「每包一个 config + turbo 聚合」：
- * - 被测的都是纯函数，跨包只有两个包，turbo 任务层只会多一层缓存语义与
- *   per-package 的 vitest 安装，收益为负；
+ * - 被测的都是纯函数，五个 project 加起来也就这么点，turbo 任务层只会多一层
+ *   缓存语义与 per-package 的 vitest 安装，收益为负；
  * - `apps/web/vite.config.ts` 挂着 tanstackStart / nitro / tailwind 插件，
  *   测试进程完全不需要（还会拖慢并引入 SSR 转换）。这里用 inline project
  *   配置，vitest 不会去读那份 vite.config.ts，只保留测试真正需要的
  *   `@/` 别名；workspace 包（`@automationstack/*`）靠 pnpm 软链 + package.json
  *   exports 指向 `src/**.ts` 直接解析，无需额外插件。
+ *
+ * ⚠️ **删包时必须回来删掉对应的 project。** `root` 指向一个不存在的目录时
+ * vitest 不报错，只是那个 project 一条用例都不收——输出里少了一整块，
+ * 而退出码仍然是 0。2026-09-03 清掉的 `agent` / `ai` 两块就是这么在 main 上
+ * 绿了一段时间的：注释写着四个 project，实际在跑的只有两个。
+ * 所以下面这个数是可证的：`pnpm test` 的输出里必须出现 5 个 project 名。
  */
 const resolveFromRoot = (relative: string): string =>
 	fileURLToPath(new URL(relative, import.meta.url));
@@ -31,27 +37,6 @@ export default defineConfig({
 					include: ["src/**/*.test.ts"],
 					name: "web",
 					root: resolveFromRoot("./apps/web"),
-				},
-			},
-			{
-				// 测试用例生成 agent。整个包零 db / 零 env 依赖，存储与模型配置
-				// 全部经端口注入，测试用 in-memory 假实现顶上：既不连库也不连网，
-				// 也就不需要任何环境变量。
-				test: {
-					environment: "node",
-					include: ["src/**/*.test.ts"],
-					name: "agent",
-					root: resolveFromRoot("./packages/agent"),
-				},
-			},
-			{
-				// models.dev 的解析与缓存层：纯函数 + 一个被 stub 掉的 fetch，
-				// 不连库也不连网，所以不需要任何环境变量。
-				test: {
-					environment: "node",
-					include: ["src/**/*.test.ts"],
-					name: "ai",
-					root: resolveFromRoot("./packages/ai"),
 				},
 			},
 			{

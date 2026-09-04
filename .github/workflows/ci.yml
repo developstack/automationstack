@@ -40,8 +40,10 @@ jobs:
       - name: 类型检查
         run: pnpm check-types
 
-      # vitest 的四个 project 全是 node 环境的纯函数测试，
-      # 不连库、不连网、不需要任何环境变量（见根 vitest.config.ts 的注释）。
+      # vitest 的五个 project（web / api / server / db / sdk）全是 node 环境的
+      # 纯函数测试，不连库、不连网、不需要任何环境变量（见根 vitest.config.ts）。
+      # ⚠️ 这个数是要对着输出核的：root 指向不存在的目录时 vitest 静默跳过、
+      # 退出码照样是 0，少跑一整个 project 在日志上和「跑了且全过」长得一样。
       - name: 单元测试
         run: pnpm test
 
@@ -82,19 +84,38 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=4096
         run: pnpm eslint --no-cache .
 
-      # 仓库自有的两条硬规则，本地由 lefthook 在提交前跑（只跑暂存的文件），
-      # 这里对全仓补一道网。
+      # 仓库自有的三条硬规则，本地由 lefthook 在提交前跑（只跑暂存的文件），
+      # 这里对全仓补一道网。lefthook 那道 `git commit --no-verify` 一句就绕过了，
+      # 所以服务端这一道才是真正拦得住的那个——依赖版本白名单尤其如此，
+      # 发版这件事整个押在 package.json 的版本号写法正确上。
       #
-      # 两个脚本都只认「文件列表」参数，不带参数会打印「没有文件需要检查」
-      # 然后 exit 0——那是空跑，不是通过。文件列表必须显式喂进去。
+      # 三个脚本都只认「文件列表」参数，文件列表必须显式喂进去。
+      # check-package-json.js 传空会 exit 1（它自己就把「零文件」当失败）；
+      # 另外两个传空只会打印「没有文件需要检查」然后 exit 0——那是空跑，不是通过，
+      # 而且它们成功时也不打检查计数，日志上「全过了」和「一个都没查」一字不差。
+      # 所以在调用之前先断言两张列表非空：哪天 glob 写错、或者文件被整体挪走，
+      # 要的是一次响亮的失败，而不是一次安静的全绿。
+      #
       # 用 git ls-files 而不是 find：只有进了版本库的文件才该被检查，
       # 顺带天然排除 node_modules 与各 app 的构建产物。
       - name: 仓库自有规则
         run: |
+          set -euo pipefail
           files=$(git ls-files '*.ts' '*.tsx' '*.js' '*.jsx' '*.cjs' '*.mjs' '*.cts' '*.mts')
+          pkg_files=$(git ls-files '**/package.json' 'package.json')
+          if [ -z "$files" ]; then
+            echo "::error::源码文件列表为空，check-tailwind / check-file-rules 会空跑成假绿"
+            exit 1
+          fi
+          if [ -z "$pkg_files" ]; then
+            echo "::error::package.json 列表为空，依赖版本白名单这一道等于没跑"
+            exit 1
+          fi
+          echo "待检查：$(echo "$files" | wc -l) 个源码文件，$(echo "$pkg_files" | wc -l) 个 package.json"
           # 故意不加引号：这里要的就是按空白拆成多个参数（仓库内无带空格的路径）。
           node scripts/check-tailwind.js $files
           node scripts/check-file-rules.js $files
+          node scripts/check-package-json.js $pkg_files
 
       # 门禁脚本自己的单测。它们是 `node --test` 的 .test.mjs，落在 scripts/ 与
       # eslint-rules/ 下；而 vitest 每个 project 的 include 都是 `src/**/*.test.ts`，
@@ -156,6 +177,14 @@ jobs:
       # 所以必须在这里给定而不能留到运行时。默认值与 docker-compose.yml
       # 里的 build args 一致；要发到别的域名就在仓库 Variables 里设同名变量。
       # 它是公开的后端地址，不是密钥，放 vars 而不是 secrets。
+      #
+      # ⚠️ **没设仓库 Variable 时兜底的 http://localhost:3000 会被烤进推上 GHCR
+      # 的那个镜像里，而且运行期改不掉**（apps/web/Dockerfile 的 ARG/ENV 只在
+      # 构建阶段生效）。别人 pull 这个镜像部署到自己机器，页面能打开，
+      # 但每一个请求都打向**访问者浏览器自己的 localhost:3000**——服务端日志里
+      # 一条请求都没有，最难查的一类症状。
+      # 发布镜像之前必须在仓库 Settings → Variables 里把 VITE_SERVER_URL
+      # 设成真实的对外后端地址；改了地址就得重新构建镜像，重启没用。
       - name: 构建并推送
         uses: docker/build-push-action@v6
         with:

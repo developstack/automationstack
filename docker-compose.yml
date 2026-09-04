@@ -53,10 +53,17 @@ services:
       - "3000:3000"
     env_file:
       # SESSION_SECRET 这类必需变量从这里来，变量清单见 apps/server/.env.example。
-      # required: false 是为了让「只想起个 postgres」的人不被拦住；代价是文件缺失时
-      # server 会在 env 校验处直接退出，日志里会点名是哪个变量没给。
+      #
+      # required: true —— 文件不存在时 compose 在**拉起容器之前**就失败，报错原文
+      # 直接点名 `apps/server/.env`。写 false 的代价是这件事被推迟到运行期：
+      # 容器起来、healthcheck 转 unhealthy、然后要去翻 server 的日志才知道
+      # 是缺了一整个文件而不是缺了某一个变量。缺文件是配置错误，该在最早处炸。
+      # 先跑：cp apps/server/.env.example apps/server/.env
+      #
+      # 「只想起个 postgres」的人不受影响：`docker compose up -d postgres`
+      # 根本不解析 server 这一段。
       - path: apps/server/.env
-        required: false
+        required: true
     environment:
       # 以下两项覆盖 env_file 里的同名值（compose 中 environment 优先级高于 env_file）。
       #
@@ -65,7 +72,7 @@ services:
       # 后者填错是前端根本请求不到后端，两种症状完全不同但根因是同一处没对齐。
       CORS_ORIGIN: http://localhost:3001
       # 容器之间走服务名 + 容器内端口 5432，与下面把宿主端口挪到 5433 无关。
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/automationstack
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?未设置。请先 cp .env.example .env 并填一个真实口令}@postgres:5432/automationstack
     healthcheck:
       test:
         [
@@ -117,7 +124,7 @@ services:
       # 所以这里注入的值一定胜出。何况 .dockerignore 把 **/.env 挡在镜像之外，
       # 容器里根本没有那个文件，dotenv 只会 ENOENT 静默返回——DATABASE_URL
       # 有且只有这一个来源。
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/automationstack
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?未设置。请先 cp .env.example .env 并填一个真实口令}@postgres:5432/automationstack
     depends_on:
       postgres:
         condition: service_healthy
@@ -132,17 +139,27 @@ services:
     environment:
       POSTGRES_DB: automationstack
       POSTGRES_USER: postgres
-      # ⚠️ 生产环境必须在仓库根目录的 .env 里给 POSTGRES_PASSWORD 一个真实值。
-      # 这里的 password 只是让本地 `docker compose up` 开箱即用的兜底。
-      # 注意它同时被拼进 server 和 migrate 的 DATABASE_URL，靠的是同一个
-      # ${POSTGRES_PASSWORD} 展开，所以只改根 .env 一处就够，别去改字面量。
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      # `:?` 而不是 `:-password`：没设这个变量时 compose 直接拒绝启动，
+      # 报错里带下面那句话。原来的兜底口令看着只是「本地方便」，实际后果是
+      # 一台忘了填 .env 的机器会**静默地**跑起一个口令为 password 的库——
+      # 而库里躺着 api_tokens.token_hash 和 jira_configs 的密文。
+      # 缺配置要么响亮地失败，要么就成了一个没人知道自己开着的弱口令库。
+      #
+      # 它同时被拼进 server 和 migrate 的 DATABASE_URL，三处靠同一个
+      # ${POSTGRES_PASSWORD} 展开，所以只在根 .env 填一次就够，别去改字面量。
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?未设置。请先 cp .env.example .env 并填一个真实口令}
     ports:
       # 宿主机映射到 5433 而不是 5432：开发机上 Homebrew 装的 Postgres 常年占着
       # 5432，撞上去要么容器起不来，要么你以为连的是容器、其实连的是本机那个库。
       # 容器内仍然监听 5432，server / migrate 走 postgres:5432 完全不受影响；
       # 只有宿主机上的 psql、drizzle studio、apps/server/.env 要连容器库时用 5433。
-      - "5433:5432"
+      #
+      # ⚠️ 前面那个 `127.0.0.1:` 不能省。省掉的话 Docker 默认发布到 0.0.0.0，
+      # 而且它是**直接改 iptables 的 DOCKER 链**，绕过宿主机上 ufw/firewalld
+      # 那套规则——你在防火墙里看不到这个洞。数据库不需要被局域网或公网连上：
+      # 应用容器走的是 compose 内网的 postgres:5432，跟这条发布规则无关。
+      # 要从别的机器连，正路是 SSH 隧道，不是把端口摊开。
+      - "127.0.0.1:5433:5432"
     volumes:
       # postgres:18 起 PGDATA 改成了版本化路径 /var/lib/postgresql/18/docker，
       # 官方镜像的 VOLUME 声明也随之挪到父目录 /var/lib/postgresql。
