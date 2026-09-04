@@ -10,6 +10,10 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { toast } from "sonner";
 
 import { getClientId } from "@/realtime/identity";
+import {
+	isUnauthorizedError,
+	notifySessionExpired,
+} from "@/utils/session-expiry";
 
 const MS_PER_SECOND = 1000;
 const SECONDS_PER_MINUTE = 60;
@@ -54,6 +58,10 @@ export function createQueryClient() {
 		},
 		mutationCache: new MutationCache({
 			onError: (error, _variables, _context, mutation) => {
+				if (isUnauthorizedError(error)) {
+					notifySessionExpired();
+					return;
+				}
 				if (mutation.meta?.suppressErrorToast) {
 					return;
 				}
@@ -62,6 +70,16 @@ export function createQueryClient() {
 		}),
 		queryCache: new QueryCache({
 			onError: (error, query) => {
+				/*
+				 * 会话失效不是这次查询本身的毛病：一次窗口聚焦重取会让整屏查询同时
+				 * 拿到 UNAUTHORIZED，逐条弹 toast 就是页角叠一摞「请先登录」，每条还
+				 * 带一个点了必然再失败的 retry。吞掉它们，统一交给
+				 * session-expiry 的那个出口把人送去登录页（回跳地址一并带上）。
+				 */
+				if (isUnauthorizedError(error)) {
+					notifySessionExpired();
+					return;
+				}
 				toast.error(`Error: ${error.message}`, {
 					action: {
 						label: "retry",

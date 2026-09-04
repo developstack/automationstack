@@ -13,28 +13,20 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { sessionQueryOptions, useSession } from "@/components/auth/use-session";
+import { sessionQueryOptions } from "@/components/auth/use-session";
+import { useSessionGate } from "@/components/auth/use-session-gate";
 import Loader from "@/components/loader";
 import {
 	THEME_INIT_SCRIPT,
 	useThemeAppearance,
 } from "@/components/theme/use-theme";
 import type { orpc } from "@/utils/orpc";
+import { isLoginPathname, LOGIN_PATHNAME } from "@/utils/session-expiry";
 
 import appCss from "../index.css?url";
 export interface RouterAppContext {
 	orpc: typeof orpc;
 	queryClient: QueryClient;
-}
-
-const LOGIN_PATHNAME = "/login";
-
-/*
- * 登录页的判断散落在闸门和外壳两处，写死两份字符串迟早会漂移；
- * 路由器给出的 pathname 可能带尾斜杠，两种写法指的是同一个页面。
- */
-function isLoginPathname(pathname: string): boolean {
-	return pathname === LOGIN_PATHNAME || pathname === `${LOGIN_PATHNAME}/`;
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
@@ -81,13 +73,13 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
  * 根布局不再套任何外壳：平台层的两页（/projects、/users）各自套 AppShell +
  * PlatformSidebar，项目内的页面在 AppShell 之上再套 ProjectShell，登录页则本来
  * 就是一个自带满屏布局的页面。
- * 这里只留登录闸门之后、会话尚未回填那几帧的占位。
+ * 这里只留一道渲染期的会话闸门，以及它放行之前那几帧的占位。
  */
 function AppContent() {
 	const pathname = useRouterState({
 		select: (state) => state.location.pathname,
 	});
-	const { user } = useSession();
+	const gate = useSessionGate();
 
 	// 按路由而不是按会话数据来判断：登录页是唯一一个不需要会话的页面
 	if (isLoginPathname(pathname)) {
@@ -95,13 +87,19 @@ function AppContent() {
 	}
 
 	/*
-	 * 走到这里的 null 不代表未登录——真未登录早被根 beforeLoad 重定向走了，
-	 * 它只出现在登录成功后清空查询缓存、会话还没回填的那一两帧。
-	 * 这几帧若直接渲染 <Outlet />，已经切过去的页面（裸页顶栏的用户菜单、
+	 * 拿不到用户时先占位。两种情况都会走到这里，而**两种都是暂时的**：
+	 *
+	 * 一是登录成功后清空查询缓存、会话还没回填的那一两帧，它自己就会好；
+	 * 二是会话真的失效了（到期、在另一个标签页登出、账号被停用）——这一种
+	 * 根 beforeLoad 那道闸门永远拦不到，因为它只在导航时跑，而人此刻停在页面上
+	 * 一步没动；useSessionGate 已经在把他送去登录页（带回跳地址），这里的
+	 * spinner 只是那一跳之前的过渡，不再是那个转不完的圈。
+	 *
+	 * 这几帧不能直接渲染 <Outlet />：已经切过去的页面（裸页顶栏的用户菜单、
 	 * 项目页侧栏的用户区）会调到 useCurrentUser 而它拿不到用户，直接抛出去
 	 * 整页崩掉，所以宁可先占位。
 	 */
-	if (user === null) {
+	if (gate === "waiting") {
 		return (
 			<div className="grid min-h-svh place-items-center" role="status">
 				<Loader />
