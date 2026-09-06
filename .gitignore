@@ -37,6 +37,10 @@ local.db-*
 logs
 .evlog/
 *.log
+# make up 把后台 dev 服务的日志和 PID 都放这里。*.log 已经被上一行覆盖，
+# 但 *.pid 没有，而 PID 文件进了版本库就是给别人塞一个指向自己机器上某个
+# 无关进程的号码——make down 会照着它去 kill。整个目录一起忽略。
+.dev-logs/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
