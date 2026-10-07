@@ -1,9 +1,3 @@
-/**
- * Tab shell inside the case detail sheet: 「详情」 and 「版本历史」 swap the body
- * instead of stacking, so each view owns the full height and its own
- * scrollbar. The active tab is derived from — and written back to — the
- * `history` URL search param, which stays the single source of truth.
- */
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import {
 	Tabs,
@@ -21,7 +15,6 @@ import { VersionHistoryPanel } from "@/components/versions/version-history-panel
 const DETAIL_TAB = "detail";
 const HISTORY_TAB = "history";
 
-/** 两个面板共用的滚动约定：tab 条不动，只有面板自己滚。 */
 const PANEL_CLASS = "min-h-0 flex-1 overflow-y-auto p-4";
 
 interface CaseDetailTabsProps {
@@ -33,7 +26,6 @@ interface CaseDetailTabsProps {
 
 export function CaseDetailTabs(props: CaseDetailTabsProps) {
 	const { editor, historyOpen, onToggleHistory, testCase } = props;
-	// Base UI 的 value 是 `any`，收窄成 unknown 后再比较，避免把 any 带进业务代码。
 	const handleValueChange = useCallback(
 		(value: unknown) => onToggleHistory(value === HISTORY_TAB),
 		[onToggleHistory]
@@ -55,11 +47,6 @@ export function CaseDetailTabs(props: CaseDetailTabsProps) {
 					版本历史
 				</TabsTrigger>
 			</TabsList>
-			{/*
-			 * keepMounted：标题栏的「保存」按钮靠 form="case-editor-form" 关联表单，
-			 * 表单一旦被卸载按钮就失去目标，所以切到版本历史时详情面板只隐藏不卸载。
-			 * 版本历史面板反过来必须按需挂载，否则没人看也会去拉版本列表。
-			 */}
 			<TabsContent className={PANEL_CLASS} keepMounted value={DETAIL_TAB}>
 				<CaseDetailBody editor={editor} testCase={testCase} />
 			</TabsContent>

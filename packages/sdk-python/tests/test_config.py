@@ -9,7 +9,6 @@ from automationstack_sdk import ReporterConfigError, resolve_reporter_config
 ENV = {
     "AS_BASE_URL": "https://qa.example.com/",
     "AS_PROJECT": "11111111-2222-4333-8444-555555555555",
-    # 占位符，不是真实凭据。
     "AS_TOKEN": "as_live_xxxxxxxx",
 }
 

@@ -5,8 +5,6 @@ import type * as React from "react";
 
 function Label({ className, ...props }: React.ComponentProps<"label">) {
 	return (
-		// 本仓库的 lint 基线开了 a11y/noLabelWithoutControl，而 shadcn 原件是纯壳，
-		// htmlFor / 被包裹的控件都由调用方通过 props 传入，这里无从静态判定。
 		// biome-ignore lint/a11y/noLabelWithoutControl: htmlFor 由调用方通过 props 传入
 		<label
 			className={cn(

@@ -1,18 +1,3 @@
-/**
- * `before` hooks for the mindmap canvas.
- *
- * mind-elixir runs every node operation through `before[name]` and skips it
- * when the hook resolves to `false` (see `MindElixir.js`:
- * `o && !await o.apply(this, n) || e.apply(this, n)`), so a veto here means the
- * canvas never applies the edit — no rollback, no rebuild. Hooks receive the
- * `operation` arguments (`Topic` elements), not `NodeObj`s, and may be async,
- * which is what the delete confirmation relies on.
- *
- * v1 capabilities disabled here (no matching `mindmap.batch` operation, so they
- * could never be mirrored to the server): insert-parent, copy/paste of nodes,
- * node reshaping (icons / hyperlinks / images / styles) and multi-select batch
- * drag. Undo/redo is disabled through `allowUndo: false` in the canvas options.
- */
 import type { Before, MindElixirInstance, NodeObj, Topic } from "mind-elixir";
 
 import {
@@ -35,28 +20,16 @@ import {
 } from "./mindmap-scope.ts";
 
 export interface MindmapGuardHost {
-	/** Resolves true once the user confirmed the deletion. */
 	confirmRemoval: (nodes: readonly NodeObj[]) => Promise<boolean>;
-	/** The live instance, needed for the keyboard shortcuts that pass no node. */
 	getInstance: () => MindElixirInstance | null;
-	/** Double-click on a case node opens its detail in the list view instead. */
 	openCase: (caseId: string) => void;
-	/** User-facing reason why the operation was refused. */
 	reject: (message: string) => void;
-	/** 当前画布看的是整个项目还是某个模块子树，见 mindmap-scope.ts。 */
 	scope: MindmapScope;
-	/** Kind of the node mind-elixir is about to create (Tab / Enter). */
 	setPendingKind: (kind: MindmapEntityRef["kind"]) => void;
 }
 
 const CASE_LEAF_MESSAGE = "用例节点不能包含子节点";
 const ROOT_MESSAGE = "项目根节点不支持该操作";
-/**
- * Step / expected nodes mirror the case's `steps` jsonb, and `mindmap.batch`
- * has no operation for it — editing one on the canvas would mean read-modify-
- * write of the whole array plus the optimistic lock. v1 sends users to the
- * case detail instead, and every guard below refuses these nodes outright.
- */
 export const STEP_READONLY_MESSAGE = "步骤与预期请在用例详情中编辑";
 const CASE_PARENT_MESSAGE = "用例只能挂在模块下";
 const CYCLE_MESSAGE = "不能把模块移动到它自己的子节点下";
@@ -84,7 +57,6 @@ function isDescendantOf(node: NodeObj, ancestorId: string): boolean {
 	return false;
 }
 
-/** 新节点会挂到 `parentKind` 下：作用域视图里落到项目根就等于消失。 */
 function guardScopeEscape(
 	host: MindmapGuardHost,
 	parentKind: MindmapNodeKind
@@ -110,7 +82,6 @@ function guardAddChild(host: MindmapGuardHost, el?: Topic): boolean {
 		host.reject(CASE_LEAF_MESSAGE);
 		return false;
 	}
-	// addChild 的父级就是选中的节点本身。
 	if (!guardScopeEscape(host, ref.kind)) {
 		return false;
 	}
@@ -135,7 +106,6 @@ function guardInsertSibling(host: MindmapGuardHost, el?: Topic): boolean {
 		host.reject(ROOT_MESSAGE);
 		return false;
 	}
-	// 兄弟节点的父级是选中节点的父级；作用域根的父级正是那个假的项目根。
 	const { parent } = target.nodeObj;
 	const parentKind =
 		parent === undefined ? undefined : getMindmapNodeRef(parent)?.kind;
@@ -170,7 +140,6 @@ function guardRemove(
 	return host.confirmRemoval(nodes);
 }
 
-/** Validates the drop target of a move once the moved node is known. */
 function guardDropTarget(
 	host: MindmapGuardHost,
 	moved: NodeObj,
@@ -189,7 +158,6 @@ function guardDropTarget(
 		host.reject(CASE_LEAF_MESSAGE);
 		return false;
 	}
-	// 拖出当前模块（落到项目根下）等于把节点移出作用域，它会当场消失。
 	if (!guardScopeEscape(host, parentRef.kind)) {
 		return false;
 	}
@@ -232,11 +200,6 @@ function guardMove(
 	return guardDropTarget(host, moved, movedRef, target);
 }
 
-/**
- * Double-click (and F2) enters edit mode through `beginEdit`; case nodes open
- * their detail instead. Renaming a case stays available from the context menu,
- * which calls `editTopic` directly — that path bypasses `before` by design.
- */
 function guardBeginEdit(host: MindmapGuardHost, el?: Topic): boolean {
 	const target = resolveTarget(host, el);
 	const ref = target === null ? null : getMindmapNodeRef(target.nodeObj);
@@ -254,7 +217,6 @@ function guardBeginEdit(host: MindmapGuardHost, el?: Topic): boolean {
 	return ref.kind === "module";
 }
 
-/** Builds the `Options.before` map wired to one canvas session. */
 export function createMindmapGuards(host: MindmapGuardHost): Before {
 	return {
 		addChild: (el) => guardAddChild(host, el),

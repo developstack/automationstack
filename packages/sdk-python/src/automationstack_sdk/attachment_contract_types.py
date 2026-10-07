@@ -18,9 +18,7 @@ from .contract_types import AttachmentKind
 
 @dataclass(frozen=True)
 class IngestAttachmentUpload:
-    #: 签名时锁定的值，PUT 时必须**逐字**带上，大小写都不能变。
     content_type: str
-    #: 请求里 `attachments` 数组的下标——同一个本地文件可能拿到多个 URL（D33）。
     index: int
     run_case_id: str
     run_id: str
@@ -65,7 +63,6 @@ class IngestAttachmentRejection:
 class IngestAttachmentPresignReceipt:
     expires_in_seconds: int
     rejected: List[IngestAttachmentRejection]
-    #: R2 未配置时为 False，此时 `uploads` 为空、每项各有一条 `rejected`。仍是 200。
     storage_configured: bool
     uploads: List[IngestAttachmentUpload]
 
@@ -89,7 +86,6 @@ class IngestAttachmentPresignReceipt:
 class IngestAttachmentRegisterItemWire:
     file_name: str
     kind: AttachmentKind
-    #: presign 那一轮返回的值，原样回传，不要自己拼。
     run_case_id: str
     run_id: str
     storage_key: str

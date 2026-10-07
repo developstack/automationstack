@@ -13,11 +13,6 @@ import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 
 import type { MindmapDeleteDialogState } from "./use-mindmap-sync.ts";
 
-/**
- * Second confirmation for canvas deletions. The dialog is driven by the
- * `before.removeNodes` hook: while it is open mind-elixir is still waiting on
- * the promise, so cancelling simply never applies the deletion — no rollback.
- */
 export function MindmapDeleteDialog({
 	count,
 	onCancel,

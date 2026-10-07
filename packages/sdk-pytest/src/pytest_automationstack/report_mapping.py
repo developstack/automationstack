@@ -57,7 +57,6 @@ def result_of(report: object) -> Optional[str]:
             return "skipped"
         return None
     if when != "call":
-        # teardown：见模块顶部那张表，不改结论。
         return None
     if getattr(report, "wasxfail", None) is not None:
         return "skipped"

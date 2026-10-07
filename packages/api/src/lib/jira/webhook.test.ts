@@ -54,7 +54,6 @@ test("签名用了别的密钥：拒绝", async () => {
 });
 
 test("带了签名头但前缀不对：拒绝，不回落到共享密钥比对", async () => {
-	// 否则攻击者只要塞一个畸形签名头，就能把校验方式降级到自己更好猜的那条路。
 	await expect(
 		verifyJiraWebhook({
 			rawBody: BODY,
@@ -85,7 +84,6 @@ test("共享密钥头精确匹配才放行", async () => {
 });
 
 test("项目没配 webhook 密钥时一律拒绝，不做「宽容处理」", async () => {
-	// 没有密钥就没有可校验的东西，此时放行等价于把端点对公网敞开。
 	const verdicts = await Promise.all(
 		[null, ""].map((secret) =>
 			verifyJiraWebhook({

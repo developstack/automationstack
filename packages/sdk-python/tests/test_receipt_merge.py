@@ -39,7 +39,6 @@ def test_written_to_sums_per_run() -> None:
         ("run-a", 90),
         ("run-b", 3),
     }
-    # 多批时取第一批的 executionId：它是人回平台查执行记录的入口。
     assert merged.execution_id == "e1"
 
 

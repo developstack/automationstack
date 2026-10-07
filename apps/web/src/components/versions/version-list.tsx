@@ -1,13 +1,3 @@
-/**
- * Version timeline for the history panel: one row per saved version,
- * click anywhere on the card to pick the two sides of a comparison, plus
- * the per-row rollback trigger.
- *
- * The whole card is the toggle, so the selection control is a transparent
- * button stretched over the card rather than the version chip alone —
- * the chip is a plain badge. The rollback button is lifted back above the
- * overlay with `relative` so it keeps its own click target.
- */
 import { Badge } from "@automationstack/ui/components/badge";
 import { Button } from "@automationstack/ui/components/button";
 import { cn } from "@automationstack/ui/lib/utils";
@@ -16,7 +6,6 @@ import { useCallback } from "react";
 
 import { formatDateTime } from "@/components/cases/case-meta";
 
-/** Structural view of `cases.listVersions` rows (extra fields ignored). */
 export interface CaseVersionRow {
 	changeNote: string | null;
 	createdAt: Date;
@@ -62,7 +51,6 @@ function VersionRowHeader({ isCurrent, role, row }: VersionRowHeaderProps) {
 	);
 }
 
-/** 说清楚点这张卡会发生什么——覆盖层本身没有可读文本。 */
 function selectionLabel(
 	row: CaseVersionRow,
 	role: VersionSelectionRole | null
@@ -95,8 +83,6 @@ function VersionListItem({
 					: "border-primary bg-accent"
 			)}
 		>
-			{/* 覆盖整张卡的选择热区：它是定位元素，所以盖在标题/备注之上接住点击。
-			    圆角必须与外层 li 同档——inset-0 贴的是 padding box，差一档焦点环就会从边框上脱出来。 */}
 			<button
 				aria-label={selectionLabel(row, role)}
 				aria-pressed={role !== null}
@@ -145,7 +131,6 @@ function roleFor(
 	return null;
 }
 
-/** Selectable list of a case's versions, newest first. */
 export function VersionList(props: VersionListProps) {
 	const { baseVersion, currentVersion, onRollback, onToggle, rows } = props;
 	return (

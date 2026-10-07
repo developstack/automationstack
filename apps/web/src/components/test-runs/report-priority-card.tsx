@@ -21,12 +21,6 @@ import type { ReportPriorityStat } from "@/components/test-runs/report-meta";
 import type { ReportPriorityBarsProps } from "@/components/test-runs/report-priority-bars-chart";
 import { ReportPriorityTable } from "@/components/test-runs/report-priority-table";
 
-/**
- * 柱图真身走动态 import：它静态引用 recharts，而这张卡本身（P0 结论 + 表格）是首屏
- * 就该有的东西，不该为了它把 gzip 103KB 的 recharts 一起拖进入口 chunk。
- * 完整来龙去脉见 overview-donut.tsx 的头注释，SSR 下为何只用 Suspense 不加 ClientOnly
- * 也在那里。
- */
 const LazyReportPriorityBarsChart = lazy(async () => {
 	const chartModule = await import(
 		"@/components/test-runs/report-priority-bars-chart"
@@ -34,10 +28,6 @@ const LazyReportPriorityBarsChart = lazy(async () => {
 	return { default: chartModule.ReportPriorityBarsChart };
 });
 
-/**
- * 高度在这一层算：占位与真身读的是同一个 reportPriorityHeightPx，图区不会先塌成
- * 0 高再弹回来（理由见 chart-box.ts）。真身拿它当 style 上的 height。
- */
 function PriorityBars({ rows }: Pick<ReportPriorityBarsProps, "rows">) {
 	const heightPx = reportPriorityHeightPx(rows.length);
 	return (
@@ -57,13 +47,6 @@ function PriorityBars({ rows }: Pick<ReportPriorityBarsProps, "rows">) {
 
 const P0_LINE_CLASS = "flex items-start gap-2 rounded-md px-3 py-2 text-sm";
 
-/**
- * P0 一句话结论。**这是整页最该先看到的一行**：P0 有没有失败就是上线红线。
- *
- * 三种状态必须分开说，尤其是第三种：P0 一条通过/失败结论都还没有时，
- * 既不能报「有失败」也**绝不能**报「暂无失败」——那会被读成绿灯，
- * 而此刻我们对 P0 一无所知。它和「测了都过了」是完全不同的两件事。
- */
 function P0Verdict({ stat }: { stat: ReportPriorityStat | undefined }) {
 	if (stat === undefined) {
 		return (
@@ -105,16 +88,6 @@ interface ReportPriorityCardProps {
 	priorities: readonly ReportPriorityStat[];
 }
 
-/**
- * 按优先级的通过率（plan §7.4 的第 3 张图，也是最该显眼的一张）。
- *
- * 排在三张图的第一位、占最宽的一格：这一页别的数字都是「进度怎么样」，
- * 只有这一张回答「能不能上线」。
- *
- * 柱图只画 `passRate !== null` 的档。分母为 0 的档若照画，会得到一根长度为 0 的柱子，
- * 视觉上和「通过率 0%」一模一样——而它的含义恰恰是「无从判断」。
- * 那些档在下面的表格里以「—」如实出现，一条都不会丢。
- */
 export function ReportPriorityCard({
 	className,
 	priorities,

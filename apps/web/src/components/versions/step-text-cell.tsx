@@ -1,8 +1,3 @@
-/**
- * One step / expected-result cell inside the step diff table: a word-level
- * diff for modified rows, plain text (tinted for added / removed rows)
- * otherwise. Split out of `version-diff-steps.tsx`.
- */
 import { cn } from "@automationstack/ui/lib/utils";
 
 import type { StepDiffEntry, StepDiffKind } from "./step-diff.ts";

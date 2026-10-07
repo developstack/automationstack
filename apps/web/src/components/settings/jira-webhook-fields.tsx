@@ -1,8 +1,3 @@
-/**
- * 「Jira 集成」的 webhook 字段组（回调地址与它的密钥），
- * 自 jira-settings-fields.tsx（已改名为 jira-config-fields.tsx）拆出。
- * 共用的 props 形状在 jira-field-group.ts。
- */
 import type { JiraConfigState } from "@automationstack/api/routers/jira";
 import { env } from "@automationstack/env/web";
 
@@ -26,14 +21,6 @@ function webhookSecretHint(state: JiraConfigState, cleared: boolean): string {
 	return "没有密钥时 webhook 端点会拒绝一切请求，状态同步不工作。填一段随机串，并在 Jira 的 webhook 配置里填同一串。";
 }
 
-/**
- * 回调地址与它的密钥。地址由服务端给出路径、这里拼上 origin，只在已经存过
- * 配置时才显示：没有配置就没有 webhookPath，凭空拼一条地址给人去 Jira 里填，
- * 填完的每一次投递都会 404。
- *
- * 「清空」按钮只在库里确实有密钥时才挂上去（`onToggleClear` 给 undefined 时
- * 字段自己不渲染按钮）：没东西可清时给一颗死按钮只会让人以为出了错。
- */
 export function JiraWebhookFields(props: JiraFieldGroupProps) {
 	const { config } = props.state;
 	const hasStoredSecret = config?.hasWebhookSecret === true;

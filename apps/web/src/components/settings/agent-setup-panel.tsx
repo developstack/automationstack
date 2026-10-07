@@ -1,14 +1,3 @@
-/**
- * 「本地 Agent 接入」那一格的正文。
- *
- * 这一格没有任何服务端状态，也没有表单：它是一份接入指南，唯一「算」出来的
- * 只有两个地址。所以既不取数、不需要骨架，也不带 key 随项目重挂。
- *
- * 它现在只做一件事：把两个地址填进 markdown，交给通用渲染器。四节（端点 /
- * 安装 / 各家客户端 / skill）之间的分割线、标题层级、着重点全部由正文自己用
- * markdown 表达——**要改文案请去 agent-setup-guide.md，不要回到这里加 JSX**。
- * 这一层与那份文案之间只剩下两个占位符这一处约定，收口在 agent-setup-doc.ts。
- */
 import { env } from "@automationstack/env/web";
 import { useEffect, useState } from "react";
 

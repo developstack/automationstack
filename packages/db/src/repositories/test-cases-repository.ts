@@ -6,15 +6,6 @@ import { type TestCase, testCases } from "../schema/test-cases";
 import type { DbTransaction, RemoveTestCaseResult } from "./repository-types";
 import { countCaseRunReferences } from "./test-runs-repository";
 
-/**
- * 单条用例的读取与**结构性写入**：取一条、移动到别的模块、模块内重排、删除。
- *
- * 「结构性」指的是只动 `moduleId` / `sortOrder` 这类位置字段，以及删除本身；
- * 用例内容字段的增改在 `case-mutations-repository.ts`（那边还要写版本快照）。
- * 列表查询在 `case-list-repository.ts`。
- */
-
-/** 重排成功时回带 projectId，便于调用方发布实时失效事件。 */
 export type ReorderCasesResult =
 	| { kind: "invalid-set" }
 	| { kind: "ok"; projectId: string };
@@ -146,21 +137,6 @@ export async function reorderTestCasesInTx(
 	return { kind: "ok", projectId };
 }
 
-/**
- * 删除一条用例。
- *
- * **返回契约**（三选一，任何分支都不抛异常）：
- * - `{ kind: "removed", testCase }` —— 删成功，回带被删的行，
- *   调用方据此拿到 projectId / moduleId 发实时失效事件
- * - `{ kind: "not-found" }` —— 用例不存在（或已被并发删除）
- * - `{ kind: "blocked", referencedByRunCount }` —— 被 N 个测试任务引用，拒绝删除；
- *   router 应映射成「该用例被 N 个测试任务引用，无法删除；可改为『废弃』状态」
- *
- * 引用检查必须在这里做而不是靠数据库外键报错：`test_run_cases.caseId` 的
- * `onDelete: restrict`（plan §3.4）只能给出一个 23503 违约异常，拿不到引用数量，
- * 也没法在同一事务里安全地区分「被引用」和其它约束冲突。检查与删除同事务，
- * 否则查完到删掉之间别人可以新建测试任务引用它。
- */
 export async function removeTestCaseInTx(
 	tx: DbTransaction,
 	id: string

@@ -12,7 +12,6 @@ import { useModuleExpansion } from "@/components/workspace/use-module-expansion"
 import { clearModuleSelection } from "@/components/workspace/workspace-search";
 import { orpc } from "@/utils/orpc";
 
-/** Dialog state plus the stable callbacks the tree rows trigger. */
 function useModuleDialogState() {
 	const [dialog, setDialog] = useState<ModuleDialogState>(null);
 	const close = useCallback(() => setDialog(null), []);
@@ -30,7 +29,6 @@ function useModuleDialogState() {
 	return { actions, close, createRoot, dialog };
 }
 
-/** Clears the module selection when the selected module was deleted. */
 function useHandleModuleDeleted(
 	projectId: string,
 	selectedModuleId: string | undefined
@@ -80,7 +78,6 @@ interface ModuleTreeProps {
 	projectId: string;
 }
 
-/** Left-hand module tree: selection, inline rename, create and delete. */
 export function ModuleTree({ projectId }: ModuleTreeProps) {
 	const treeQuery = useSuspenseQuery(
 		orpc.modules.tree.queryOptions({ input: { projectId } })
@@ -96,33 +93,8 @@ export function ModuleTree({ projectId }: ModuleTreeProps) {
 	);
 
 	return (
-		/*
-		 * 工作区 gutter 约定（header / 侧栏 / 内容区共用一档）：
-		 * 每个区域的内容左边缘距该区域外边框 16px（Tailwind 刻度 4）。
-		 *   header  = px-4                        → 16px
-		 *   内容区   = p-4                          → 16px
-		 *   侧栏    = aside p-2 (8) + 行 px-2 (8)   → 16px
-		 * 侧栏拆成「面板 8 + 行 8」而不是直接 px-4，是因为行要有自己的
-		 * hover / 选中底色：底色需要从面板边缘内缩 8px，文字才落在同一条 16px 线上。
-		 * 所以侧栏里任何直接子行（标题行、项目级入口、模块行）一律 px-2，不要写 px-1。
-		 * 底下的 <ModuleSection> 只是分组用的壳，本身不带内边距，这笔账不变。
-		 */
 		<aside aria-label="项目导航" className="flex flex-col gap-1 p-2">
-			{/*
-			 * 「未完成草稿」是项目级去处（草稿散落在各个模块下，不属于任何一个），
-			 * 所以排在「模块」这一组之外、之上；它没有草稿时整行不渲染，
-			 * 见 case-drafts-link.tsx。
-			 *
-			 * 这块面板从此只装用例相关的东西：原先同组的「项目概览」「测试评审和执行」
-			 * 已经升级成一级侧栏的菜单项（见 layout/project-nav-group.tsx），
-			 * 二级面板本身也只在用例管理这一段才挂出来。
-			 */}
 			<CaseDraftsLink nodes={treeQuery.data} projectId={projectId} />
-			{/*
-			 * 上面那行是项目级去处，与模块无关；「模块」这一组从这里开始。
-			 * 不另画分隔线：标题行本身就是分界，而侧栏至今没有任何 <Separator/>，
-			 * 为这一处引进一种新的分隔方式反而多出一条与全局不一致的横线。
-			 */}
 			<ModuleSection onCreateRoot={createRoot} projectId={projectId}>
 				<ModuleTreeList
 					actions={actions}

@@ -1,8 +1,3 @@
-/**
- * 用例列表的就绪态主体：表格 + 分页条。
- *
- * 从 case-list-view.tsx 拆出来，那边只留下工具栏装配与查询。
- */
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 
 import { CasePagination } from "@/components/cases/case-pagination";
@@ -14,11 +9,9 @@ interface CaseListResultProps {
 	navigation: WorkspaceNavigation;
 	result: { items: TestCase[]; page: number; total: number };
 	selectedCaseId: string | undefined;
-	/** 当前展示的是上一次查询留下的结果，新数据还在路上。 */
 	stale: boolean;
 }
 
-/** Table plus paginator; only rendered once the first page has loaded. */
 export function CaseListResult(props: CaseListResultProps) {
 	const { navigation, result } = props;
 	return (

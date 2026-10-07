@@ -1,14 +1,3 @@
-/**
- * 四态结论按钮组。
- *
- * 「打回未测」原先也在这里，现在搬去了抬头（`run-case-heading.tsx`）：它跟
- * 「修改」一样，是看完一条用例后最常点的东西，摆在页面最底下等于每次都要滚。
- *
- * 用一组 `role="radio"` 的按钮而不是原生 `<input type="radio">`：
- * 需要在每个选项里同时排下图标、中文、键面提示三样东西，原生 radio 的
- * `::before` 做不到，而 `packages/ui` 里没有 radio-group（本任务不许新增 ui 组件）。
- * 语义靠 `role="radiogroup"` + `aria-checked` 补齐，键盘可达性由 Button 自带。
- */
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 import { Button } from "@automationstack/ui/components/button";
 import { useCallback } from "react";
@@ -34,15 +23,11 @@ function VerdictButton({
 	onPick,
 	value,
 }: VerdictButtonProps) {
-	// useCallback 不是为了性能，是 Biome 的 noJsxPropsBind：内联箭头每次渲染
-	// 都是新引用。依赖只有真正进闭包的那两个。
 	const handleClick = useCallback(() => onPick(value), [onPick, value]);
 	const active = current === value;
 	const Icon = RESULT_ICONS[value];
 	return (
 		<Button
-			// aria-disabled 而不是 disabled：禁用的按钮仍然要能被 Tab 到，
-			// 否则读屏用户根本发现不了「这里有个不能用的控件」。
 			aria-checked={active}
 			aria-disabled={disabled || undefined}
 			className="gap-1.5"
@@ -51,13 +36,11 @@ function VerdictButton({
 			type="button"
 			variant={active ? "default" : "outline"}
 		>
-			{/* 图标形状本身区分四态，颜色只是加强；选中态用主色底，靠对比而非色相 */}
 			<Icon
 				aria-hidden="true"
 				className={active ? undefined : RESULT_TEXT_CLASSES[value]}
 			/>
 			{RESULT_LABELS[value]}
-			{/* 快捷键必须**看得见**：没有可见提示的快捷键等于不存在 */}
 			<kbd className="rounded border px-1 font-mono text-kbd-hint opacity-70">
 				{VERDICT_SHORTCUT_KEYS[value]}
 			</kbd>

@@ -1,37 +1,3 @@
-/**
- * 主题明暗切换的圆形揭示（View Transitions API）。
- *
- * 单独成文件而不是并进 globals.css：那个文件已经 310 行、顶着
- * scripts/check-file-rules.js 的 300 行上限（这是本次改动之前就有的事实），
- * 再往里塞只会让它更超。由 globals.css 顶部 @import 进来，最终产物没有区别。
- *
- * 触发方与几何计算在 apps/web/src/components/theme/theme-transition.ts：
- * 那边负责在切换期间给 <html> 挂上 .theme-transitioning，并用 WAAPI 对
- * ::view-transition-new(root) 播一段 mask-size / mask-position 的动画。
- * 本文件只准备「揭示用的那张遮罩」和「把默认动画关掉」，一帧都不自己驱动。
- *
- * ## 为什么整段都挂在 .theme-transitioning 下
- *
- * ::view-transition-* 是文档级的伪元素，页面上任何一次 startViewTransition 都会
- * 命中。眼下全站只有主题切换用它（路由过渡刻意没用，理由见 page-transition.tsx），
- * 但一旦将来有第二处，无条件的规则会把这套圆形揭示套到那处身上。加一个类名限定，
- * 这套样式就只在主题切换那段时间里存在。
- */
-
-/**
- * 关掉浏览器默认的交叉淡入。**这条是整套效果成立的前提。**
- *
- * 默认样式表给 ::view-transition-old/new(root) 各挂了一条 250ms 的
- * -ua-view-transition-fade-out / fade-in。不关掉的话，新层一边被遮罩圆形揭示、
- * 一边整层从 0 淡到 1，两层颜色在圆外互相透叠——看到的不是「新主题从点击处铺开」，
- * 而是整页先糊成一片灰再慢慢清晰。
- *
- * z-index 把新层压在旧层上面：旧层整段保持完全不透明地铺满视口（它自己的动画也被
- * 关掉了），新层只在遮罩允许的范围内可见。两层不做透明度混合，圆内圆外都是纯色。
- *
- * group 那条同理：默认还有一条 250ms 的形变动画，这一跳前后尺寸完全一致、视觉上
- * 本来就看不出来，关掉是为了不留一条会在将来某次布局变化时冒出来的动画。
- */
 :root.theme-transitioning::view-transition-group(root) {
 	animation: none;
 }
@@ -41,24 +7,6 @@
 	animation: none;
 }
 
-/**
- * 新主题那一层的遮罩。
- *
- * radial-gradient 而不是 clip-path: circle()：边缘要带一点羽化。硬边圆在大屏上
- * 扫过文字时会看到一条锯齿状的分界线在推进，羽化之后推进的是一道柔和的光晕。
- * 84% 之前是纯黑（完全显示新主题），84% → 100% 之间渐隐，也就是羽化带占半径的 16%。
- *
- * closest-side + 一个正方形的 mask-size：这样 mask-size 的一半就正好是圆的半径，
- * JS 那边只需要算一个直径喂进来，不必再去换算渐变自己的尺寸。
- *
- * mask-size: 0 0 是静态起点，不是动画的一部分。transition.ready 兑现到 WAAPI 真正
- * 开播之间可能夹着一帧，这一帧里若遮罩是默认的 auto（等于铺满视口），新主题会整页
- * 闪现一下再被收回到点击处。写死 0 0，那一帧显示的就是旧主题，与揭示的第一帧连续。
- *
- * will-change 只在这里出现一次，并且只在 .theme-transitioning 存在的那不到一秒里
- * 生效：遮罩动画每帧都要重新光栅化，不提前提层第一帧会明显卡一下。切换结束后类名
- * 摘掉、伪元素本身也随之消失，不会留下一个长期被提成独立合成层的元素。
- */
 :root.theme-transitioning::view-transition-new(root) {
 	z-index: 2;
 	mask-image: radial-gradient(circle closest-side, #000 84%, transparent 100%);

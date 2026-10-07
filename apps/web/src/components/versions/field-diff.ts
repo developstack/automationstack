@@ -1,12 +1,3 @@
-/**
- * Pure, structured diff of two `CaseSnapshot` values for the version
- * history UI. No UI, network, or DB access here.
- *
- * - Scalar fields: old/new pair with a changed/unchanged marker.
- * - preconditions: additionally carries jsdiff word segments for ins/del.
- * - tags: set difference (added / removed / kept).
- * - steps: paired by `step.id` (see step-diff.ts).
- */
 import type {
 	CasePriority,
 	CaseSnapshot,
@@ -31,17 +22,13 @@ export interface TextFieldDiff {
 	kind: FieldChangeKind;
 	newValue: string | null;
 	oldValue: string | null;
-	/** jsdiff `diffWords` segments (null text treated as empty string). */
 	segments: TextDiffSegment[];
 }
 
 export interface TagsDiff {
-	/** Tags only present in the new snapshot, in new-snapshot order. */
 	added: string[];
-	/** Tags present in both snapshots, in new-snapshot order. */
 	kept: string[];
 	kind: FieldChangeKind;
-	/** Tags only present in the old snapshot, in old-snapshot order. */
 	removed: string[];
 }
 
@@ -114,10 +101,6 @@ function hasScalarChanges(scalars: CaseScalarsDiff): boolean {
 	return Object.values(scalars).some((field) => field.kind === "changed");
 }
 
-/**
- * Diffs two case snapshots into a structured, render-ready result.
- * Pure function; inputs are not mutated.
- */
 export function diffCaseSnapshots(
 	oldSnapshot: CaseSnapshot,
 	newSnapshot: CaseSnapshot

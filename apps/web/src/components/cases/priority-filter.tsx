@@ -1,10 +1,3 @@
-/**
- * 工具栏上的优先级多选（连同它自己的单枚按钮 PriorityToggle）。
- * 从 case-filters.tsx 拆出来，那边只留下关键词与状态两个筛选。
- *
- * 按钮沿用 default 档（h-8）：它与关键词输入框、状态下拉在同一条工具栏里，
- * 高度必须一致，理由写在 case-filters.tsx 的 CaseFilters 注释里。
- */
 import type { CasePriority } from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
 import { useCallback } from "react";

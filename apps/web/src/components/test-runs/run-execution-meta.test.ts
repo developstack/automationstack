@@ -17,10 +17,6 @@ interface RowSpec {
 	result?: TestRunCaseResult;
 }
 
-/**
- * 只造筛选真正会读的字段。`as unknown as` 是刻意的：把 TestRunCaseDetail 的
- * 十几个字段全填一遍并不会让这几条断言更可信，只会让每次后端加字段都要改测试。
- */
 function row(spec: RowSpec): RunCaseDetail {
 	return {
 		runCase: {
@@ -84,7 +80,6 @@ describe("filterRunCases", () => {
 	});
 
 	it("会话未就绪时「我的」是空列表，不是全部", () => {
-		// 退化成「全部」会让人以为筛选没生效，然后对着别人的用例按「一键通过」。
 		expect(
 			filterRunCases(
 				ALL,
@@ -134,7 +129,6 @@ describe("nextRunCaseId", () => {
 	});
 
 	it("末尾停在原地，不回卷到开头", () => {
-		// 回卷会让人以为还有得测，实际上已经绕了一圈。
 		expect(nextRunCaseId(ALL, "d")).toBeNull();
 	});
 
@@ -150,7 +144,6 @@ describe("shouldAutoAdvance", () => {
 	});
 
 	it("失败 / 阻塞：留在原地填说明与缺陷（plan 012 D1）", () => {
-		// 跳走等于逼用户再点回来——说明 / 附件 / 缺陷面板都在本条上。
 		expect(shouldAutoAdvance("failed")).toBe(false);
 		expect(shouldAutoAdvance("blocked")).toBe(false);
 	});

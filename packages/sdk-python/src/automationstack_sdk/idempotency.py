@@ -22,7 +22,6 @@ import hashlib
 import uuid
 from typing import Mapping, Optional
 
-#: UUID 的四个分段边界，用来把 16 字节的摘要摆成 8-4-4-4-12。
 _UUID_SEGMENT_ENDS = (8, 12, 16, 20, 32)
 _UUID_HEX_LENGTH = 32
 _VERSION_NIBBLE_INDEX = 12
@@ -39,16 +38,12 @@ def resolve_run_idempotency_key(env: Mapping[str, Optional[str]]) -> str:
     """
     configured = (env.get("AS_IDEMPOTENCY_KEY") or "").strip()
     if configured:
-        # 不校验它是不是 uuid：真不是的话，服务端那条指着字段名的 400 比
-        # SDK 自己编的一句「格式不对」更有用（同 §7.2 第 4 条「原样透传」）。
         return configured
     return str(uuid.uuid4())
 
 
 def _format_as_uuid_v5(hex_digest: str) -> str:
     nibbles = list(hex_digest)
-    # 版本位固定成 5、变体位固定成 8：不改这两位算出来的不是合法 UUID，
-    # 服务端的 z.uuid() 会直接拒。
     nibbles[_VERSION_NIBBLE_INDEX] = "5"
     nibbles[_VARIANT_NIBBLE_INDEX] = "8"
     normalized = "".join(nibbles)

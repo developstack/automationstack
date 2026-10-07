@@ -16,7 +16,6 @@ import { useResetSessionCache } from "@/components/auth/use-session";
 import { orpc } from "@/utils/orpc";
 
 interface LoginFormProps {
-	/** 登录成功后要回到的地址；缺省回项目列表。 */
 	redirectTo?: string;
 }
 
@@ -38,12 +37,6 @@ function LoginField({ id, label, type, ...props }: LoginFieldProps) {
 	);
 }
 
-/**
- * 表单状态与提交。
- *
- * 登录成功后先清空整个查询缓存再跳转：上一个用户留下的项目、用例数据
- * 不清掉的话，换人登录会先看到前一个人的内容，等后台请求回来才刷新。
- */
 function useLoginForm(redirectTo: string | undefined) {
 	const router = useRouter();
 	const resetCache = useResetSessionCache();
@@ -52,11 +45,9 @@ function useLoginForm(redirectTo: string | undefined) {
 
 	const login = useMutation(
 		orpc.auth.login.mutationOptions({
-			// 错误就在表单里说，别再弹一个全局 toast 重复一遍
 			meta: { suppressErrorToast: true },
 			onSuccess: async () => {
 				await resetCache();
-				// href 而不是 to：回跳地址是运行时拼出来的字符串，不是某条静态路由
 				await router.navigate({
 					href: redirectTo ?? "/projects",
 					replace: true,
@@ -116,10 +107,6 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 						type="password"
 						value={form.password}
 					/>
-					{/*
-					 * role="alert" 让读屏在提交失败时立即播报；错误紧贴按钮上方，
-					 * 视线不用离开刚才点下去的位置。
-					 */}
 					{form.error ? (
 						<p className="text-destructive text-xs" role="alert">
 							{form.error.message}

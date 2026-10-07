@@ -1,7 +1,3 @@
-/**
- * 两个率的分母不同（plan §2.4）。分母写错不会有任何地方报错，
- * 只会让报告上的数字悄悄变成另一个含义，所以逐条钉住。
- */
 import { describe, expect, it } from "vitest";
 
 import {

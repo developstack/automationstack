@@ -21,7 +21,6 @@ import {
 	touchClient,
 } from "./rooms";
 
-/** 关闭码：策略违规（参数缺失 / 未登录 / Origin 不匹配 / 不是项目成员）。 */
 const POLICY_VIOLATION_CODE = 1008;
 
 type RealtimeSocket = WSContext<WebSocketLike>;
@@ -35,17 +34,13 @@ function buildEntry(params: ConnectionParams): PresenceEntry {
 		name: params.name,
 		page: null,
 		view: params.view,
-		// 新连接还没打开任何用例：两个字段都从 null 起步，
-		// 客户端打开详情抽屉后才会用 presence:update 补上
 		viewingCaseId: null,
 	};
 }
 
-/** presence patch 合并进完整 entry（可空字段需区分「未提供」与 null）。 */
 function mergeEntry(entry: PresenceEntry, patch: PresencePatch): PresenceEntry {
 	return {
 		clientId: entry.clientId,
-		// name / color 不在 patch 的可选字段里：身份由握手时的会话决定
 		color: entry.color,
 		editingCaseId:
 			patch.editingCaseId === undefined
@@ -131,11 +126,6 @@ function closeConnection(
 	}
 }
 
-/**
- * `/ws` 升级处理器：`GET /ws?projectId&clientId&view`。
- * 参数缺失、未登录、Origin 不匹配、或**不是该项目成员**时立即以 1008 关闭
- * （准入判定全部在 `./handshake.ts`）。
- */
 export const realtimeWebSocketHandler = upgradeWebSocket(async (context) => {
 	const handshake = await resolveHandshake(context);
 	if (handshake.kind === "rejected") {
@@ -162,16 +152,8 @@ export const realtimeWebSocketHandler = upgradeWebSocket(async (context) => {
 	};
 });
 
-/** 传给 `serve({ websocket })` 的 ws 服务端（由 node-server 负责 upgrade）。 */
 export const realtimeWebSocketServer = new WebSocketServer({ noServer: true });
 
-/**
- * 启动实时协作运行时：订阅总线 fan-out + 心跳扫描。返回停止函数。
- *
- * 两条订阅：数据失效事件 fan-out 给房间；成员撤销事件踢掉那个人在那个项目里
- * 的全部连接。后者是握手校验的另一半——握手只管连接**建立**那一刻，
- * 没有这一条，被移出项目的人只要不刷新页面就能一直收下去。
- */
 export function startRealtime(): () => void {
 	const unsubscribe = realtimeBus.subscribe((projectId, event) => {
 		broadcast(projectId, { ...event, type: "data:invalidate" });

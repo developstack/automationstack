@@ -11,7 +11,6 @@ import {
 const IP = "203.0.113.7";
 const OTHER_IP = "203.0.113.8";
 
-/** 与实现里的常量对齐；改那边的阈值，这里会红。 */
 const IP_MAX_ATTEMPTS_PER_WINDOW = 10;
 const BACKOFF_AFTER_FAILURES = 5;
 const BACKOFF_BASE_SECONDS = 30;
@@ -51,7 +50,6 @@ describe("login rate limit", () => {
 			expect(checkLoginGate(attempt(IP, `ghost-${i}`)).kind).toBe("allowed");
 		}
 		expect(checkLoginGate(attempt(IP, "ghost-x")).kind).toBe("rejected");
-		// 另一个地址不受影响：这一维只按来源分摊，不是全局开关。
 		expect(checkLoginGate(attempt(OTHER_IP, "ghost-x")).kind).toBe("allowed");
 	});
 
@@ -74,8 +72,6 @@ describe("login rate limit", () => {
 			kind: "rejected",
 			retryAfterSeconds: BACKOFF_BASE_SECONDS,
 		});
-		// 退避只锁 (IP, 用户名)：同一地址换个账号仍能登，否则一个人连错五次
-		// 就把整个办公网的其他人一起锁在门外。
 		expect(checkLoginGate(attempt(IP, "bob")).kind).toBe("allowed");
 		vi.advanceTimersByTime(BACKOFF_BASE_SECONDS * 1000);
 		expect(checkLoginGate(attempt(IP, "alice")).kind).toBe("allowed");

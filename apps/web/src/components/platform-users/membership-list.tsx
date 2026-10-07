@@ -1,8 +1,3 @@
-/**
- * 「管理项目归属」框里那份已归属列表（含空态）。原是
- * manage-user-projects-dialog.tsx 里的私有辅助，按「同文件最多 2 个私有辅助
- * 组件」拆出来；单行与行内的角色下拉只服务于这份列表，跟着一起搬。
- */
 import type { UserProjectMembership } from "@automationstack/db/repositories/users-with-projects-core";
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import { Button } from "@automationstack/ui/components/button";
@@ -32,12 +27,6 @@ interface MembershipRoleSelectProps {
 	onSetRole: (projectId: string, role: ProjectRole) => void;
 }
 
-/**
- * 一行里的项目角色下拉。
- *
- * 单拆一层，是因为 Base UI 的 Select 要连带写出 4 个子组件；和「项目名 + 移出
- * 按钮」挤在同一个函数里，光是它的骨架就盖过了这一行本身那点逻辑。
- */
 function MembershipRoleSelect({
 	disabled,
 	membership,
@@ -45,7 +34,6 @@ function MembershipRoleSelect({
 }: MembershipRoleSelectProps) {
 	const handleRoleChange = useCallback(
 		(next: string | null) => {
-			// Base UI 在清空时给的是 null，这里只认两个合法值，其余一律不发请求
 			if (next === "member" || next === "owner") {
 				onSetRole(membership.id, next);
 			}
@@ -59,7 +47,6 @@ function MembershipRoleSelect({
 			onValueChange={handleRoleChange}
 			value={membership.role}
 		>
-			{/* 一行一个下拉，可访问名必须带上项目名才分辨得出是哪一个 */}
 			<SelectTrigger
 				aria-label={`「${membership.name}」里的项目角色`}
 				className="w-32 shrink-0"
@@ -78,7 +65,6 @@ function MembershipRoleSelect({
 	);
 }
 
-/** 已归属的一行：项目名 + 项目角色下拉 + 移出按钮。 */
 function MembershipRow({
 	disabled,
 	membership,
@@ -92,7 +78,6 @@ function MembershipRow({
 
 	return (
 		<li className="flex items-center gap-2">
-			{/* min-w-0 + break-words：项目名可以很长，也可能是一串没有断点的长词 */}
 			<span className="wrap-break-word min-w-0 flex-1 text-sm">
 				{membership.name}
 			</span>

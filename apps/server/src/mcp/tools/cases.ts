@@ -2,9 +2,6 @@ import {
 	importBatchSchema,
 	searchCasesSchema,
 } from "@automationstack/api/routers/case-import";
-// 分页上限直接取 `cases.list` 自己的常量：这里写字面量 100 的话，
-// 哪天列表那边放宽了，工具入参会先一步把用户的请求挡在门外，
-// 而且报的是「MCP 工具校验失败」，看不出是两处上限对不上。
 import { MAX_PAGE_SIZE } from "@automationstack/db/repositories/case-list-repository";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -27,11 +24,6 @@ import {
 	type ToolResult,
 } from "./tool-helpers";
 
-/**
- * 读取面的入参刻意比 `cases.list` 窄一点：不暴露 `includeDescendants` 之外的
- * 分页细节以外的东西，也不暴露列表页专用的排序参数——工具描述里说得清的参数
- * 才值得存在，多一个参数就多一次「该不该填」的判断。
- */
 const readCasesInput = {
 	detail: z
 		.enum(["summary", "full"])
@@ -75,7 +67,6 @@ const readCasesInput = {
 		.describe("Keep cases carrying any of these tags."),
 };
 
-/** 入参的类型面。`detail` 只影响返回整形，**不往 `cases.list` 传**。 */
 interface ReadCasesInput {
 	detail?: CaseDetail;
 	includeDescendants?: boolean;

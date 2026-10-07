@@ -19,7 +19,6 @@ import {
 } from "@/components/overview/overview-donut";
 import { orpc } from "@/utils/orpc";
 
-/** 卡片里只点名前几个缺口模块，其余靠计数提示；全量在模块树里逐个看。 */
 const GAP_SAMPLE_SIZE = 5;
 
 interface CoverageModule {
@@ -28,12 +27,6 @@ interface CoverageModule {
 	name: string;
 }
 
-/**
- * 挑出前若干个有缺口的模块。
- *
- * 用 flatMap 而不是 filter：filter 收窄不了 `gap` 的类型，后面渲染标签时就得
- * 补一个永远走不到的 null 分支——那种分支读代码的人无从判断是不是真会发生。
- */
 function pickGapSamples(modules: readonly CoverageModule[]): GapSample[] {
 	return modules
 		.flatMap((module) =>
@@ -47,7 +40,6 @@ function pickGapSamples(modules: readonly CoverageModule[]): GapSample[] {
 interface GapCountRowProps {
 	count: number;
 	label: string;
-	/** 图例色块的类，必须与环上同名扇区的 fill 是同一档，见 COVERAGE_SLICES。 */
 	swatch: string;
 }
 
@@ -55,7 +47,6 @@ function GapCountRow({ count, label, swatch }: GapCountRowProps) {
 	return (
 		<div className="flex items-center justify-between gap-2 text-sm">
 			<dt className="flex items-center gap-2 text-muted-foreground">
-				{/* aria-hidden：色块只是冗余编码，紧邻的文字标签才是信息本体。 */}
 				<span
 					aria-hidden="true"
 					className={cn("size-2 rounded-full", swatch)}
@@ -67,17 +58,6 @@ function GapCountRow({ count, label, swatch }: GapCountRowProps) {
 	);
 }
 
-/**
- * 环上三段的配色与图例文案，顺时针顺序 = 下面三行计数行的上下顺序。
- *
- * 015 起按「覆盖健康度」借报告页的结论色（--result-* 三支）：有生效用例=通过绿、
- * 有用例但无生效=阻塞黄、零用例=跳过灰。这与用例总数卡那张状态环是同一条规矩
- * （生效=绿、无生效=黄、空=灰），两张环在新色彩空间里仍是一套东西。
- *
- * 对比度立场同 014：亮底黄 1.39:1、灰 1.78:1 压卡面不足 WCAG 1.4.11 的 3:1，
- * 主编码是紧邻的文字标签，相邻扇区另有 CHART_SEAM 描缝兜底。轨道仍走
- * OverviewDonut 内置的 --chart-1，不进数据系列。
- */
 const COVERAGE_SLICES = [
 	{
 		color: "var(--result-passed)",
@@ -107,7 +87,6 @@ interface CoverageBodyProps {
 	totalModuleCount: number;
 }
 
-/** 三段的取值，顺序与 COVERAGE_SLICES 一一对应。 */
 function countsOf(props: CoverageBodyProps): readonly number[] {
 	const covered =
 		props.totalModuleCount - props.emptyModuleCount - props.noActiveModuleCount;
@@ -124,7 +103,6 @@ function buildSlices(props: CoverageBodyProps): DonutSlice[] {
 	}));
 }
 
-/** 有模块时的正文：缺口环 + 三行计数 + 点名前几个。 */
 function CoverageBody(props: CoverageBodyProps) {
 	const { emptyModuleCount, totalModuleCount } = props;
 	const gapCount = emptyModuleCount + props.noActiveModuleCount;
@@ -133,10 +111,6 @@ function CoverageBody(props: CoverageBodyProps) {
 
 	return (
 		<>
-			{/*
-			 * 环心放缺口数而不是模块总数：这张卡问的是「哪里没盖到」，缺口才是读数。
-			 * 原来那行 text-3xl 的「N / M 个模块」整体挪进了环心（M 落在下面那行标注里）。
-			 */}
 			<OverviewDonut
 				centerLabel={`缺口 / ${totalModuleCount}`}
 				centerValue={String(gapCount)}
@@ -174,14 +148,6 @@ interface OverviewCoverageCardProps {
 	projectId: string;
 }
 
-/**
- * 第 3 张卡：模块覆盖缺口。
- *
- * 判定口径是**子树**（后端定的，见 repositories/project-stats-coverage.ts）：
- * 中间层模块在本产品里就是文件夹，按「直接挂载」判缺口会把每个文件夹都标成
- * 零用例，卡片会被噪声淹没。描述里把这一句写给用户看，否则「这个模块明明有
- * 子模块有用例，为什么不算缺口」会变成一个反复被问的问题。
- */
 export function OverviewCoverageCard({ projectId }: OverviewCoverageCardProps) {
 	const { data } = useSuspenseQuery(
 		orpc.projectStats.coverage.queryOptions({ input: { projectId } })

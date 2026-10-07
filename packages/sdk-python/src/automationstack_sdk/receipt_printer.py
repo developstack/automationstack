@@ -22,7 +22,6 @@ from .reporter_types import AttachmentOutcome
 
 ReceiptSink = Callable[[str], None]
 
-#: 与 `packages/sdk-node/src/receipt-printer.ts` 里那条正则**同一组码位区间**。
 _CJK_PATTERN = re.compile(
     "[\u1100-\u115f\u2e80-\u4dbf\u4e00-\u9fff\uac00-\ud7a3"
     "\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]"
@@ -122,15 +121,11 @@ def format_attachment_lines(outcome: AttachmentOutcome) -> List[str]:
         ]
     else:
         lines = ["附件 存储未配置，本轮附件全部跳过；结论已正常写入"]
-    # 逐条打，不聚合成「N 个失败」：附件被拒的理由各不相同（配额、待评审、
-    # 用例不存在），聚合之后人不知道该去解决哪一个。
     lines.extend("附件 被拒：{0}".format(reason) for reason in outcome.rejections)
     return lines
 
 
 def default_sink(line: str) -> None:
-    # 走 stdout 而不是 logging：对账单不是日志，它是这次上报的**结果**，
-    # 不该被用户的 logging 配置（级别、handler、格式）改掉一个字。
     print(line, file=sys.stdout)
 
 

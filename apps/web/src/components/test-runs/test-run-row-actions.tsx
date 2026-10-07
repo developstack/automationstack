@@ -1,12 +1,3 @@
-/**
- * 列表行尾的操作菜单：编辑 / 从失败用例创建重测任务 / 删除。
- *
- * 两条硬规则由这里挂上的三个菜单项落地（每项各自一个文件，
- * 见 test-run-row-edit-item / -retest-item / -delete-item）：
- * 1. **已提交的测试任务不可删除**（后端 CONFLICT）。菜单项禁用并把理由写成可见文字，
- *    而不是让人点了再被红字打回来——那等于把规则藏在失败里。
- * 2. **已提交的测试任务仍可开重测任务**。它是终态唯一的出口，跟着一起灰掉就没路走了。
- */
 import type { TestRunListItem } from "@automationstack/db/repositories/test-runs-repository";
 import {
 	AlertDialog,
@@ -78,7 +69,6 @@ function DeleteRunDialog({
 	);
 }
 
-/** 带上任务名：读屏的按钮列表里，一排「测试任务操作」互相分辨不出来。 */
 function RowActionsTrigger({ runName }: { runName: string }) {
 	return (
 		<DropdownMenuTrigger

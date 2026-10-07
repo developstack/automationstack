@@ -16,11 +16,6 @@ function makeRow(id: string, parentId: string | null, sortOrder: number) {
 	return { id, name: id, parentId, projectId: PROJECT_ID, sortOrder };
 }
 
-/**
- *   m1 (root) ── m1a ── m1a1
- *             └─ m1b
- *   m2 (root)
- */
 function makeRows(): ModuleRow[] {
 	return [
 		makeRow("m1", null, 0),

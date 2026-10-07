@@ -1,11 +1,3 @@
-/**
- * 列表页正文那一格：骨架 / 空状态 / 表格三选一。
- *
- * 三态在原先的 TestRunListView 里是三个并排的 `cond ? <X/> : null`，彼此靠
- * 「`data === undefined`」和「`items.length`」拼出互斥。改成早返回之后互斥变成
- * 结构性的——读的人不必再自己验一遍三个条件两两不重叠。渲染结果不变：
- * 原先那两个没中的分支本来就渲染 null，在 flex 列里不占位也不吃 gap。
- */
 import type { TestRunListItem } from "@automationstack/db/repositories/test-runs-repository";
 import {
 	Empty,
@@ -19,10 +11,6 @@ import { ClipboardListIcon } from "lucide-react";
 import { TestRunTable } from "@/components/test-runs/test-run-table";
 import type { TestRunsSearch } from "@/components/test-runs/test-runs-search";
 
-/**
- * 空状态要说清「为什么空」：有筛选时问题多半出在筛选条件上，
- * 而一句笼统的「还没有测试任务」会让人以为数据没了。
- */
 function TestRunEmpty({ filtered }: { filtered: boolean }) {
 	return (
 		<Empty>
@@ -45,10 +33,8 @@ function TestRunEmpty({ filtered }: { filtered: boolean }) {
 
 interface TestRunListResultsProps {
 	items: TestRunListItem[];
-	/** 列表数据到位没有；没到位一律先给骨架。 */
 	loaded: boolean;
 	onEdit: (runId: string) => void;
-	/** 只用来判断「这个空是不是自己筛出来的」。 */
 	search: TestRunsSearch;
 }
 
@@ -59,20 +45,9 @@ export function TestRunListResults({
 	search,
 }: TestRunListResultsProps) {
 	if (!loaded) {
-		/*
-		 * 什么都不渲染，**不再摆第二份表格骨架**。这一档只在一种情况下走到：
-		 * URL 上直接带着关键词进来（loaderDeps 只取 runStatus，理由见
-		 * routes/…/test-runs/index.tsx），loader 预取的 key 与这里要的对不上。
-		 * 那一刻屏幕上刚放完路由的 pendingComponent（TestRunListPageSkeleton），
-		 * 再摆一份长得一样、DOM 却是新挂的骨架，等于同一次加载放两遍灰条。
-		 *
-		 * 这个早返回本身不能删：删了会掉进下面的 `items.length === 0` 分支，
-		 * 在数据还没到的时候宣布「还没有测试任务」——那是句假话。
-		 */
 		return null;
 	}
 	if (items.length === 0) {
-		// 两个筛选任意一个还挂着，这个「空」就是筛出来的，不是真的没数据。
 		return (
 			<TestRunEmpty
 				filtered={

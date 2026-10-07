@@ -4,12 +4,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * {@code POST /ingest/executions} 的请求体。
- *
- * <p>**没有单数的 {@code runId}**——服务端把那个键声明成了 {@code z.never()}，
- * 发过去是一条 400，而不是被静默 strip（D31）。所以这里连字段都不留。
- */
 public record IngestExecutionRequestWire(
         String branch,
         String ciUrl,

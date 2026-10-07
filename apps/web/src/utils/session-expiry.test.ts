@@ -1,14 +1,3 @@
-/**
- * 「会话没了」只有一个出口，这里钉住那个出口的三块行为：
- *
- * 1. 谁算「未登录」——只有 UNAUTHORIZED，FORBIDDEN 这类「登录了但不够格」的
- *    错误绝不能被当成掉线，否则任何一次业务拒绝都会把用户直接踢回登录页。
- * 2. 登录页路径的判断——三处调用点（根闸门、根外壳、失效跳转）共用同一份
- *    字符串比较，语义以实现为准，不按直觉猜。
- * 3. 回调槽的状态机——`redirecting` 把同一次失效的多条查询收敛成一次导航，
- *    `resetSessionExpiredNotice` 让下一次失效仍然跳得动；这些都是模块级
- *    可变状态，测试之间必须显式复位，否则会互相污染。
- */
 import { ORPCError } from "@orpc/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -122,9 +111,6 @@ describe("会话过期回调槽：注册、收敛、复位", () => {
 		expect(handler).not.toHaveBeenCalled();
 	});
 
-	// 下面这一对刻意不在各自内部收尾：第一条留下「已触发过、redirecting=true」
-	// 的模块级状态，故意不调用 reset；如果 beforeEach 里的复位被删掉，
-	// 第二条会立刻变红——用这一对钉住「测试之间必须显式复位」这件事本身。
 	it("留下未复位的状态（配合下一条验证 beforeEach 生效）", () => {
 		const staleHandler = vi.fn();
 		setSessionExpiredHandler(staleHandler);
@@ -138,7 +124,6 @@ describe("会话过期回调槽：注册、收敛、复位", () => {
 
 		notifySessionExpired();
 
-		// 如果 beforeEach 没有复位 redirecting，这里会因为「收敛」而调用 0 次。
 		expect(handler).toHaveBeenCalledTimes(1);
 	});
 });

@@ -5,10 +5,6 @@ import type { DbTransaction } from "./repository-types";
 
 type SubtreeExecutor = DbTransaction | typeof db;
 
-/**
- * Returns the ids of `rootId` and every descendant module (recursive CTE).
- * Used for move-cycle detection and "include descendants" case filtering.
- */
 export async function getModuleSubtreeIds(
 	executor: SubtreeExecutor,
 	rootId: string

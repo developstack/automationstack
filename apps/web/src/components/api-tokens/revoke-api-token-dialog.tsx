@@ -19,13 +19,6 @@ interface RevokeApiTokenDialogProps {
 	token: ApiTokenView;
 }
 
-/**
- * 吊销的二次确认；服务端拒绝时错误就显示在框里，框不关闭。
- *
- * 这一步值得拦一下的理由不是「点错了很麻烦」，是它没有下一步：库里只有
- * 哈希，吊销之后既恢复不了、也重新看不到明文，正在用它的脚本下一次请求
- * 就开始 401。这两句必须写在框里，不能只靠按钮的红色暗示。
- */
 export function RevokeApiTokenDialog({
 	actions,
 	token,

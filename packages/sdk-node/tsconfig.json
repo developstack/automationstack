@@ -3,8 +3,5 @@
   "compilerOptions": {
     "strictNullChecks": true
   },
-  // 这份配置没有 outDir，tsc 的默认 exclude 因此不会自动排掉 `dist`——
-  // 不写这一行，`check-types` 会把 build 产出的 `.d.ts` 也当成输入源码去检查
-  // （本地跑过 build 之后才会显形，CI 上是干净 checkout 反而看不见）。
   "exclude": ["node_modules", "dist"]
 }

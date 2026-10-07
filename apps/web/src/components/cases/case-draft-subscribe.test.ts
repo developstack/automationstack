@@ -1,17 +1,3 @@
-/**
- * 草稿存储层的单测之三：**同标签页内的变更通知**。
- *
- * 这是修「有草稿不会自动更新页面，要刷新才会出现」那个 bug 的机制：`storage`
- * 事件只在别的标签页写入时触发，写入它的那个标签页自己收不到，所以写入方必须
- * 自己说一声。写错不会报错，只会让侧栏那一行又悄悄退回「必须刷新整页」。
- *
- * 另一半盯的是自激：订阅者的回调就是回头去调 `listCaseDrafts`，而
- * `listCaseDrafts` 里的老键迁移**也会写 localStorage**。迁移那条路要是也发通知，
- * 就成了「读 → 迁 → 通知 → 再读」。这里把「迁移一声不吭」逐条钉死。
- *
- * 键的算法与迁移本身在 `case-draft-storage.test.ts` / `case-draft-migration.test.ts`
- * （单文件 300 行上限）。
- */
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -40,12 +26,10 @@ function draftOf(caseId: string): Omit<CaseDraft, "savedAt"> {
 	};
 }
 
-/** 老格式的键：后缀是 moduleId 而不是 caseId。 */
 function legacyKey(): string {
 	return `automationstack.case-draft.${PROJECT}.${MODULE_A}`;
 }
 
-/** 老格式：键的后缀是 moduleId，value 里没有 moduleId 字段。 */
 function seedLegacy(store: Storage, caseId: string): void {
 	store.setItem(
 		legacyKey(),
@@ -114,7 +98,6 @@ describe("subscribeCaseDrafts", () => {
 
 	it("订阅者在回调里退订自己，同一轮排在它后面的照样收得到", () => {
 		installStorage();
-		// 先订阅、并且在回调里就把自己摘掉：通知过程中订阅表被就地改了。
 		let stopSelf: (() => void) | null = null;
 		stopSelf = subscribeCaseDrafts(() => stopSelf?.());
 		const other = vi.fn();
@@ -146,8 +129,6 @@ describe("老键迁移不自激", () => {
 		const listener = vi.fn();
 		const unsubscribe = subscribeCaseDrafts(listener);
 
-		// 这一趟实实在在写了 localStorage（老键搬到新键），但那是同一份草稿
-		// 换个地方存，清单内容一个字没变，不该惊动任何人。
 		const drafts = listCaseDrafts(PROJECT);
 
 		expect(drafts).toHaveLength(1);
@@ -159,8 +140,6 @@ describe("老键迁移不自激", () => {
 	it("订阅者回调里调 listCaseDrafts 触发迁移，也只转一圈就停", () => {
 		const store = installStorage();
 		seedLegacy(store, "legacy-case");
-		// 复刻 useLocalCaseDrafts 的真实回调：收到通知就整份重读，
-		// 而重读顺手就把老键迁了。迁移要是也发通知，这里会再被叫一次。
 		const seen: number[] = [];
 		const unsubscribe = subscribeCaseDrafts(() => {
 			seen.push(listCaseDrafts(PROJECT).length);
@@ -168,8 +147,6 @@ describe("老键迁移不自激", () => {
 
 		writeCaseDraft(PROJECT, draftOf("case-1"));
 
-		// 恰好一次：迁移不发通知，所以没有第二圈。这个数字要是变成 2，
-		// 说明迁移那条路又开始发通知了（幂等保证它最终会停，但白转一圈）。
 		expect(seen).toEqual([2]);
 		expect(store.getItem(legacyKey())).toBeNull();
 		unsubscribe();

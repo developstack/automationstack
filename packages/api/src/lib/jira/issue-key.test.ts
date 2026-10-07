@@ -29,7 +29,6 @@ test("parseIssueKey 认新版 issue 详情页与看板深链", () => {
 });
 
 test("parseIssueKey 拒绝认不出来的输入而不是硬猜", () => {
-	// 从一句话里猜 key 会把结论静默关联到错误的 issue 上，宁可拒绝。
 	expect(parseIssueKey("PAY-123 登录失败")).toBeNull();
 	expect(parseIssueKey("")).toBeNull();
 	expect(parseIssueKey("   ")).toBeNull();

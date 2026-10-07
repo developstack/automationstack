@@ -1,12 +1,3 @@
-/**
- * 项目级授权的规则表。
- *
- * 这是本仓库第一份授权逻辑，而授权逻辑的失效方式是「多放行了一个人」——
- * 既不抛异常也不让 tsc 变红，没有测试就没有任何东西会报警。所以这里把三条
- * 规则的**全部**输入组合逐一钉死（平台角色 2 档 × 项目角色 3 种取值），
- * 而不是只测几个代表点：组合总共 6 种，与其挑代表不如全列出来，
- * 将来谁加了第三档角色，缺哪一格一眼就看得见。
- */
 import { describe, expect, it } from "vitest";
 
 import {
@@ -16,7 +7,6 @@ import {
 	seesAllProjects,
 } from "./project-access";
 
-/** 平台 member（绝大多数人）在项目里的三种可能处境。 */
 const memberOfProject: ProjectAccess = {
 	platformRole: "member",
 	projectRole: "member",
@@ -30,7 +20,6 @@ const strangerToProject: ProjectAccess = {
 	projectRole: null,
 };
 
-/** 同样三种处境，但人是平台 admin。 */
 const adminOutsideProject: ProjectAccess = {
 	platformRole: "admin",
 	projectRole: null,

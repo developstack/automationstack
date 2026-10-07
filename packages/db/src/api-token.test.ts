@@ -1,11 +1,3 @@
-/**
- * 钉住 token 的**格式契约**。
- *
- * 这不是「测一遍 crypto 有没有 bug」，而是因为这套格式有两个远端消费者：
- * 已经发出去的 token 存在别人的 CI 配置里，而库里那一列存的是哈希——
- * 生成规则或哈希口径任何一点漂移（少了前缀、换了字母表、大写十六进制），
- * 表现都是**存量 token 集体静默失效**，没有任何一处会报错。
- */
 import { describe, expect, it } from "vitest";
 
 import {
@@ -17,7 +9,6 @@ import {
 	hashApiToken,
 } from "./api-token";
 
-/** `as_` + base64url(32 字节)，后者无 padding 时正好 43 个字符。 */
 const EXPECTED_PLAINTEXT_LENGTH = 46;
 const HEX_64 = /^[0-9a-f]{64}$/;
 const BASE64URL_BODY = /^[A-Za-z0-9_-]+$/;

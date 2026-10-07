@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** §7.2 那五条铁律，逐条盯住。 */
 class AutomationStackReporterTest {
 
     private static final String OK_RECEIPT =
@@ -18,7 +17,6 @@ class AutomationStackReporterTest {
 
     @Test
     void addResultBuffersAndSendsNothing() {
-        // 第 1 条：跑一条报一条既慢又碎（D29）。
         TestFixtures.RecordingTransport transport = new TestFixtures.RecordingTransport();
         AutomationStackReporter reporter =
                 TestFixtures.reporter(transport, new TestFixtures.CollectingSink()).build();
@@ -40,7 +38,6 @@ class AutomationStackReporterTest {
         assertEquals(1, transport.requests.size());
         assertEquals("https://qa.example.com/ingest/executions", transport.requests.get(0).url());
         assertEquals(TestFixtures.EXECUTION_ID, outcome.receipt().executionId());
-        // 第 3 条：对账单一定会打出来，writtenTo 逐任务一行。
         assertEquals("[automationstack] 上报对账单（execution " + TestFixtures.EXECUTION_ID + "）",
                 sink.lines.get(0));
         assertTrue(sink.lines.get(1).contains("《冒烟》"));
@@ -61,13 +58,11 @@ class AutomationStackReporterTest {
         assertTrue(body.contains("\"result\":\"passed\""), body);
         assertTrue(body.contains("\"durationMs\":1200"), body);
         assertTrue(body.contains("\"startedAt\":\"2026-01-01T00:00:00.000Z\""), body);
-        // D31：单数 runId 是 z.never()，发过去是一条 400。
         assertTrue(!body.contains("\"runId\":"), body);
     }
 
     @Test
     void sendsOnePostPerBatchWithDerivedKeys() {
-        // 第 2 条：一次进程一个 run key，每批从它派生；重试算出来的还是同一个。
         TestFixtures.RecordingTransport transport = new TestFixtures.RecordingTransport()
                 .queueJson(OK_RECEIPT).queueJson(OK_RECEIPT);
         AutomationStackReporter reporter =
@@ -83,14 +78,12 @@ class AutomationStackReporterTest {
         assertTrue(transport.bodyOf(0).contains("\"idempotencyKey\":\"" + TestFixtures.RUN_KEY + "\""));
         assertTrue(transport.bodyOf(1).contains("\"idempotencyKey\":\""
                 + Idempotency.deriveBatchIdempotencyKey(TestFixtures.RUN_KEY, 1) + "\""));
-        // 两批的 writtenTo 合并成一行。
         assertEquals(1, outcome.receipt().writtenTo().size());
         assertEquals(4, outcome.receipt().writtenTo().get(0).updated());
     }
 
     @Test
     void emptyWrittenToThrowsWithEveryServerReasonVerbatim() {
-        // 第 4 条：静默成功是最坏的情况。
         Map<String, Object> unmatched = Map.of("reason", "用例不存在或不属于本项目", "sourceRef", "PAY-9");
         String receipt = Json.encode(Map.of(
                 "executionId", TestFixtures.EXECUTION_ID,
@@ -108,7 +101,6 @@ class AutomationStackReporterTest {
         assertTrue(error.getMessage().contains("用例不存在或不属于本项目"));
         assertTrue(error.getMessage().contains("PAY-9"));
         assertNotNull(error.receipt());
-        // 抛之前对账单已经打出来了：抛出去之后调用方可能什么都不打。
         assertEquals("写入 0 个测试任务", sink.lines.get(1));
     }
 
@@ -129,7 +121,6 @@ class AutomationStackReporterTest {
 
     @Test
     void doesNotTouchTheExitSignalWhenOptedOut() {
-        // JUnit 薄壳走的就是这条路：把失败翻译成一次测试失败，让 Surefire 决定退出码。
         ExitSignal.reset();
         try {
             TestFixtures.RecordingTransport transport = new TestFixtures.RecordingTransport()
@@ -171,7 +162,6 @@ class AutomationStackReporterTest {
 
         assertEquals("https://qa.example.com/ingest/executions", transport.requests.get(0).url());
         assertEquals("https://qa.example.com/ingest/attachments/presign", transport.requests.get(1).url());
-        // 附件降级不影响结论那一轮的成功。
         assertTrue(sink.text().contains("附件 存储未配置"));
     }
 

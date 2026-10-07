@@ -9,10 +9,6 @@ import {
 	AlertDialogTitle,
 } from "@automationstack/ui/components/alert-dialog";
 
-/**
- * 提交报告前的二次确认（从 report-submit-bar.tsx 拆出来）。
- */
-
 interface SubmitConfirmProps {
 	onConfirm: () => void;
 	onOpenChange: (open: boolean) => void;
@@ -21,11 +17,6 @@ interface SubmitConfirmProps {
 	runName: string;
 }
 
-/**
- * 二次确认。文案必须把「不可逆」说完整——提交锁死的不只是这份报告的数字，
- * 而是整个测试任务的一切写操作（plan §2.5）。只写「提交后不可修改」会让人以为
- * 「不能改的是报告」，于是提交完才发现连补一张截图都不行。
- */
 export function ReportSubmitConfirmDialog({
 	onConfirm,
 	onOpenChange,

@@ -46,8 +46,6 @@ def pytest_addoption(parser: Any) -> None:
         "--automationstack",
         action="store_true",
         default=False,
-        # 默认关：装了插件的人不该因为忘了配 AS_TOKEN 就跑不了测试。
-        # 上报是一件要显式要求的事，而不是装个包就偷偷开始往平台写东西。
         help="把本轮结果批量上报到 automationstack（需要 AS_TOKEN / AS_PROJECT / AS_BASE_URL）",
     )
     group.addoption(
@@ -65,15 +63,10 @@ def pytest_configure(config: Any) -> None:
     )
     if not config.getoption("--automationstack"):
         return
-    # 在这里构造 reporter，等于把「缺 AS_TOKEN」摁在**跑测试之前**炸掉——
-    # 跑完二十分钟才发现结果无处可去是最贵的失败方式。
     setattr(config, _SESSION_ATTR, _Session(config))
 
 
 def _session_of(config: Any) -> Optional["_Session"]:
-    # 用 setattr 而不是 pytest 的 `Stash`：`Stash` 是 7.0 才有的，
-    # 而 `pyproject.toml` 声明的下限是 pytest>=7 的**运行时**，
-    # 装着 7.0 之前版本的老仓库至少要能给出一句能读的报错而不是 AttributeError。
     return getattr(config, _SESSION_ATTR, None)
 
 
@@ -122,8 +115,6 @@ class _Session:
             return
         source_ref = self.source_refs.get(report.nodeid)
         if source_ref is None:
-            # 没 sourceRef 的用例**不上报**，也不静默：整批发过去只会让它们
-            # 挤满对账单的「未匹配」，把真正该看的那几条淹掉。收工时统一说一句。
             self.skipped_nodeids.append(report.nodeid)
             return
         text = failure_text(report)
@@ -136,9 +127,6 @@ class _Session:
             )
         )
         if text and len(text) > MAX_INGEST_COMMENT_LENGTH:
-            # 只有**超了才**传 log 附件：不超时附件与 comment 一字不差，
-            # 而附件是按任务计配额的（500 条/任务），拿它去存两行重复文本
-            # 会让真正需要附件的那几条用例被配额挡在外面。
             self.reporter.add_attachment(
                 AttachmentInput(
                     body=text.encode("utf-8"),
@@ -165,7 +153,6 @@ def pytest_collection_modifyitems(config: Any, items: List[Any]) -> None:
     session = _session_of(config)
     if session is None:
         return
-    # report 上没有 marker，只有 nodeid，所以在收集阶段把对应关系存下来。
     for item in items:
         source_ref = source_ref_of(item, nodeid_fallback=session.nodeid_fallback)
         if source_ref:
@@ -175,12 +162,9 @@ def pytest_collection_modifyitems(config: Any, items: List[Any]) -> None:
 def pytest_runtest_logreport(report: Any) -> None:
     session = _ACTIVE.get("session")
     if session is not None:
-        # 只入内存缓冲，一个网络请求都不发（§7.2 第 1 条 / D29）。
         session.record(report)
 
 
-#: `pytest_runtest_logreport` 的签名里没有 config，只能从这里取当前会话。
-#: 一个进程里同时跑两轮 pytest 不是本插件支持的场景（pytest 自己也不支持）。
 _ACTIVE: Dict[str, Any] = {}
 
 
@@ -202,11 +186,8 @@ def pytest_sessionfinish(session: Any, exitstatus: int) -> None:
     try:
         reporter.finish()
     except IngestEmptyWriteError as error:
-        # §7.2 第 4 条：一条都没写进去必须显式报错 + 退出码非零。
-        # 理由是**服务端原文**，插件一个字都不概括。
         print(str(error))
         session.exitstatus = 1
     except Exception as error:  # noqa: BLE001 — 上报炸了也得让整轮判失败
-        # 网络/鉴权炸了同样不能静默：QA 会以为结果进去了。
         print("[automationstack] 上报失败：{0}".format(error))
         session.exitstatus = 1

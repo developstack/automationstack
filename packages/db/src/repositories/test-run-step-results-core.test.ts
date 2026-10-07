@@ -1,7 +1,3 @@
-/**
- * 分步判定的三条纯逻辑。它们错了不会有任何地方报错，只会让用例结论、
- * 报告里的失败原因、Jira 单的描述**静默地**变成另一个意思，所以逐条钉住。
- */
 import { describe, expect, it } from "vitest";
 
 import type { CaseStep } from "../schema/test-cases";

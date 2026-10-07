@@ -16,7 +16,6 @@ import type { PlatformUserActions } from "@/components/platform-users/use-platfo
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 
 interface ConfirmCopy {
-	/** 同时用作标题里的动词与确认按钮文案，两处对不上时用户会犹豫。 */
 	action: string;
 	description: string;
 	destructive: boolean;
@@ -51,7 +50,6 @@ interface PlatformUserConfirmDialogProps {
 	user: PublicUser;
 }
 
-/** 行内菜单动作的二次确认；服务端拒绝时错误就显示在框里，框不关闭。 */
 export function PlatformUserConfirmDialog({
 	actions,
 	user,

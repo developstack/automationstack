@@ -1,8 +1,3 @@
-/**
- * Confirmation dialog for `cases.rollback`. Rollback never rewrites
- * history: it re-applies an old snapshot as a brand-new version, so the
- * copy has to say so before the user confirms.
- */
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -51,11 +46,9 @@ function RollbackConfirmBody({
 interface VersionRollbackDialogProps {
 	caseId: string;
 	onClose: () => void;
-	/** Version to restore; `null` keeps the dialog closed. */
 	targetVersion: number | null;
 }
 
-/** Second-step confirmation before rolling a case back to a version. */
 export function VersionRollbackDialog({
 	caseId,
 	onClose,
@@ -72,7 +65,6 @@ export function VersionRollbackDialog({
 					queryKey: orpc.cases.listVersions.key({ input: { caseId } }),
 				});
 				queryClient.invalidateQueries({ queryKey: orpc.cases.list.key() });
-				// 回滚到与当前内容一致的版本不会建新版本（version === null）。
 				if (result.version === null) {
 					toast.info("该版本与当前内容一致，未生成新版本");
 				} else {

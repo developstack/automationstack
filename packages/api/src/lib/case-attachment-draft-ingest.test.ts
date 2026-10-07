@@ -11,16 +11,6 @@ import {
 } from "./case-attachment-draft-ingest";
 import type { CaseAttachmentKeyScope } from "./case-attachment-policy";
 
-/**
- * 与 `case-attachment-ingest.test.ts` 同一种取向：测的是**编排**，不是判定。
- *
- * 草稿态没有数据库行可以兜底，`isCaseAttachmentKeyOwnedBy` 是这条链路上唯一的
- * 归属判据，所以下面每一条都显式断言「越界的 key 出现时，对象存储被碰过几次」。
- * 这类性质最典型的死法是有人为了少一次遍历把预检那个循环删掉——那时单条的
- * `verifyUploadedCaseImage` 仍然会拒绝越界 key，功能测试照样绿，
- * 但「整批要么全过要么一个对象都不碰」这条保证已经没了。
- */
-
 const SCOPE: CaseAttachmentKeyScope = {
 	caseId: "22222222-2222-4222-8222-222222222222",
 	projectId: "11111111-1111-4111-8111-111111111111",
@@ -29,7 +19,6 @@ const SCOPE: CaseAttachmentKeyScope = {
 const ownedKey = (name: string): string =>
 	`test-cases/${SCOPE.projectId}/${SCOPE.caseId}/${name}.png`;
 
-/** 另一条用例下的 key——形状完全合法，只是不属于调用者。 */
 const FOREIGN_KEY = `test-cases/${SCOPE.projectId}/33333333-3333-4333-8333-333333333333/abc.png`;
 
 const VALID_HEAD: AttachmentObjectHead = {
@@ -42,7 +31,6 @@ const errors: DraftCaseAttachmentErrors = {
 };
 
 interface FakeStore extends AttachmentObjectStore {
-	/** 按发生顺序记录的调用，用来断言先后关系而不只是次数。 */
 	calls: string[];
 }
 
@@ -116,9 +104,6 @@ describe("verifyDraftCaseAttachments", () => {
 			)
 		).rejects.toThrow("storageKey 不属于该用例");
 
-		// 最关键的一条：合法的那个 key 也不能被 Head——否则这条接口就成了
-		// 「这个对象存不存在」的探测器，而且越界 key 只要混在一批里就能拿到
-		// 其余 key 的存在性信息。
 		expect(storage.calls).toEqual([]);
 	});
 
@@ -197,7 +182,6 @@ describe("resolveNewCaseAttachments", () => {
 						{ fileName: "a.png", id: "a", storageKey: ownedKey("one") },
 					],
 					createdBy: "user-1",
-					// 与 storageKey 里的 caseId 不同：伪造 key 想偷别人的图就是这个形状。
 					id: "44444444-4444-4444-8444-444444444444",
 					projectId: SCOPE.projectId,
 					storage,

@@ -11,16 +11,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
-/**
- * ⚠️ **契约副本的防漂测试。**
- *
- * <p>三家 SDK 各自带着一份 ingest 契约的副本（Java 没法 import 一个 TypeScript 的
- * zod schema，Python 也不行）。副本一定会漂，问题只是「漂了之后多久有人发现」——
- * 这个测试把「发现」提前到 {@code mvn test}：直接把 {@code sdk-node} 的
- * {@code .ts} 当文本读，逐个常量比。
- *
- * <p>它红了说明 Node 那边改了契约。**要改的是这个包的常量，不是这个测试。**
- */
 class ContractParityTest {
 
     private static final Path NODE_SRC = Path.of("..", "sdk-node", "src");
@@ -44,7 +34,6 @@ class ContractParityTest {
     private static int number(Map<String, String> constants, String name) {
         String raw = constants.get(name);
         assertTrue(raw != null, "sdk-node 里没有 " + name + " 了");
-        // Node 那边写的是 20_000 这种带下划线的字面量。
         return Integer.parseInt(raw.replace("_", ""));
     }
 
@@ -84,7 +73,6 @@ class ContractParityTest {
 
     @Test
     void batchSizesStayUnderTheServerCaps() {
-        // 这几条不是抄来的，是必须自洽的：批大小超过单请求上限，第一批就是一条 400。
         assertTrue(ContractLimits.RESULTS_PER_BATCH <= ContractLimits.MAX_INGEST_RESULTS_PER_REQUEST);
         assertTrue(ContractLimits.ATTACHMENTS_PER_BATCH <= ContractLimits.MAX_INGEST_ATTACHMENTS_PER_REQUEST);
         assertTrue(ContractLimits.MAX_INGEST_COMMENT_LENGTH <= ContractLimits.MAX_INGEST_MESSAGE_LENGTH);
@@ -92,7 +80,6 @@ class ContractParityTest {
 
     @Test
     void resultWireValuesMatchTheServerEnum() {
-        // 服务端的 z.enum 认的是小写。Java 的枚举名是大写，转换只有一处。
         assertEquals("passed", AutomationCaseResult.PASSED.wire());
         assertEquals("failed", AutomationCaseResult.FAILED.wire());
         assertEquals("blocked", AutomationCaseResult.BLOCKED.wire());

@@ -1,8 +1,3 @@
-/**
- * 笛卡尔展开 → 一人一行。三件事出错都不会有任何东西报警，所以逐条钉住：
- * 多项目的人被并成一行、零项目的人不能被吃掉（他正是 leftJoin 的全部理由）、
- * 用户顺序原样保留（列表页的顺序由 SQL 的 `order by` 定，这里不许重排）。
- */
 import { describe, expect, it } from "vitest";
 
 import type { PublicUser } from "../schema/users";
@@ -23,7 +18,6 @@ const alice = makeUser("u-1", "alice");
 const bob = makeUser("u-2", "bob");
 const carol = makeUser("u-3", "carol");
 
-/** 有项目的那种行：三列一起有值。 */
 const rowWithProject = (
 	user: PublicUser,
 	projectId: string,
@@ -35,7 +29,6 @@ const rowWithProject = (
 	user,
 });
 
-/** leftJoin 落空的那种行：三列一起为 null。 */
 const rowWithoutProject = (user: PublicUser): UserProjectRow => ({
 	projectId: null,
 	projectName: null,

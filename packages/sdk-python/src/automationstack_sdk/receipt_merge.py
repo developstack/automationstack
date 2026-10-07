@@ -34,8 +34,6 @@ def merge_receipts(receipts: List[IngestExecutionReceipt]) -> IngestExecutionRec
                 updated=(previous.updated if previous else 0) + entry.updated,
             )
     return IngestExecutionReceipt(
-        # 多批时 executionId 有多个，取第一批的：它是人回平台查执行记录的入口，
-        # 而同一个 run key 派生出的这几行在报告里本来就是相邻的。
         execution_id=receipts[0].execution_id if receipts else "",
         out_of_scope=out_of_scope,
         skipped_manual=skipped_manual,

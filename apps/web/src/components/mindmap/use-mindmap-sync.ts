@@ -1,11 +1,3 @@
-/**
- * React wiring for the mindmap canvas: guards, context menu, delete
- * confirmation and the operation listener that mirrors edits to the server.
- *
- * Everything handed to mind-elixir must be reference-stable, because the
- * instance is created once and keeps the callbacks it was constructed with.
- */
-
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import type { MindElixirInstance, NodeObj, Operation } from "mind-elixir";
@@ -21,7 +13,6 @@ import type { MindmapScope } from "./mindmap-scope.ts";
 import { MindmapSyncRunner } from "./mindmap-sync-runner.ts";
 import type { MindmapProject, MindmapTreeData } from "./mindmap-tree-input.ts";
 
-/** The tree + project pair one canvas render is built from. */
 export interface MindmapSnapshotInput {
 	data: MindmapTreeData;
 	project: MindmapProject;
@@ -35,7 +26,6 @@ export interface MindmapDeleteDialogState {
 }
 
 export interface MindmapSync {
-	/** Subscribes the runner to one instance; returns the teardown. */
 	attach: (
 		mind: MindElixirInstance,
 		snapshot: MindmapSnapshotInput
@@ -43,7 +33,6 @@ export interface MindmapSync {
 	before: ReturnType<typeof createMindmapGuards>;
 	contextMenu: ReturnType<typeof buildMindmapContextMenu>;
 	deleteDialog: MindmapDeleteDialogState;
-	/** Redraws the canvas for data this client did not produce. */
 	syncExternal: (snapshot: MindmapSnapshotInput) => void;
 }
 
@@ -51,12 +40,10 @@ const notify = (message: string) => {
 	toast.error(message);
 };
 
-/** 能力提示（超出渲染预算），不是错误：用中性的样式，别用红色。 */
 const notifyLimit = (message: string) => {
 	toast.warning(message);
 };
 
-/** Bridges the async `before.removeNodes` veto to an AlertDialog. */
 function useRemovalConfirm() {
 	const resolverRef = useRef<((confirmed: boolean) => void) | null>(null);
 	const [count, setCount] = useState(0);
@@ -86,7 +73,6 @@ function useRemovalConfirm() {
 	};
 }
 
-/** Opens the case detail in the list view (the URL owns that selection). */
 function useOpenCase(projectId: string) {
 	const navigate = useNavigate();
 	return useCallback(

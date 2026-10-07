@@ -1,8 +1,3 @@
-/**
- * `isNoopCasePatch` decides whether a save is allowed to create a version.
- * Getting it wrong is silent in both directions: too eager and real edits
- * vanish, too lax and the history fills up with identical snapshots again.
- */
 import { describe, expect, it } from "vitest";
 
 import type { CaseStep, TestCase } from "../schema/test-cases";

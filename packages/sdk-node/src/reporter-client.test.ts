@@ -10,7 +10,6 @@ const BASE_OPTIONS = {
 	baseUrl: "https://qa.example.com",
 	idempotencyKey: RUN_KEY,
 	projectId: "11111111-2222-4333-8444-555555555555",
-	// 重试不睡：睡了测试就变成计时器测试，而这里要验的是「键有没有复用」。
 	sleep: () => Promise.resolve(),
 	token: "as_secret",
 };
@@ -48,8 +47,6 @@ const receiptWith = (writtenTo: unknown[]) => ({
 	writtenTo,
 });
 
-// 跟着 @types/node 走：这个字段的类型里带 null，写死成 number | string
-// | undefined 会在升级 @types/node 时炸。
 let previousExitCode: typeof process.exitCode;
 
 beforeEach(() => {
@@ -57,8 +54,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	// 一定要还原：SDK 故意去改 process.exitCode，不还原会把整个 vitest 进程
-	// 的退出码一起带成非零。
 	process.exitCode = previousExitCode;
 });
 
@@ -143,11 +138,9 @@ describe("编程式入口（框架无关）", () => {
 		const error = await reporter.finish().catch((thrown: unknown) => thrown);
 		expect(error).toBeInstanceOf(IngestEmptyWriteError);
 		expect(process.exitCode).toBe(1);
-		// 服务端原文一个字不改，SDK 不自己概括一句「上报失败」。
 		expect(String((error as Error).message)).toContain(
 			"项目里没有这个 sourceRef 的用例"
 		);
-		// 打印仍然发生：抛错之前对账单已经落到 sink 上。
 		expect(lines.join("\n")).toContain("PAY-NEW-099");
 	});
 
@@ -190,7 +183,6 @@ describe("编程式入口（框架无关）", () => {
 			(call) => (call.body as { idempotencyKey: string }).idempotencyKey
 		);
 		expect(new Set(keys).size).toBe(2);
-		// 合并之后人看到的是一个任务一行、250 条。
 		expect(outcome.receipt.writtenTo).toEqual([
 			{ runId: "run-a", runName: "v2.3 回归", updated: 250 },
 		]);

@@ -14,12 +14,6 @@ import {
 	groupRegisterItemsByRunId,
 } from "./attachment-reconcile";
 
-/**
- * 登记阶段的纯折算（`./attachment-register-plan`）与两个阶段共用的文案
- * （`./attachment-reject-text`）：分组保留请求下标、拒绝逐条落账、
- * 拿不到任务名时说「该测试任务」。
- */
-
 test("登记请求按任务分组，组内保留请求里的下标", () => {
 	const groups = groupRegisterItemsByRunId([
 		registerItem(RUN_ONE, RUN_CASE_ONE),

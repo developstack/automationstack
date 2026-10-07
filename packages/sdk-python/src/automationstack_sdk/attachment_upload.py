@@ -45,7 +45,6 @@ def _build_presign_body(
             for item in chunk
         ],
         "projectId": config.project_id,
-        # 与结论那一轮**必须传同一份**：少传一次，附件会挂到本轮结论压根没写过的任务上。
         "runIds": config.run_ids,
     }
 
@@ -59,8 +58,6 @@ def _put_one(
     failures: List[str],
 ) -> None:
     if upload.index < 0 or upload.index >= len(chunk):
-        # 服务端给回了一个不存在的下标。只可能是契约漂移，逐条记下来而不是抛——
-        # 一个坏下标不该让其余几百个附件全丢。
         failures.append(
             "{0}：presign 返回了越界的 index {1}".format(upload.source_ref, upload.index)
         )
@@ -69,8 +66,6 @@ def _put_one(
     try:
         client.put_binary(upload.upload_url, upload.content_type, source.body)
     except Exception as error:  # noqa: BLE001 — 一个附件传不上不该带走整批
-        # 这一条是**本地**的失败，措辞上明确标出来：与服务端原样透传的拒绝理由
-        # 混在一起时，人得能一眼分清该去查网络还是去查平台。
         failures.append(
             "{0} @《{1}》：（本地）直传失败 {2}".format(
                 upload.source_ref, upload.run_name, error
@@ -92,7 +87,6 @@ def _format_presign_rejections(receipt: IngestAttachmentPresignReceipt) -> List[
     lines = []
     for rejection in receipt.rejected:
         target = " @《{0}》".format(rejection.run_name) if rejection.run_name else ""
-        # reason 原样，一个字不改（§7.2 第 4 条）。
         lines.append("{0}{1}：{2}".format(rejection.source_ref, target, rejection.reason))
     return lines
 
@@ -114,7 +108,6 @@ def _upload_chunk(
     register_items: List[IngestAttachmentRegisterItemWire] = []
     failures: List[str] = []
     for upload in presigned.uploads:
-        # 串行直传：几百个附件并发会把 QA 本机的上行打满，结论那一轮的重试反而卡死。
         _put_one(
             chunk=chunk,
             client=client,

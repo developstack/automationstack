@@ -1,16 +1,3 @@
-/**
- * Pure mapping between the platform module/case tree and mind-elixir data.
- *
- * Field shapes verified against mind-elixir@5.15.1 type declarations
- * (dist/types/types/index.d.ts): `MindElixirData { nodeData: NodeObj; ... }`,
- * `NodeObj<M> { topic; id; children?; tags?: (string | TagObj)[]; expanded?;
- * metadata?: M; ... }`, `TagObj { text; style?; className? }`.
- *
- * Input types below mirror the `mindmap.tree` payload described in
- * docs/phase1-testcase-platform-plan.md §2 (module tree + lightweight case
- * nodes); reconciling them with the real API types is a follow-up task.
- */
-
 import type {
 	CasePriority,
 	CaseStatus,
@@ -32,7 +19,6 @@ import {
 	type MindmapNodeRef,
 } from "./mindmap-node-id.ts";
 
-/** Lightweight case node as served by mindmap.tree (plan §2). */
 export interface MindmapCaseInput {
 	id: string;
 	moduleId: string;
@@ -40,11 +26,9 @@ export interface MindmapCaseInput {
 	priority: CasePriority;
 	sortOrder: number;
 	status: CaseStatus;
-	/** Ordered `CaseStep[]`; rendered as read-only step/expected children. */
 	steps: CaseStep[];
 }
 
-/** Module tree node as served by mindmap.tree (plan §2). */
 export interface MindmapModuleInput {
 	children: MindmapModuleInput[];
 	id: string;
@@ -59,34 +43,18 @@ export interface MindmapTreeInput {
 	projectName: string;
 }
 
-/** Metadata attached to every generated node (`NodeObj.metadata`). */
 export interface MindmapNodeMeta {
-	/**
-	 * Whether the user may attach new children here. False on case nodes (they
-	 * only ever carry generated step children) and on step/expected nodes.
-	 */
 	allowChildren: boolean;
 	kind: MindmapNodeKind;
 }
 
 export type MindmapNode = NodeObj<MindmapNodeMeta>;
 
-/** Reverse ref for entity nodes; the project root maps to neither kind. */
 export interface MindmapEntityRef {
 	id: string;
 	kind: "case" | "module";
 }
 
-/**
- * 优先级标签的配色必须跟着主题走：硬编码亮色 hex 在暗色画布上是刺眼的色块，
- * 而且与列表里的优先级体系对不上。这里复用 packages/ui 的语义令牌，
- * 并保持与 case-meta.ts 里 PRIORITY_BADGE_VARIANTS 相同的强度顺序：
- * P0 实心危险色 → P1 浅危险色 → P2 灰填充 → P3 无填充。
- *
- * P0 必须是实心：淡填充撑不起最高等级，而 --primary 在暗色下是 near-white
- * 实心，把它给 P1 会让 P1 压过 P0。列表视图与脑图视图对同一条用例必须给出
- * 同一个强调顺序，这两处的映射改一处就要改另一处。
- */
 const PRIORITY_TAG_STYLES: Record<
 	CasePriority,
 	Readonly<Record<string, string>>
@@ -103,7 +71,6 @@ const PRIORITY_TAG_STYLES: Record<
 	P3: { background: "transparent", color: "var(--muted-foreground)" },
 };
 
-/** Builds the priority tag (with inline style) shown on a case node. */
 export function buildPriorityTag(priority: CasePriority): TagObj {
 	return { style: PRIORITY_TAG_STYLES[priority], text: priority };
 }
@@ -136,7 +103,6 @@ function toExpectedNode(caseId: string, step: CaseStep): MindmapNode {
 	};
 }
 
-/** `1. <step>` with the expected result as its only child (when non-empty). */
 function toStepNode(
 	caseId: string,
 	step: CaseStep,
@@ -152,11 +118,6 @@ function toStepNode(
 		: { ...node, children: [toExpectedNode(caseId, step)], expanded: true };
 }
 
-/**
- * Case nodes ship collapsed: a project with a few dozen cases would otherwise
- * open as a wall of step text. Cases without steps stay plain leaves so
- * mind-elixir does not draw an expander that reveals nothing.
- */
 function toCaseNode(caseInput: MindmapCaseInput): MindmapNode {
 	const node: MindmapNode = {
 		id: encodeCaseNodeId(caseInput.id),
@@ -172,7 +133,6 @@ function toCaseNode(caseInput: MindmapCaseInput): MindmapNode {
 		: { ...node, children: steps, expanded: false };
 }
 
-/** 哪些模块展开渲染由预算决定，见 mindmap-budget.ts。 */
 interface ModuleContext {
 	casesByModule: ReadonlyMap<string, MindmapCaseInput[]>;
 	expandedModuleIds: ReadonlySet<string>;
@@ -190,7 +150,6 @@ function toModuleNode(
 	);
 	return {
 		children: [...childModules, ...caseChildren],
-		// 折叠的模块整棵子树都不进 DOM，但 `+` 还在，用户随时能自己展开。
 		expanded: context.expandedModuleIds.has(module.id),
 		id: encodeModuleNodeId(module.id),
 		metadata: { allowChildren: true, kind: "module" },
@@ -198,10 +157,6 @@ function toModuleNode(
 	};
 }
 
-/**
- * Maps the platform tree into mind-elixir data. Pure; inputs not mutated.
- * 传入 `plan` 可以复用调用方已经算好的预算（界面提示与画布必须用同一份）。
- */
 export function toMindElixirData(
 	input: MindmapTreeInput,
 	plan: MindmapBudgetPlan = planMindmapRender(input)
@@ -222,19 +177,12 @@ export function toMindElixirData(
 	return { nodeData };
 }
 
-/** Full reverse ref (any kind) from a mind-elixir node. */
 export function getMindmapNodeRef(
 	node: Pick<NodeObj, "id">
 ): MindmapNodeRef | null {
 	return decodeMindmapNodeId(node.id);
 }
 
-/**
- * Reverse ref restricted to the kinds that can own a subtree the server knows
- * about (project | module | case). Step and expected nodes map to null: a node
- * parented under one has no `mindmap.batch` representation, so the operation
- * mapper must drop it rather than invent an entity id.
- */
 export function getContainerNodeRef(
 	node: Pick<NodeObj, "id">
 ): MindmapEntityNodeRef | null {
@@ -242,7 +190,6 @@ export function getContainerNodeRef(
 	return ref === null || isStepNodeRef(ref) ? null : ref;
 }
 
-/** Entity-only reverse ref: `{ kind: module | case, id }`, else null. */
 export function getEntityNodeRef(
 	node: Pick<NodeObj, "id">
 ): MindmapEntityRef | null {
@@ -253,11 +200,6 @@ export function getEntityNodeRef(
 	return { id: ref.id, kind: ref.kind };
 }
 
-/**
- * Guard for before-hooks. Only modules and the project root take children;
- * everything else — including ids this scheme does not recognise — is refused,
- * so an unknown prefix can never be mistaken for a permissive container.
- */
 export function canHaveChildren(node: Pick<NodeObj, "id">): boolean {
 	const kind = decodeMindmapNodeId(node.id)?.kind;
 	return kind === "module" || kind === "project";

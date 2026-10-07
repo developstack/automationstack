@@ -1,16 +1,3 @@
-/**
- * Pure diff of two `CaseStep[]` lists, paired by `step.id`.
- *
- * Classification per step id:
- * - only in new list            -> "added"
- * - only in old list            -> "removed"
- * - content (step/expected) changed -> "modified" (with word-diff segments;
- *   index changes are still reported via oldIndex/newIndex)
- * - content identical, index changed -> "moved"
- * - otherwise                   -> "unchanged"
- *
- * Entry order: new-list order first, then removed entries in old-list order.
- */
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import {
 	buildWordDiffSegments,
@@ -25,7 +12,6 @@ export type StepDiffKind =
 	| "unchanged";
 
 export interface StepDiffEntry {
-	/** Word-diff of `expected`; only present for "modified" entries. */
 	expectedSegments: TextDiffSegment[] | null;
 	id: string;
 	kind: StepDiffKind;
@@ -33,7 +19,6 @@ export interface StepDiffEntry {
 	newStep: CaseStep | null;
 	oldIndex: number | null;
 	oldStep: CaseStep | null;
-	/** Word-diff of `step`; only present for "modified" entries. */
 	stepSegments: TextDiffSegment[] | null;
 }
 
@@ -122,7 +107,6 @@ function countEntries(entries: readonly StepDiffEntry[]): StepsDiffCounts {
 	return counts;
 }
 
-/** Diffs two step lists paired by `step.id`. Pure; inputs are not mutated. */
 export function diffCaseSteps(
 	oldSteps: readonly CaseStep[],
 	newSteps: readonly CaseStep[]

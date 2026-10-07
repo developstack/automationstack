@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** 合并多批的对账单：只有 writtenTo 按 runId 累加，三类拒绝一条都不许合掉。 */
 class ReceiptMergeTest {
 
     private static IngestExecutionReceipt receipt(String executionId, List<IngestWrittenToEntry> writtenTo) {
@@ -29,7 +28,6 @@ class ReceiptMergeTest {
 
     @Test
     void keepsFirstMentionOrder() {
-        // 行序每次跑都一样，人才能一眼看出「有没有变化」。
         IngestExecutionReceipt merged = ReceiptMerge.mergeReceipts(List.of(
                 receipt("e1", List.of(new IngestWrittenToEntry("r2", "回归", 1))),
                 receipt("e2", List.of(new IngestWrittenToEntry("r1", "冒烟", 1)))));
@@ -45,7 +43,6 @@ class ReceiptMergeTest {
 
     @Test
     void concatenatesRejectionsWithoutDeduplicating() {
-        // 同一条 sourceRef 在两批里各被拒一次是两件事，合掉就少了一条要处理的。
         IngestUnmatchedCaseEntry unmatched = new IngestUnmatchedCaseEntry("用例不存在", "PAY-1");
         IngestExecutionReceipt merged = ReceiptMerge.mergeReceipts(List.of(
                 new IngestExecutionReceipt("e1", List.of(), List.of(), List.of(unmatched), List.of()),
@@ -68,7 +65,6 @@ class ReceiptMergeTest {
 
     @Test
     void noWritesIsTheOnlyFailureSignal() {
-        // 不看状态码：服务端这种情况下回的仍然是 200 加一份说明详尽的对账单（§5.8）。
         assertTrue(ReceiptMerge.hasNoWrites(TestFixtures.emptyReceipt()));
         assertFalse(ReceiptMerge.hasNoWrites(
                 receipt("e1", List.of(new IngestWrittenToEntry("r1", "冒烟", 0)))));

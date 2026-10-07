@@ -11,14 +11,6 @@
       "dependsOn": ["^lint"]
     },
     "check-types": {
-      // ^build 是必须的：@automationstack/sdk 的 `types` 指向 ./dist/index.d.ts，
-      // 冷树上没人先构建它，依赖它的包就会刷一片
-      // `TS2307: Cannot find module '@automationstack/sdk'`。
-      //
-      // ⚠️ 本机看不出来：dist 构建过一次就一直躺在那儿，turbo 还会 FULL TURBO
-      // 直接 replay 缓存，于是 pre-push 的 check-types 是绿的、CI 是红的。
-      // 2026-08-26 就是这么红的一次（examples/nodejs 从 .js 改成 .ts 之后，
-      // 第一次有 workspace 外部的包对着 sdk 的 dist 做类型检查，缺口才露出来）。
       "dependsOn": ["^check-types", "^build"]
     },
     "dev": {

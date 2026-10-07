@@ -8,12 +8,6 @@ import {
 	isCaseAttachmentRef,
 } from "./case-attachment-ref";
 
-/**
- * 这个格式会被写进用例正文，而正文会被冻进**每一个**版本快照。
- * 也就是说：格式一旦改坏，坏掉的不只是当前正文，是全部历史。
- * 所以这里钉死的是「产生」与「解析」必须互为逆运算，以及边界上的不匹配。
- */
-
 const ID = "5f2c1a8e-1b4d-4c9a-8e2f-7a6b5c4d3e2f";
 
 describe("buildCaseAttachmentRef", () => {
@@ -69,11 +63,6 @@ describe("extractCaseAttachmentIds", () => {
 		expect(extractCaseAttachmentIds(`![](attachment:${key})`)).toEqual([]);
 	});
 
-	/**
-	 * `CASE_ATTACHMENT_REF_PATTERN` 带 `g` 标志，是有状态的。`matchAll` 内部会
-	 * 克隆正则，所以不会推进这个模块级字面量的 `lastIndex`——一旦有人把实现
-	 * 换成 `exec` 循环，第二次调用就会从上次的位置开始，这条会红。
-	 */
 	test("连续调用两次结果相同（正则的 lastIndex 没被污染）", () => {
 		const body = buildCaseAttachmentRef(ID);
 
@@ -95,7 +84,6 @@ describe("isCaseAttachmentRef", () => {
 		);
 	});
 
-	/** 无 `g` 标志才敢这么用；换成带 `g` 的正则这里会开始交替真假。 */
 	test("同一个输入连问两次答案一致", () => {
 		const ref = buildCaseAttachmentRef(ID);
 

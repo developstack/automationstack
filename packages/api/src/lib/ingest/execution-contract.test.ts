@@ -98,7 +98,6 @@ test("D31：顶层 runId 显式 400，而不是被静默 strip 掉", () => {
 	expect(parsed.success).toBe(false);
 	const [issue] = parsed.error?.issues ?? [];
 	expect(issue?.path).toEqual(["runId"]);
-	// 静默 strip 会让上报方拿到 200、以为只写了那一个任务，实际写进了全部候选。
 	expect(issue?.message).toContain("runIds");
 	expect(issue?.message).toContain("sourceRef");
 });
@@ -124,7 +123,6 @@ test("results 超过条数上限时整批拒绝，且说清是「分批重发」
 	});
 	expect(parsed.success).toBe(false);
 	expect(parsed.error?.issues[0]?.message).toContain("分批重发");
-	// 恰好等于上限要放行：上限是闸门，不是「少一条才安全」。
 	expect(
 		ingestExecutionRequestSchema.safeParse({
 			...MINIMAL,

@@ -1,9 +1,3 @@
-/**
- * 详情抽屉的标题栏：用例名、乐观锁说明、删除按钮与编辑/保存那一组动作。
- *
- * 从 case-detail-sheet.tsx 拆出来（连同只服务于它的 CaseDetailActions），
- * 那边只留下抽屉外壳与内容装配。
- */
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
 import {
@@ -22,18 +16,10 @@ import {
 
 interface CaseDetailActionsProps {
 	editor: CaseEditor;
-	/** 走守卫的「取消编辑」，不是 editor.stopEditing 本身。 */
 	onStopEditing: () => void;
 }
 
 function CaseDetailActions({ editor, onStopEditing }: CaseDetailActionsProps) {
-	/**
-	 * 贴图还没传完时禁用保存。不禁的话，用户在上传完成前点保存，正文里的
-	 * `![](uploading:<token>)` 会被原样存进去：抽屉退出编辑态之后，上传回来时
-	 * 既找不到编辑器也找不到那份表单值，正文里就永久留下一处渲染成
-	 * 「图片上传中…」的死引用，还会被冻进这次保存产生的版本快照。
-	 * 第二道防线（回车绕过按钮）在 `case-detail-body.tsx` 的 handleSave 里。
-	 */
 	const { uploading } = useCaseAttachments();
 
 	if (editor.form) {

@@ -1,12 +1,3 @@
-/**
- * AsyncLocalStorage 的进出语义，而不是「调用一下 API 能不能跑」。
- *
- * 重点钉住那条容易被忽略的分支：`clientIp` 为 null 时 `runWithClientIp`
- * **不建新作用域**、直接执行 `run()`——这意味着「取不到地址」在顶层确实
- * 拿到 null，但如果这次调用嵌在一个已经有真实地址的 run 里面，它不会把
- * 外层地址盖成 null，而是原样透出外层的值。这是实现的真实行为，不是
- * 「地址取不到就该是 null」的直觉，所以专门写一条用例把它钉住。
- */
 import { describe, expect, it } from "vitest";
 
 import { getClientIp, runWithClientIp } from "./request-client-ip";
@@ -74,9 +65,6 @@ describe("runWithClientIp：clientIp 为 null 时不建新作用域", () => {
 
 		runWithClientIp("outer-ip", () => {
 			runWithClientIp(null, () => {
-				// 这里不是 null：因为 clientIp === null 时 runWithClientIp
-				// 直接 `return run()`，没有调用 clientIpStorage.run 建立新的
-				// AsyncLocalStorage 帧，所以仍然读到外层已经在跑的 store。
 				seen.push(getClientIp());
 			});
 		});

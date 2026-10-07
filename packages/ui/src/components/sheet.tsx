@@ -68,8 +68,6 @@ function SheetContent({
 						}
 					>
 						<XIcon />
-						{/* 未随上游回归的唯一一处，理由见 dialog.tsx 同名按钮：lang="zh-CN" 下
-                未标记的英文 sr-only 命中 WCAG 2.2 SC 3.1.2（AA）。 */}
 						<span className="sr-only">关闭</span>
 					</SheetPrimitive.Close>
 				) : null}

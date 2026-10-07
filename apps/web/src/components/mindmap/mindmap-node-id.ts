@@ -1,39 +1,17 @@
-/**
- * Mindmap node id scheme shared by the adapter, the canvas and the guards:
- * - project root:  `p:<projectId>`
- * - module node:   `m:<moduleId>`
- * - case node:     `c:<caseId>`
- * - step node:     `s:<caseId>:<stepId>`
- * - expected node: `x:<caseId>:<stepId>`
- *
- * Step and expected nodes are read-only on the canvas (they live inside the
- * case's `steps` jsonb, which `mindmap.batch` has no operation for), but they
- * still have to be modelled explicitly: every guard decides what to allow from
- * the decoded kind, and an id that decodes to `null` would be treated as
- * "unknown, therefore permissive" — which is how a module could end up being
- * dropped into a step.
- *
- * Step ids are composite because a step id is only unique inside its case; the
- * canvas needs globally unique node ids.
- */
 export type MindmapEntityNodeKind = "case" | "module" | "project";
 
-/** Kinds rendered from a case's `steps` array; never editable on the canvas. */
 export type MindmapStepNodeKind = "expected" | "step";
 
 export type MindmapNodeKind = MindmapEntityNodeKind | MindmapStepNodeKind;
 
 export interface MindmapEntityNodeRef {
-	/** Raw entity id (uuid) without the kind prefix. */
 	id: string;
 	kind: MindmapEntityNodeKind;
 }
 
 export interface MindmapStepNodeRef {
-	/** Owning case id: the step itself is not addressable on its own. */
 	caseId: string;
 	kind: MindmapStepNodeKind;
-	/** `CaseStep.id`, unique within the case only. */
 	stepId: string;
 }
 
@@ -74,12 +52,10 @@ export function encodeExpectedNodeId(caseId: string, stepId: string): string {
 	return `${EXPECTED_NODE_PREFIX}${caseId}${ID_SEPARATOR}${stepId}`;
 }
 
-/** True for the two kinds that mirror a `CaseStep`; narrows the ref union. */
 export function isStepNodeRef(ref: MindmapNodeRef): ref is MindmapStepNodeRef {
 	return ref.kind === "step" || ref.kind === "expected";
 }
 
-/** `<caseId>:<stepId>`; both halves must be non-empty. */
 function decodeStepPayload(
 	payload: string,
 	kind: MindmapStepNodeKind
@@ -94,10 +70,6 @@ function decodeStepPayload(
 		: null;
 }
 
-/**
- * Decodes a mindmap node id into its kind + raw entity ids.
- * Returns null for unknown prefixes or a malformed payload.
- */
 export function decodeMindmapNodeId(nodeId: string): MindmapNodeRef | null {
 	for (const [prefix, kind] of PREFIX_TO_KIND) {
 		if (nodeId.startsWith(prefix)) {

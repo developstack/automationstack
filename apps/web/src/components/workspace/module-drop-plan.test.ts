@@ -29,15 +29,6 @@ function makeNode(
 	};
 }
 
-/**
- * 固定树形：
- *   a ── a1 ── a1x
- *     ├─ a2
- *     └─ a3
- *   b
- *   c
- *   d
- */
 function makeTree(): ModuleTreeNode[] {
 	return [
 		makeNode("a", null, [
@@ -142,20 +133,16 @@ test("inside 落到非子孙节点上产生 move（无 index）", () => {
 });
 
 test("inside 落到自己当前的父节点上为 noop", () => {
-	// 不早退的话服务端 clampIndex(undefined, total) 会把它写到同级末尾，
-	// 产生用户没要求过的静默重排。
 	expect(resolveModuleDrop(makeTree(), "a1", insideDrop("a"))).toEqual(NOOP);
 	expect(resolveModuleDrop(makeTree(), "a1x", insideDrop("a1"))).toEqual(NOOP);
 });
 
 test("inside 的早退不会误伤根层级节点之间的正常改挂", () => {
-	// active.parentId 为 null，target 是根层级另一个节点：仍然是合法 move
 	expect(resolveModuleDrop(makeTree(), "b", insideDrop("c"))).toEqual({
 		kind: "move",
 		moduleId: "b",
 		parentId: "c",
 	});
-	// 反向：子节点挂到别的根节点下也不受影响
 	expect(resolveModuleDrop(makeTree(), "a1", insideDrop("b"))).toEqual({
 		kind: "move",
 		moduleId: "a1",

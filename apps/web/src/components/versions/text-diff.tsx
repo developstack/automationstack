@@ -1,11 +1,3 @@
-/**
- * Renders word-level diff output (`TextDiffSegment[]` from `diff-segments.ts`)
- * as inline ins/del marks.
- *
- * Was `version-text-diff.tsx`; the compact "old → new" pair that used to sit
- * next to it now lives in `old-new-value.tsx` and imports the two highlight
- * classes from here.
- */
 import { cn } from "@automationstack/ui/lib/utils";
 
 import type { TextDiffSegment, TextDiffSegmentKind } from "./diff-segments.ts";
@@ -21,10 +13,6 @@ interface KeyedSegment {
 	text: string;
 }
 
-/**
- * Builds keys from the running character offset instead of the array
- * index, so React keys stay meaningful without `noArrayIndexKey` hacks.
- */
 function keySegments(segments: readonly TextDiffSegment[]): KeyedSegment[] {
 	const keyed: KeyedSegment[] = [];
 	let offset = 0;
@@ -51,12 +39,10 @@ function DiffSegment({ segment }: { segment: KeyedSegment }) {
 
 interface TextDiffProps {
 	className?: string;
-	/** Rendered when both sides are empty. */
 	emptyText?: string;
 	segments: readonly TextDiffSegment[];
 }
 
-/** Renders word diff segments as inline `<ins>` / `<del>` marks. */
 export function TextDiff({ className, emptyText, segments }: TextDiffProps) {
 	const keyed = keySegments(segments).filter(
 		(segment) => segment.text.length > 0

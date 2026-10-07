@@ -6,15 +6,6 @@ import {
 	type MindmapPanPointer,
 } from "./mindmap-pan.ts";
 
-/**
- * 平移是这块画布上唯一没法靠类型或编译期兜住的交互：它的正确性全部落在
- * 「哪些 pointerdown 该接管、位移怎么换算、什么时候松手」这三件事上，而
- * mind-elixir 的 pointerdown 分发器随版本改过好几次。所以这里把控制器的状态机
- * 单独钉住——本仓库的 vitest 跑在 node 环境（见根 vitest.config.ts），控制器
- * 因此被设计成不碰 DOM，事件只用普通对象喂。
- */
-
-/** 测试里代表 `.map-container` 的替身；`isCanvasTarget` 只做身份比较。 */
 const CANVAS = "map-container";
 const NODE = "me-tpc";
 
@@ -60,7 +51,6 @@ describe("createMindmapPanController", () => {
 		controller.drag(pointer({ clientX: 130, clientY: 40 }));
 		expect(effects.move).toHaveBeenCalledWith(30, -10);
 
-		// 第二次移动传的是相对上一帧的增量，不是相对按下点的累计量。
 		controller.drag(pointer({ clientX: 130, clientY: 90 }));
 		expect(effects.move).toHaveBeenLastCalledWith(0, 50);
 		expect(effects.move).toHaveBeenCalledTimes(2);
@@ -108,7 +98,6 @@ describe("createMindmapPanController", () => {
 	it("位移没超过 slop 的一次按下算点空白：取消选中", () => {
 		const { controller, effects } = harness;
 		controller.down(pointer({ clientX: 10, clientY: 10 }));
-		// 3-4-5：位移 5px，正好落在阈值上，仍算点击。
 		controller.drag(pointer({ clientX: 13, clientY: 14 }));
 		controller.end(pointer({ clientX: 13, clientY: 14 }));
 		expect(effects.onCanvasClick).toHaveBeenCalledTimes(1);

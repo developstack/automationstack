@@ -39,14 +39,10 @@ from automationstack_sdk import (
 
 from .env_file import load_env_file
 
-#: 故意写成一个不可能存在的 sourceRef。
-#: 种子脚本**不会**造它——造了这个入口就演示不了任何东西了。
 MISSING_SOURCE_REF = "AUTO-DOES-NOT-EXIST-999"
 
 _DEMO_DURATION_MS = 42
 
-#: 「示例自己的前提没成立」用 2，与第 4 条那条正常演示路径（1）区分开：
-#: 两种情况要做的事完全不同（一个去看平台数据，一个是演示成功了）。
 _EXIT_PREMISE_BROKEN = 2
 
 _EXIT_EMPTY_WRITE = 1
@@ -54,8 +50,6 @@ _EXIT_EMPTY_WRITE = 1
 
 def main() -> int:
     load_env_file(Path(__file__).resolve().parent.parent / ".env")
-    # 构造时就解析并校验配置：缺 AS_TOKEN 这种事必须在这一行炸，
-    # 而不是等一轮测试跑完二十分钟才发现结果无处可去。
     reporter = AutomationStackReporter()
     print(
         "[example] 故意上报一条不存在的用例：{0}（幂等键 {1}）".format(
@@ -72,17 +66,10 @@ def main() -> int:
     try:
         reporter.finish()
     except IngestEmptyWriteError as error:
-        # ⚠️ 先把 stdout 刷干净再往 stderr 写。对账单走 stdout，下面这两行走 stderr，
-        # 而 stdout 一旦被重定向进管道/文件（CI 日志就是）就变成块缓冲——不刷的话
-        # 「一条都没写进去」会印在对账单**前面**，读的人先看见结论再看见原因，
-        # 而这两半本来就是同一件事。
         sys.stdout.flush()
-        # 这就是要演示的那条路径：对账单已由核心包原样打完，这里再把逐条理由打一遍
-        # （核心包把服务端原文带在 message 里），然后非零退出。
         print("[example] 一条都没写进去：\n{0}".format(error), file=sys.stderr)
         print("[example] 按 §7.2 第 4 条，进程以退出码 1 结束", file=sys.stderr)
         return _EXIT_EMPTY_WRITE
-    # 走到这里说明服务端居然写进去了——那不是「示例通过」，是这个演示的前提没成立。
     sys.stdout.flush()
     print(
         "[example] ⚠️ 预期是一条都写不进去，实际却写进去了："

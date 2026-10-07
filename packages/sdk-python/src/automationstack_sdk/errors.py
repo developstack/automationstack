@@ -74,8 +74,6 @@ _hook_registered = False
 def _flush_and_exit_nonzero() -> None:
     if not _pending_failure:
         return
-    # `os._exit` 会跳过缓冲区刷写，所以自己先刷一遍——对账单正是在这之前打出来的，
-    # 吞掉它等于把「为什么失败」一起吞掉。
     sys.stdout.flush()
     sys.stderr.flush()
     os._exit(1)
@@ -98,8 +96,6 @@ def arm_nonzero_exit() -> None:
     """
     global _hook_registered  # noqa: PLW0603 — 同上，进程级的一个开关
     if _hook_registered:
-        # 一个进程里建两个 reporter 时不重复注册：多注册一次没有坏处，
-        # 但会让 atexit 的执行顺序更难讲清楚，而顺序正是这条通道的关键。
         return
     _hook_registered = True
     atexit.register(_flush_and_exit_nonzero)

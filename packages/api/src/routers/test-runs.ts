@@ -30,11 +30,6 @@ const listTestRunsSchema = z.object({
 });
 
 const createTestRunSchema = z.object({
-	/**
-	 * 至少勾一条。空测试任务会永久卡在 `pending_review` / `ready`（没有用例就没有结论，
-	 * 状态推导永远推不动），repository 也会以 `empty-cases` 拒绝——这里先挡一道，
-	 * 是为了让错误停在校验层、消息更直白。
-	 */
 	caseIds: z.array(z.uuid()).min(1),
 	description: z.string().nullable().optional(),
 	name: z.string().min(1),
@@ -53,10 +48,6 @@ const createFromFailedSchema = z.object({
 	sourceRunId: z.uuid(),
 });
 
-/**
- * `createFromFailed` 的归属由**源任务**决定：新任务是照着它复制出来的，
- * 能不能从这份失败清单再开一轮，问的就是「你进不进得去源任务所在的项目」。
- */
 const toSourceRunScope = (input: { sourceRunId: string }) => ({
 	runId: input.sourceRunId,
 });
@@ -94,10 +85,6 @@ export const testRunsRouter = {
 			});
 			return result.run;
 		}),
-	/**
-	 * D11 的重测任务：从某个测试任务的失败用例新建一个测试任务。
-	 * 它同时是 `submitted` 终态唯一的「出路」——已提交的测试任务要继续测，只能从它开重测任务。
-	 */
 	createFromFailed: protectedProcedure
 		.errors(testRunErrors)
 		.input(createFromFailedSchema)
@@ -112,8 +99,6 @@ export const testRunsRouter = {
 			if (result.kind === "source-not-found") {
 				throw errors.NOT_FOUND({ message: "源测试任务不存在" });
 			}
-			// `empty-cases` 在这条路径上进不来（上一步已经拦掉了「没有失败用例」），
-			// 但它在 `CreateTestRunResult` 联合里，得有个落点。
 			if (result.kind === "no-failed-cases" || result.kind === "empty-cases") {
 				throw errors.BAD_REQUEST({ message: "该测试任务没有失败的用例" });
 			}
@@ -175,7 +160,6 @@ export const testRunsRouter = {
 			});
 			return result.run;
 		}),
-	/** 已提交的测试任务删不掉（返回 CONFLICT）：理由见 `removeTestRun` 的注释。 */
 	remove: protectedProcedure
 		.errors(testRunErrors)
 		.input(runIdSchema)
@@ -205,13 +189,6 @@ export const testRunsRouter = {
 			}
 			return report;
 		}),
-	/**
-	 * 提交报告：终态，不可逆（D15）。
-	 *
-	 * 重复提交**不是错误**：第二次返回 `alreadySubmitted: true` 加那份测试任务，
-	 * 前端直接切到已提交视图即可（plan §2.5「提交是幂等的」）。
-	 * 把它做成 500 只会让用户以为提交失败而反复重试，而重试永远不会成功。
-	 */
 	submit: protectedProcedure
 		.errors(testRunErrors)
 		.input(runIdSchema)

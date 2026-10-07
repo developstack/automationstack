@@ -246,7 +246,6 @@ export async function reorderModulesInTx(
 	return { kind: "ok" };
 }
 
-/** 删除模块及其整棵子树；返回 removed / not-found / blocked，口径与理由见 module-delete-guard.ts。 */
 export async function removeModuleInTx(
 	tx: DbTransaction,
 	id: string

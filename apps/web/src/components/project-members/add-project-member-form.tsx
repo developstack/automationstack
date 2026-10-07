@@ -1,7 +1,3 @@
-/**
- * 「添加成员」框里的那张表。原是 add-project-member-dialog.tsx 里的私有辅助，
- * 按「同文件最多 2 个私有辅助组件」拆出来；两个字段只服务于这张表，跟着一起搬。
- */
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import { Button } from "@automationstack/ui/components/button";
 import { DialogFooter } from "@automationstack/ui/components/dialog";
@@ -23,12 +19,6 @@ import { orpc } from "@/utils/orpc";
 
 const CANDIDATE_FIELD_ID = "project-member-candidate";
 const ROLE_FIELD_ID = "project-member-role";
-/**
- * 「还没选人」的哨兵值。
- * Base UI 的 Select 用 null 表示未选中，而未选中态在这张表里要有一行可见的
- * 提示文字（空触发器看不出是没选还是加载失败），所以照 ai-module-select 的做法
- * 用一个假选项占位，提交前再把它当作校验失败。
- */
 const NO_CANDIDATE = "__none__";
 
 interface CandidateOption {
@@ -40,14 +30,12 @@ function useAddMember(projectId: string, onClose: () => void) {
 	const queryClient = useQueryClient();
 	return useMutation(
 		orpc.projectMembers.add.mutationOptions({
-			// 「该用户已经是项目成员」这类失败要留在对话框里挨着下拉框说
 			meta: { suppressErrorToast: true },
 			onSuccess: () => {
 				const input = { projectId };
 				queryClient.invalidateQueries({
 					queryKey: orpc.projectMembers.list.key({ input }),
 				});
-				// 刚加进来的人必须从候选里消失，否则下拉框还留着他
 				queryClient.invalidateQueries({
 					queryKey: orpc.projectMembers.listCandidates.key({ input }),
 				});
@@ -66,7 +54,6 @@ interface CandidateFieldProps {
 
 function CandidateField({ onChange, options, value }: CandidateFieldProps) {
 	const handleValueChange = useCallback(
-		// Base UI 的清空动作会给 null，此时退回哨兵值而不是掉进未定义状态
 		(next: string | null) => onChange(next ?? NO_CANDIDATE),
 		[onChange]
 	);
@@ -128,12 +115,6 @@ function RoleField({ onChange, value }: RoleFieldProps) {
 	);
 }
 
-/**
- * 候选人下拉的选项：第一项永远是那个占位的哨兵。
- *
- * 加载中与「一个候选都没有」共用这一行提示：两种情况下都没得选，差别只在
- * 提示文字，而分成两条渲染路径会让下拉框在数据到达那一帧整个换掉一次。
- */
 function buildCandidateOptions(
 	isPending: boolean,
 	candidates: readonly { id: string; username: string }[]
@@ -194,10 +175,6 @@ export function AddProjectMemberForm({
 				<Button onClick={onClose} type="button" variant="outline">
 					取消
 				</Button>
-				{/*
-				 * 没选人时按钮禁用，而不是提交后再报一句「请选择账号」：这张表只有
-				 * 一个必填项，禁用态本身就说清了差什么。
-				 */}
 				<Button
 					disabled={add.isPending || userId === NO_CANDIDATE}
 					type="submit"

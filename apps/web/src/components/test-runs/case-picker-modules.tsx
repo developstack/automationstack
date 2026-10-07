@@ -1,11 +1,3 @@
-/**
- * 用例选择器左栏的模块树。
- *
- * 刻意不复用 `components/workspace/module-tree.tsx`：那一棵挂着拖拽排序、
- * 右键菜单、新建/删除对话框，而且选中态直接读写 URL 上的 `moduleId`——
- * 放进对话框里点一下模块，背后的用例列表页就跟着换了。这里要的只是
- * 「把范围缩到某个模块」这一件事，所以是一棵只读的、纯受控的树。
- */
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
 import { cn } from "@automationstack/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -15,14 +7,11 @@ import { useCallback } from "react";
 import { ModuleTreeSkeleton } from "@/components/skeletons/module-tree-skeleton";
 import { orpc } from "@/utils/orpc";
 
-/** 行样式与侧栏那棵树同档：选中态除了底色还有左侧 2px 指示条，不只靠颜色。 */
 const ROW_CLASS =
 	"relative flex min-h-7 w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-left text-sm before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-foreground";
 const ROW_SELECTED_CLASS = "bg-accent before:opacity-100";
 const ROW_IDLE_CLASS = "before:opacity-0 hover:bg-accent/50";
 
-// icon-stroke-regular：这两颗图标并排在未加粗的正文里，lucide 默认 stroke 2
-// 是配 medium/semibold 字重的，这里要跟着 regular 字重降到 1.5。
 const ICON_CLASS =
 	"icon-stroke-regular size-3.5 shrink-0 text-muted-foreground";
 
@@ -32,12 +21,6 @@ interface ModuleOptionProps {
 	selectedModuleId: string | undefined;
 }
 
-/**
- * 一个模块节点及其子树。
- *
- * 全展开、不做折叠：选择器一次只活几十秒，多一颗折叠箭头就多一次「我要的那个
- * 模块藏在哪一支下面」的翻找。深层缩进由嵌套 `<ul>` 的 ps-3 给，不用行内样式。
- */
 function ModuleOption({ node, onSelect, selectedModuleId }: ModuleOptionProps) {
 	const handleSelect = useCallback(
 		() => onSelect(node.id),
@@ -81,13 +64,6 @@ interface CasePickerModulesProps {
 	selectedModuleId: string | undefined;
 }
 
-/**
- * 只读模块树 + 顶上的「全部用例」。
- *
- * 用 `useQuery` 而不是 `useSuspenseQuery`：这棵树挂在对话框里，外面没有
- * Suspense 边界，挂起会一路冒到根布局把整个外壳变空白
- * （同 layout/module-panel.tsx 里那段的理由）。
- */
 export function CasePickerModules({
 	onSelect,
 	projectId,

@@ -1,10 +1,3 @@
-/**
- * 这一层出错的两种方式都不会报警，所以逐条钉住：
- * ① `full` 档的 pageSize 上限失守——工具照常返回，只是把 agent 的上下文吃光，
- *    而这个工具存在的理由就是给正文腾出预算；
- * ② `summary` 档漏裁 `steps` / `preconditions`——两档变成同一档，默认档就从
- *    「便宜的摘要」悄悄变成「最贵的全文」。
- */
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import { describe, expect, it } from "vitest";
 

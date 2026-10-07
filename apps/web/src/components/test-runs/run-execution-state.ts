@@ -1,16 +1,3 @@
-/**
- * 执行台的页面级状态：把详情数据、筛选、勾选、写操作串成一份给 JSX 直接用的形状。
- *
- * 这一层唯一的硬约束是 **hook 的调用顺序**。下面几个自定义 hook 内部装着的，
- * 正是从前平铺在 `RunExecutionView` 里的那一串 hook，逐个对应、顺序一字不差。
- * React 靠调用顺序认领每个 hook 的 state，调换任意两行都会让 state 张冠李戴，
- * 所以这里既不按「读起来更顺」重排，也不要在中间插入新的 hook——要加就加在末尾，
- * 或者加进它该属于的那个自定义 hook 里。
- *
- * 返回值按来源分组（`data` / `selection` / `checked` / `verdict` / `bulk` /
- * `storage`），而不是摊平成二十几个字段：分组边界与自定义 hook 的边界重合，
- * 加一个字段时只用改产它的那个 hook 和用它的那一行，不必再从 view 一路穿下去。
- */
 import type { PublicUser } from "@automationstack/db/schema/users";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
@@ -53,22 +40,6 @@ export interface RunAttachmentStorage {
 	unavailable: boolean;
 }
 
-/**
- * 附件存储可不可用，两条来源，**取并集**：
- *
- * 1. 进页面就查一次 `storageStatus`（`configured: false` = 服务端没配 R2）。
- *    这条是主路径：上传入口从第一次渲染起就是禁用 + 写明原因的，
- *    用户不必先失败一次才知道。
- * 2. 撞到 `PRECONDITION_FAILED` 时置的本地标志。这条兜底保留——
- *    配置可能在页面开着的时候被管理员改掉，那时第 1 条的结果已经是旧的。
- *
- * 标志提在页面这一层而不是附件组件里：它是整个部署的配置状态，与用例无关，
- * 放在组件里会在每次切用例时被重置，于是用户每换一条用例都得再撞一次那条错误。
- * 本 hook 因此只能在页面这一级调用一次，不要下放到右栏里去。
- *
- * 查询还没回来时（`data === undefined`）**不当作不可用**：那会让上传入口
- * 在首帧先灰一下再亮起来，比晚知道半秒更糟。
- */
 export function useRunAttachmentStorage(): RunAttachmentStorage {
 	const storageStatusQuery = useAttachmentStorageStatus();
 	const [storageFailed, setStorageFailed] = useState(false);
@@ -81,12 +52,6 @@ export function useRunAttachmentStorage(): RunAttachmentStorage {
 
 export interface RunExecutionData {
 	cases: readonly RunCaseDetail[];
-	/**
-	 * 左栏筛选条件。跟数据放在同一份里，是因为它决定了下游每一个派生量的口径：
-	 * 可见清单、「下一条」是谁、批量操作作用在哪些行，全都以它为准。
-	 * 把它单独提到别处，只会让「手上这份 cases 是筛过的还是全量的」
-	 * 在每个调用点重问一遍。
-	 */
 	filter: RunCaseFilter;
 	permissions: RunPermissions;
 	run: TestRunDetailView["run"];
@@ -95,12 +60,6 @@ export interface RunExecutionData {
 	user: PublicUser | null;
 }
 
-/**
- * 执行台的数据源：详情查询 + 当前会话 + 筛选条件。
- *
- * 权限只有三档，全部由 `runPermissions()` 从状态推出来，这一层不再二次判断；
- * `runPermissions` 是纯函数，每次渲染重算比记忆化便宜。
- */
 export function useRunExecutionData(runId: string): RunExecutionData {
 	const detailQuery = useSuspenseQuery(
 		orpc.testRuns.get.queryOptions({ input: { runId } })
@@ -122,7 +81,6 @@ export function useRunExecutionData(runId: string): RunExecutionData {
 export interface RunExecutionOptions {
 	onSelectRunCase: (runCaseId: string | undefined) => void;
 	runId: string;
-	/** 当前选中的用例行，来自 URL。 */
 	selectedRunCaseId: string | undefined;
 }
 
@@ -153,8 +111,6 @@ export function useRunExecution(
 		user: data.user,
 	});
 
-	// 协作 presence：上报「我在看哪条用例」，与用例列表页共用同一套。
-	// isEditing 恒为 false——执行台改的是结论，不是用例内容本身。
 	useCasePresence(selection.selectedTestCaseId, false);
 
 	const mutations = useRunCaseMutations();
@@ -172,19 +128,6 @@ export function useRunExecution(
 	});
 	const openAdd = useCallback(() => setAddOpen(true), []);
 	const closeAdd = useCallback(() => setAddOpen(false), []);
-
-	/*
-	 * P / F / B / S 的监听**不在这一层**，它挂在 `RunCasePanel` 里。
-	 *
-	 * 这里曾经挂过一次，开关是另写的一条式子（`canConclude && selected !== null
-	 * && steps.length === 0`）。它与四颗结论按钮的渲染条件只在权限那一半重合，
-	 * 差的正是读 / 改态——而读 / 改态这份 state 住在右栏，这一层根本看不见它。
-	 * 结果是只读态下按钮藏了、键还活着，键盘绕过界面上的判定直接改写结论。
-	 *
-	 * 判据现在只有一份（`canPickCaseVerdict`），它要读的东西都在右栏，
-	 * 监听就跟着搬到了那边。别再在这一层补一个「页面级快捷键」——那等于把刚
-	 * 合上的分叉重新劈开。
-	 */
 
 	return {
 		addOpen,

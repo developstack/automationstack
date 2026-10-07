@@ -36,7 +36,6 @@ function PlatformUserActionsMenu({
 }: PlatformUserActionsMenuProps) {
 	return (
 		<DropdownMenu>
-			{/* 带上用户名：读屏的按钮列表里，一排「用户操作」互相分辨不出来 */}
 			<DropdownMenuTrigger
 				render={
 					<Button
@@ -71,18 +70,10 @@ function PlatformUserActionsMenu({
 }
 
 interface PlatformUserRowActionsProps {
-	/** 「管理项目归属」那张框要用；账号本身的四个动作用不上。 */
 	projects: readonly UserProjectMembership[];
 	user: PublicUser;
 }
 
-/**
- * 用户表格行尾的操作入口：菜单 + 它触发的三个对话框。
- *
- * `user` 与 `projects` 分开收，而不是收整行 `UserWithProjects`：账号那四个动作
- * （重置密码、改平台角色、停用、恢复）只认 `PublicUser`，把项目也塞进去会让
- * use-platform-user-actions 的入参凭空多出一半用不上的东西。
- */
 export function PlatformUserRowActions({
 	projects,
 	user,

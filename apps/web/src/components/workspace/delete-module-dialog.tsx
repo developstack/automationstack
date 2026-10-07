@@ -1,7 +1,3 @@
-/**
- * 删除模块的二次确认。原与新建对话框同住 module-dialogs.tsx，按
- * 「一个文件一个对外组件」拆开；两者共用的开关状态在 module-dialog-state.ts。
- */
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
 import {
 	AlertDialog,

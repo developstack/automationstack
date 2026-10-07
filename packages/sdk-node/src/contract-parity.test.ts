@@ -39,22 +39,6 @@ import {
 	INGEST_RUNS_ROUTE,
 } from "./route-paths.js";
 
-/**
- * 契约副本的一致性兜底。
- *
- * 本包**自带一份契约副本**（理由见 `contract-types.ts` 顶部：发到 npm 的包不能
- * 在类型里引用一个私有包）。副本的唯一风险是分叉，这个文件就是那道闸：
- * 它把服务端那份 zod schema 真的 import 进来，用**真 schema**去 parse SDK
- * 造出来的请求体，再逐个比对数值上限与四条 URL。改了服务端而没改这里，测试立刻红。
- *
- * ⚠️ `@automationstack/api` 只在 `devDependencies` 里，**运行时依赖是零**。
- * 它那条 import 链（`execution-contract.ts` 刻意只 import zod）碰不到
- * `@automationstack/db`，所以这个测试不需要 `DATABASE_URL`。
- *
- * W6（pytest）与 W7（JUnit）照同一条路子：各自带一份契约副本 + 一个一致性测试。
- * 那两家没法 import TypeScript，比对对象换成 OpenAPI 文档，但闸门的位置一样。
- */
-
 const SERVER_ROUTE_PATHS = fileURLToPath(
 	new URL("../../../apps/server/src/ingest/route-paths.ts", import.meta.url)
 );
@@ -66,7 +50,6 @@ const config = resolveReporterConfig({
 	token: "as_secret",
 });
 
-/** 编译期的那一半：SDK 的线上类型必须能原样当作服务端的输入类型用。 */
 const asApiRequest = (
 	request: IngestExecutionRequestWire
 ): ApiExecutionRequestWire => request;
@@ -177,8 +160,6 @@ describe("契约副本与服务端一致", () => {
 	});
 
 	it("四条 URL 与服务端那份逐字一致", () => {
-		// 路径常量在 `apps/server` 里，那不是一个能被本包 import 的地方
-		// （它是应用不是库），所以当文本读进来比。比不上就说明有一边改了。
 		const source = readFileSync(SERVER_ROUTE_PATHS, "utf8");
 		const declared = [...source.matchAll(/export const (\w+) = "([^"]+)";/g)];
 		expect(declared.length).toBeGreaterThan(0);

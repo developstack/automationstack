@@ -3,8 +3,6 @@ import tsParser from "@typescript-eslint/parser";
 import { RuleTester } from "eslint";
 import { oneComponentPerFile } from "./one-component-per-file.js";
 
-// RuleTester 默认自己兜底跑用例；接上 node:test 的 describe/it 之后
-// 每条用例在 `node --test` 的输出里单独成行，失败时能直接定位到哪一条。
 RuleTester.describe = describe;
 RuleTester.it = it;
 

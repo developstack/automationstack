@@ -1,10 +1,3 @@
-/**
- * 渲染预算护栏的界面说明。
- *
- * 静默截断是不能接受的：用户会以为数据丢了。所以只要预算收窄了展开范围，
- * 就必须在画布上方讲清楚三件事——为什么没全展开、现在展开到哪一层、
- * 怎么看到更多（点 `+` 自己展开，数据一条都没少）。
- */
 import { useMemo } from "react";
 
 import { MINDMAP_NODE_BUDGET, planMindmapRender } from "./mindmap-budget.ts";

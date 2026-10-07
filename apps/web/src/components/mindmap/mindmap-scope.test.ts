@@ -29,7 +29,6 @@ describe("createMindmapScope", () => {
 
 describe("escapesMindmapScope", () => {
 	it("refuses the project root as a parent in a scoped view", () => {
-		// 项目根 = parentId null = 项目级模块，不在当前子树里。
 		expect(escapesMindmapScope(SCOPED, "project")).toBe(true);
 	});
 

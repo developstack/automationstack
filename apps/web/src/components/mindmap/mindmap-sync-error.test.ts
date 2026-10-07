@@ -1,10 +1,3 @@
-/**
- * 失败提示的取舍：什么能透给用户，什么必须咽掉。
- *
- * 这里钉的不是文案好不好看，而是那条界线——契约里声明过的错误（`defined`）
- * 才是服务端写给用户看的中文；其余一律只给通用文案。写反了不会报错，
- * 只会在某天把一句内部堆栈或数据库报错糊到画布的 toast 上。
- */
 import { ORPCError } from "@orpc/client";
 import { describe, expect, it } from "vitest";
 
@@ -26,7 +19,6 @@ describe("describeMindmapSyncFailure：预期内的业务错误", () => {
 		const message = describeMindmapSyncFailure(error);
 
 		expect(message).toContain(BLOCKED_MESSAGE);
-		// 整批都被回滚了，用户必须知道刚才那些改动没留下。
 		expect(message).toContain("画布已恢复为服务端数据");
 	});
 });
@@ -59,7 +51,6 @@ describe("describeMindmapSyncFailure：非预期错误一律通用文案", () =>
 	});
 
 	it("声明过但没写 message 时回落，不把 ORPC 的英文默认句透给用户", () => {
-		// 路由没传 message，ORPCError 自动填了 "Bad Request"。
 		const error = new ORPCError("BAD_REQUEST", { defined: true });
 
 		expect(error.message).toBe("Bad Request");

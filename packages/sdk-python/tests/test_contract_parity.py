@@ -29,8 +29,6 @@ _STRING = re.compile(r'export const (\w+) = "([^"]+)";')
 def _read(name: str) -> str:
     path = _SDK_NODE_SRC / name
     if not path.is_file():
-        # 不 skip：装成 wheel 之后跑不了这条测试是可以接受的，但在仓库里
-        # 跑不了就说明参考实现被挪走了，那正是这道闸要拦的事。
         pytest.fail("找不到参考实现 {0}——契约比对没法进行".format(path))
     return path.read_text(encoding="utf-8")
 
@@ -66,8 +64,6 @@ def test_route_paths_match_node() -> None:
 
 def test_batch_sizes_fit_server_hard_limits() -> None:
     """分批上限必须落在服务端硬闸以内。"""
-    # 这条不是抄来的，是副本自身的自洽性：分批大小超过硬闸时整批 400，
-    # 而那种错只会在**上千条结果**的真实执行里才第一次出现。
     assert sdk.RESULTS_PER_BATCH <= sdk.MAX_INGEST_RESULTS_PER_REQUEST
     assert sdk.ATTACHMENTS_PER_BATCH <= sdk.MAX_INGEST_ATTACHMENTS_PER_REQUEST
     assert sdk.MAX_INGEST_COMMENT_LENGTH <= sdk.MAX_INGEST_MESSAGE_LENGTH

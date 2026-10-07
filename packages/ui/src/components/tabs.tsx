@@ -8,16 +8,6 @@ import { cn } from "@automationstack/ui/lib/utils";
 import type { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { cva, type VariantProps } from "class-variance-authority";
 
-/**
- * Base UI Tabs 实现的是 ARIA APG 的 tabs 模式：roving tabindex、方向键导航，
- * 以及 aria-selected / aria-controls / aria-labelledby 的连线都由原语负责。
- * 调用方不要再手写这些属性——重复声明会与原语生成的值打架，读屏会念两遍。
- *
- * 选中态的底色从「每个 trigger 各自 data-active:bg-background」换成了一块在标签
- * 之间滑过去的共享高亮（tabs-primitives.tsx → effects-highlight.tsx，motion 的
- * spring，可打断：滑到一半改选会带着当前位置与速度改道，不会跳回起点重播）。
- * 它是绝对定位在 tab 条内部的兄弟节点，靠 DOM 顺序垫在按钮下面，不多加任何元素。
- */
 function Tabs({
 	className,
 	orientation = "horizontal",
@@ -51,11 +41,6 @@ const tabsListVariants = cva(
 	}
 );
 
-/**
- * line 变体把高亮块整个关掉（highlightEnabled={false}）：它的选中态是一条下划线
- * （trigger 上的 `after:`），不需要底色。关掉时 Highlight 会原样吐出 children，
- * 既不加容器也不改 className，DOM 与迁移前完全一致。
- */
 function TabsList({
 	className,
 	variant = "default",

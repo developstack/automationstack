@@ -17,7 +17,6 @@ from automationstack_sdk import AutomationStackReporter, HttpRequest, HttpRespon
 
 pytest_plugins = ["pytester"]
 
-#: 占位符，不是任何真实凭据。
 BASE_CONFIG = {
     "base_url": "https://qa.example.com",
     "idempotency_key": "3f2a1b4c-5d6e-4f70-8912-a3b4c5d6e7f8",

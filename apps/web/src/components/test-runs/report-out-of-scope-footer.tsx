@@ -1,12 +1,5 @@
 import { Button } from "@automationstack/ui/components/button";
 
-/**
- * 越界用例表下面那一行（从 report-out-of-scope-card.tsx 拆出来）。
- *
- * 已锁定时它是一句解释——这几条为什么还留在报告里；
- * 未锁定时它是「顺手把别的也挑了」的入口，外加一句「追加之后会发生什么」，
- * 免得有人点完才发现测试任务从「已完成」退回了「测试中」。
- */
 export function ReportOutOfScopeFooter({
 	locked,
 	onPick,

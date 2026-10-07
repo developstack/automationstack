@@ -1,12 +1,3 @@
-/**
- * 草稿存储层的单测之一：**同一个模块可以有多份草稿**。
- *
- * 这是这次改动的要点，也是最容易悄悄写错的地方——键从 `{projectId}.{moduleId}`
- * 改成了 `{projectId}.{caseId}`，写错不会报错，只会让两份草稿互相覆盖，
- * 而「后写的把先写的顶掉」正是这次要修的 bug 本身。
- *
- * 老键迁移那一半在 `case-draft-migration.test.ts`（单文件 300 行上限）。
- */
 import { afterEach, describe, expect, it } from "vitest";
 
 import {

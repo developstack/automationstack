@@ -23,14 +23,12 @@ const STEP_ID = "s1";
 const STEP_NODE_ID = encodeStepNodeId(CASE_ID, STEP_ID);
 const EXPECTED_NODE_ID = encodeExpectedNodeId(CASE_ID, STEP_ID);
 
-/** 作用域相关的守卫单独测，见 mindmap-guards-scope.test.ts。 */
 const FULL_SCOPE = createMindmapScope(PROJECT_ID, undefined);
 
 function nodeOf(id: string, topic = "节点"): NodeObj {
 	return { id, topic };
 }
 
-/** `before` hooks receive `Topic` DOM elements; only `nodeObj` is read. */
 function topicOf(node: NodeObj): Topic {
 	return { nodeObj: node } as unknown as Topic;
 }
@@ -61,7 +59,6 @@ describe("step and expected nodes are read-only on the canvas", () => {
 	it.each(stepLikeIds)("refuses beginEdit on %s", (id) => {
 		expect(before.beginEdit?.(topicOf(nodeOf(id)))).toBe(false);
 		expect(host.reject).toHaveBeenCalledWith(STEP_READONLY_MESSAGE);
-		// Double-click must not fall through to the case detail either.
 		expect(host.openCase).not.toHaveBeenCalled();
 	});
 

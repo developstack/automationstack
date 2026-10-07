@@ -1,10 +1,3 @@
-/**
- * 本包的公开导出面。
- *
- * 全部用 `export ... from`，**不是 barrel**（`noExportedImports` 是 error）：
- * 这里不 import 任何东西再转手导出，只是把几个模块的导出面并起来。
- */
-
 // biome-ignore lint/performance/noBarrelFile: 这是包的公开入口本身，不是「顺手 re-export 一切」的中转文件；本包只有一个 exports 条目，导出面必须有一处
 export {
 	AttachmentInputError,

@@ -22,19 +22,8 @@ import {
 } from "@/components/test-runs/report-automation-meta";
 import { ReportCommitLink } from "@/components/test-runs/report-commit-link";
 
-/** 没有分支时的占位。本机跑的脚本本来就没有这一样。 */
 const NOT_RECORDED = "—";
 
-/**
- * 执行时间那一格。
- *
- * 显示的是**服务端收到这一轮的时刻**，不是脚本自报的 `finishedAt`：后者来自
- * 客户端时钟，CI 机器的时区/时钟偏差会让同一页上的时间互相打架。
- * `finishedAt` 挂在 title 里，需要对时的人拿得到。
- *
- * 没跑完的那一轮在这里就标出来（§6.3）：它下面那两个条数只是写进去的一部分，
- * 不标出来就会被当成一轮完整的执行去读。
- */
 function ExecutionTimeCell({
 	execution,
 }: {
@@ -88,17 +77,8 @@ function ExecutionRow({ execution }: { execution: ReportAutomationExecution }) {
 			<TableCell className="text-right tabular-nums">
 				{execution.updatedCount}
 			</TableCell>
-			{/*
-			 * 跳过条数**必须露出来**（§6.3）：跑了脚本的人默认「这一轮都刷新了」，
-			 * 而被跳过的那些行还挂着几天前的人工结论。0 也照显示，不留白——
-			 * 空格子会被读成「这一版没统计」。
-			 */}
 			<TableCell className="text-right tabular-nums">
 				{execution.skippedCount}
-				{/*
-				 * 读屏逐格念出来是两个孤零零的数字，这一句把两个数放回一句话里。
-				 * 措辞与 plan §6.3 的示例逐字对齐。
-				 */}
 				<span className="sr-only">{formatExecutionCounts(execution)}</span>
 			</TableCell>
 		</TableRow>
@@ -110,18 +90,6 @@ interface ReportAutomationCardProps {
 	executions: readonly ReportAutomationExecution[];
 }
 
-/**
- * 自动化执行记录（plan §6.3）。**位置在失败清单之后**：它是解释性材料，
- * 不是结论，抢在失败清单前面就会把「这轮测得怎么样」的答案往后挤。
- *
- * 存在的唯一理由是 §2.2 那个风险——读报告的人要能看出这批结论是哪一轮脚本
- * 刷进来的、跑在哪个 commit 上、有没有哪几条被跳过。**别给它加别的职责**：
- * 不算率、不做趋势、不判「结果是否过期」（§6.4 三条明确不做）。
- *
- * 一条脚本上报都没有时整块不渲染（返回 null，而不是渲染一张空卡）：
- * 纯手工的测试任务是常态，给每一份手工报告挂一张「暂无自动化执行」的空卡，
- * 等于在报告里常驻一条与这次测试无关的噪声。
- */
 export function ReportAutomationCard({
 	className,
 	executions,

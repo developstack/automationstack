@@ -52,7 +52,6 @@ def test_buffers_then_submits_once(pytester, monkeypatch) -> None:
         ("PAY-LOGIN-002", "failed"),
         ("PAY-LOGIN-003", "skipped"),
     }
-    # 没标 marker 的那条不上报，但也不静默——收工时说一句是谁。
     assert "test_without_marker" not in str(body)
     result.stdout.fnmatch_lines(["*1 条用例没有 sourceRef*test_without_marker*"])
 
@@ -103,7 +102,6 @@ def test_passes():
 '''
     )
     result = pytester.runpytest("--automationstack")
-    # 用例本身全过了，但一条都没写进去 → 整轮判失败。
     result.assert_outcomes(passed=1)
     assert result.ret == 1
     result.stdout.fnmatch_lines(["*项目里没有这个 sourceRef 的用例*"])
@@ -152,7 +150,7 @@ def test_long_traceback_goes_to_a_log_attachment(pytester, monkeypatch) -> None:
                     }
                 ],
             },
-            {},  # PUT
+            {},
             {"registered": [{"index": 0}], "rejected": [], "storageConfigured": True},
         ]
     )

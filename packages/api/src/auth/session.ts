@@ -1,17 +1,3 @@
-/**
- * 无状态会话令牌。
- *
- * 会话是一枚 HMAC-SHA256 签名的自包含令牌，装在 HttpOnly cookie 里。
- * 「自包含」意味着不需要 sessions 表——数据库里没有会话状态，重启服务端
- * 不会把所有人踢下线，也不用为每个请求多打一次库。
- *
- * 代价写在这里：**签发后无法单独吊销**。停用某个账号靠的是每次请求都按
- * `sub` 重新读一遍 users 行（见 context.ts），而不是删令牌；要一次性作废
- * 全部会话，就换 `SESSION_SECRET`。
- *
- * 令牌格式：`base64url(payload).base64url(hmac)`，payload 为 `{ sub, iat, exp }`。
- */
-
 export const SESSION_COOKIE = "automationstack_session";
 
 const MS_PER_SECOND = 1000;
@@ -26,13 +12,11 @@ const SESSION_TTL_MS = SESSION_TTL_SECONDS * MS_PER_SECOND;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-/** base64 ↔ base64url 的字符替换；提到顶层，正则只编译一次。 */
 const PLUS_TO_DASH = /\+/g;
 const SLASH_TO_UNDERSCORE = /\//g;
 const TRAILING_EQUALS = /[=]+$/;
 const DASH_TO_PLUS = /-/g;
 const UNDERSCORE_TO_SLASH = /_/g;
-/** base64 以 4 字符为一组，不足处补 `=`。 */
 const BASE64_GROUP = 4;
 
 interface SessionPayload {
@@ -90,7 +74,6 @@ async function sign(data: string, secret: string): Promise<Uint8Array> {
 	return new Uint8Array(signature);
 }
 
-/** 为某个用户签发有效期 7 天的会话令牌。 */
 export async function createSessionToken(
 	userId: string,
 	secret: string
@@ -121,10 +104,6 @@ function parsePayload(encoded: string): SessionPayload | null {
 	}
 }
 
-/**
- * 校验签名与有效期，返回用户 id；令牌畸形 / 过期 / 签名不符一律返回 null。
- * **先验签再解析 payload**：顺序反过来就等于拿未经认证的字节去喂 JSON.parse。
- */
 export async function verifySessionToken(
 	token: string,
 	secret: string
@@ -149,7 +128,6 @@ export async function verifySessionToken(
 	return payload.sub;
 }
 
-/** 从原始 `Cookie` 请求头里取出某个 cookie 的值。 */
 export function readCookieHeader(
 	header: string | null | undefined,
 	name: string
@@ -163,21 +141,12 @@ export function readCookieHeader(
 			continue;
 		}
 		if (part.slice(0, index).trim() === name) {
-			// 只按第一个 `=` 切：base64url 里不会有 `=`，但签名格式若变则会有
 			return part.slice(index + 1).trim() || null;
 		}
 	}
 	return null;
 }
 
-/**
- * 拼 `Set-Cookie` 头。传 null 表示清除（登出）。
- *
- * - `HttpOnly`：脚本读不到，XSS 拿不走会话
- * - `SameSite=Lax`：web(:3001) 与 server(:3000) 端口不同但同站，Lax 够用；
- *   真跨站部署要改 `None`，那就必须同时有 `Secure`
- * - `Secure` 只在 HTTPS 请求上加：本地 http 开发照常可用
- */
 export function sessionCookieHeader(
 	token: string | null,
 	secure: boolean

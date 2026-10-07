@@ -29,10 +29,6 @@ interface KeywordFilterProps {
 	onChange: (keyword: string) => void;
 }
 
-/**
- * Mirrors the keyword into local state so typing stays responsive, then
- * pushes it to the URL 300ms after the last keystroke.
- */
 function KeywordFilter({ keyword, onChange }: KeywordFilterProps) {
 	const [text, setText] = useState(keyword);
 
@@ -52,8 +48,6 @@ function KeywordFilter({ keyword, onChange }: KeywordFilterProps) {
 		[]
 	);
 
-	// aria-label 必须与 placeholder 一致：语音控制用户念的是屏幕上看得见的字，
-	// 两者对不上就点不中这个输入框。
 	return (
 		<Input
 			aria-label="搜索用例名称"
@@ -111,15 +105,6 @@ interface CaseFiltersProps {
 	tags: string[];
 }
 
-/**
- * Keyword (debounced), status, priority and tag filters — all written to the URL.
- *
- * 控件高度约定：同一条工具栏里的所有控件走 default 档 = 32px
- * （Input h-8 / SelectTrigger data-[size=default] h-8 / Button size="default" h-8）。
- * 优先级按钮与标签筛选此前用 size="sm"（h-7），比相邻的输入框和下拉矮 4px，
- * items-center 让它们各自居中后，上下边缘就成了两条错开的线。
- * size="sm" 留给嵌在弹层、单元格里的次级按钮，不要出现在这一行。
- */
 export function CaseFilters(props: CaseFiltersProps) {
 	return (
 		<div className="flex flex-wrap items-center gap-2">

@@ -21,7 +21,6 @@ interface CaseDeleteButtonProps {
 	onDeleted: () => void;
 }
 
-/** Destructive confirmation before removing a case and its version history. */
 export function CaseDeleteButton({
 	caseId,
 	caseName,

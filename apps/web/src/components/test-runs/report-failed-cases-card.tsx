@@ -19,13 +19,6 @@ import type {
 	TestRunReportView,
 } from "@/components/test-runs/report-meta";
 
-/**
- * 没有失败用例时那段话。
- *
- * **绝不能只写「没有失败用例 🎉」**（plan §2.4）。失败数为 0 有两种完全不同的来历：
- * 都测了且都过了，和压根还没测。这一段把还没有结论的条数直接摆出来，
- * 让读的人自己判断，而不是替他下一个「全都通过」的结论。
- */
 function EmptyFailedCases({ counts }: { counts: TestRunReportView["counts"] }) {
 	const { blocked, passed, skipped, total, untested } = counts;
 	if (total === 0) {
@@ -47,13 +40,6 @@ interface ReportFailedCasesCardProps {
 	failedCases: readonly ReportFailedCase[];
 }
 
-/**
- * 失败用例清单（plan §7.4 的第 4 块，也是这一页真正要交付的东西）。
- *
- * 上面三张图回答「大概什么情况」，只有这张表回答「具体是哪几条、谁测的、为什么挂、
- * 缺陷跟到哪一步了」——它是拿去开会和跟进的那份东西，所以放在最下面、占整行宽度，
- * 而不是塞进图表网格的某一格里。
- */
 export function ReportFailedCasesCard({
 	counts,
 	failedCases,

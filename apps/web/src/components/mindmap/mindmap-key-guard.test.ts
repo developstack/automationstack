@@ -5,14 +5,6 @@ import {
 	shouldBlockMindmapKey,
 } from "./mindmap-key-guard.ts";
 
-/**
- * 这个谓词是画布唯一的「不许改 direction」防线，而它到底该拦哪几下，完全取决于
- * mind-elixir 键位表里那几个分支的写法（尤其是 ArrowUp 的 alt 优先、以及
- * ArrowLeft/ArrowRight 压根不读 alt 这两处不对称）。升级库时这些分支一改，
- * 下面的断言就该跟着响。DOM 绑定不测：本仓库的 vitest 跑在 node 环境
- * （见根 vitest.config.ts），谓词因此被设计成不碰 DOM，事件只用普通对象喂。
- */
-
 function keyEvent(patch: Partial<MindmapKeyEvent> = {}): MindmapKeyEvent {
 	return {
 		altKey: false,
@@ -48,7 +40,6 @@ describe("shouldBlockMindmapKey", () => {
 	it("不拦不带修饰键的方向键：那是节点导航，必须保留", () => {
 		for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]) {
 			expect(shouldBlockMindmapKey(keyEvent({ key }))).toBe(false);
-			// 只按 Shift / Alt 也不算修饰键命中。
 			expect(shouldBlockMindmapKey(keyEvent({ key, shiftKey: true }))).toBe(
 				false
 			);
@@ -104,7 +95,6 @@ describe("shouldBlockMindmapKey", () => {
 			);
 			expect(shouldBlockMindmapKey(keyEvent({ key }))).toBe(false);
 		}
-		// 复制粘贴与缩放同样不归这里管。
 		for (const key of ["c", "v", "x", "=", "-", "0"]) {
 			expect(shouldBlockMindmapKey(keyEvent({ key, metaKey: true }))).toBe(
 				false

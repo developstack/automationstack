@@ -23,7 +23,6 @@ from typing import List, Mapping, Optional
 from .errors import ReporterConfigError
 from .idempotency import resolve_run_idempotency_key
 
-#: 顶层定义：这个正则每次解析配置都会用到，没必要每次重建一个。
 _TRAILING_SLASHES = re.compile(r"/+$")
 
 _MISSING_TOKEN = (
@@ -38,13 +37,11 @@ class ReporterConfig:
     base_url: str
     project_id: str
     token: str
-    #: 一次进程一个，重试复用（§7.2 第 2 条）。
     idempotency_key: str
     branch: Optional[str] = None
     ci_url: Optional[str] = None
     commit_sha: Optional[str] = None
     overwrite_manual: bool = False
-    #: None = 全部候选。见模块顶部为什么它不是环境变量。
     run_ids: Optional[List[str]] = field(default=None)
 
 
@@ -86,9 +83,6 @@ def resolve_reporter_config(
 ) -> ReporterConfig:
     resolved_env: Mapping[str, str] = os.environ if env is None else env
     return ReporterConfig(
-        # 末尾斜杠在这里一次性削掉：不削的话 f"{base_url}/ingest/executions"
-        # 会拼出 `//ingest/...`，有的反代会把它 301 到别处，而 301 之后
-        # Authorization 头按规范是可以被丢掉的——表现就是莫名其妙的 401。
         base_url=_TRAILING_SLASHES.sub(
             "", _require_value(base_url, resolved_env.get("AS_BASE_URL"), _MISSING_BASE_URL)
         ),

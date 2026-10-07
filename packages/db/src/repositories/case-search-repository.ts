@@ -9,7 +9,6 @@ export const SEARCH_MAX_LIMIT = 50;
 
 const LIKE_SPECIAL_CHARS = /[%_\\]/g;
 
-/** Summary row returned by keyword search (no steps/preconditions). */
 export interface CaseSearchHit {
 	caseType: CaseType;
 	id: string;
@@ -27,10 +26,6 @@ export interface SearchTestCasesInput {
 	projectId: string;
 }
 
-/**
- * Lightweight name search (case-insensitive substring, %/_ escaped),
- * newest-updated first.
- */
 export function searchTestCases(
 	input: SearchTestCasesInput
 ): Promise<CaseSearchHit[]> {

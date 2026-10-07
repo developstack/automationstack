@@ -1,17 +1,5 @@
 "use client";
 
-/* shadcn 官方 chart 组件，取自 base-lyra —— 与 packages/ui/components.json 的
-   `"style": "base-lyra"` 一致（根目录那份 components.json 写的是 base-vega，
-   但它管的不是这个包）。
-
-   与官方原件的唯一一处样式改动：tooltip 容器由 base-lyra 的 `rounded-none` 改为
-   `rounded-md`。这是本目录既有的落地惯例而非新决定——dropdown-menu.tsx:41、
-   context-menu.tsx:58、popover.tsx:36 三处浮层全是 rounded-md，base-lyra 原件里
-   的直角在落地时一律换成本主题的圆角档（context-menu 落地时同样做过这一步）。
-
-   其余差异只有 import 路径与 Biome 规约（具名导入、interface、取反顺序等），
-   均无行为变化。 */
-
 import { cn } from "@automationstack/ui/lib/utils";
 import type * as React from "react";
 import { createContext, useContext, useId, useMemo } from "react";
@@ -22,7 +10,6 @@ import type {
 } from "recharts";
 import { Legend, ResponsiveContainer, Tooltip } from "recharts";
 
-// Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { dark: ".dark", light: "" } as const;
 
 const INITIAL_DIMENSION = { height: 200, width: 320 } as const;

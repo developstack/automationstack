@@ -16,7 +16,6 @@ import type { ProjectMemberActions } from "@/components/project-members/use-proj
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 
 interface ConfirmCopy {
-	/** 同时用作标题里的动词与确认按钮文案，两处对不上时用户会犹豫。 */
 	action: string;
 	description: string;
 	destructive: boolean;
@@ -47,16 +46,6 @@ interface ProjectMemberConfirmDialogProps {
 	member: ProjectMemberView;
 }
 
-/**
- * 行内菜单动作的二次确认；服务端拒绝时错误就显示在框里，框不关闭。
- *
- * 「不能降级 / 移除项目的最后一个 owner」这条服务端保护正是落在这里：它是
- * BAD_REQUEST，冒到全站兜底的错误 toast 上只会摆一句没有上下文的红字，而人
- * 刚刚点下的按钮已经关掉了。留在框里，那句话就挨着他要做的事。
- *
- * 错误行是同目录的 `ProjectMemberFormError`：一个只画一行红字 + role="alert"
- * 的展示组件。
- */
 export function ProjectMemberConfirmDialog({
 	actions,
 	member,

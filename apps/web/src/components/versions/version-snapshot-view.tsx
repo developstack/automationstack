@@ -1,9 +1,3 @@
-/**
- * Read-only rendering of a single `CaseSnapshot`: scalar fields (in
- * `snapshot-fields.tsx`), preconditions, tags and the step table. Used when
- * the history panel has exactly one version selected (or only one version
- * exists).
- */
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
 import { Badge } from "@automationstack/ui/components/badge";
 import { Separator } from "@automationstack/ui/components/separator";
@@ -79,7 +73,6 @@ interface VersionSnapshotViewProps {
 	version: number;
 }
 
-/** Read-only view of one historical snapshot. */
 export function VersionSnapshotView({
 	snapshot,
 	version,

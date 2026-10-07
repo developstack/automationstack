@@ -1,16 +1,3 @@
-/**
- * 四个用例工具的描述文本。
- *
- * 单独成文件不是为了「整洁」：这些字符串是**每个会话、每次 `tools/list` 都要
- * 付的 token**，也是没有装 skill 的 agent 判断「该调哪个工具」的唯一依据。
- * 它们和注册代码的改动节奏完全不同（描述会因为 agent 的实际误用而反复调，
- * 注册代码几乎不动），混在一起改一个就要把另一个重读一遍。
- *
- * 写法遵循一条判据：**描述要写清「什么时候用它」和「什么时候不该用它」**，
- * 不写成 API 文档。完整的字段语义、错误对照表、映射规则属于 skill 的
- * references（`.claude/skills/` 下的两个 skill），在这里重写一遍只会两处漂移。
- */
-
 export const READ_CASES_DESCRIPTION =
 	"Read existing test cases of a project, with their bodies. This is the tool " +
 	"to call BEFORE writing any new case: it is the only way to learn how this " +

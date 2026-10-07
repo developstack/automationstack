@@ -10,14 +10,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 三家 SDK 共用的那几个固定值。
- *
- * <p>与 {@code sdk-python/tests/conftest.py} 里的 {@code BASE_CONFIG} 逐字对齐——
- * 同一组输入在三家跑出同一组输出，才能说「它们没有漂」。
- *
- * <p>⚠️ token 是**占位符**，不是真凭据。仓库里任何地方都不该出现能用的 token。
- */
 public final class TestFixtures {
 
     public static final String RUN_KEY = "3f2a1b4c-5d6e-4f70-8912-a3b4c5d6e7f8";
@@ -63,7 +55,6 @@ public final class TestFixtures {
         return receiptWith(List.of(), List.of(), List.of(), List.of());
     }
 
-    /** 一份服务端会回的对账单 JSON。走 {@link Json} 编码，顺带多验它一次。 */
     public static String receiptJson(List<Map<String, Object>> writtenTo) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("executionId", EXECUTION_ID);
@@ -86,7 +77,6 @@ public final class TestFixtures {
         return new HttpResponse(status, body.getBytes(StandardCharsets.UTF_8));
     }
 
-    /** 假网络层：整个测试套件里没有一个 socket（见 {@link Transport} 顶部）。 */
     public static final class RecordingTransport implements Transport {
 
         public final List<HttpRequest> requests = new ArrayList<>();
@@ -101,7 +91,6 @@ public final class TestFixtures {
             return queue(json(200, body));
         }
 
-        /** 排一次「网络层没接通」——可重试的那种。 */
         public RecordingTransport queueFailure(Exception error) {
             queued.add(error);
             return this;
@@ -125,7 +114,6 @@ public final class TestFixtures {
         }
     }
 
-    /** 对账单的输出去处。断言的是行，不是 stdout。 */
     public static final class CollectingSink implements ReceiptSink {
 
         public final List<String> lines = new ArrayList<>();

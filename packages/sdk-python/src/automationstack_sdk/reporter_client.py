@@ -36,7 +36,6 @@ from .submit_execution import submit_execution
 @dataclass(frozen=True)
 class RunOutcome:
     receipt: IngestExecutionReceipt
-    #: 本轮没有附件时为 None。附件的成败**不影响**退出码（§5.6）。
     attachments: Optional[AttachmentOutcome]
 
 
@@ -54,8 +53,6 @@ class AutomationStackReporter:
         transport: Optional[Transport] = None,
         **config_kwargs: object,
     ) -> None:
-        # 配置在构造时就解析并校验：缺 token 这种事必须在**跑测试之前**炸，
-        # 而不是等跑完二十分钟才发现结果无处可去。
         self._config = config or resolve_reporter_config(**config_kwargs)  # type: ignore[arg-type]
         self._client = IngestHttpClient(
             base_url=self._config.base_url,
@@ -70,9 +67,6 @@ class AutomationStackReporter:
         self._results: List[CaseResultInput] = []
         self._attachments: List[AttachmentInput] = []
         if exit_on_empty_write:
-            # 现在就预约、失败时才扣扳机。注册得越早，被它跳过的 atexit 钩子越少
-            # ——理由写在 `errors.arm_nonzero_exit` 的 docstring 里。
-            # pytest 插件传 False：那边用 `session.exitstatus`，更干净。
             arm_nonzero_exit()
 
     @property
@@ -115,8 +109,6 @@ class AutomationStackReporter:
         attachments = self._flush_attachments()
         print_receipt(receipt, attachments, self._sink)
         if has_no_writes(receipt):
-            # 两条通道都堵上：抛异常（会被某些框架吞掉）**加**摁退出码。
-            # 静默成功是最坏的情况——QA 以为结果进去了，实际一条都没写。
             mark_nonzero_exit()
             raise IngestEmptyWriteError(receipt)
         return RunOutcome(attachments=attachments, receipt=receipt)
@@ -128,7 +120,5 @@ class AutomationStackReporter:
         outcome = upload_attachments(
             attachments=loaded, client=self._client, config=self._config
         )
-        # 读盘失败排在服务端拒绝前面：那几条是本地问题，人先看到它才不会
-        # 跑去平台上查一个根本没发出去的附件。
         outcome.rejections[:0] = failures
         return outcome

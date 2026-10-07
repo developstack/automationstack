@@ -16,7 +16,6 @@ import { publishInvalidate } from "../lib/realtime-publish";
 
 const projectIdSchema = z.object({ id: z.uuid() });
 
-/** `requireProjectMember` 只认 `projectId`，这里把 `id` 改名喂给它。 */
 const toProjectScope = (input: { id: string }) => ({ projectId: input.id });
 
 const createProjectSchema = z.object({
@@ -35,15 +34,12 @@ const routerErrors = {
 	NOT_FOUND: {},
 } as const;
 
-/** 改名与删项目都要 owner，理由见 `lib/project-access.ts` 的 canAdministerProject。 */
 const OWNER_REQUIRED_MESSAGE = "只有项目 owner 能执行该操作";
 
 export const projectsRouter = {
 	create: protectedProcedure
 		.input(createProjectSchema)
 		.handler(async ({ context, input }) => {
-			// 建项目与写 owner 成员记录在同一个事务里：少了 owner 那一行，
-			// 项目建出来连创建者自己都进不去（`requireProjectMember` 会拦下）。
 			const project = await createProjectWithOwner(
 				{ description: input.description, name: input.name },
 				context.user.id
@@ -68,12 +64,6 @@ export const projectsRouter = {
 			}
 			return project;
 		}),
-	/**
-	 * 只列出自己所属的项目；平台 admin 看全部。
-	 *
-	 * 这一条**不挂 `requireProjectMember`**——那道中间件要一个 projectId，
-	 * 而这里正是「还不知道有哪些项目」的地方，过滤只能落在查询里。
-	 */
 	list: protectedProcedure.handler(({ context }) =>
 		seesAllProjects(context.user.role)
 			? listProjects()

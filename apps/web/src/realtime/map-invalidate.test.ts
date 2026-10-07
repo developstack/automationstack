@@ -27,8 +27,6 @@ const MODULE_TOUCHING_CASE_ACTIONS: InvalidateAction[] = [
 ];
 
 test("case + update 刷新用例、贴图与脑图", () => {
-	// caseAttachments 不在 orpc.cases.key() 的前缀里：漏掉它，别人刚贴进正文的图
-	// 在这边就是一张查不到签名 URL 的占位（签名本身也只有 15 分钟）。
 	expect(mapInvalidateTargets(makeEvent("case", "update"))).toEqual([
 		"caseAttachments",
 		"cases",
@@ -67,7 +65,6 @@ test("project 的任何动作都只刷新 mindmap/projects", () => {
 		"mindmap",
 		"projects",
 	]);
-	// delete 也不会连带刷新 cases/modules —— 记录当前行为
 	expect(mapInvalidateTargets(makeEvent("project", "delete"))).toEqual([
 		"mindmap",
 		"projects",
@@ -75,8 +72,6 @@ test("project 的任何动作都只刷新 mindmap/projects", () => {
 });
 
 test("testRun 同时刷新测试任务与附件两个缓存根", () => {
-	// 附件的 register/remove 也发 entity:"testRun"（plan §6.4 不给附件单开 topic），
-	// 而附件列表住在另一个 router，漏掉它别人传的截图就不会自动出现。
 	for (const action of ["create", "delete", "update"] as InvalidateAction[]) {
 		expect(mapInvalidateTargets(makeEvent("testRun", action))).toEqual([
 			"testRunAttachments",
@@ -86,7 +81,6 @@ test("testRun 同时刷新测试任务与附件两个缓存根", () => {
 });
 
 test("未知 entity 兜底为空列表（不抛异常）", () => {
-	// 协议 schema 会先挡住，这里只锁运行时收到脏数据时的兜底行为
 	const event = {
 		action: "update",
 		actor: ACTOR,
@@ -122,6 +116,5 @@ test("shouldApplyInvalidate：他人触发的失效要应用", () => {
 	expect(shouldApplyInvalidate(makeEvent("case", "update"), "client-b")).toBe(
 		true
 	);
-	// 空串是合法的「已就绪但不同」身份，不能当作未就绪
 	expect(shouldApplyInvalidate(makeEvent("case", "update"), "")).toBe(true);
 });

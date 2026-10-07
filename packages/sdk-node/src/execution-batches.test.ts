@@ -53,7 +53,6 @@ describe("批量提交（§7.2 第 1 条 / D29）", () => {
 		expect(keys).toHaveLength(3);
 		expect(new Set(keys).size).toBe(3);
 		expect(keys[0]).toBe(RUN_KEY);
-		// 重试同一轮：算出来的还是同一组键（§7.2 第 2 条）。
 		expect(retried.map((request) => request.idempotencyKey)).toEqual(keys);
 	});
 

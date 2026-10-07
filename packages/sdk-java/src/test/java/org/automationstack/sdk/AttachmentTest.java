@@ -16,7 +16,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** 附件三步：presign → 直传 → register（§5.6 / D28）。传不上去不能拖垮整次上报。 */
 class AttachmentTest {
 
     private static IngestHttpClient client(TestFixtures.RecordingTransport transport) {
@@ -65,7 +64,6 @@ class AttachmentTest {
 
     @Test
     void rejectsAttachmentWithNeitherBodyNorFile() {
-        // 本地编程错误，在入队那一刻就抛——presign 之后才发现等于白跑半程。
         AttachmentInput input = AttachmentInput.builder("PAY-1", AttachmentKind.LOG).build();
         AttachmentInputError error =
                 assertThrows(AttachmentInputError.class, () -> AttachmentLoad.assertAttachmentInput(input));
@@ -78,7 +76,6 @@ class AttachmentTest {
                 AttachmentInput.builder("PAY-1", AttachmentKind.OTHER)
                         .body(new byte[] {1}).fileName("trace.zip").build());
         assertEquals("application/zip", fromPath.contentType());
-        // 猜不出来时不猜，按 kind 回落。
         assertEquals("text/plain", AttachmentLoad.loadAttachment(
                 AttachmentInput.ofBytes("PAY-1", AttachmentKind.LOG, new byte[] {1})).contentType());
         assertEquals("log", AttachmentLoad.loadAttachment(
@@ -120,7 +117,6 @@ class AttachmentTest {
 
     @Test
     void presignBodyCarriesTheSameRunIdsAsTheResultsRound() {
-        // 少传一次，附件会挂到本轮结论压根没写过的任务上。
         ReporterConfig config = new ReporterConfig(TestFixtures.BASE_URL, null, null, null,
                 TestFixtures.RUN_KEY, false, TestFixtures.PROJECT_ID, List.of("run-1"), TestFixtures.TOKEN);
         TestFixtures.RecordingTransport transport = new TestFixtures.RecordingTransport()
@@ -134,8 +130,6 @@ class AttachmentTest {
 
     @Test
     void uploadsTheSameFileOncePerResolvedRunCase() {
-        // ⚠️ 有意不去重：一条 sourceRef 可能落在多个未提交任务里（D33），
-        // 省下这几份 object 的代价是给附件删除引入引用计数。
         String presign = presignJson(2, true, List.of()).replace("\"PAY-1\"", "\"PAY-0\"");
         TestFixtures.RecordingTransport transport = new TestFixtures.RecordingTransport()
                 .queueJson(presign)
@@ -182,14 +176,11 @@ class AttachmentTest {
                 List.of(loaded("PAY-0"), loaded("PAY-1")), client(transport), TestFixtures.baseConfig());
         assertEquals(1, outcome.uploaded());
         assertEquals(1, outcome.registered());
-        // 措辞上标出这是本地失败：人得能一眼分清该去查网络还是去查平台。
         assertTrue(outcome.rejections().get(0).contains("（本地）直传失败"));
     }
 
     @Test
     void wholeBatchFailureIsContainedAndNeverThrows() {
-        // 结论那一轮早就写进去了；让一个连不上的 R2 把一次成功的上报判成失败
-        // 是最没道理的失败方式（§5.6，同第二期 D9）。
         TestFixtures.RecordingTransport transport = new TestFixtures.RecordingTransport()
                 .queue(TestFixtures.json(500, "storage down"));
         AttachmentOutcome outcome = AttachmentUpload.uploadAttachments(

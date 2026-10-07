@@ -14,16 +14,6 @@ const badgeVariants = cva(
 				default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
 				destructive:
 					"bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
-				/*
-				 * 刻意偏离上游：上游没有这一支。本仓库的用例优先级是一条「填充强度色阶」
-				 * （P0 实心危险色 → P1 淡危险色 → P2 灰填充 → P3 无填充），P0 必须是实心
-				 * destructive，理由与实测值见 apps/web/src/components/cases/case-meta.ts
-				 * 的 PRIORITY_BADGE_VARIANTS 注释。上游的 destructive 是淡填充，暗色下
-				 * --primary 是 near-white 实心，直接回归会让 P1 压过 P0；且
-				 * case-meta.ts 的 BadgeVariant 联合类型有四个 <Badge variant> 调用点
-				 * （case-table / case-detail-view / version-snapshot-view /
-				 * ai-proposal-item），删掉这一支会直接编译不过。
-				 */
 				"destructive-solid":
 					"bg-destructive text-destructive-foreground focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/90",
 				ghost:

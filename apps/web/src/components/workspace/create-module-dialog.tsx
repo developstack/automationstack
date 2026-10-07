@@ -1,7 +1,3 @@
-/**
- * 新建模块对话框。原与删除对话框同住 module-dialogs.tsx，按
- * 「一个文件一个对外组件」拆开；两者共用的开关状态在 module-dialog-state.ts。
- */
 import { Button } from "@automationstack/ui/components/button";
 import {
 	Dialog,
@@ -90,7 +86,6 @@ function CreateModuleForm({
 
 interface CreateModuleDialogProps {
 	onClose: () => void;
-	/** null 表示对话框关闭；parentId 为 null 时创建根模块。 */
 	parentId: string | null | undefined;
 	projectId: string;
 }

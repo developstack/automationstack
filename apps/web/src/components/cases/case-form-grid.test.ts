@@ -10,7 +10,6 @@ import {
 
 const SPAN_PATTERN = /^sm:col-span-(\d+)$/;
 
-/** 从 `sm:col-span-N` 里取出 N；类名写错时直接失败，而不是静默算成 0。 */
 function spanOf(field: CaseFieldKey): number {
 	const match = SPAN_PATTERN.exec(CASE_FIELD_SPAN_CLASS[field]);
 	const span = match?.[1];
@@ -25,7 +24,6 @@ describe("case form grid", () => {
 		expect(CASE_FIELD_GRID_CLASS).toContain(
 			`sm:grid-cols-${CASE_FIELD_GRID_COLUMNS}`
 		);
-		// 窄屏必须回到单栏堆叠
 		expect(CASE_FIELD_GRID_CLASS).toContain("grid-cols-1");
 	});
 

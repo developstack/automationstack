@@ -1,13 +1,5 @@
 "use client";
 
-/* Animate UI 的 base popover primitive（上游 registry/primitives/base/popover），
-   vendored 进来。与上游源码的四处出入及其理由与 tooltip-primitives.tsx 同一套
-   （包名 / props 类型 / keepMounted 位置 / reduced-motion），不再重复。
-
-   多一条只属于 popover 的：上游把 initialFocus、finalFocus 单独解构出来再显式
-   传给 Base UI 的 Popup——那是因为它把其余 props 都甩给了 motion.div，这两个
-   Base UI 专有的 props 必须留下。这里 props 整份就交给 Base UI，无需拆。 */
-
 import { useControlledState } from "@automationstack/ui/hooks/use-controlled-state";
 import { getStrictContext } from "@automationstack/ui/lib/get-strict-context";
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
@@ -97,11 +89,6 @@ function PopoverPopup({
 }: PopoverPopupProps) {
 	const reduce = useReducedMotion();
 
-	/* render 的函数形态，理由与 tooltip-primitives.tsx 里那段同源：第一个参数是
-	   Base UI 解析好的 HTMLProps（含定位用的 CSS 变量、ref 和事件处理器），必须
-	   整份展开；第二个参数的 state.instant 就是 popup-transition 当年消费的
-	   data-instant。popover 这边的取值是 'dismiss' | 'click' | 'focus' |
-	   'trigger-change'，其中 click 只在键盘触发时置位——鼠标点开照常有动画。 */
 	const renderPopup = useCallback(
 		(
 			{

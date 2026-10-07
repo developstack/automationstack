@@ -3,12 +3,6 @@ import { afterEach, expect, test, vi } from "vitest";
 import { buildDefectDescription } from "./adf";
 import { createJiraClient } from "./client";
 
-/**
- * 客户端的单测**全部走 mock 的 fetch**：仓库里没有、也不该有真实 Jira 凭据，
- * 而这一层要保证的东西（认证头怎么拼、v3 的路径、描述是不是 ADF、
- * 失败怎么分类）全都不需要真的连出去就能验证。
- */
-
 const OPTIONS = {
 	apiToken: "token-123",
 	defaultIssueType: "Bug",
@@ -65,7 +59,6 @@ test("createIssue 打 v3 接口、用 Basic 认证、描述是 ADF", async () =>
 		ok: true,
 		value: { key: "PAY-7", url: "https://acme.atlassian.net/browse/PAY-7" },
 	});
-	// 末尾斜杠不该拼出 `net//rest`。
 	expect(calls[0]?.url).toBe("https://acme.atlassian.net/rest/api/3/issue");
 	const headers = calls[0]?.init.headers as Record<string, string>;
 	expect(headers.authorization).toBe(

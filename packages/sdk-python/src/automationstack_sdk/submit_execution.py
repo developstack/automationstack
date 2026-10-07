@@ -30,8 +30,6 @@ def submit_execution(
     requests = build_execution_requests(config=config, results=results, window=window)
     receipts = []
     for request in requests:
-        # 串行而不是开线程池：并发几批会在服务端互相抢同一批 `test_runs`
-        # 的行锁（`ensureRunWritable` 的 `FOR UPDATE`），把本来省下的往返又赔进去。
         raw = client.post_json(INGEST_EXECUTIONS_ROUTE, request.to_wire())
         receipts.append(IngestExecutionReceipt.from_wire(raw))
     return merge_receipts(receipts)

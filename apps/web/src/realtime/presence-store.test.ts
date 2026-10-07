@@ -20,7 +20,6 @@ function makeEntry(
 	};
 }
 
-/** 装一个计数 listener，返回 store、读计数的函数和退订。 */
 function withStore(): {
 	calls: () => number;
 	store: PresenceStore;
@@ -33,17 +32,12 @@ function withStore(): {
 	return { calls: () => count, store };
 }
 
-// ---------------------------------------------------------------------------
-// 快照引用缓存
-// ---------------------------------------------------------------------------
-
 test("内容完全相同的两次 commit 保留旧引用且不通知", () => {
 	const { calls, store } = withStore();
 	store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
 	const first = store.getSnapshot();
 	expect(calls()).toBe(1);
 
-	// 同内容但是全新的对象：WS 每帧都是新反序列化的，引用比较救不了，必须比值。
 	store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
 
 	expect(store.getSnapshot()).toBe(first);
@@ -65,15 +59,12 @@ test("空快照之间不产生新引用", () => {
 	const { calls, store } = withStore();
 	expect(store.getSnapshot()).toBe(EMPTY_PRESENCE);
 
-	// 未知 clientId 的 leave 本就早退；这里保证它没绕过引用缓存。
 	store.apply({ clientId: "ghost", type: "presence:leave" });
 
 	expect(store.getSnapshot()).toBe(EMPTY_PRESENCE);
 	expect(calls()).toBe(0);
 });
 
-// 字段清单对应 presenceEntrySchema（protocol.ts:28-37）；漏比一个字段，
-// 该字段的变化就会静默不重渲，所以每个可变字段都要单独把关。
 const CHANGED_FIELDS: [string, Partial<PresenceEntry>][] = [
 	["color", { color: "#222222" }],
 	["editingCaseId", { editingCaseId: "case-1" }],
@@ -142,10 +133,6 @@ test("clear 清空后换引用并通知，重复 clear 静默", () => {
 	expect(calls()).toBe(2);
 });
 
-// ---------------------------------------------------------------------------
-// 排序
-// ---------------------------------------------------------------------------
-
 test("joinedAt 相同的 entry 多次 commit 顺序不抖", () => {
 	const store = new PresenceStore();
 	const tied = [
@@ -157,7 +144,6 @@ test("joinedAt 相同的 entry 多次 commit 顺序不抖", () => {
 	const order = store.getSnapshot().map((entry) => entry.clientId);
 	expect(order).toEqual(["a-alice", "b-bob", "c-charlie"]);
 
-	// 重连后服务端可能换个数组顺序发同一批人：顺序必须一致，快照也不该换引用。
 	const first = store.getSnapshot();
 	store.apply({ entries: [...tied].reverse(), type: "presence:sync" });
 
@@ -180,10 +166,6 @@ test("joinedAt 决定主序，不受到达顺序影响", () => {
 	]);
 });
 
-// ---------------------------------------------------------------------------
-// setSelf 三条路径
-// ---------------------------------------------------------------------------
-
 test("setSelf 首次设置会注入自己并通知", () => {
 	const { calls, store } = withStore();
 
@@ -198,8 +180,6 @@ test("setSelf 字段变化会换引用并通知，joinedAt 保持不变", () => 
 	store.setSelf(makeEntry("me", { joinedAt: 1000 }));
 	const first = store.getSnapshot();
 
-	// 改名 + 换视图，同时带上一个「新的」joinedAt：joinedAt 必须被旧值顶回去，
-	// 否则头像会因为一次改名重排。
 	store.setSelf(makeEntry("me", { joinedAt: 9999, name: "new", view: "map" }));
 
 	const [self] = store.getSnapshot();
@@ -215,7 +195,6 @@ test("setSelf 传入等价 entry 不通知", () => {
 	store.setSelf(makeEntry("me"));
 	const first = store.getSnapshot();
 
-	// useViewSync 的 effect 会因 identity 的引用变化反复跑同参数 setSelf。
 	store.setSelf(makeEntry("me"));
 
 	expect(store.getSnapshot()).toBe(first);
@@ -237,7 +216,6 @@ test("setSelf 置空会移除自己并通知", () => {
 test("服务端已回发自己后 setSelf(null) 不改变可见结果，因此不通知", () => {
 	const { calls, store } = withStore();
 	store.setSelf(makeEntry("me"));
-	// 服务端版本为准：entries 里已经有自己了。
 	store.apply({ entry: makeEntry("me"), type: "presence:update" });
 	const first = store.getSnapshot();
 
@@ -258,7 +236,6 @@ test("setSelf 换 clientId 会替换自己并通知", () => {
 	expect(store.getSnapshot().map((entry) => entry.clientId)).toEqual([
 		"me-new",
 	]);
-	// 不是同一个人，joinedAt 不该被上一个身份顶掉。
 	expect(self?.joinedAt).toBe(5000);
 	expect(calls()).toBe(2);
 });
@@ -273,10 +250,6 @@ test("服务端版本优先于 setSelf 注入的本端身份", () => {
 
 	expect(store.getSnapshot()[0]?.view).toBe("mindmap");
 });
-
-// ---------------------------------------------------------------------------
-// 通知
-// ---------------------------------------------------------------------------
 
 test("listener 在回调里退订自己不影响后续 listener", () => {
 	const store = new PresenceStore();

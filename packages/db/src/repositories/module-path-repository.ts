@@ -7,7 +7,6 @@ import { createModuleInTx } from "./modules-repository";
 import type { DbTransaction } from "./repository-types";
 
 export interface EnsureModulePathInput {
-	/** Module names from root to leaf, e.g. ["订单", "支付", "退款"]. */
 	path: string[];
 	projectId: string;
 }
@@ -29,7 +28,6 @@ async function projectExists(
 	return Boolean(row);
 }
 
-/** First sibling with the given name (same project, same parent), or null. */
 async function findChildByName(
 	tx: DbTransaction,
 	group: { name: string; parentId: string | null; projectId: string }
@@ -99,12 +97,6 @@ async function ensureModulePathInTx(
 	return { createdModuleIds, kind: "ok", moduleId: parentId };
 }
 
-/**
- * Walks `path` level by level inside one transaction, matching existing
- * modules by name and creating any missing segment (appended at the end
- * of its sibling group). Idempotent: re-running with the same path
- * returns the same leaf module and creates nothing.
- */
 export function ensureModulePath(
 	input: EnsureModulePathInput
 ): Promise<EnsureModulePathResult> {

@@ -1,8 +1,3 @@
-/**
- * 项目卡片栅格与它的空态。原是 project-list.tsx 里的私有辅助，
- * 按「同文件最多 2 个私有辅助组件」拆出来；单张卡片只服务于这张栅格，
- * 跟着一起搬。
- */
 import type { Project } from "@automationstack/db/schema/projects";
 import { Button } from "@automationstack/ui/components/button";
 import {
@@ -46,11 +41,6 @@ function ProjectCard({ onDelete, onEdit, project }: ProjectCardProps) {
 		<Card>
 			<CardHeader>
 				<CardTitle>
-					{/*
-					 * 进项目落在概览，不是用例列表：「这个项目现在什么状况」是进来之后
-					 * 的第一个问题，用例列表是接下来的动作。项目根路径本身仍旧是用例
-					 * 列表（一级侧栏「用例管理」那一项就指着它），这里改的只是入口的落点。
-					 */}
 					<Link
 						className="hover:underline"
 						params={{ projectId: project.id }}
@@ -65,7 +55,6 @@ function ProjectCard({ onDelete, onEdit, project }: ProjectCardProps) {
 				<div className="flex items-center justify-between gap-2 text-muted-foreground text-xs">
 					<span>更新于 {formatDateTime(project.updatedAt)}</span>
 					<DropdownMenu>
-						{/* 带项目名：读屏的按钮列表里，同名的「项目操作」互相分辨不出来 */}
 						<DropdownMenuTrigger
 							render={
 								<Button

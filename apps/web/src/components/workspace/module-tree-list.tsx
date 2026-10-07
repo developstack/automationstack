@@ -1,8 +1,3 @@
-/**
- * 模块树的列表主体（DndContext + 递归节点 + 空态）。原与 ModuleTree 同住
- * module-tree.tsx，按「同文件最多 2 个私有辅助组件」拆出来；空态只服务于它，
- * 跟着一起搬。
- */
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
 import {
 	Empty,
@@ -51,7 +46,6 @@ interface ModuleTreeListProps {
 	selectedModuleId: string | undefined;
 }
 
-/** 模块树主体：整棵树共用一个 DndContext，落点条与根末尾落点都在其内。 */
 export function ModuleTreeList({
 	actions,
 	expansion,
@@ -64,7 +58,6 @@ export function ModuleTreeList({
 		[expansion]
 	);
 	const drag = useModuleDrag(projectId, nodes, revealParent);
-	// 播报文案要按 id 查模块名，只能随树重建；useMemo 保住「不要每次渲染换新对象」
 	const accessibility = useMemo(
 		() => ({
 			announcements: createModuleDragAnnouncements(nodes),
@@ -79,8 +72,6 @@ export function ModuleTreeList({
 		<DndContext
 			accessibility={accessibility}
 			collisionDetection={drag.collisionDetection}
-			// 固定 id：dnd-kit 默认用模块级自增计数器生成 aria-describedby，
-			// SSR 与客户端算出的序号不一致会触发 hydration mismatch。
 			id={DRAG_CONTEXT_ID}
 			onDragCancel={drag.onDragCancel}
 			onDragEnd={drag.onDragEnd}

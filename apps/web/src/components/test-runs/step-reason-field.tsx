@@ -1,8 +1,3 @@
-/**
- * 失败 / 阻塞原因的可编辑形态。从 `run-step-reason.tsx` 拆出来（那个文件同时
- * 导出两个组件），配色表留在原地的 `run-step-reason.ts` 里，两种形态共用。
- */
-
 import { Textarea } from "@automationstack/ui/components/textarea";
 import type { ChangeEvent } from "react";
 
@@ -20,11 +15,6 @@ interface StepReasonFieldProps {
 	value: string;
 }
 
-/**
- * 原因输入框。**只在判成失败 / 阻塞时渲染**，但框里的字并不随判定被清空——
- * 那份文本存在草稿里（见 `use-run-step-draft.ts`），用户误点通过再点回失败，
- * 写过的原因原样还在。真正的清理在保存那一刻由服务端做。
- */
 export function StepReasonField({
 	kind,
 	onChange,

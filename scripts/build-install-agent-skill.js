@@ -1,24 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * 把 `.claude/skills/` 下的两个 skill 嵌进 `apps/web/public/install-agent-skill.sh`。
- *
- * 为什么需要这个脚本
- * ------------------
- * 安装脚本是发给用户的**单文件**离线安装器，skill 正文必须躺在它自己肚子里。
- * 早先那份正文是手抄进去的，于是仓库里的 skill 改了、脚本里的没改，用户装到的
- * 是另一套东西（连 skill 名都对不上：脚本装的叫 testcase-platform，仓库里根本
- * 没有这个 skill）。手抄 + 靠人记得同步 = 一定漂移，所以改成生成 + 门禁校验。
- *
- * 没选「安装时从 web 下载」：安装脚本的 --url 指向 MCP 端点（server），skill
- * 文件是 web 的静态资源（另一个端口），从前者推后者是猜；而且那会给一个现在
- * 完全离线可用的安装器加上「下载失败」「下到旧版本」两种新失败形态。
- *
- * 用法：
- *   node scripts/build-install-agent-skill.js           # 重新生成
- *   node scripts/build-install-agent-skill.js --check   # 只校验，不写（CI 用）
- */
-
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,20 +8,14 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SKILLS_ROOT = join(REPO_ROOT, ".claude/skills");
 const TARGET = join(REPO_ROOT, "apps/web/public/install-agent-skill.sh");
 
-// 装哪些 skill：显式列出，不扫目录。`.claude/skills/` 以后可能放只给本仓库
-// 开发者用的 skill，那些不该被发给平台用户。
 const SKILLS = ["testcase-authoring", "testcase-migration"];
 
-// 安装脚本把 skill 正文里的这个占位符 sed 成用户的 --url。
-// 仓库里的 skill 真身写的是真实默认地址（那是给读文档的人看的），
-// 占位符只在嵌入时替换，不污染真身。
 const DEFAULT_MCP_URL = "http://localhost:3000/mcp";
 const URL_PLACEHOLDER = "__MCP_URL__";
 
 const BEGIN_MARKER = "# >>> BEGIN GENERATED SKILLS";
 const END_MARKER = "# <<< END GENERATED SKILLS";
 
-/** SKILL.md 永远排第一，references 按文件名排序，保证生成结果可复现。 */
 function skillFiles(skill) {
 	const referencesDir = join(SKILLS_ROOT, skill, "references");
 	let references = [];
@@ -60,11 +35,6 @@ function readSkillFile(skill, relativePath) {
 	return text.replaceAll(DEFAULT_MCP_URL, URL_PLACEHOLDER);
 }
 
-/**
- * 引号定界符的 heredoc：正文原样保留，$AS_TOKEN / ${...} 不会被 shell 展开。
- * 定界符带序号，并断言正文里没有同名行——否则 heredoc 会提前结束，
- * 后半段正文就变成 shell 命令被执行。
- */
 function heredoc(index, content) {
 	const delimiter = `TCP_SKILL_EOF_${index}`;
 	if (content.split("\n").includes(delimiter)) {

@@ -10,7 +10,6 @@ const RECONNECT_BASE_DELAY_MS = 1000;
 const RECONNECT_MAX_DELAY_MS = 15_000;
 const RECONNECT_BACKOFF_FACTOR = 2;
 const RECONNECT_JITTER_RATIO = 0.3;
-/** Math.random() ∈ [0,1) → [-1,1) 的映射系数。 */
 const JITTER_SPREAD = 2;
 const HTTP_PROTOCOL_PATTERN = /^http/;
 
@@ -18,18 +17,15 @@ export type RealtimeStatus = "closed" | "connecting" | "open";
 
 export interface RealtimeConnectionOptions {
 	clientId: string;
-	/** 重连成功（非首连）后触发，供上层做全量 invalidate 补漏。 */
 	onReconnect?: () => void;
 	onStatusChange?: (status: RealtimeStatus) => void;
 	projectId: string;
-	/** http(s) 服务端地址或相对路径，内部转为 ws(s)。 */
 	serverUrl: string;
 	view: string;
 }
 
 type MessageListener = (message: ServerMessage) => void;
 
-/** 指数退避：1s → 2s → 4s … 封顶 15s，叠加 ±30% 抖动。 */
 export function computeBackoffDelay(attempt: number): number {
 	const base = Math.min(
 		RECONNECT_BASE_DELAY_MS * RECONNECT_BACKOFF_FACTOR ** attempt,
@@ -40,7 +36,6 @@ export function computeBackoffDelay(attempt: number): number {
 	return Math.max(0, Math.round(base + jitter));
 }
 
-/** 将 http(s) 或相对地址转为 ws(s) 绝对地址（相对地址仅浏览器可用）。 */
 export function toWebSocketUrl(serverUrl: string): string {
 	const absolute =
 		serverUrl.startsWith("/") && typeof window !== "undefined"
@@ -58,23 +53,14 @@ function parseServerMessage(data: unknown): ServerMessage | null {
 	try {
 		raw = JSON.parse(data);
 	} catch {
-		// 非 JSON 帧：静默丢弃（server 未就绪时的错误响应等）
 		return null;
 	}
 	const result = serverMessageSchema.safeParse(raw);
 	return result.success ? result.data : null;
 }
 
-/**
- * WebSocket 连接管理：`GET /ws?projectId&clientId&view`。
- * 身份（用户名 / 颜色）不在参数里：服务端按会话 cookie 自己认人。
- * - 25s 心跳 ping
- * - 断线指数退避重连（server 未就绪时连接失败是常态路径，全程无 console 输出）
- * - 入站消息经 protocol zod 校验后分发给订阅者
- */
 export class RealtimeConnection {
 	private attempts = 0;
-	/** dispose 后进入 disposed，永不重连（字面量联合避免布尔字面量收窄误报）。 */
 	private lifecycle: "active" | "disposed" = "active";
 	private readonly listeners = new Set<MessageListener>();
 	private readonly options: RealtimeConnectionOptions;
@@ -95,7 +81,6 @@ export class RealtimeConnection {
 		try {
 			socket = new WebSocket(this.buildUrl());
 		} catch {
-			// URL 非法或环境不支持：走统一的重连路径
 			this.setStatus("closed");
 			this.scheduleReconnect();
 			return;
@@ -110,9 +95,8 @@ export class RealtimeConnection {
 		socket.onclose = () => {
 			this.handleClose();
 		};
-		socket.onerror = () => {
-			// 静默：错误后浏览器必然触发 close，由 handleClose 统一处理
-		};
+		// biome-ignore lint/suspicious/noEmptyBlockStatements: intentional
+		socket.onerror = () => {};
 	}
 
 	dispose(): void {

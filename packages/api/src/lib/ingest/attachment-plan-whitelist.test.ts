@@ -11,15 +11,6 @@ import {
 } from "./attachment-fixtures";
 import { planAttachmentUploads } from "./attachment-reconcile";
 
-/**
- * §5.1.1 的 `runIds` 白名单在折算层收窄（不在 SQL 里）之后才有可能成立的用例：
- * 被排除的候选任务仍然可见，于是能给出一条**指名道姓**的独立理由，
- * 而不是与「压根没有任务收它」糊成同一句假话。
- *
- * 判据顺序与配额分别在 `./attachment-reconcile.test` 与
- * `./attachment-plan-quota.test`；共用的构造器在 `./attachment-fixtures`。
- */
-
 test("白名单排除的候选任务：拒绝理由指名任务，且与「没有任务收它」是两句话", () => {
 	const planned = planAttachmentUploads({
 		attachments: [screenshot("A")],
@@ -35,7 +26,6 @@ test("白名单排除的候选任务：拒绝理由指名任务，且与「没�
 		runIds: [RUN_TWO],
 	});
 	expect(planned.groups).toEqual([]);
-	// 关键：不是「不在任何未提交任务的范围内」——任务是现成的，人该改的是 CI 的白名单。
 	expect(planned.rejected).toEqual([
 		{
 			index: 0,
@@ -115,7 +105,6 @@ test("同时被白名单排除又在待评审时，只说白名单那条真正�
 		runIds: [RUN_TWO],
 	});
 	expect(planned.groups).toEqual([]);
-	// 说「还在待评审」等于暗示「评审完就会签出 URL」，而这轮压根不打算传它。
 	expect(planned.rejected).toHaveLength(1);
 	expect(planned.rejected[0]?.reason).toContain("白名单没有带上它");
 	expect(planned.rejected[0]?.reason).not.toContain("待评审");

@@ -1,17 +1,3 @@
-/* 与 shadcn 原件的一处刻意偏离：浮层的进出场由 tw-animate-css 关键帧
-   （data-open:animate-in / data-closed:animate-out 那一整套）换成了
-   packages/ui/src/styles/globals.css 里的 popup-transition 工具类。
-   理由见该工具类上方的注释：关键帧不可打断，退场播到一半再打开会跳回位移起点
-   重播，而本仓的模块树每一行都挂着这类浮层。换过去同时消费了 Base UI 的
-   data-instant（键盘连续操作时不留拖影），并让时长与缓动落在一处可改的地方。
-   shadcn add select --diff 会因此报出这一行的差异，属预期。
-
-   同时删掉了 data-[align-trigger=true]:animate-none：align-trigger 在
-   @base-ui/react@1.7.0 里 0 命中，Base UI 实际发的是 data-side="none"
-   （select/positioner/SelectPositioner.js:107），这条抑制从未生效过。
-   popup-transition 的位移分支全部挂在具体 data-side 值上，"none" 一条都匹配
-   不上，自动退化成只有 opacity + scale，正是那条死选择器本来想要的效果。 */
-
 import { cn } from "@automationstack/ui/lib/utils";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
@@ -49,14 +35,6 @@ function SelectTrigger({
 }) {
 	return (
 		<SelectPrimitive.Trigger
-			/*
-			 * 刻意偏离上游：上游这里是物理属性 `pr-2 pl-2.5`，在 dir="rtl" 下不会
-			 * 跟着镜像（首侧内缩会跑到尾侧），本仓库 better-layout 基线要求逻辑属性，
-			 * 故改为 `pe-2 ps-2.5`。LTR 下两者的计算值完全一致，是零视觉差的替换。
-			 * 注：同文件的 SelectItem（pr-8 pl-2）与 ItemIndicator（right-2）有同类
-			 * 问题，本轮未改——它们不在本次指定范围内，且上一批已 review 的
-			 * tabs/popover/table 也仍是物理属性，单独改这里会加深不一致。
-			 */
 			className={cn(
 				"flex w-fit items-center justify-between gap-1.5 whitespace-nowrap rounded-md border border-input bg-transparent py-2 ps-2.5 pe-2 text-sm shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=default]:h-8 data-[size=sm]:h-7 data-placeholder:text-muted-foreground *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 dark:bg-input/30 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 dark:hover:bg-input/50 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
 				className

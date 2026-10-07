@@ -1,14 +1,3 @@
-/**
- * Maps mind-elixir `operation` events onto `mindmap.batch` operations.
- *
- * Payload shapes verified against mind-elixir@5.15.1
- * (`dist/types/utils/pubsub.d.ts`): the `operation` event carries a union
- * discriminated on `name`; single-node events expose `obj`, move/remove events
- * expose `objs` (+ `toObj`). The canvas has already applied the edit locally
- * when the event fires, so every plan below reads the *new* tree state: the
- * parent and the sibling index are taken from `obj.parent` rather than from
- * `toObj`, which keeps drag, keyboard reorder and menu actions on one path.
- */
 import type { NodeObj, Operation } from "mind-elixir";
 
 import type { client } from "@/utils/orpc";
@@ -22,18 +11,13 @@ import type { MindmapNodeKind } from "./mindmap-node-id.ts";
 
 type BatchInput = Parameters<typeof client.mindmap.batch>[0];
 
-/** One operation of the `mindmap.batch` discriminated union. */
 export type MindmapBatchOperation = BatchInput["operations"][number];
 
-/** Resolves a tempId minted by an earlier batch to its real entity id. */
 export type ResolveEntityId = (id: string) => string;
 
 export interface MindmapOperationPlan {
-	/** Set for creates: the canvas node whose id must be swapped afterwards. */
 	readonly created: { readonly nodeId: string; readonly tempId: string } | null;
-	/** Entity ids whose in-flight requests must settle before this one runs. */
 	readonly keys: readonly string[];
-	/** Built at send time so ids created by earlier batches resolve. */
 	readonly toOperations: (
 		resolveId: ResolveEntityId
 	) => MindmapBatchOperation[];
@@ -41,7 +25,6 @@ export interface MindmapOperationPlan {
 
 const MOVE_NAMES = new Set(["moveNodeAfter", "moveNodeBefore", "moveNodeIn"]);
 
-/** Position of `node` among the siblings that share its kind. */
 function siblingIndex(node: NodeObj, kind: MindmapNodeKind): number {
 	let index = 0;
 	for (const sibling of node.parent?.children ?? []) {
@@ -183,10 +166,6 @@ function planMove(nodes: readonly NodeObj[]): MindmapOperationPlan | null {
 	};
 }
 
-/**
- * Turns one canvas operation into a batch plan, or null when the event carries
- * no server-side meaning (selection, `beginEdit`, arrows, summaries, …).
- */
 export function planMindmapOperation(
 	operation: Operation,
 	projectId: string

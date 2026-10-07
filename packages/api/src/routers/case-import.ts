@@ -25,11 +25,6 @@ const CASES_DESCRIPTION =
 	"Rows are validated one by one: an invalid row is reported in `errors` " +
 	"with its index and never blocks the rest of the batch.";
 
-/**
- * Batch-level input only. Row shape is intentionally NOT enforced here:
- * validating each row inside the handler is what keeps one dirty row from
- * rejecting the whole batch (see the per-row parse below).
- */
 export const importBatchSchema = z.object({
 	cases: z
 		.array(z.unknown())
@@ -57,7 +52,6 @@ export const searchCasesSchema = z.object({
 	projectId: z.uuid().describe("Project id to search in."),
 });
 
-/** Best-effort labels for a row that failed strict validation. */
 const rowLabelSchema = z.object({
 	name: z.string().catch(""),
 	sourceRef: z.string().nullable().catch(null),
@@ -83,7 +77,6 @@ function issuesMessage(error: z.ZodError): string {
 	return `入参校验失败：${details}`;
 }
 
-/** Splits a raw batch into executable rows and per-row validation errors. */
 function parseRows(cases: unknown[]): ParsedRows {
 	const rows: ImportCaseRow[] = [];
 	const invalidRows: ImportErrorItem[] = [];
@@ -119,8 +112,6 @@ async function runImportBatch(
 		projectId: input.projectId,
 		rows,
 	});
-	// 逐条降级语义：部分成功也要广播；整批 0 成功（全 skipped/errors）不广播。
-	// 一批可能横跨多个模块，故不带 moduleId——客户端按项目粒度失效即可。
 	publishInvalidate({
 		action: "create",
 		context,
@@ -136,12 +127,6 @@ async function runImportBatch(
 	};
 }
 
-/**
- * Bulk-import and search procedures, spread into the `cases` router as
- * cases.importBatch / cases.search. importBatch validates and processes
- * rows one by one (per-row transaction): a row that fails validation or
- * execution lands in `errors` and never aborts the batch.
- */
 export const caseImportProcedures = {
 	importBatch: protectedProcedure
 		.input(importBatchSchema)

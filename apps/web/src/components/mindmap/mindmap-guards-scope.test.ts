@@ -1,12 +1,3 @@
-/**
- * 作用域（按模块）画布上的 `before` 守卫。
- *
- * 作用域视图的形状是「项目根 → 该模块子树」，而项目根是前端 adapter 自己造的
- * 假节点（mindmap-adapter.ts 的 encodeProjectNodeId）。任何以它为父级的新位置
- * 都会被 mindmap-operation-map.ts 映射成 `parentId: null`，也就是一个项目级
- * 模块 —— 它不属于当前作用域，落库后立刻从画布上消失，看起来像操作失败了；
- * 拖出去的模块还会被挂错父级（真正的父级不在这批数据里）。
- */
 import type { NodeObj, Topic } from "mind-elixir";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -32,20 +23,17 @@ const CASE_ID = "case-1";
 
 const nodeOf = (id: string): NodeObj => ({ id, topic: "节点" });
 
-/** `before` hooks receive `Topic` DOM elements; only `nodeObj` is read. */
 const topicOf = (node: NodeObj): Topic =>
 	({ nodeObj: node }) as unknown as Topic;
 
 const projectRoot = () => nodeOf(encodeProjectNodeId(PROJECT_ID));
 
-/** 作用域根模块：画布上它挂在那个假的项目根下面。 */
 function scopeRoot(): NodeObj {
 	const node = nodeOf(encodeModuleNodeId(SCOPE_MODULE_ID));
 	node.parent = projectRoot();
 	return node;
 }
 
-/** 作用域内部的普通模块，用来验证「圈内什么都还能做」。 */
 function insideNode(): NodeObj {
 	const node = nodeOf(encodeModuleNodeId(CHILD_MODULE_ID));
 	node.parent = scopeRoot();

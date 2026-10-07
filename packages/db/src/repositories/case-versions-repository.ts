@@ -7,7 +7,6 @@ import type { CaseContentPatch } from "./case-snapshot-core";
 import { writeCaseMutation } from "./case-snapshot-core";
 import type { CaseWriteResult, DbTransaction } from "./repository-types";
 
-/** Lightweight version row for history lists (snapshot payload omitted). */
 export interface CaseVersionSummary {
 	caseId: string;
 	changeNote: string | null;
@@ -63,10 +62,6 @@ export async function getCaseVersion(
 	return row ?? null;
 }
 
-/**
- * Content fields restored by a rollback. `moduleId` is intentionally
- * excluded: rollback restores content, not the case's tree location.
- */
 function snapshotToContentPatch(snapshot: CaseSnapshot): CaseContentPatch {
 	return {
 		caseType: snapshot.caseType,
@@ -87,10 +82,6 @@ export interface RollbackCaseInput {
 	version: number;
 }
 
-/**
- * System write path: re-applies an historical snapshot as a brand-new
- * version (history is immutable, `current_version` increments atomically).
- */
 export function rollbackCaseToVersion(
 	input: RollbackCaseInput
 ): Promise<CaseWriteResult> {

@@ -167,7 +167,6 @@ test("steps：新增/删除/未变三种状态与 entries 排序", () => {
 		makeSnapshot({ steps: [STEP_ONE, STEP_TWO] }),
 		makeSnapshot({ steps: [STEP_ONE, stepThree] })
 	);
-	// 先按新列表顺序，删除项再按旧列表顺序追加
 	expect(kindsOf(diff)).toEqual([
 		["s1", "unchanged"],
 		["s3", "added"],
@@ -216,7 +215,6 @@ test("steps：原地改内容标记为 modified，两个字段的 segments 都�
 	expect(entry?.kind).toBe("modified");
 	expect(entry?.oldIndex).toBe(0);
 	expect(entry?.newIndex).toBe(0);
-	// step 没变也仍然计算 segments（全 unchanged）
 	expect(entry?.stepSegments).toEqual([
 		{ kind: "unchanged", text: STEP_ONE.step },
 	]);

@@ -56,7 +56,7 @@ def test_same_file_uploads_once_per_run_case(tmp_path) -> None:
                 "storageConfigured": True,
                 "uploads": [_upload(0, "run-a", "rc-1"), _upload(0, "run-b", "rc-2")],
             },
-            None,  # 两次 PUT 的响应体（假 transport 里 None 序列化成 "null"）
+            None,
             None,
             {
                 "registered": [
@@ -84,8 +84,6 @@ def test_same_file_uploads_once_per_run_case(tmp_path) -> None:
     ]
     assert outcome.attachments is not None
     assert (outcome.attachments.uploaded, outcome.attachments.registered) == (2, 2)
-    # 直传那一步**不带 Authorization**：签名已经在 URL 里，
-    # 多带一个头会让部分 S3 兼容实现按「双重鉴权」直接 400。
     assert "authorization" not in transport.calls[2].headers
 
 
@@ -112,11 +110,10 @@ def test_storage_not_configured_degrades_without_failing(tmp_path) -> None:
     reporter.add_attachment(
         AttachmentInput(file_path=str(png), kind="screenshot", source_ref="PAY-LOGIN-002")
     )
-    outcome = reporter.finish()  # 不抛
+    outcome = reporter.finish()
     assert outcome.attachments is not None
     assert outcome.attachments.storage_configured is False
     assert "附件 存储未配置，本轮附件全部跳过；结论已正常写入" in printed
-    # 拒绝理由原样透传。
     assert any("对象存储未配置" in line for line in printed)
 
 
@@ -157,7 +154,6 @@ def test_unreadable_file_only_loses_that_one_attachment(tmp_path) -> None:
     )
     assert [item.source_ref for item in loaded] == ["A-2"]
     assert len(failures) == 1 and "（本地）读取失败" in failures[0]
-    # 扩展名认得出来时用扩展名，认不出来才按 kind 回落。
     assert loaded[0].content_type == "text/plain"
     assert loaded[0].file_name == "ok.log"
     assert loaded[0].size_bytes == 5

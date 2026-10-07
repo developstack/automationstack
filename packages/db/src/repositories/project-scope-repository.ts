@@ -1,23 +1,3 @@
-/**
- * 「这条子资源属于哪个项目」——项目级授权的**寻址**那一半。
- *
- * `project-members-repository` 的 `getProjectRole` 回答的是「这个人在这个项目里
- * 是什么角色」，可它要一个 projectId；而 `cases.get(id)`、`testRuns.submit(runId)`、
- * `testRunAttachments.remove(attachmentId)` 这类过程的入参里**根本没有 projectId**。
- * 少了这个文件，那些过程就只能各自在 handler 里先查一次业务行、再从里面掏
- * projectId——于是「授权前先解析」这件事会散落在几十个 handler 里，
- * 漏掉一个不会有任何东西变红。这里把它收成一组同形状的窄查询，
- * 由 `packages/api/src/lib/project-scope.ts` 的中间件工厂统一消费。
- *
- * 三条共同约定：
- * 1. **只 select `project_id` 一列**，理由与 `getProjectRole` 相同——调用方
- *    要的就是这一个事实，回整行会让后来者顺手拿别的字段去做别的判断，
- *    让这条本该只有「归属」语义的查询悄悄长出别的依赖。
- * 2. 查不到一律返回 `null`（仓库铁律），「不存在」还是「没权限」由 api 层翻译。
- * 3. 这些查询走的都是主键或既有索引的等值查找，且每个过程只跑一次
- *    （中间件解析一次，handler 不再重复解析）。
- */
-
 import { eq, inArray } from "drizzle-orm";
 
 import { db } from "../index";
@@ -59,13 +39,6 @@ export async function getProjectIdByRunId(
 	return row?.projectId ?? null;
 }
 
-/**
- * 一条执行行（`test_run_cases`）的归属。
- *
- * 从测试任务那一行取 projectId，而不是从 `test_run_cases.caseId` 指的用例取：
- * 这条执行行是**测试任务的**一部分，用例只是它引用的内容。两者在正常数据里
- * 必然同项目，但「谁能改这条结论」问的是测试任务的归属。
- */
 export async function getProjectIdByRunCaseId(
 	runCaseId: string
 ): Promise<string | null> {
@@ -78,7 +51,6 @@ export async function getProjectIdByRunCaseId(
 	return row?.projectId ?? null;
 }
 
-/** 测试任务附件的归属：附件 → 执行行 → 测试任务，两跳都是主键等值。 */
 export async function getProjectIdByRunAttachmentId(
 	attachmentId: string
 ): Promise<string | null> {
@@ -97,16 +69,6 @@ export interface MindmapNodeIds {
 	moduleIds: string[];
 }
 
-/**
- * 脑图批量操作里被引用到的那些真实节点涉及的**去重后**项目列表。
- *
- * 与上面那条同样的理由，只是更要紧：一个批次里可以同时出现建模块、删用例、
- * 移动模块，`runMindmapBatch` 只用**首个**操作解析出一个 projectId 拿去发失效
- * 事件，从来没有校验过其余操作是不是同一个项目。所以授权必须看全批。
- *
- * 两张表分开查再合并，不写成一条 UNION：两条都是主键的 `IN` 查找，合并只是
- * 省一次往返，却要让读的人去想「这个 union 的两边为什么列名对得上」。
- */
 export async function listProjectIdsByMindmapNodes(
 	nodes: MindmapNodeIds
 ): Promise<string[]> {

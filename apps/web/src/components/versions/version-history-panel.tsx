@@ -1,9 +1,3 @@
-/**
- * Version history + diff panel — the single public entry point of this
- * folder. Lists a case's versions (`cases.listVersions`), lets the user
- * pick two of them, loads both snapshots (`cases.getVersion`) and feeds
- * them to the pure diff helpers. Defaults to "current vs previous".
- */
 import { Button } from "@automationstack/ui/components/button";
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -17,7 +11,6 @@ import { VersionList } from "./version-list.tsx";
 import { VersionRollbackDialog } from "./version-rollback-dialog.tsx";
 import { VersionViewer } from "./version-viewer.tsx";
 
-/** How many versions can take part in one comparison. */
 const MAX_SELECTED = 2;
 
 const EMPTY_ROWS: readonly CaseVersionRow[] = [];
@@ -27,7 +20,6 @@ interface VersionPair {
 	target: number;
 }
 
-/** Newest version vs. the one saved right before it. */
 function defaultPair(
 	rows: readonly CaseVersionRow[],
 	currentVersion: number
@@ -60,7 +52,6 @@ function resolvePair(
 	return defaultPair(rows, currentVersion);
 }
 
-/** Keeps at most two picks; a third one drops the oldest pick. */
 function toggleSelection(
 	selection: readonly number[],
 	version: number
@@ -88,7 +79,6 @@ function VersionSidebar(props: VersionSidebarProps) {
 	return (
 		<aside className="flex flex-col gap-2">
 			<div className="flex items-center justify-between gap-2">
-				{/* 面板标题已经由「版本历史」tab 提供，这里只标注左侧这一列 */}
 				<h3 className="font-medium text-sm">版本列表</h3>
 				{props.showReset ? (
 					<Button onClick={props.onReset} size="xs" variant="ghost">
@@ -145,7 +135,6 @@ interface VersionHistoryPanelProps {
 	currentVersion: number;
 }
 
-/** Version history and diff view for one test case. */
 export function VersionHistoryPanel({
 	caseId,
 	currentVersion,

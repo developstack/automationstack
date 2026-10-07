@@ -14,8 +14,6 @@ describe("幂等键（§7.2 第 2 条）", () => {
 		const first = resolveRunIdempotencyKey({});
 		const second = resolveRunIdempotencyKey({});
 		expect(first).toMatch(UUID_PATTERN);
-		// 两次「进程启动」当然不同——同一次进程内复用的是 config 里存下来的那一个，
-		// 由 reporter-client 的测试守着。
 		expect(first).not.toBe(second);
 	});
 

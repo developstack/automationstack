@@ -11,16 +11,6 @@ import {
 } from "./attachment-policy";
 import type { TestRunErrorThrowers } from "./test-run-errors";
 
-/**
- * 这一组测的是**编排**，不是判定。
- *
- * 判定（哪些类型允许、上限多少）已经由 `attachment-policy.test.ts` 的用例覆盖，
- * 这里一条都不重复。这里钉的是那几行的**先后顺序**——尤其是
- * 「归属校验先于任何碰对象的操作」：那是本模块唯一的安全性质，而安全性质
- * 最典型的死法就是有人重排了几行、所有测试照样绿。所以下面每一条都显式断言
- * `remove` 有没有被调用、以及它相对 `headObject` 的位置。
- */
-
 const SCOPE: AttachmentKeyScope = {
 	projectId: "11111111-1111-4111-8111-111111111111",
 	runCaseId: "33333333-3333-4333-8333-333333333333",
@@ -29,7 +19,6 @@ const SCOPE: AttachmentKeyScope = {
 
 const OWNED_KEY = `test-runs/${SCOPE.projectId}/${SCOPE.runId}/${SCOPE.runCaseId}/screenshot-abc.png`;
 
-/** 另一条用例行下的 key——形状完全合法，只是不属于调用者。 */
 const FOREIGN_KEY = `test-runs/${SCOPE.projectId}/${SCOPE.runId}/44444444-4444-4444-8444-444444444444/screenshot-abc.png`;
 
 const VALID_HEAD: AttachmentObjectHead = {
@@ -37,7 +26,6 @@ const VALID_HEAD: AttachmentObjectHead = {
 	contentType: "image/png",
 };
 
-/** 测试用的错误构造器：只需要能抛、能看出是哪一类。 */
 const errors: TestRunErrorThrowers = {
 	BAD_REQUEST: (options) => new Error(options?.message ?? "BAD_REQUEST"),
 	CONFLICT: (options) => new Error(options?.message ?? "CONFLICT"),
@@ -45,7 +33,6 @@ const errors: TestRunErrorThrowers = {
 };
 
 interface FakeStore extends AttachmentObjectStore {
-	/** 按发生顺序记录的调用，用来断言先后关系而不只是次数。 */
 	calls: string[];
 }
 
@@ -75,8 +62,6 @@ describe("verifyUploadedObject", () => {
 			)
 		).rejects.toThrow("storageKey 不属于该用例行");
 
-		// 最关键的一条：归属不过时 remove 绝不能被调用，否则 register 就成了
-		// 一个「把任意 key 给我，我帮你删」的原语。
 		expect(storage.calls).toEqual([]);
 	});
 
@@ -106,7 +91,6 @@ describe("verifyUploadedObject", () => {
 			)
 		).rejects.toThrow("实际上传的附件");
 
-		// 顺序断言：headObject 在前、remove 在后，且删的正是这个 key。
 		expect(storage.calls).toEqual([
 			`headObject:${OWNED_KEY}`,
 			`remove:${OWNED_KEY}`,
@@ -114,7 +98,6 @@ describe("verifyUploadedObject", () => {
 	});
 
 	it("存储里的真实类型不在该 kind 白名单时，先删对象再抛", async () => {
-		// 声明成 screenshot、实际传上去一个 mp4：签名管不住这件事，HeadObject 能。
 		const storage = createStore({
 			contentLength: 1024,
 			contentType: "video/mp4",

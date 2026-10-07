@@ -10,14 +10,8 @@ import {
 	validateCaseImageUpload,
 } from "./case-attachment-policy";
 
-/**
- * key 末段的形状：`<uuid>.<ext>`，**没有 kind 段、更没有原始文件名**。
- * 提到顶层是 Biome 的 `useTopLevelRegex` 要求——正则字面量写在函数里
- * 每次调用都会重新编译。
- */
 const KEY_TAIL_PNG_PATTERN = /^[0-9a-f-]{36}\.png$/;
 
-/** webp 有自己的扩展名，不该落到兜底的 `.bin`。 */
 const WEBP_EXTENSION_PATTERN = /\.webp$/;
 
 const SCOPE: CaseAttachmentKeyScope = {

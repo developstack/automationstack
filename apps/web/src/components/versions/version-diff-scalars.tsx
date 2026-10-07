@@ -1,8 +1,3 @@
-/**
- * Scalar-field / preconditions / tags portion of the version diff view.
- * Consumes the pure `diffCaseSnapshots` result; no fetching here.
- * The tags row itself is rendered by `tags-section.tsx`.
- */
 import { CASE_TYPE_LABELS, STATUS_LABELS } from "@/components/cases/case-meta";
 
 import type {
@@ -99,7 +94,6 @@ interface VersionDiffScalarsProps {
 	tags: TagsDiff;
 }
 
-/** Field-level (non-step) part of a snapshot diff. */
 export function VersionDiffScalars({
 	preconditions,
 	scalars,

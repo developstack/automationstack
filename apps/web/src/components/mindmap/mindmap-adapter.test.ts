@@ -48,7 +48,6 @@ function treeOf(steps: CaseStep[]): MindmapTreeInput {
 	};
 }
 
-/** The single case node of a one-module / one-case tree. */
 function caseNodeOf(steps: CaseStep[]): NodeObj {
 	const root = toMindElixirData(treeOf(steps)).nodeData;
 	const node = root.children?.[0]?.children?.[0];
@@ -58,7 +57,6 @@ function caseNodeOf(steps: CaseStep[]): NodeObj {
 	return node;
 }
 
-/** 一个两步、两个预期都非空的普通用例。 */
 const twoSteps = [
 	step("s1", "打开登录页", "展示登录表单"),
 	step("s2", "输入正确的账号密码并提交", "跳转到工作台"),
@@ -123,10 +121,6 @@ describe("case node topic and priority tag", () => {
 });
 
 describe("priority tag emphasis order", () => {
-	/**
-	 * 与 case-meta.ts 的 PRIORITY_BADGE_VARIANTS 同序：P0 是唯一的实心危险色。
-	 * 旧映射把实心 --primary（暗色下 near-white）给了 P1，最高等级反而最不显眼。
-	 */
 	it("gives P0 the solid destructive fill and P1 the tinted one", () => {
 		expect(buildPriorityTag("P0").style).toEqual({
 			background: "var(--destructive)",
@@ -161,7 +155,6 @@ describe("degenerate step data", () => {
 	it("leaves a case without steps as a plain leaf", () => {
 		const node = caseNodeOf([]);
 		expect(node.children).toBeUndefined();
-		// No expander, so no collapsed state to advertise.
 		expect(node.expanded).toBeUndefined();
 	});
 
@@ -202,8 +195,6 @@ describe("canHaveChildren", () => {
 	});
 
 	it("refuses ids this scheme does not recognise", () => {
-		// Regression lock: a `null` decode used to read as "not a case node",
-		// which let modules be dropped into anything unknown.
 		expect(canHaveChildren({ id: "z:mystery" })).toBe(false);
 		expect(canHaveChildren({ id: "" })).toBe(false);
 	});

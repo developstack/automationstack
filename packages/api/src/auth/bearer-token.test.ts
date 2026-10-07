@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 
 import { parseBearerToken } from "./bearer-token";
 
-/** 一枚形状合法的 token：`as_` + 43 个 base64url 字符，与真实生成物同形。 */
 const VALID_TOKEN = "as_9xK3mQ7vLp2ZtR8yBn4WcF6dH1jS5aG0eU-uI_oPzQw";
 
 describe("parseBearerToken", () => {

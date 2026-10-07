@@ -19,13 +19,6 @@ import { usePresence } from "./use-presence";
 
 const MAX_VISIBLE_AVATARS = 5;
 
-/**
- * 视图标识 → 中文名（未知视图原样显示）。
- *
- * 键要跟 `routes/projects/$projectId/route.tsx` 的 `viewFor()` 一一对上。
- * 协议里 `view` 是 `z.string().min(1)`，不是枚举，后端不会替这里挡漏项——
- * 漏一个的下场是头像 tooltip 上直接念出 `testRuns` 这种内部标识。
- */
 const VIEW_LABELS: Record<string, string> = {
 	list: "列表",
 	mindmap: "脑图",
@@ -35,15 +28,6 @@ const VIEW_LABELS: Record<string, string> = {
 	users: "成员",
 };
 
-/**
- * 不覆盖 TooltipTrigger 的 render：Base UI 默认渲染 button，是可聚焦的；
- * 之前用 render={<span>} 把它降级成了纯装饰元素，键盘够不到 tooltip，读屏也
- * 什么都念不到（头像图片是 alt="" 的装饰）。可访问名靠这里的 aria-label 给全
- * （用户名 + 所在视图）。
- *
- * 头像本身交给 PresenceAvatar 画（与用例列表协作列同一份实现），这里只负责
- * 把它接到 trigger 上：头像的样式必须只有一个出处，否则两处迟早各改各的。
- */
 function PresenceAvatarTrigger({
 	entry,
 	isSelf,
@@ -53,8 +37,6 @@ function PresenceAvatarTrigger({
 }) {
 	const viewLabel = VIEW_LABELS[entry.view] ?? entry.view;
 	const label = `${entry.name}${isSelf ? "（我）" : ""} · ${viewLabel}`;
-	// useCallback 不是为了性能，是 noJsxPropsBind：render 传内联箭头会被判成
-	// 每次渲染都换一个新引用。依赖只有真正进入闭包的那两个值。
 	const renderTrigger = useCallback(
 		(avatar: PresenceAvatarRenderProps) => (
 			<TooltipTrigger
@@ -73,7 +55,6 @@ function PresenceAvatarTrigger({
 	);
 }
 
-/** 超出上限的折叠指示器：同样是可聚焦按钮，键盘能触达且有可访问名。 */
 function OverflowAvatar({ count }: { count: number }) {
 	const label = `还有 ${count} 人在线`;
 	return (
@@ -89,26 +70,11 @@ function OverflowAvatar({ count }: { count: number }) {
 	);
 }
 
-/**
- * 在线成员头像组：按用户名确定性生成的 blobatar 头像，超出上限折叠为 +N。
- * 名字取 presence 里服务端下发的值，前端没有可编辑的身份入口，所以同一个人
- * 在谁的屏幕上都是同一张脸。
- */
 export function PresenceAvatars({ className }: { className?: string }) {
 	const entries = usePresence();
 	const selfClientId = useRealtime()?.clientId ?? null;
 	const visible = entries.slice(0, MAX_VISIBLE_AVATARS);
 	const overflow = entries.length - visible.length;
-	// TooltipProvider 不在这里包：根节点（routes/__root.tsx）已经挂了全局那一份。
-	//
-	// 排布与叠放交给 AvatarGroup（z-index 反序 + hover/聚焦抬升），但 tooltip
-	// 仍然是每枚各挂一个 Base UI 的：这里回答的是「这一枚是谁」，一人一句，
-	// 与协作列共用一个 trigger 的取舍相反（理由见 case-collaborators-cell.tsx）。
-	// AvatarGroup 只在外面包一层定位用的 span，trigger 本身还是 Base UI 渲染的
-	// 原生 button，可聚焦、可触达这一条一个字没改。
-	//
-	// 抬升在这里是留的：顶栏常驻、只有寥寥几枚，指针划过时抬一下能把「压在
-	// 后面的那半张脸」整个亮出来；表格协作列则相反，见那边的注释。
 	return (
 		<AvatarGroup className={cn("-space-x-1.5", className)}>
 			{visible.map((entry) => (

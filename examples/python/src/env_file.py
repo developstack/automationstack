@@ -34,10 +34,7 @@ def load_env_file(path: Path) -> int:
             continue
         key, _, value = line.partition("=")
         key = key.strip()
-        # 已经在环境里的不动，理由见模块顶部。
         if key and key not in os.environ:
-            # 只削首尾的引号，不做 shell 那套转义：`.env` 里放的是 token 和 uuid，
-            # 给它们上一套自己发明的转义规则，只会在某个 token 恰好带反斜杠时出事。
             os.environ[key] = value.strip().strip("\"'")
             loaded += 1
     return loaded

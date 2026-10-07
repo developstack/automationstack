@@ -1,13 +1,3 @@
-/**
- * 草稿存储层的单测之二：**老键迁移**。
- *
- * 老格式的键是 `{projectId}.{moduleId}`，value 里没有 moduleId 字段。这批记录
- * 是用户**现在就能在侧栏看到**的草稿，迁错一步就是当着他的面把内容弄没了
- * （还会留下一批再也没人引用的 R2 图）。所以这里逐条钉死：内容不变、时间不变、
- * 模块从键上捡回来、老键删掉、之后能按 caseId 单独读单独删。
- *
- * 「同模块多份」那一半在 `case-draft-storage.test.ts`（单文件 300 行上限）。
- */
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -30,7 +20,6 @@ function keyFor(caseId: string): string {
 	return `automationstack.case-draft.${PROJECT}.${caseId}`;
 }
 
-/** 老格式：键的后缀是 moduleId，value 里没有 moduleId 字段。 */
 function seedLegacy(
 	store: Storage,
 	moduleId: string,
@@ -63,12 +52,9 @@ describe("老键迁移", () => {
 		const drafts = listCaseDrafts(PROJECT);
 
 		expect(drafts).toHaveLength(1);
-		// moduleId 从键的后缀捡回来，正文与 savedAt 一个字都不能变——
-		// 迁移不是一次编辑，把 savedAt 盖成 now 会让放了半个月的草稿显示成「刚刚」。
 		expect(drafts[0].moduleId).toBe(MODULE_A);
 		expect(drafts[0].values.name).toBe("老草稿");
 		expect(drafts[0].savedAt).toBe(100);
-		// 老键删掉、新键出现，而且新键的 value 里也记住了 moduleId。
 		expect(
 			store.getItem(`automationstack.case-draft.${PROJECT}.${MODULE_A}`)
 		).toBeNull();
@@ -92,12 +78,10 @@ describe("老键迁移", () => {
 		const store = installStorage();
 		seedLegacy(store, MODULE_B, "legacy-case");
 
-		// 没有先调用 listCaseDrafts：模拟用户没打开过侧栏清单就点了「继续编辑」。
 		const found = readCaseDraft(PROJECT, "legacy-case");
 
 		expect(found?.moduleId).toBe(MODULE_B);
 		expect(found?.values.name).toBe("老草稿");
-		// 兜底那一趟顺手迁移了，之后就是普通的直读。
 		expect(store.getItem(keyFor("legacy-case"))).not.toBeNull();
 	});
 
@@ -126,8 +110,6 @@ describe("老键迁移", () => {
 
 		const drafts = listCaseDrafts(PROJECT);
 
-		// 空串 = 不知道属于哪个模块。清单据此把它按「模块已删除」处理，
-		// 只给删除、不给「继续编辑」——猜一个 moduleId 跳过去必然创建失败。
 		expect(drafts).toHaveLength(1);
 		expect(drafts[0].moduleId).toBe("");
 	});

@@ -1,8 +1,3 @@
-/**
- * secret-box 存的是数据库里唯一一份 AI API Key。这里盯死三件事：
- * 往返能解开、换了主密钥必须是**可判别**的失败（而不是静默返回垃圾明文）、
- * 以及同一明文两次加密的密文必须不同（IV 不复用，否则 GCM 的安全性直接归零）。
- */
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,7 +7,6 @@ import {
 	SECRET_KEY_BYTES,
 } from "./secret-box";
 
-/** 32 字节全 0 / 全 1 的 base64，够用且可复现。 */
 function makeKey(fill: number): string {
 	const bytes = new Uint8Array(SECRET_KEY_BYTES).fill(fill);
 	let binary = "";
@@ -22,7 +16,6 @@ function makeKey(fill: number): string {
 	return btoa(binary);
 }
 
-/** 自描述前缀：格式本身不依赖任何全局配置就能被认出来。 */
 const BOX_PREFIX = /^aes_256_gcm\$/;
 
 const KEY = makeKey(1);
@@ -76,7 +69,6 @@ describe("IV 不复用", () => {
 		const first = await box(PLAINTEXT, KEY);
 		const second = await box(PLAINTEXT, KEY);
 		expect(first).not.toBe(second);
-		// 两条都必须仍能解开——差异只应来自随机 IV，而不是别的地方出了错。
 		await expect(decryptSecret(first, KEY)).resolves.toEqual({
 			kind: "ok",
 			value: PLAINTEXT,

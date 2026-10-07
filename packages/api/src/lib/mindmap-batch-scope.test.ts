@@ -1,10 +1,3 @@
-/**
- * 脑图批量的授权作用域。
- *
- * 这份逻辑的失效方式和 `project-access.test.ts` 里那份一样：算漏一个 id 不会
- * 抛异常也不会让 tsc 变红，只会让一个批次带着别人项目的节点通过闸门。所以这里
- * 逐条钉的是「哪些 id 必须被算进作用域」，而不是函数的返回外形。
- */
 import { describe, expect, it } from "vitest";
 
 import { collectMindmapBatchScope } from "./mindmap-batch-scope";
@@ -95,10 +88,6 @@ describe("collectMindmapBatchScope：tempId 的时序规则", () => {
 		expect(scope.projectIds).toEqual([PROJECT_A]);
 	});
 
-	/**
-	 * 这一条是整个文件存在的理由，删掉它上面那条规则就会被人「顺手优化」成
-	 * 预扫一遍收齐 tempId——而那正是一个越权删除的口子，理由见被测函数的注释。
-	 */
 	it("引用出现在 create **之前**时按真实 id 算，与 resolveId 的运行时行为一致", () => {
 		const scope = collectMindmapBatchScope([
 			{ id: CASE_X, op: "removeCase" },

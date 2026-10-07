@@ -1,9 +1,3 @@
-/**
- * Step-table portion of the version diff view: one row per paired step
- * with an added / removed / modified / moved / unchanged marker. The cell
- * contents (including the word-level diff inside modified rows) are rendered
- * by `step-text-cell.tsx`.
- */
 import { Badge } from "@automationstack/ui/components/badge";
 import {
 	Table,
@@ -112,7 +106,6 @@ function StepCountsSummary({ steps }: { steps: StepsDiff }) {
 	);
 }
 
-/** Renders the `steps` part of a `diffCaseSnapshots` result. */
 export function VersionDiffSteps({ steps }: { steps: StepsDiff }) {
 	return (
 		<section className="flex flex-col gap-2">

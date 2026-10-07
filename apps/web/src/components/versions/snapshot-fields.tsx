@@ -1,8 +1,3 @@
-/**
- * The scalar fields (name / priority / status / type / maintainer) of a
- * `CaseSnapshot`, rendered as a definition list. Split out of
- * `version-snapshot-view.tsx` together with the `SnapshotField` row helper.
- */
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
 import { Badge } from "@automationstack/ui/components/badge";
 import type { ReactNode } from "react";

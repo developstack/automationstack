@@ -1,9 +1,3 @@
-/**
- * 用例选择器右栏的那张表（从 `case-picker.tsx` 拆出来，见仓库 300 行文件上限）。
- *
- * 这里只负责「把一页用例画成可勾选的行」，不碰筛选、分页与选中集的维护——
- * 那些状态全在 `CasePicker` 手里，这一层拿到什么就画什么。
- */
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import { Badge } from "@automationstack/ui/components/badge";
 import { Checkbox } from "@automationstack/ui/components/checkbox";
@@ -34,11 +28,6 @@ function PickerRow({ onToggle, selected, testCase }: PickerRowProps) {
 	return (
 		<TableRow aria-selected={selected}>
 			<TableCell className="w-8">
-				{/*
-				 * 每个复选框都带自己的 aria-label 而不是只靠同行的名称单元格：
-				 * 读屏用户逐个 tab 过复选框时，听到的只有控件自己的名字，
-				 * 一串「复选框 未选中」根本分不出勾的是哪一条。
-				 */}
 				<Checkbox
 					aria-label={`选择用例「${testCase.name}」`}
 					checked={selected}

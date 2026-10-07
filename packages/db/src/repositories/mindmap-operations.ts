@@ -8,7 +8,6 @@ export interface CreateModuleOp {
 	index?: number;
 	name: string;
 	op: "createModule";
-	/** May reference the tempId of an earlier createModule in the batch. */
 	parentId: string | null;
 	projectId: string;
 	tempId: string;
@@ -82,11 +81,6 @@ export function isModuleOp(op: MindmapOperation): op is MindmapModuleOperation {
 	);
 }
 
-/**
- * 批次所属项目：首个操作要么自带 projectId（create），
- * 要么其 id 必是真实行 id（tempId 只能出现在 create 之后）。
- * 必须在应用操作之前解析，否则删除类批次会查不到行。
- */
 export async function resolveBatchProjectId(
 	tx: DbTransaction,
 	op: MindmapOperation

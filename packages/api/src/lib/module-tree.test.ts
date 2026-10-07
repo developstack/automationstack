@@ -12,12 +12,6 @@ function makeRow(id: string, parentId: string | null, sortOrder: number) {
 	return { id, name: id, parentId, projectId: PROJECT_ID, sortOrder };
 }
 
-/**
- * 行顺序刻意与 sortOrder 顺序不同：
- *   m1 (root, sortOrder 1) ── m1b (1) / m1a (1) ── m1a1 (0), m1a2 (1)
- *   m2 (root, sortOrder 0)
- *   orphan (parentId 指向不存在的 "gone")
- */
 function makeRows(): ModuleRow[] {
 	return [
 		makeRow("m1", null, 1),
@@ -35,7 +29,6 @@ const idsOf = (nodes: readonly { id: string }[]): string[] =>
 
 test("buildModuleTree 按 sortOrder 排根节点，sortOrder 相同则按 id", () => {
 	const roots = buildModuleTree(makeRows());
-	// m2/orphan 同为 sortOrder 0，"m2" < "orphan"；m1 的 sortOrder 1 排最后
 	expect(idsOf(roots)).toEqual(["m2", "orphan", "m1"]);
 });
 
@@ -84,7 +77,6 @@ test("collectSubtreeIds 按广度优先收集多层子孙", () => {
 });
 
 test("collectSubtreeIds 的兄弟顺序取自行顺序而非 sortOrder", () => {
-	// 行里 m1b 排在 m1a 之前，尽管 buildModuleTree 会把 m1a 排在前面
 	expect(collectSubtreeIds(makeRows(), "m1")).toEqual([
 		"m1",
 		"m1b",
@@ -110,7 +102,6 @@ test("collectSubtreeIds 遇到环形 rows 会终止而不是死循环", () => {
 test("collectSubtreeIds 对多路径可达的同一 id 只收集一次", () => {
 	const rows = [
 		...makeRows(),
-		// 同一个 id 同时挂在 m1 与 m1a 下（脏数据），不应重复出现
 		makeRow("dup", "m1", 0),
 		makeRow("dup", "m1a", 0),
 	];
@@ -132,7 +123,6 @@ test("wouldCreateModuleCycle：移到根层级（newParentId 为 null）永远�
 
 test("wouldCreateModuleCycle：挂到自身判为环", () => {
 	expect(wouldCreateModuleCycle(makeRows(), "m1", "m1")).toBe(true);
-	// 自身不在 rows 里也仍然判为环（先于子树查询短路）
 	expect(wouldCreateModuleCycle([], "m1", "m1")).toBe(true);
 });
 

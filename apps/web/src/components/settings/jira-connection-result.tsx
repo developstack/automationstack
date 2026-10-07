@@ -1,11 +1,3 @@
-/**
- * 「测试连接」的结果条。
- *
- * 服务端把自检做成**类型化返回值而不是异常**（见 `jira.testConnection`），
- * 因为「测不通」正是这颗按钮的预期输出之一。所以这里也照着四种 kind 分开说，
- * 而不是统统渲染成一句「失败」——四种情况要做的事完全不同：
- * 改凭据、找 Jira 管理员、补服务端环境变量、还是先保存一次配置。
- */
 import type { JiraConnectionTestResult } from "@automationstack/api/routers/jira";
 import { CircleCheckIcon, TriangleAlertIcon } from "lucide-react";
 
@@ -52,11 +44,6 @@ export function JiraConnectionResult({
 	const copy = describeResult(result);
 
 	return (
-		/*
-		 * role="status" 而不是 alert：它是用户刚刚主动点按钮换来的答复，
-		 * 不是打断性的告警；alert 会抢读屏当前的朗读。
-		 * 图标 aria-hidden，语义全在文字里——只靠颜色区分成功/失败不够。
-		 */
 		<div
 			className={
 				copy.ok
@@ -65,10 +52,6 @@ export function JiraConnectionResult({
 			}
 			role="status"
 		>
-			{/*
-			 * 不加 mt-0.5：这块是 text-xs（行高 16px），图标 size-4 也是 16px，
-			 * items-start 下两个盒子本来就顶齐；那 2px 是净错位，不是补偿。
-			 */}
 			{copy.ok ? (
 				<CircleCheckIcon aria-hidden="true" className="size-4 shrink-0" />
 			) : (
@@ -76,7 +59,6 @@ export function JiraConnectionResult({
 			)}
 			<div className="flex flex-col gap-1">
 				<p className="font-medium">{copy.title}</p>
-				{/* 站点地址与 Jira 的报错都可能很长，窄屏必须允许任意处断行 */}
 				<p className="break-all">{copy.detail}</p>
 			</div>
 		</div>

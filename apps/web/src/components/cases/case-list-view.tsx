@@ -20,7 +20,6 @@ const routeApi = getRouteApi("/projects/$projectId/");
 const NO_PRIORITY: CasePriority[] = [];
 const NO_TAGS: string[] = [];
 
-/** 「新建用例」被禁用时的原因文案 id，供 aria-describedby 关联。 */
 const CREATE_HINT_ID = "case-create-hint";
 
 interface CaseListActionsProps {
@@ -29,10 +28,7 @@ interface CaseListActionsProps {
 	total: number | undefined;
 }
 
-/** 工具栏右半区：结果计数 + 新建用例。 */
 function CaseListActions({ canCreate, onCreate, total }: CaseListActionsProps) {
-	// aria-disabled 而不是原生 disabled：原生禁用会把按钮移出 tab 序，
-	// 键盘和读屏用户既够不到按钮，也听不到「为什么不能用」。
 	const handleCreate = useCallback(() => {
 		if (!canCreate) {
 			return;
@@ -42,11 +38,6 @@ function CaseListActions({ canCreate, onCreate, total }: CaseListActionsProps) {
 
 	return (
 		<div className="flex items-center gap-3">
-			{/*
-			 * 常驻的 live region：筛选改变结果数时必须播报，否则读屏用户
-			 * 不知道筛选生效没有、还剩几条。动态插入的 live region 播报不可靠，
-			 * 所以 total 未知时渲染空字符串而不是卸载整个节点。
-			 */}
 			<span
 				aria-busy={total === undefined}
 				className="text-muted-foreground text-xs"
@@ -105,30 +96,8 @@ interface CaseListViewProps {
 	projectId: string;
 }
 
-/**
- * 内容区 <main> 的类名。
- *
- * p-4 = 内容区 gutter 16px，与 header 的 px-4、侧栏的 p-2 + px-2 落在同一条线上
- *（约定见 components/workspace/module-tree.tsx 顶部）。这里是内容区唯一的
- * 内边距来源：路由层不要再在外面套 px-*，否则会叠成 32px。
- *
- * 导出而不是就地写死：路由的 pendingComponent 要落在同一份类名上。两处各写一份
- * 迟早会各改各的，而它们之间任何一处差异都会在数据到达那一帧变成跳动。
- */
 export const CASE_LIST_MAIN = "flex min-h-0 flex-col gap-3 overflow-y-auto p-4";
 
-/**
- * Case list workspace pane: filters + table + detail sheet, all driven by the
- * URL search params so the selection survives reloads and back/forward.
- *
- * main 地标、跳转落点与路由级进场动画都由 PageTransition 给出。
- *
- * phase="ready" 在这里写死而不是当成 prop 往上提：本组件只有一个调用方，就是
- * /projects/$projectId/ 的就绪态（同路由的 pendingComponent 标的是 "pending"），
- * 多一个只会传同一个字面量的 prop 没有意义。写死也不会把动画整个关掉——"ready"
- * 只是「去问一句我是不是接在同一页的骨架后面」，缓存命中、根本没走 pending 的那种
- * 秒开导航问出来的答案是否，照常播一次进场。
- */
 export function CaseListView({ projectId }: CaseListViewProps) {
 	const search = routeApi.useSearch();
 	const navigation = useWorkspaceNavigation();
@@ -157,23 +126,7 @@ export function CaseListView({ projectId }: CaseListViewProps) {
 					selectedCaseId={search.caseId}
 					stale={listQuery.isPlaceholderData}
 				/>
-			) : /*
-			 * 这一档刻意什么都不渲染，**不再摆第二份表格骨架**。
-			 *
-			 * 它此前只在一种情况下亮：URL 上直接带着筛选参数进来（分享/收藏一个
-			 * 已筛选的视图），loader 预取的 key 与这里要的那份对不上。而那一刻
-			 * 屏幕上刚刚放完路由的 pendingComponent（同一份 CaseListSkeleton，
-			 * 见 routes/projects/$projectId/index.tsx），再摆一份长得一样、DOM
-			 * 却是新挂的骨架，等于同一次加载连着放两遍灰条。
-			 *
-			 * 其余所有页内操作（改筛选、翻页、开抽屉）根本走不到这里：
-			 * keepPreviousData 会把上一份结果留在屏幕上，由 case-table.tsx 的
-			 * STALE_CLASS 淡到 60% 表示「还在取新的」——那才是这一页的加载态。
-			 *
-			 * 代价说清楚：那种深链首屏上，工具栏之下会短暂空一块（一次请求的
-			 * 时间），而不是一片灰条。
-			 */
-			null}
+			) : null}
 			<CaseListOverlays
 				navigation={navigation}
 				projectId={projectId}

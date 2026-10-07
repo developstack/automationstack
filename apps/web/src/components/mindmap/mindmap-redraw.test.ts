@@ -22,13 +22,9 @@ function treeWith(children: NodeObj[]): NodeObj {
 	};
 }
 
-/** 远大于测试里用例数的额度：预算永远不是这些用例的瓶颈。 */
 const AMPLE_ALLOWANCE = 10;
-/** 用户开着 5 个用例。 */
 const OPEN_CASE_IDS = ["c1", "c2", "c3", "c4", "c5"];
-/** 预算只放行其中 2 个。 */
 const TIGHT_ALLOWANCE = 2;
-/** 于是剩下 3 个只能被收起来。 */
 const DROPPED_BY_TIGHT_ALLOWANCE = 3;
 
 describe("applyExpandedCases 恢复用户展开的用例", () => {
@@ -91,7 +87,6 @@ describe("applyExpandedCases 受预算额度约束", () => {
 
 describe("applyExpandedCases 跳过没有步骤的用例", () => {
 	it("never marks a childless case as expanded", () => {
-		// 没有步骤的用例是纯叶子，展开它只会画出一个空的 me-children。
 		const tree = treeWith([caseNode("c1", false)]);
 		const dropped = applyExpandedCases(
 			tree,

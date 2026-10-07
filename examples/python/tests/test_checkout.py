@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import pytest
 
-#: 假的被测系统：一个算合计金额的纯函数，够让断言有真东西可判就行。
 def cart_total(unit_price: float, quantity: int) -> float:
     return unit_price * quantity
 
@@ -36,9 +35,6 @@ def test_cart_total_refreshes_with_quantity(trace) -> None:
     trace.log("把商品数量从 1 改成 3（单价 19.9）")
     total = cart_total(19.9, 3)
     trace.log("读到合计 {0}".format(total))
-    # 故意判错：示例需要一条失败用例，好演示「失败才带附件」这条路径。
-    # 顺带它是个真实得让人眼熟的错——19.9 * 3 在二进制浮点里不等于 59.7，
-    # 编一个 `assert False` 反而会让人觉得这条失败是假的。
     assert total == 59.7, "合计金额与预期不符（这条是示例故意造的失败）"
 
 

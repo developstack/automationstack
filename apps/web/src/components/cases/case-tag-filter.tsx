@@ -1,7 +1,3 @@
-/**
- * 标签筛选器。服务端是「any-of + 大小写敏感精确匹配」，自由输入几乎必然匹配不到，
- * 所以候选项一律来自 cases.listTags，用户只能勾选，不能手打。
- */
 import { Button } from "@automationstack/ui/components/button";
 import {
 	Popover,
@@ -46,11 +42,6 @@ interface TagOptionsProps {
 
 function TagOptions({ loading, onToggle, options, selected }: TagOptionsProps) {
 	if (loading) {
-		/*
-		 * 不摆骨架：候选项是一片自动折行的标签按钮，几个、多宽全由数据决定，
-		 * 一条 h-16 的灰条预告不了其中任何一样；而这块内容住在 Popover 里，
-		 * 浮层每次打开都按内容自己定尺寸，本来就不存在把别的东西顶动这回事。
-		 */
 		return null;
 	}
 	if (options.length === 0) {
@@ -78,7 +69,6 @@ interface CaseTagFilterProps {
 	tags: string[];
 }
 
-/** 勾选/取消一个标签，其余选择保持不变。 */
 function useTagSelection(tags: string[], onChange: (tags: string[]) => void) {
 	const toggle = useCallback(
 		(value: string) =>
@@ -107,8 +97,6 @@ export function CaseTagFilter({
 		<Popover>
 			<PopoverTrigger
 				render={
-					// 无 size：与同排的 Input / SelectTrigger 一样是 32px 档，
-					// 见 case-filters.tsx 的控件高度约定。
 					<Button type="button" variant="outline">
 						<TagIcon data-icon="inline-start" />
 						{tags.length === 0 ? "标签" : `标签 · ${tags.length}`}

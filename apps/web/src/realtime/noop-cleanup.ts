@@ -1,4 +1,2 @@
-/** effect 无需清理时返回的空清理函数（满足 consistent-return）。 */
-export const noopCleanup = (): void => {
-	// 无需清理
-};
+// biome-ignore lint/suspicious/noEmptyBlockStatements: intentional
+export const noopCleanup = (): void => {};

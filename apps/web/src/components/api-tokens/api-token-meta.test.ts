@@ -12,7 +12,6 @@ describe("validateTokenName", () => {
 	});
 
 	it("rejects a name that is only whitespace", () => {
-		// 服务端 schema 先 trim 再 min(1)，全空格在那边同样会被拒
 		expect(validateTokenName("   ")).not.toBeNull();
 	});
 

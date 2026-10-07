@@ -12,10 +12,6 @@ UUID_PATTERN = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 )
 
-#: ⚠️ 这几行是**在 Node 版上跑出来的**基准值（`packages/sdk-node/src/idempotency.ts`
-#: 的 `deriveBatchIdempotencyKey`）。两个 SDK 在同一条流水线上先后跑同一轮时
-#: （迁移期常见），算出不同的键就等于各写一次、重试语义作废。
-#: 改派生算法必须两边一起改，改完这几个值会对不上。
 NODE_GOLDEN = {
     1: "26e62c10-ef31-5aec-85cf-bd37f388346a",
     2: "983d4cd9-1a42-50d1-8753-07cab3a4b6f7",
@@ -30,8 +26,6 @@ def test_generates_one_key_per_process_when_unset() -> None:
     first = resolve_run_idempotency_key({})
     second = resolve_run_idempotency_key({})
     assert UUID_PATTERN.match(first)
-    # 两次「进程启动」当然不同——同一次进程内复用的是 config 里存下来的那一个，
-    # 由 test_reporter_client.py 守着。
     assert first != second
 
 

@@ -18,7 +18,6 @@ describe("SDK 配置（§5.1 / D31）", () => {
 		expect(config.token).toBe("as_secret");
 		expect(config.projectId).toBe(PROJECT_ID);
 		expect(config.baseUrl).toBe("https://qa.example.com");
-		// 归属由用例解析，配置里没有、也不该有任何「往哪写」的东西。
 		expect(config.runIds).toBeNull();
 	});
 
@@ -46,8 +45,6 @@ describe("SDK 配置（§5.1 / D31）", () => {
 		expect(() => resolveReporterConfig({ env: {} })).toThrow(
 			ReporterConfigError
 		);
-		// 每个用例只抽掉一样，断言报的就是被抽掉的那一样；
-		// 否则字段求值顺序一变（比如按键名排序），断言就会指向另一个变量。
 		const { AS_PROJECT: _project, ...withoutProject } = BASE_ENV;
 		expect(() => resolveReporterConfig({ env: withoutProject })).toThrow(
 			MISSING_PROJECT_PATTERN

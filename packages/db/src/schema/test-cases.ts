@@ -41,15 +41,6 @@ export type CasePriority = (typeof casePriorityEnum.enumValues)[number];
 export type CaseType = (typeof caseTypeEnum.enumValues)[number];
 export type CaseStatus = (typeof caseStatusEnum.enumValues)[number];
 
-/**
- * 用例的单个操作步骤，落在 `test_cases.steps` 这一列的 jsonb 数组里。
- *
- * 定义就在这里：以前它归 `@automationstack/agent`（在线 AI agent 产出提案时
- * 要描述步骤，而那个包零 db 依赖、不能反向 import 本文件），本文件只做同名
- * 再导出。在线 agent 整条栈删掉之后那个包没了，定义搬回它唯一的落库处；
- * 全仓十余处 `from "@automationstack/db/schema/test-cases"` 的 import 路径
- * 一处都不用改。
- */
 export interface CaseStep {
 	expected: string;
 	id: string;
@@ -104,11 +95,6 @@ export const testCases = pgTable(
 export type TestCase = typeof testCases.$inferSelect;
 export type NewTestCase = typeof testCases.$inferInsert;
 
-/**
- * Full content snapshot of a test case stored in case_versions.snapshot.
- * Captures every user-editable field so any version can be rendered,
- * diffed, and rolled back without joins.
- */
 export interface CaseSnapshot {
 	caseType: CaseType;
 	maintainer: string | null;

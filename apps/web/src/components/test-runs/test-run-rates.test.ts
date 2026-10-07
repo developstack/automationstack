@@ -28,14 +28,12 @@ function counts(input: CountsInput) {
 
 describe("formatPassRate", () => {
 	it("把阻塞与跳过踢出分母", () => {
-		// 10 条里 3 通过 1 失败 6 阻塞：分母是 4 不是 10，也不是 4+6。
 		expect(
 			formatPassRate(counts({ blocked: 6, failed: 1, passed: 3, total: 10 }))
 		).toBe("75%");
 	});
 
 	it("分母为 0 时显示占位而不是 0%", () => {
-		// 全是阻塞/跳过/未测：对质量一无所知，「0%」会被读成「全挂了」。
 		expect(
 			formatPassRate(counts({ blocked: 4, skipped: 2, total: 10, untested: 4 }))
 		).toBe(RATE_UNKNOWN);
@@ -50,7 +48,6 @@ describe("formatPassRate", () => {
 	});
 
 	it("差一条没过时不许显示 100%", () => {
-		// 119/120 四舍五入是 100%，但列表页上的 100% 会被直接读成「可以发版」。
 		expect(formatPassRate(counts({ failed: 1, passed: 119, total: 120 }))).toBe(
 			"99%"
 		);

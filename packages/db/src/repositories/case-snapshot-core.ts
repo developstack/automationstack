@@ -12,7 +12,6 @@ import type {
 import { caseVersions, testCases } from "../schema/test-cases";
 import type { CaseWriteResult, DbTransaction } from "./repository-types";
 
-/** User-editable content fields of a test case (structural fields excluded). */
 export interface CaseContentPatch {
 	caseType?: CaseType;
 	maintainer?: string | null;
@@ -29,7 +28,6 @@ export interface WriteCaseMutationOptions {
 	actorName: string | null;
 	caseId: string;
 	changeNote?: string | null;
-	/** When set, acts as an optimistic lock (user edit path). */
 	expectedVersion?: number;
 	patch: CaseContentPatch;
 }
@@ -69,7 +67,6 @@ export async function insertCaseVersion(
 	return version;
 }
 
-/** Scalar content fields; compared with `===` for the no-op check below. */
 const SCALAR_CONTENT_KEYS = [
 	"caseType",
 	"maintainer",
@@ -80,7 +77,6 @@ const SCALAR_CONTENT_KEYS = [
 	"status",
 ] as const satisfies readonly (keyof CaseContentPatch)[];
 
-/** Steps are order-sensitive; a reorder is a real content change. */
 function sameSteps(
 	stored: readonly CaseStep[],
 	patched: readonly CaseStep[]
@@ -109,11 +105,6 @@ function sameTags(
 	);
 }
 
-/**
- * True when every field the patch carries already equals the stored value,
- * i.e. applying it would only produce a byte-identical snapshot. Fields the
- * patch omits are left alone and therefore cannot change anything.
- */
 export function isNoopCasePatch(
 	row: TestCase,
 	patch: CaseContentPatch
@@ -129,17 +120,6 @@ export function isNoopCasePatch(
 	);
 }
 
-/**
- * Snapshot pipeline: in one transaction, bump current_version while applying
- * the content patch, then persist the full snapshot into case_versions.
- * With `expectedVersion` set, a stale version yields a typed conflict result.
- * A patch that changes nothing returns `unchanged` without touching the row,
- * so empty saves never land in the version history.
- *
- * The row is locked FOR UPDATE up front: the no-op comparison and the write
- * have to see the same content, otherwise a concurrent save could slip in
- * between them and get silently swallowed as a no-op.
- */
 export async function writeCaseMutation(
 	tx: DbTransaction,
 	options: WriteCaseMutationOptions

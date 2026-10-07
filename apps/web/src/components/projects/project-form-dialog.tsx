@@ -122,7 +122,6 @@ function ProjectFormContent({ onClose, project }: ProjectFormContentProps) {
 				onNameChange={setName}
 			/>
 			<DialogFooter>
-				{/* 保存中禁用取消：点了取消框就关，而请求照样会落地，用户以为改动被撤回了 */}
 				<Button
 					disabled={saving}
 					onClick={onClose}
@@ -145,7 +144,6 @@ interface ProjectFormDialogProps {
 	project: Project | null;
 }
 
-/** Create (project == null) or edit an existing project. */
 export function ProjectFormDialog({
 	onClose,
 	open,

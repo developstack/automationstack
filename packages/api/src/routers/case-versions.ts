@@ -19,14 +19,6 @@ function actorName(context: Context): string | null {
 	return context.actor?.name ?? null;
 }
 
-/**
- * Version-history procedures, spread into the `cases` router so they are
- * exposed as cases.listVersions / cases.getVersion / cases.rollback.
- *
- * 三条都按 `caseId` 过 `requireCaseMember`：版本快照里就是用例正文本身，
- * 口子不能比 `cases.get` 更宽。回滚同样只要求项目成员——它改的是一条用例，
- * 是 member 的本职（见 `lib/project-access.ts` 的 canAdministerProject）。
- */
 export const caseVersionProcedures = {
 	getVersion: protectedProcedure
 		.errors({ NOT_FOUND: {} })
@@ -64,7 +56,6 @@ export const caseVersionProcedures = {
 				});
 				return { testCase: result.testCase, version: result.version };
 			}
-			// 回滚目标与当前内容一致：用例已经就是那个样子，不再多记一个版本。
 			if (result.kind === "unchanged") {
 				return { testCase: result.testCase, version: null };
 			}

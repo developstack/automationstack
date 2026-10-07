@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
-/** 剥注释的小工具本身也得有人盯着——它一旦剥错，靠它的两个测试就变成了摆设。 */
 class SourceScanTest {
 
     @Test
@@ -16,7 +15,6 @@ class SourceScanTest {
 
     @Test
     void keepsStringLiteralsIntact() {
-        // "https://..." 里的 // 不是注释。
         assertEquals("String u = \"https://qa.example.com/x\";",
                 SourceScan.stripComments("String u = \"https://qa.example.com/x\";"));
         assertEquals("String q = \"a\\\"//b\"; ",

@@ -19,13 +19,6 @@ _KIND_FALLBACK_CONTENT_TYPE = {
     "video": "video/mp4",
 }
 
-#: 只列真的会从测试框架里出来的那几种。
-#:
-#: 猜不出来时**不猜**，回落到按 `kind` 给的默认值——猜错的 contentType 会让附件
-#: 在报告页上以「下载」而不是「预览」的方式出现，比 `application/octet-stream`
-#: 更迷惑人。（没有用 `mimetypes.guess_type`：它读系统的 mime.types，
-#: 同一份附件在 macOS 与 CI 的 Linux 上会得到不同的结果，而附件的渲染方式
-#: 不该跟着跑测试的机器变。）
 _EXTENSION_CONTENT_TYPE = {
     ".gif": "image/gif",
     ".jpeg": "image/jpeg",

@@ -6,17 +6,7 @@ import {
 	INGEST_EXECUTIONS_ROUTE,
 	INGEST_RUNS_ROUTE,
 } from "./route-paths";
-// `vi.mock` 由 vitest 提升到所有 import 之前，所以下面这几个静态 import
-// 拿到的已经是换过的 handler，一行 db 都不会被加载。
 import { registerIngestRoutes } from "./routes";
-
-/**
- * 对外那张 URL 表本身（§5.1.1 / §5.6）。
- *
- * 这四行是 SDK 照着拼 URL 的东西，改一个字符就是改协议，所以逐字钉死；
- * 再验一遍 `registerIngestRoutes` 真的把四条都挂上了——少挂一条的表现是
- * 「SDK 拿到 404，以为是自己 baseUrl 写错了」。
- */
 
 const executionMocks = vi.hoisted(() => ({
 	handleIngestExecution: vi.fn(),
@@ -89,7 +79,6 @@ test("registerIngestRoutes 把四条全挂上了，一条都没漏", async () =>
 });
 
 test("没有 /ingest/target 这类端点，也不认没注册过的路径", async () => {
-	// D31：没有任何地方接受「往哪写」作为输入，这条断言就是那句话的看门狗。
 	const app = buildApp();
 	const target = await app.request("/ingest/target", {
 		body: "{}",

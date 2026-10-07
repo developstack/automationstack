@@ -1,12 +1,3 @@
-/**
- * Surgical patches of the cached `mindmap.tree` payload.
- *
- * The canvas is the optimistic UI, so a successful batch must not invalidate
- * the tree query while the canvas is mounted — a refetch would hand the canvas
- * new data and rebuild it under the user's cursor. Instead the cache is patched
- * in place with the same sibling-order rules the repositories use. The server
- * stays the source of truth: any failure refetches and rebuilds.
- */
 import {
 	buildModuleTree,
 	collectSubtreeIds,
@@ -109,8 +100,6 @@ function applyCaseOp(
 			priority: DEFAULT_CASE_PRIORITY,
 			sortOrder: 0,
 			status: DEFAULT_CASE_STATUS,
-			// A case created from the canvas has no steps yet; the step children
-			// appear once it is filled in from the case detail.
 			steps: [],
 		};
 		return placeInGroup(
@@ -145,7 +134,6 @@ function isModuleOp(op: MindmapBatchOperation): op is ModuleOperation {
 	return op.op.endsWith("Module");
 }
 
-/** Drops cases whose owning module disappeared with a removed subtree. */
 function dropOrphanCases(
 	cases: MindmapCaseRow[],
 	rows: readonly ModuleRow[]
@@ -154,7 +142,6 @@ function dropOrphanCases(
 	return cases.filter((row) => alive.has(row.moduleId));
 }
 
-/** Applies one already-committed batch to the cached tree. */
 export function patchMindmapTree(
 	data: MindmapTreeData,
 	operations: readonly MindmapBatchOperation[],

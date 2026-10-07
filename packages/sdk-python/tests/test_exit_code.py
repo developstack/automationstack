@@ -58,7 +58,6 @@ def test_empty_write_forces_nonzero_exit_even_when_swallowed() -> None:
     """静默成功是最坏的情况：QA 以为结果进去了，实际一条都没写。"""
     finished = _run(SCRIPT)
     assert finished.returncode != 0, finished.stdout + finished.stderr
-    # 对账单必须在退出前刷出来——`os._exit` 会跳过缓冲区刷写，所以 SDK 自己先刷。
     assert "写入 0 个测试任务" in finished.stdout
     assert "swallowed: IngestEmptyWriteError" in finished.stdout
     assert "脚本自己跑完了" in finished.stdout

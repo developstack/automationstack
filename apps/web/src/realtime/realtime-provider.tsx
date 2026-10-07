@@ -30,13 +30,6 @@ interface IdentityState {
 	identity: RealtimeProfile;
 }
 
-/**
- * 协作身份 = 登录用户名，没有本地昵称这一层。
- * 颜色用与服务端同一个 colorForName，所以服务端回发 presence 之前
- * 本端先画出来的头像不会变色。
- * clientId 只在水合后的 effect 里取（区分标签页，与身份无关），
- * SSR 阶段保持 null，连接因此不会在服务端建立。
- */
 function useIdentityState(): IdentityState {
 	const { username } = useCurrentUser();
 	const [clientId, setClientId] = useState<string | null>(null);
@@ -50,7 +43,6 @@ function useIdentityState(): IdentityState {
 	return { clientId, identity };
 }
 
-/** 本端 presence 条目：服务端 sync 只含他人，自己的头像由前端注入。 */
 function buildSelfEntry(
 	clientId: string,
 	identity: RealtimeProfile,
@@ -64,7 +56,6 @@ function buildSelfEntry(
 		name: identity.name,
 		page: null,
 		view,
-		// 刚连上时还没打开任何用例；抽屉挂载后由 useCasePresence 上报
 		viewingCaseId: null,
 	};
 }
@@ -79,11 +70,6 @@ interface ConnectionParams {
 	view: string;
 }
 
-/**
- * clientId 就绪后建立连接并把入站消息路由到两个 store。
- * onReconnect / identity / view 走 ref：切视图不触发重连
- * （改由 useViewSync 发 presence:update）。
- */
 function useRealtimeConnection(params: ConnectionParams): {
 	connection: RealtimeConnection | null;
 	status: RealtimeStatus;
@@ -137,11 +123,6 @@ interface ViewSyncParams {
 	view: string;
 }
 
-/**
- * 切视图后发 presence:update 同步给房间（无需重连）。
- * 补丁里只有 view：name / color 被 presencePatchSchema 排除在外，
- * 客户端一旦带上，整条消息会被服务端判为非法而丢弃。
- */
 function useViewSync({
 	clientId,
 	connection,
@@ -159,7 +140,6 @@ function useViewSync({
 	}, [clientId, connection, identity, stores, view]);
 }
 
-/** 重连成功后先全量 invalidate 补漏，再交给外部回调。 */
 function useReconnectHandler(onReconnect?: () => void): () => void {
 	const invalidateAll = useInvalidateAll();
 	return useCallback(() => {
@@ -175,7 +155,6 @@ interface RealtimeValueParams {
 	stores: RealtimeStores;
 }
 
-/** 组装并缓存下发给 hook 的 context 值。 */
 function useRealtimeValue({
 	clientId,
 	connection,
@@ -199,20 +178,12 @@ const createStores = (): RealtimeStores => ({
 
 interface RealtimeProviderProps {
 	children: ReactNode;
-	/** 额外的重连回调；Provider 自身已经做过全量 invalidate 补漏。 */
 	onReconnect?: () => void;
 	projectId: string;
-	/** 默认取 env.VITE_SERVER_URL。 */
 	serverUrl?: string;
-	/** 初始视图标识（如 list / mindmap）。 */
 	view?: string;
 }
 
-/**
- * 实时协作 Provider（plan §5）：管理 WS 连接生命周期、presence 外部 store，
- * 并把 `data:invalidate` 接到 TanStack Query 缓存上。
- * 身份直接取登录会话，因此必须挂在登录闸门之内（项目工作区布局路由）。
- */
 export function RealtimeProvider({
 	children,
 	onReconnect,

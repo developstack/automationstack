@@ -1,10 +1,3 @@
-/* 与 shadcn 原件的一处刻意偏离：进出场从 tw-animate-css 的关键帧
-   （data-open:animate-in / data-closed:animate-out 那一整套）换成
-   dialog-primitives.tsx 里 vendored 的 Animate UI primitive，由 motion 驱动。
-   关键帧不可打断，退场播到一半再打开会跳回起点重播；motion 的 JS 动画从当前值
-   接着走。两套动画不能共存——关键帧会和 motion 抢同一批属性，所以这里连同
-   duration-200 一起删掉，只留布局与配色的类。 */
-
 import { Button } from "@automationstack/ui/components/button";
 import {
 	DialogBackdrop,
@@ -87,9 +80,6 @@ function DialogContent({
 						}
 					>
 						<XIcon />
-						{/* 未随上游回归：上游是 "Close"。本站 <html lang="zh-CN">，未标记 lang 的英文内容
-                命中 WCAG 2.2 SC 3.1.2 Language of Parts（AA），中文读屏用户会听到一个
-                英文按钮名。纯文案本地化，不影响与 registry 的结构对齐。 */}
 						<span className="sr-only">关闭</span>
 					</DialogCloseBase>
 				) : null}
@@ -128,7 +118,6 @@ function DialogFooter({
 			{children}
 			{showCloseButton ? (
 				<DialogCloseBase render={<Button variant="outline" />}>
-					{/* 同上：这是可见文案，回归成 "Close" 会在全中文界面里露出英文按钮。 */}
 					关闭
 				</DialogCloseBase>
 			) : null}

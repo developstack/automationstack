@@ -10,15 +10,6 @@ import {
 } from "./attachment-fixtures";
 import { verifyAutomationAttachment } from "./attachment-reconcile";
 
-/**
- * `verifyAutomationAttachment` 的**顺序性质**：归属校验 → HeadObject →
- * 白名单/上限 → 违规先删后拒。这四条用例就是钉住那个顺序的钉子，
- * 改动顺序会直接让它们红。
- *
- * 假的对象存储留在本文件（`vi.fn()`），不进 `./attachment-fixtures`：
- * 那个模块是普通模块，不该把测试运行器拖进生产依赖图。
- */
-
 function fakeStore(
 	head: { contentLength: number; contentType: string } | null
 ): AttachmentObjectStore {
@@ -48,7 +39,6 @@ test("归属校验先于任何碰对象的操作：key 不属于该用例行时�
 		reason: "storageKey 不属于该用例行",
 	});
 	expect(store.headObject).not.toHaveBeenCalled();
-	// 最要紧的一条：不校验就删，等于对外提供「把任意 key 给我，我帮你删」。
 	expect(store.remove).not.toHaveBeenCalled();
 });
 

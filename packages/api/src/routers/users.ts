@@ -18,7 +18,6 @@ const MIN_PASSWORD_LENGTH = 8;
 const MAX_PASSWORD_LENGTH = 128;
 const MIN_USERNAME_LENGTH = 2;
 const MAX_USERNAME_LENGTH = 32;
-/** 用户名不留空白：它要出现在侧边栏和用例的署名里，两侧空格会看不出来。 */
 const USERNAME_PATTERN = /^\S+$/;
 
 const roleSchema = z.enum(["admin", "member"]);
@@ -43,10 +42,6 @@ const routerErrors = {
 	NOT_FOUND: {},
 } as const;
 
-/**
- * 拦「把最后一个在用的管理员降级或停用」。真发生了就没人能再进成员管理，
- * 只能连数据库手改，所以宁可在这里报错。
- */
 async function isLastActiveAdmin(target: User): Promise<boolean> {
 	if (target.role !== "admin" || target.disabledAt !== null) {
 		return false;
@@ -78,16 +73,6 @@ export const usersRouter = {
 	list: adminProcedure.handler(async () =>
 		(await listUsers()).map(toPublicUser)
 	),
-	/**
-	 * 平台用户管理页那张平铺表：一人一行，「所属项目」是数组。
-	 *
-	 * 与 `list` 并存而不是取代它：`list` 是「账号名单」，几乎所有地方要的都是
-	 * 那一份，这条要多跑一次跨表 join，只有那一个页面用得上。
-	 *
-	 * 增删项目成员关系不在这里，走 `projectMembers` 的 add / remove / updateRole
-	 * 逐项目调用（平台 admin 天然过 `canAdministerProject`）。不另开跨项目的批量
-	 * 端点，是为了不绕过那边「不能移除最后一个 owner」的护栏。
-	 */
 	listWithProjects: adminProcedure.handler(() => listUsersWithProjects()),
 	resetPassword: adminProcedure
 		.errors(routerErrors)
@@ -97,7 +82,6 @@ export const usersRouter = {
 			if (user === null) {
 				throw errors.NOT_FOUND({ message: "账号不存在" });
 			}
-			// 无状态会话没法逐个吊销：改密码不会把该用户已登录的标签页踢下线
 			await updateUserPasswordHash(user.id, await hashPassword(input.password));
 			return { id: user.id };
 		}),

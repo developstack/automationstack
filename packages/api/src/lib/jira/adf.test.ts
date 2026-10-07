@@ -25,7 +25,6 @@ function baseInput() {
 	};
 }
 
-/** 深度优先收集所有节点，便于对整棵树做断言。 */
 function flatten(nodes: readonly AdfNode[]): AdfNode[] {
 	const out: AdfNode[] = [];
 	for (const node of nodes) {
@@ -106,7 +105,6 @@ test("附件只写数量不写链接（R2 签名 URL 15 分钟就过期）", () 
 	const links = flatten(doc.content).filter((node) =>
 		node.marks?.some((mark) => mark.type === "link")
 	);
-	// 唯一的链接是首段那条平台回链。
 	expect(links).toHaveLength(1);
 });
 

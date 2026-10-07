@@ -1,25 +1,3 @@
-/**
- * 执行台右栏的「步骤与判定」整段：每一步一张卡片 + 汇总条 + 保存。
- *
- * ## 它取代了原来的「用例级四颗按钮」
- *
- * 有步骤的用例，结论由分步结果推导（用户选的口径），所以这一段一出现，
- * 执行结论面板里那四颗用例级按钮就不再渲染（见 `run-case-verdict-body.tsx`）。
- * 两套入口并存的话，用户点一次用例级「通过」就会把逐步判出来的结果整片盖掉，
- * 而界面上没有任何东西提示他刚刚发生了什么。
- *
- * 没有步骤的用例仍然走原来那四颗按钮：那种用例没有分步可判，
- * 结论只能由人直接给（服务端的 `no-steps` 就是把走错门的调用挡回去的）。
- *
- * ## 编辑态住在父组件里
- *
- * 「现在能不能点」这份状态由 `useVerdictEditingMode` 持有（它现在管的是整个
- * 执行结论面板的读 / 改态，不止这一段，所以搬去了自己的文件），
- * 而那个 hook 是在 `RunCasePanel` 里调的、结果当 prop 传下来。原因是「修改」按钮
- * 在抬头上，抬头与这一段是**兄弟节点**，同一份状态只能由共同的父节点拿着。
- * 三条语义（没判过就直接进改态、草稿恢复强制进改态、`canConclude` 一票否决）
- * 一条不改，只是第二条留在了这里——只有这里看得见 `draft.dirty`。
- */
 import {
 	deriveCaseResult,
 	fillStepResults,
@@ -45,7 +23,6 @@ import {
 
 interface RunStepCardListProps {
 	comments: Record<string, string>;
-	/** false = 判定已保存，整列卡片只读。 */
 	editing: boolean;
 	imageUrls: MarkdownImageUrls;
 	judged: Record<string, TestRunStepResult>;
@@ -82,16 +59,6 @@ function RunStepCardList({
 	);
 }
 
-/**
- * 汇总条要显示的两件事：保存后的用例结论、还有几步没判。
- *
- * 原先还有第三件「四态分布」，连同算它的 `countStepResults` 一起删了（用户原话
- * 「不要自己加戏」，来龙去脉在 `run-steps-summary.tsx` 的文件头）。
- *
- * 结论由 `fillStepResults` 的结果算出来，而那个函数与服务端写路径用的是**同一个**。
- * 预览与写路径各算各的，用户就会看到「预览说通过、保存完变成失败」，而且没有任何
- * 地方会报错——这正是那个模块被写成纯函数的原因。
- */
 function useStepsPreview(
 	steps: readonly CaseStep[],
 	judged: Record<string, TestRunStepResult>,
@@ -107,7 +74,6 @@ function useStepsPreview(
 	};
 }
 
-/** 小标题 + 快捷键提示 + 「上一份草稿作废了」那句话。 */
 function RunStepsHeader({
 	showShortcutHint,
 	staleDiscarded,
@@ -140,7 +106,6 @@ export interface RunStepsSectionProps {
 	item: RunCaseDetail;
 }
 
-/** 这一段用到的全部状态：工作副本 + 读改态 + 汇总预览 + 保存 + 快捷键。 */
 function useRunStepsSection(
 	item: RunCaseDetail,
 	editingMode: VerdictEditingMode
@@ -157,10 +122,6 @@ function useRunStepsSection(
 	const { markSaved } = draft;
 	const { editing, startEditing, stopEditing } = editingMode;
 
-	/*
-	 * 本机草稿恢复出来就强制进改态（`useVerdictEditingMode` 的第二条语义）。
-	 * 判断留在这一层是因为 `dirty` 是工作副本的状态，持有读 / 改态的父组件看不到它。
-	 */
 	const { dirty } = draft;
 	useEffect(() => {
 		if (dirty) {
@@ -168,7 +129,6 @@ function useRunStepsSection(
 		}
 	}, [dirty, startEditing]);
 
-	// 保存成功才退出改态：失败时留在原地，用户那一屏判定还在草稿里。
 	const onSaved = useCallback(() => {
 		markSaved();
 		stopEditing();
@@ -182,7 +142,6 @@ function useRunStepsSection(
 		runCaseId: runCase.id,
 		steps,
 	});
-	// 快捷键只在改态生效：结果页面按 P 应该什么都不发生，而不是悄悄改一步。
 	useRunStepShortcuts({
 		enabled: editing,
 		judged,

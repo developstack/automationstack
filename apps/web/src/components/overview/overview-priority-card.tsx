@@ -18,7 +18,6 @@ import { orpc } from "@/utils/orpc";
 
 const PERCENT = 100;
 
-/** 占比，未取整；total 为 0 时全为 0（此时整张图根本不渲染）。 */
 function share(count: number, total: number): number {
 	return total === 0 ? 0 : (count / total) * PERCENT;
 }
@@ -44,14 +43,6 @@ interface OverviewPriorityCardProps {
 	projectId: string;
 }
 
-/**
- * 第 2 张卡：优先级分布条形图 + 徽章图例。
- *
- * 图本身 aria-hidden：它只是图例的一份视觉重述，读屏用户从下面的
- * 「P0 12 条 · 34%」里拿到的是同一份信息，播两遍只会更吵。
- * 图上认人靠 Y 轴直接写着的 P0..P3，不靠颜色——那套灰阶相邻档只差 1.33~1.65:1，
- * 单凭深浅认不出哪根是哪根。
- */
 export function OverviewPriorityCard({ projectId }: OverviewPriorityCardProps) {
 	const { data } = useSuspenseQuery(
 		orpc.projectStats.overview.queryOptions({ input: { projectId } })

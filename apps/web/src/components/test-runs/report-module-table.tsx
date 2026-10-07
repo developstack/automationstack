@@ -15,12 +15,6 @@ interface ReportModuleTableProps {
 	rows: readonly ReportModuleStat[];
 }
 
-/**
- * 按模块卡下半截的那张表（从 report-module-card.tsx 拆出来）。
- *
- * 它是完整数据，图只是它前几行的可视化——阻塞、跳过、未测三列只在这里有，
- * 理由见 report-module-card.tsx 的头注释。
- */
 export function ReportModuleTable({ rows }: ReportModuleTableProps) {
 	return (
 		<Table>
@@ -58,11 +52,6 @@ export function ReportModuleTable({ rows }: ReportModuleTableProps) {
 						<TableCell className="text-right tabular-nums">
 							{row.untested}
 						</TableCell>
-						{/*
-						 * 通过率用 packages/db 的 computePassRate 现算，不在这里手写
-						 * passed/(passed+failed)：报告的整体通过率就是那个函数算的，
-						 * 两处口径必须是同一份代码（它是零依赖纯函数，不会把 drizzle 带进浏览器包）。
-						 */}
 						<TableCell className="text-right tabular-nums">
 							{formatRate(computePassRate(row))}
 						</TableCell>

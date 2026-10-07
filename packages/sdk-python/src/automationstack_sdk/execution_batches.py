@@ -67,9 +67,6 @@ def chunk_results(
     results: List[CaseResultInput], batch_size: int = RESULTS_PER_BATCH
 ) -> List[List[CaseResultInput]]:
     if not results:
-        # 空数组仍然要发一批：一次「过滤条件没匹配上任何用例」的执行照样该留下
-        # 执行记录，而且 `writtenTo` 为空这件事必须由服务端的对账单说出来
-        # （§7.2 第 4 条要透传的正是它的理由），SDK 自己短路掉就没有理由可透传。
         return [[]]
     return [results[start : start + batch_size] for start in range(0, len(results), batch_size)]
 

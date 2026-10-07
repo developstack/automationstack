@@ -1,30 +1,6 @@
 /** biome-ignore-all lint/suspicious/noConsole: 种子脚本的控制台输出就是它的交付物 */
 /* eslint-disable no-console */
 
-/**
- * 自动化上报演示的种子（`examples/{nodejs,python,jdk}` 三份示例共用的前置）。
- *
- *   pnpm db:seed-automation-demo --owner <用户名>
- *
- * `--owner` 的账号会被设成演示项目的 owner。示例走 token、不看成员资格，不给也
- * 照样能上报——但那样界面上没人看得见这个项目，而「跑完能在页面上看到结果」
- * 恰恰是这个演示的重点。项目级授权见 `packages/db/src/schema/project-members.ts`。
- *
- * 造出一整条「跑完能真的写进去」的链路，并把三份示例需要的三样环境变量原样
- * 打印出来：项目 id、token 明文、平台地址。不写死某一份示例：三份用的是
- * **同一套种子数据、同一份配置**，环境变量名三边逐字一致，跑哪一份都是这三行，
- * 不用另找一个种子脚本，同一条流水线上跑多种示例也只需要维护一套 secret。
- *
- * ⚠️ **token 明文只在创建那一刻存在**（库里只有 SHA-256，见
- * `packages/db/src/api-token.ts`），所以本脚本每跑一次就新建一枚并打印一次。
- * 这不是「不幂等」——它是那张表唯一可能的语义：明文找不回来，
- * 想要一枚能用的就只能再建一枚。项目 / 模块 / 用例 / 任务四样全是幂等的。
- *
- * 本脚本只做编排：所有 DB 访问都在 `packages/db` 的 repository 里
- * （`packages/db` 之外不得直接用 drizzle）。依赖 tsx 运行（见根 package.json），
- * cwd 为 apps/server，因此 dotenv 能自动读到 apps/server/.env 的 DATABASE_URL。
- */
-
 import { hashPassword } from "../packages/db/src/password";
 import { createApiToken } from "../packages/db/src/repositories/api-tokens-repository";
 import { listTestCases } from "../packages/db/src/repositories/case-list-repository";
@@ -52,19 +28,12 @@ import {
 } from "./seed-automation-demo-cases";
 import { ARGV_OFFSET, ownerSummaryLine, resolveSeedOwner } from "./seed-owner";
 
-/** 这枚 token 的主人。普通成员即可——ingest 的权限严格等于 token 主人。 */
 const DEMO_USERNAME = "automation-demo";
 
-/** 五条用例一页足够；写成常量是为了别让 100 变成一个没人敢改的字面量。 */
 const CASE_PAGE_SIZE = 100;
 
 const EXIT_FAILURE = 1;
 
-/**
- * 账号只是 token 的挂靠点，口令随机生成且**不打印**：示例全程走 token，
- * 从没有一步需要登录。打印一个没人用的口令只会让人以为它是必要的。
- * 真要用界面看数据，用 `pnpm db:seed-admin` 建管理员。
- */
 async function ensureDemoUser(): Promise<User> {
 	const existing = await getUserByUsername(DEMO_USERNAME);
 	if (existing) {
@@ -81,7 +50,6 @@ async function ensureDemoUser(): Promise<User> {
 	return created;
 }
 
-/** sourceRef → caseId。归属解析只认 sourceRef，这里是它在种子侧的唯一映射。 */
 async function loadCaseIdsBySourceRef(
 	projectId: string
 ): Promise<Map<string, string>> {
@@ -113,13 +81,6 @@ interface EnsuredRun {
 	runId: string;
 }
 
-/**
- * 按**名字**复用已有任务，找不到才建。
- *
- * 幂等的落点只能是名字：`test_runs` 上没有任何业务唯一键，重复执行时
- * 除了名字没有别的东西能认出「这就是上次那个任务」。代价是有人手工改了名字
- * 就会多出一个任务，那时删掉多余的即可——比让脚本每跑一次多建一个任务好。
- */
 async function findRunByName(
 	projectId: string,
 	name: string
@@ -136,11 +97,6 @@ async function findRunByName(
 	};
 }
 
-/**
- * 新建的任务落在 `pending_review`，而**待评审的任务不接受任何结论**（§5.8）——
- * 上报会整组进「越界」并注明「还在待评审」。所以种子必须替人把评审这一步点掉，
- * 否则示例第一次跑就是一条都写不进去，而那与「示例坏了」长得一模一样。
- */
 async function ensureReviewed(runId: string, actorId: string): Promise<void> {
 	const reviewed = await markTestRunReviewed({ actorId, runId });
 	if (reviewed.kind === "ok" || reviewed.kind === "invalid-status") {
@@ -180,13 +136,6 @@ async function ensureRun(input: {
 	return { created: true, runId: created.run.id };
 }
 
-/**
- * 给回归任务里的那条用例打一条**人工**结论，用来演示对账单的「跳过」一类。
- *
- * `via: "manual"` 是 D23 判据的唯一来源：`overwriteManual=false`（SDK 默认）时
- * 自动化不覆盖它，于是同一条 sourceRef 在冒烟任务里写入、在回归任务里被跳过。
- * 已经有结论就原样留着——重复执行不该把人工结论冲掉，那正是 D23 要防的事。
- */
 async function ensureManualVerdict(input: {
 	actorId: string;
 	caseId: string;
@@ -215,12 +164,6 @@ async function ensureManualVerdict(input: {
 	return true;
 }
 
-/**
- * 打印三份示例共用的 `.env` 三行。
- *
- * 抬头不写死某一份示例：nodejs / python / jdk 用的是**同一套种子数据、同一份配置**，
- * 环境变量名三边逐字一致，同一条流水线上跑多种示例也只需要维护一套 secret。
- */
 function printEnvBlock(projectId: string, plaintext: string): void {
 	console.log(
 		[

@@ -42,7 +42,6 @@ describe("validateAutoSubmitDays", () => {
 	});
 
 	it("拒绝越界的天数", () => {
-		// 越界必须在前端就说清楚：让服务端的 zod 退回来只会得到一条英文报错。
 		expect(validateAutoSubmitDays("0").kind).toBe("invalid");
 		expect(validateAutoSubmitDays("31").kind).toBe("invalid");
 	});
@@ -51,7 +50,6 @@ describe("validateAutoSubmitDays", () => {
 		expect(validateAutoSubmitDays("").kind).toBe("invalid");
 		expect(validateAutoSubmitDays("3.5").kind).toBe("invalid");
 		expect(validateAutoSubmitDays("三").kind).toBe("invalid");
-		// 负号、加号、科学计数法都不是天数
 		expect(validateAutoSubmitDays("-3").kind).toBe("invalid");
 		expect(validateAutoSubmitDays("+3").kind).toBe("invalid");
 		expect(validateAutoSubmitDays("3e0").kind).toBe("invalid");
@@ -64,7 +62,6 @@ describe("validateAutoSubmitDays", () => {
 
 describe("initialJiraFormValues", () => {
 	it("未配置时给出一张全空表单，而不是错误态", () => {
-		// D9：绝大多数项目没接 Jira，这一节此时必须正常展示。
 		expect(initialJiraFormValues(null)).toEqual({
 			apiToken: "",
 			clearWebhookSecret: false,
@@ -103,7 +100,6 @@ describe("validateJiraForm", () => {
 
 describe("toJiraSaveInput", () => {
 	it("Token 留空时整个键都不带（= 保持库里那份不变）", () => {
-		// 这是密文字段最要紧的一条：带上空串会把库里的 Token 覆盖成空。
 		const input = toJiraSaveInput(values(), PROJECT_ID);
 		expect("apiToken" in input).toBe(false);
 		expect("webhookSecret" in input).toBe(false);
@@ -119,7 +115,6 @@ describe("toJiraSaveInput", () => {
 	});
 
 	it("显式清空 webhook 密钥时给 null 而不是 undefined", () => {
-		// 服务端的三态里只有 null 表示「清空」，undefined 表示「不动」。
 		const input = toJiraSaveInput(
 			values({ clearWebhookSecret: true, webhookSecret: "被忽略" }),
 			PROJECT_ID
@@ -153,7 +148,6 @@ describe("buildJiraWebhookUrl", () => {
 	});
 
 	it("origin 末尾的斜杠不会拼出双斜杠", () => {
-		// 双斜杠的地址 Jira 也能存下去，但之后每一次投递都会 404。
 		expect(buildJiraWebhookUrl("https://api.example.com//", "/api/x")).toBe(
 			"https://api.example.com/api/x"
 		);

@@ -39,7 +39,6 @@ function useCreateUser(onClose: () => void) {
 	const queryClient = useQueryClient();
 	return useMutation(
 		orpc.users.create.mutationOptions({
-			// 用户名重复是这个表单最常见的失败，错误要留在对话框里挨着输入框说
 			meta: { suppressErrorToast: true },
 			onSuccess: (user) => {
 				queryClient.invalidateQueries({
@@ -60,7 +59,6 @@ interface RoleFieldProps {
 function RoleField({ onChange, value }: RoleFieldProps) {
 	const handleValueChange = useCallback(
 		(next: string | null) => {
-			// Base UI 的清空动作会给 null，此时保持原值而不是掉进未定义角色
 			if (isUserRole(next)) {
 				onChange(next);
 			}
@@ -91,11 +89,6 @@ function RoleField({ onChange, value }: RoleFieldProps) {
 	);
 }
 
-/**
- * 表单状态与校验。
- * `submitted` 决定「还没动过的空字段」要不要报错：一进对话框就把两个字段
- * 标红等于劈头指责，所以空值只在提交过一次之后才算错。
- */
 function useCreateUserForm(onClose: () => void) {
 	const create = useCreateUser(onClose);
 	const [password, setPassword] = useState("");
@@ -139,7 +132,6 @@ function CreatePlatformUserForm({ onClose }: { onClose: () => void }) {
 	const form = useCreateUserForm(onClose);
 
 	return (
-		// noValidate：原生气泡是英文的，也没法和这里的中文内联提示对齐
 		<form
 			className="flex flex-col gap-4"
 			noValidate={true}
@@ -183,12 +175,6 @@ interface CreatePlatformUserDialogProps {
 	open: boolean;
 }
 
-/**
- * 新建平台用户：用户名 + 初始密码 + 平台角色。
- *
- * 这里不选项目：账号先存在，再谈他进哪些项目——后者是行内的「管理项目归属」，
- * 两件事分开做，新建这一步才不必先把项目列表也读进来。
- */
 export function CreatePlatformUserDialog({
 	onClose,
 	open,
@@ -204,7 +190,6 @@ export function CreatePlatformUserDialog({
 						账号由管理员创建；初始密码请另行告知本人。
 					</DialogDescription>
 				</DialogHeader>
-				{/* 只在打开时挂载：关闭后重新打开是一张干净的表，不留上次的输入和错误 */}
 				{open ? <CreatePlatformUserForm onClose={onClose} /> : null}
 			</DialogContent>
 		</Dialog>

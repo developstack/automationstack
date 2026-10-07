@@ -8,15 +8,6 @@ import {
 	targetRow,
 } from "./execution-reconcile-fixtures";
 
-/**
- * 候选任务被挡下时那句理由的单测：`runIds` 白名单与待评审。
- *
- * 与 `./execution-reconcile.test.ts` 分开是因为断言的对象不同：那边钉的是
- * 「结果落进哪个桶」，这边钉的是**落空时说出的是哪一句话**——这几条断言里
- * 大半是 `not.toContain("不在任何未提交任务的范围内")`，防的是把三种落空
- * 揉回同一句假话（见 `./execution-reason-text` 的文件头）。
- */
-
 test("runIds 白名单排除掉的候选任务：理由要说得出是哪个任务，且不是「不在任何未提交任务里」", () => {
 	const reconciled = reconcileAutomationTargets({
 		results: [passed("ONLY-IN-A")],
@@ -32,7 +23,6 @@ test("runIds 白名单排除掉的候选任务：理由要说得出是哪个任�
 		runIds: [RUN_TWO],
 	});
 	expect(reconciled.groups).toEqual([]);
-	// 有具体任务能解释，就不该再进 unexplained 去问诊断查询。
 	expect(reconciled.unexplained).toEqual([]);
 	expect(reconciled.outOfScope).toHaveLength(1);
 	expect(reconciled.outOfScope[0]?.runName).toBe("v2.3 回归");

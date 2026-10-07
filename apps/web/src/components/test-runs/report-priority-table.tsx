@@ -12,12 +12,6 @@ import { PRIORITY_BADGE_VARIANTS } from "@/components/cases/case-meta";
 import { formatRate } from "@/components/test-runs/rate-format";
 import type { ReportPriorityStat } from "@/components/test-runs/report-meta";
 
-/**
- * 按优先级卡下半截的那张表（从 report-priority-card.tsx 拆出来）。
- *
- * 分母为 0 的档在这里以「—」如实出现，一条都不会丢——柱图画不了它们，
- * 理由见 report-priority-card.tsx 的头注释。
- */
 export function ReportPriorityTable({
 	rows,
 }: {

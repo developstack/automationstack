@@ -1,12 +1,3 @@
-/**
- * 三个天数常量之间的约束。
- *
- * 这里能测的只有「它们互相之间是否自洽」——真正的执法者是数据库的 CHECK
- * `project_settings_auto_submit_days_range` 和 API 层的 zod，本仓库的 vitest
- * 没有 DATABASE_URL，碰不到真 SQL。但**默认值落在区间外**这件事恰恰是
- * CHECK 抓不到的：列默认值也要过 CHECK，于是错误会推迟到「某个项目第一次
- * 保存设置」时才以一条约束违反冒出来，而那时没人会想到问题出在常量上。
- */
 import { describe, expect, it } from "vitest";
 
 import {

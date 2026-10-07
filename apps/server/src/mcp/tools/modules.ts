@@ -32,14 +32,6 @@ const ENSURE_MODULE_PATH_DESCRIPTION =
 	"it as the moduleId of imported cases) plus createdModuleIds for the segments " +
 	"that were created by this call.";
 
-/**
- * 模块树与覆盖数字是两条独立的查询，在这里合成一次工具返回。
- *
- * 不改成一条：`modules.tree` 负责层级与同级顺序（`buildModuleTree` 的排序规则
- * 是那条链路自己的事），`projectStats.coverage` 负责递归 CTE 的计数口径。
- * 两条都只是读、都已过 `requireProjectMember`，合并成一条 SQL 只会让两处口径
- * 变成一处，日后改任何一边都要重新验证另一边。
- */
 async function getModuleTree(
 	client: ApiClient,
 	projectId: string

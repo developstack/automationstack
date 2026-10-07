@@ -30,7 +30,6 @@ export interface ImportCaseInput {
 	tags?: string[];
 }
 
-/** One row to execute, tagged with the index it had in the caller's batch. */
 export interface ImportCaseRow {
 	index: number;
 	item: ImportCaseInput;
@@ -119,7 +118,6 @@ async function createNewCase(
 	};
 }
 
-/** Overwrite via the snapshot pipeline: bumps version, keeps history. */
 async function overwriteExisting(
 	tx: DbTransaction,
 	task: CaseTask,
@@ -140,8 +138,6 @@ async function overwriteExisting(
 			tags: task.item.tags,
 		},
 	});
-	// `unchanged` 也是成功：导入项与库里内容一致，目标状态已达成，
-	// 只是不必再多记一个内容相同的版本。
 	if (result.kind === "conflict" || result.kind === "not-found") {
 		return {
 			item: {
@@ -241,14 +237,6 @@ async function importOneCase(task: CaseTask): Promise<CaseOutcome> {
 	}
 }
 
-/**
- * Imports up to IMPORT_BATCH_LIMIT cases, one transaction per case so a
- * failing row never aborts the batch. Duplicates are matched by
- * (projectId, sourceRef); rows without sourceRef fall back to a same-name
- * match inside the target module and are skipped with a warning. Every
- * write goes through the snapshot pipeline. Rows keep their caller-assigned
- * index, so the caller can merge in rows it rejected up front.
- */
 export async function importTestCases(
 	input: ImportBatchInput
 ): Promise<ImportBatchResult> {

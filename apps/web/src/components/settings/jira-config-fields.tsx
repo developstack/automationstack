@@ -1,13 +1,3 @@
-/**
- * 「Jira 集成」表单里的字段组：本文件装的是身份（站点、邮箱）与 API Token
- * 两组，另外两组各自成文件（jira-project-fields.tsx、jira-webhook-fields.tsx），
- * 由下面的 JiraConfigFields 按页面顺序摆在一起。
- *
- * 从 `jira-settings-section.tsx` 抽出来只为把 `JiraConfigFormView` 压回 50 行、
- * 复杂度 10 以内。四组共用的 props 形状、handlers 与「提交过才标红」那条策略
- * 在 jira-field-group.ts；这里每一个组件都是纯展示组件，一个 hook 都不许持有
- * （理由同样写在那份文件顶部）。
- */
 import type { JiraConfigState } from "@automationstack/api/routers/jira";
 
 import {
@@ -34,7 +24,6 @@ function apiTokenHint(state: JiraConfigState): string {
 	return "首次接入必须填写。在 Atlassian 账号的「安全」设置里创建 API Token。";
 }
 
-/** 站点地址与账号邮箱：定位到哪个 Jira、以谁的身份说话。 */
 function JiraIdentityFields(props: JiraFieldGroupProps) {
 	return (
 		<>
@@ -62,10 +51,6 @@ function JiraIdentityFields(props: JiraFieldGroupProps) {
 	);
 }
 
-/**
- * API Token。占位符在库里已有 Token 时换成遮罩点，且**只是占位符**——
- * 服务端从不下发内容或长度，输入框的 value 永远是本次会话新输入的那份。
- */
 function JiraApiTokenField(props: JiraFieldGroupProps) {
 	const hasStoredToken = props.state.config?.hasApiToken === true;
 
@@ -88,11 +73,6 @@ function JiraApiTokenField(props: JiraFieldGroupProps) {
 	);
 }
 
-/**
- * 四组字段的排列顺序就是页面上的顺序，别重排：API Token 夹在「账号」与
- * 「项目」之间不是随手放的，凭据填完紧接着就是它，跨过一段无关的项目字段
- * 再回头找 Token 是最容易漏填的一格。
- */
 export function JiraConfigFields(props: JiraFieldGroupProps) {
 	return (
 		<>

@@ -13,10 +13,6 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/**
- * 重试策略。重试之所以安全，是因为幂等键在请求体里、跨重试是同一个（§5.2）；
- * 而 4xx 一律不重试，否则「SDK 发错了」会被伪装成「网络不稳」。
- */
 class IngestHttpClientTest {
 
     private final List<Long> slept = new ArrayList<>();
@@ -68,7 +64,6 @@ class IngestHttpClientTest {
                 () -> client(transport).postJson("/ingest/executions", Map.of()));
         assertEquals(1, transport.requests.size(), "4xx 重发一百次还是同一条 400");
         assertTrue(slept.isEmpty());
-        // 服务端指着字段名说的那句话必须透出来。
         assertTrue(error.getMessage().contains("idempotencyKey 不是合法的 uuid"));
     }
 
@@ -85,7 +80,6 @@ class IngestHttpClientTest {
 
     @Test
     void survivesNonJsonErrorBodies() {
-        // 反代的 HTML 错误页不该在解析这一步炸出一个看不懂的异常。
         TestFixtures.RecordingTransport transport = new TestFixtures.RecordingTransport()
                 .queue(TestFixtures.json(502, "<html>Bad Gateway</html>"))
                 .queue(TestFixtures.json(502, "<html>Bad Gateway</html>"))
@@ -97,7 +91,6 @@ class IngestHttpClientTest {
 
     @Test
     void putBinaryCarriesNoAuthorizationHeader() {
-        // 签名已经在 URL 里；多带一个 Authorization 会让部分 S3 兼容实现直接 400。
         TestFixtures.RecordingTransport transport = new TestFixtures.RecordingTransport()
                 .queue(TestFixtures.json(200, ""));
         client(transport).putBinary("https://r2.example.com/obj?sig=x", "image/png", new byte[] {1, 2});

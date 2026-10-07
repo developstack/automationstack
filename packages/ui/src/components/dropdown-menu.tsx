@@ -1,20 +1,3 @@
-/* 与 shadcn 原件的两处刻意偏离：
-
-   1. 浮层的进出场由 tw-animate-css 关键帧（data-open:animate-in /
-      data-closed:animate-out 那一整套）换成了 packages/ui/src/styles/globals.css
-      里的 popup-transition 工具类。理由见该工具类上方的注释：关键帧不可打断，
-      退场播到一半再打开会跳回位移起点重播，而本仓的模块树每一行都挂着这类浮层。
-      换过去同时消费了 Base UI 的 data-instant（键盘连续操作时不留拖影），并让
-      时长与缓动落在一处可改的地方。
-
-   2. 「当前项」的底色由每项各自的 `focus:bg-accent` 硬切换，换成一块在项与项
-      之间滑过去的共享高亮（menu-primitives.tsx → effects-highlight.tsx）。它用
-      motion 的 spring（可打断：滑到一半改高亮会带着当前位置与速度改道，不会跳回
-      起点重播），与上面那条既有决定同向。浮层本身的进出场仍是 CSS transition，
-      没有换成 motion，理由写在 menu-primitives.tsx 顶部第 2 条。
-
-   这两处都会让 shadcn add dropdown-menu --diff 报出差异，属预期。 */
-
 import {
 	Menu,
 	MenuCheckboxItem,
@@ -40,7 +23,6 @@ import type { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { CheckIcon, ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
 
-/** destructive 项的高亮块要换个颜色；cn 走 tailwind-merge，后写的 bg 赢。 */
 const DESTRUCTIVE_HIGHLIGHT = "bg-destructive/10 dark:bg-destructive/20";
 
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
@@ -85,11 +67,6 @@ function DropdownMenuContent({
 					data-slot="dropdown-menu-content"
 					{...props}
 				>
-					{/*
-					 * 高亮层放在 Popup 内部而不是外面：它是绝对定位的，坐标要落在
-					 * 弹层自己的坐标系里；而且弹层滚动时它得跟着内容一起滚。
-					 * 这一层自己不产 DOM（controlledItems + children 模式）。
-					 */}
 					<MenuHighlight className="inset-0 rounded-sm bg-accent">
 						{children}
 					</MenuHighlight>

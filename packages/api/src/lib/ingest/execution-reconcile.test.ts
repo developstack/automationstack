@@ -34,13 +34,10 @@ test("用例存在但没有候选任务时先进 unexplained，等诊断后才�
 	});
 	expect(reconciled.unmatchedCases).toEqual([]);
 	expect(reconciled.groups).toEqual([]);
-	// 落空但还没有解释：这一步不下结论，因为「没有任何任务收它」与
-	// 「收它的任务已经提交了」在这里还分不出来。
 	expect(reconciled.outOfScope).toEqual([]);
 	expect(reconciled.unexplained).toEqual([
 		{ caseId: CASE_A, sourceRef: "ORPHAN" },
 	]);
-	// 诊断查不到已提交的任务 → 才是真的「不在任何未提交任务的范围内」。
 	expect(buildUnexplainedOutOfScopeEntries(reconciled.unexplained, [])).toEqual(
 		[
 			{

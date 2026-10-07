@@ -29,19 +29,12 @@ from src.env_file import load_env_file
 
 EXAMPLE_ROOT = Path(__file__).resolve().parent
 
-#: ⚠️ 在 **import 时**读 `.env`，不是在 `pytest_configure` 里。
-#: 插件的 `pytest_configure` 就是它构造 reporter（并因此校验 AS_TOKEN）的地方，
-#: 而 conftest 与插件的 hook 谁先跑取决于注册顺序——把配置的可用性押在那个顺序上，
-#: 表现会是「偶尔缺 token」。conftest 模块的 import 一定早于任何 hook，这里没有竞争。
 load_env_file(EXAMPLE_ROOT / ".env")
 
-#: nodeid → sourceRef。marker 挂在 item 上，而失败报告只有 nodeid，得自己搭这座桥。
 _SOURCE_REFS: Dict[str, str] = {}
 
-#: nodeid → 这条用例的现场记录器。
 _TRACES: Dict[str, CaseTrace] = {}
 
-#: 本轮失败的 sourceRef，收工时按它去 `artifacts/` 回捡附件。
 _FAILED_SOURCE_REFS: List[str] = []
 
 
@@ -59,9 +52,6 @@ def pytest_collection_modifyitems(items: List[Any]) -> None:
         marker = item.get_closest_marker("automationstack")
         if marker is None:
             continue
-        # 与插件读 marker 的规则保持一致（位置参数优先，其次 source_ref=）。
-        # 这里不 import 插件的 `source_ref_of`：那是它的内部模块，
-        # 而这几行的意思一眼就能看完，比多一条内部依赖划算。
         if marker.args:
             _SOURCE_REFS[item.nodeid] = str(marker.args[0])
         elif "source_ref" in marker.kwargs:
@@ -94,19 +84,10 @@ def pytest_sessionfinish(session: Any) -> None:
     `tryfirst` 把它变成显式的。
     """
     if not session.config.getoption("--automationstack", default=False):
-        # 没加开关时整条附件线原地静默。`add_attachment()` 本身也是空操作（返回
-        # False），这里提前返回只是为了连示例自己的这几行也一起闭嘴：不带开关的
-        # `pytest` 必须能在没有 AS_TOKEN 的机器上跑通，它的输出也该干干净净。
         return
-    # 收工时 pytest 那行进度条（`.Fs... [100%]`）还没换行，不断一下的话
-    # 下面第一行会直接粘在 `[100%]` 后面。对账单是这份示例的交付物，
-    # 让它从行首开始值这一个 print()。
     print()
     queued = 0
     for source_ref in _FAILED_SOURCE_REFS:
-        # `add_attachment()` 是插件的公开入口：附件挂在**这一轮的那个** reporter 上。
-        # 自己 new 一个 AutomationStackReporter 就是另一次执行、另一个 execution id，
-        # 附件会挂到一份没有结论的记录上。
         attachments = collect_failure_attachments(source_ref)
         queued += sum(
             1 for attachment in attachments if add_attachment(session.config, attachment)

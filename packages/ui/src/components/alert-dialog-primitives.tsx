@@ -1,15 +1,5 @@
 "use client";
 
-/* Animate UI 的 base alert-dialog primitive（上游
-   registry/primitives/base/alert-dialog），vendored 进来。与上游源码的四处出入
-   及其理由与 tooltip-primitives.tsx 同一套（包名 / props 类型 / keepMounted
-   位置 / reduced-motion），翻牌动画的写法理由见 dialog-primitives.tsx。
-
-   Base UI 1.7.0 的 alert-dialog 命名空间只自带 Root 与 Trigger，Backdrop /
-   Popup / Portal / Close / Title / Description 都是 dialog 那套的再导出，
-   类型别名也一样（AlertDialogBackdropProps 就是 DialogBackdropProps）。
-   这里仍按 alert-dialog 的命名空间取，读起来才对得上使用处。 */
-
 import { useControlledState } from "@automationstack/ui/hooks/use-controlled-state";
 import { getStrictContext } from "@automationstack/ui/lib/get-strict-context";
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";

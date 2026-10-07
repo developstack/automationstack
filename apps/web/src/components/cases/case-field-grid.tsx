@@ -1,9 +1,3 @@
-/**
- * 用例表单上半区的六个短字段（名称 / 维护人 / 标签 / 优先级 / 类型 / 状态）
- * 及其共用的栅格容器。
- *
- * 从 case-form.tsx 拆出来，那边只留下表单骨架。
- */
 import type {
 	CasePriority,
 	CaseStatus,
@@ -34,7 +28,6 @@ interface CaseTextFieldsProps extends CaseFieldsProps {
 	nameError?: string;
 }
 
-/** 三个文本字段的 onChange 收在一起，组件本体只剩渲染。 */
 function useCaseTextHandlers({ onChange, values }: CaseFieldsProps) {
 	const handleName = useCallback(
 		(name: string) => onChange({ ...values, name }),
@@ -51,11 +44,6 @@ function useCaseTextHandlers({ onChange, values }: CaseFieldsProps) {
 	return { handleMaintainer, handleName, handleTags };
 }
 
-/**
- * 用例名称 / 维护人 / 标签。
- * 返回 fragment 而不是自己包一层 <div>：这三个字段必须是外层 6 轨栅格的
- * 直接子项，套一层容器就又变成一套独立的列宽了。
- */
 function CaseTextFields({ nameError, onChange, values }: CaseTextFieldsProps) {
 	const handlers = useCaseTextHandlers({ onChange, values });
 
@@ -91,7 +79,6 @@ function CaseTextFields({ nameError, onChange, values }: CaseTextFieldsProps) {
 	);
 }
 
-/** 三个枚举字段的 onChange。 */
 function useCaseEnumHandlers({ onChange, values }: CaseFieldsProps) {
 	const handlePriority = useCallback(
 		(priority: CasePriority) => onChange({ ...values, priority }),
@@ -108,7 +95,6 @@ function useCaseEnumHandlers({ onChange, values }: CaseFieldsProps) {
 	return { handleCaseType, handlePriority, handleStatus };
 }
 
-/** 优先级 / 用例类型 / 状态，同样是外层栅格的直接子项。 */
 function CaseEnumFields({ onChange, values }: CaseFieldsProps) {
 	const handlers = useCaseEnumHandlers({ onChange, values });
 
@@ -142,21 +128,12 @@ function CaseEnumFields({ onChange, values }: CaseFieldsProps) {
 	);
 }
 
-/**
- * 六个短字段的栅格容器。它自己没有状态，纯粹是一层布局；单独成文件是为了让
- * CaseForm 只剩表单骨架。
- */
 export function CaseFieldGrid({
 	nameError,
 	onChange,
 	values,
 }: CaseTextFieldsProps) {
 	return (
-		/*
-		 * 六个短字段共用一个栅格容器（轨道定义见 case-form-grid.ts）。
-		 * 之前它们分在两个列数不同的栅格里，竖向分界一行一个位置；
-		 * 合成一套轨道后，1/3 与 2/3 两条竖边在行与行之间上下贯通。
-		 */
 		<div className={CASE_FIELD_GRID_CLASS}>
 			<CaseTextFields
 				nameError={nameError}

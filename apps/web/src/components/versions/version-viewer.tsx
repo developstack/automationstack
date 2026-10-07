@@ -1,7 +1,3 @@
-/**
- * Fetches the one or two snapshots the history panel currently has
- * selected and hands them to the pure diff helpers / render components.
- */
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -13,7 +9,6 @@ import { VersionDiff } from "./version-diff.tsx";
 import { VersionSnapshotView } from "./version-snapshot-view.tsx";
 
 interface VersionViewerProps {
-	/** Older side; `null` renders `targetVersion` as a plain snapshot. */
 	baseVersion: number | null;
 	caseId: string;
 	targetVersion: number;
@@ -29,7 +24,6 @@ function ViewerSkeleton() {
 	);
 }
 
-/** Loads the selected version(s) and renders a diff or a single snapshot. */
 export function VersionViewer({
 	baseVersion,
 	caseId,

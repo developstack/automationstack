@@ -1,16 +1,8 @@
-/**
- * 行内节点 → React。图片那一支（可显示 / 还没查到 / 存储未配置三种状态）
- * 在 image-node.tsx。
- *
- * 这个模块与整条预览链路一样**不许 import 任何 `@codemirror/*`**：
- * `/projects/$projectId` 会 SSR，而 `@codemirror/view` 在 import 期就读 `navigator`。
- */
 import { Fragment, type ReactElement } from "react";
 
 import { ImageNode } from "@/components/cases/image-node";
 import type { MarkdownInline } from "@/components/cases/markdown-inline";
 
-/** 附件 id → 15 分钟签名 URL。`null` 表示服务端签不出来（R2 未配置）。 */
 export type MarkdownImageUrls = ReadonlyMap<string, string | null>;
 
 interface InlineNodesProps {
@@ -53,8 +45,6 @@ function renderInline(
 			);
 		default:
 			return (
-				// rel="noopener" + target="_blank"：项目 CLAUDE.md 明令。协议白名单
-				// 在 markdown-inline.ts 就把关了，走到这里的 url 一定是 http/https。
 				<a
 					className="text-primary underline underline-offset-2"
 					href={node.url}
@@ -67,11 +57,6 @@ function renderInline(
 	}
 }
 
-/**
- * key 用源码偏移量 `from`：同一层的兄弟节点各占一段互不重叠的区间，偏移量天然唯一，
- * 而且同一段文本在两次渲染之间偏移不变——比数组下标稳（下标会在前面插入一个字符时
- * 整体错位，导致 React 复用错节点，正在加载的图片会闪一下）。
- */
 export function InlineNodes({
 	imageUrls,
 	nodes,
@@ -79,8 +64,6 @@ export function InlineNodes({
 	return (
 		<>
 			{nodes.map((node) => (
-				// 用 Fragment 而不是 <span> 包一层：多包一层行内盒会让下面那些
-				// 撑满宽度的占位块（w-full）拿不到段落的宽度。
 				<Fragment key={node.from}>{renderInline(node, imageUrls)}</Fragment>
 			))}
 		</>

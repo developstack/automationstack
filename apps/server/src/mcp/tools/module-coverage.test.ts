@@ -1,8 +1,3 @@
-/**
- * 装配这一层出错的方式全是静默的：覆盖数字错位（挂到了别的模块上）、
- * 覆盖查询没返回的模块被整行吃掉、或者缺口标记丢失——三种都照常返回一棵
- * 结构正确的树，只是 agent 会据此判断「这块已经有覆盖了」而少写用例。
- */
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
 import type { ModuleCoverageRow } from "@automationstack/db/repositories/project-stats-coverage";
 import { describe, expect, it } from "vitest";

@@ -9,10 +9,6 @@ import {
 	validateAttachmentUpload,
 } from "./attachment-policy";
 
-/**
- * key 末段的形状：`<kind>-<uuid>.<ext>`。提到顶层是 Biome 的
- * `useTopLevelRegex` 要求——正则字面量写在函数里每次调用都会重新编译。
- */
 const SCREENSHOT_FILENAME_PATTERN = /^screenshot-[0-9a-f-]{36}\.png$/;
 
 const SCOPE: AttachmentKeyScope = {
@@ -70,7 +66,6 @@ describe("validateAttachmentUpload", () => {
 		).toBe("unsupported-content-type");
 	});
 
-	/** `other` 是兜底档，不是「任意类型」的后门。 */
 	test("other 放行三档的并集，但仍然拒绝白名单外的类型", () => {
 		for (const contentType of [
 			"image/webp",
@@ -109,10 +104,6 @@ describe("validateAttachmentUpload", () => {
 		).toEqual({ kind: "too-large", maxBytes: MAX_ATTACHMENT_BYTES });
 	});
 
-	/**
-	 * 类型先于大小判定：一个 500MB 的 zip 应该被告知「类型不支持」，
-	 * 因为改小它也传不上来，提示改大小是把用户往错路上带。
-	 */
 	test("类型不合法时优先报类型，而不是体积", () => {
 		expect(
 			validateAttachmentUpload({
@@ -157,7 +148,6 @@ describe("buildAttachmentStorageKey", () => {
 		).toBe(true);
 	});
 
-	/** 白名单挡在前面，走不到这里；仍然要保证兜底不是空扩展名或崩溃。 */
 	test("未知 contentType 落到 .bin 而不是把类型串拼进 key", () => {
 		const key = buildAttachmentStorageKey(SCOPE, {
 			contentType: "application/x-unknown",
@@ -180,10 +170,6 @@ describe("buildAttachmentStorageKey", () => {
 		expect(keys.size).toBe(20);
 	});
 
-	/**
-	 * key 里绝不能出现用户原始文件名——路径穿越与中文/特殊字符的签名问题
-	 * 都从那里来。这里断言的是「key 的每一段都只由 id、kind、uuid、扩展名构成」。
-	 */
 	test("key 只由已知片段构成，段数固定且没有路径穿越", () => {
 		const key = buildAttachmentStorageKey(SCOPE, {
 			contentType: "image/png",

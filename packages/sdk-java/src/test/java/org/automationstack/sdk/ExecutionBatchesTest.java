@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** 分批：每批一个派生出来的幂等键，空的一轮也要发（§7.2）。 */
 class ExecutionBatchesTest {
 
     private static List<CaseResultInput> results(int count) {
@@ -22,8 +21,6 @@ class ExecutionBatchesTest {
 
     @Test
     void emptyRunStillProducesOneBatch() {
-        // 「过滤条件没匹配上任何用例」照样该留下执行记录，而且 writtenTo 为空
-        // 这件事必须由服务端的对账单说出来——SDK 自己短路掉就没有理由可透传。
         assertEquals(1, ExecutionBatches.chunkResults(List.of()).size());
         assertEquals(List.of(), ExecutionBatches.chunkResults(List.of()).get(0));
     }
@@ -53,7 +50,6 @@ class ExecutionBatchesTest {
         List<IngestExecutionRequestWire> requests = ExecutionBatches.buildExecutionRequests(
                 TestFixtures.baseConfig(), results(450), TestFixtures.window());
         assertEquals(3, requests.size());
-        // 批 0 就是 run key 本身。
         assertEquals(TestFixtures.RUN_KEY, requests.get(0).idempotencyKey());
         assertEquals(Idempotency.deriveBatchIdempotencyKey(TestFixtures.RUN_KEY, 1),
                 requests.get(1).idempotencyKey());
@@ -62,7 +58,6 @@ class ExecutionBatchesTest {
 
     @Test
     void timestampsMatchNodeToIsoStringFormat() {
-        // Instant.toString() 在毫秒为零时会把小数部分整个省掉，Node 的 toISOString() 不会。
         IngestExecutionRequestWire request = ExecutionBatches.buildExecutionRequests(
                 TestFixtures.baseConfig(), results(1), TestFixtures.window()).get(0);
         assertEquals("2026-01-01T00:00:00.000Z", request.startedAt());
@@ -74,7 +69,6 @@ class ExecutionBatchesTest {
         String message = "x".repeat(ContractLimits.MAX_INGEST_COMMENT_LENGTH + 500);
         String truncated = ExecutionBatches.truncateMessage(message);
         assertEquals(ContractLimits.MAX_INGEST_COMMENT_LENGTH, truncated.length());
-        // 人得知道下面还有内容，以及去哪找完整的那份。
         assertTrue(truncated.endsWith("log 附件）"));
     }
 

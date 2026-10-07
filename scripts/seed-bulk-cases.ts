@@ -1,26 +1,9 @@
-/**
- * 订单管理模块的批量种子用例（供前端验证分页器）。
- *
- * 与服务端 DEFAULT_PAGE_SIZE = 20 配合：本文件产出 45 条批量用例，
- * 加上订单管理模块原有的 3 条手写演示用例共 48 条，
- * pageSize=20 时正好 3 页且末页只有 8 条（能验证「末页不满」的渲染）；
- * 整个演示项目共 9 + 45 = 54 条用例。
- *
- * 每条的 sourceRef 固定（seed:order:bulk:NN），因此重复执行 `pnpm db:seed`
- * 会被导入管道按 (projectId, sourceRef) 全部 skip，幂等性与手写用例一致。
- */
-
 import type { SeedCaseSpec } from "../packages/db/src/repositories/seed-repository";
 
 const BULK_CASE_COUNT = 45;
-/** 序号补零宽度：两位即可覆盖 45 条，名称/sourceRef 排序与数值序一致。 */
 const BULK_SERIAL_WIDTH = 2;
 const BULK_FIRST_SERIAL = 1;
 
-/**
- * 各池子长度（4/5/6/3）两两不同，取模轮转后能交叉出分散的组合，
- * 避免「优先级和状态永远成对出现」导致筛选+分页的组合测不出问题。
- */
 const BULK_PRIORITIES = ["P0", "P1", "P2", "P3"] as const;
 const BULK_STATUSES = [
 	"active",
@@ -66,7 +49,6 @@ function bulkOrderCase(serial: number): SeedCaseSpec {
 	};
 }
 
-/** 45 条批量用例，序号 01~45。 */
 export const BULK_ORDER_CASES: SeedCaseSpec[] = Array.from(
 	{ length: BULK_CASE_COUNT },
 	(_unused, offset) => bulkOrderCase(offset + BULK_FIRST_SERIAL)

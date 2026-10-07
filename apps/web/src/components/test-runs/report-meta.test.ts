@@ -9,7 +9,6 @@ describe("isSafeHttpUrl", () => {
 	});
 
 	it("拦住 javascript: 及其大小写变体", () => {
-		// defectUrl 在 Jira 未配置时是用户手填的纯文本（D9），直接进 href 就是 XSS。
 		expect(isSafeHttpUrl("javascript:alert(1)")).toBe(false);
 		expect(isSafeHttpUrl("jAvAsCrIpT:alert(1)")).toBe(false);
 		expect(isSafeHttpUrl("data:text/html,<script></script>")).toBe(false);

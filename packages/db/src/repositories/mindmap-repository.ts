@@ -28,14 +28,6 @@ import { moveTestCaseInTx, removeTestCaseInTx } from "./test-cases-repository";
 
 export const MINDMAP_BATCH_LIMIT = 100;
 
-/**
- * Case node rendered on the mindmap canvas.
- *
- * `steps` is included so the canvas can draw the step / expected children
- * without a per-case round trip; it is the only heavy column here, so the
- * remaining `test_cases` content (preconditions, tags, maintainer, …) stays
- * out deliberately.
- */
 export interface MindmapCaseNode {
 	id: string;
 	moduleId: string;
@@ -70,7 +62,6 @@ export type MindmapBatchResult =
 	| {
 			idMap: Record<string, string>;
 			kind: "ok";
-			/** 批次所属项目（首个操作解析所得），无法判定时为 null。 */
 			projectId: string | null;
 	  }
 	| { index: number; kind: "failed"; reason: string };
@@ -90,18 +81,6 @@ function resolveId(idMap: Map<string, string>, id: string): string {
 	return idMap.get(id) ?? id;
 }
 
-/**
- * 删模块被引用挡住时**整批拒绝**，而不是跳过它继续。
- *
- * 画布本身就是乐观 UI（mindmap-sync-runner.ts：`operation` 事件到达时
- * mind-elixir 已经把节点从画布上删掉了）。跳过会留下「画布上没了、库里还在」
- * 的第三种不一致状态，而这条链路没有任何逆操作能把画布单独回滚回去；
- * 整批回滚 + 前端重取服务端数据，是这里唯一自洽的收场。
- *
- * blocked 直接把人话原因当 reason 上抛（router 拼成
- * 「批量操作第 N 项失败：…」），用户才知道是**哪个模块**被哪些用例挡住，
- * 而不是只看到一句通用失败。
- */
 async function applyRemoveModuleOp(
 	tx: DbTransaction,
 	moduleId: string
@@ -175,7 +154,6 @@ async function applyCaseOp(
 			changeNote: RENAME_CASE_CHANGE_NOTE,
 			patch: { name: op.name },
 		});
-		// 改名成了原来的名字：没写版本，但操作本身是成功的。
 		if (result.kind === "written" || result.kind === "unchanged") {
 			return null;
 		}
@@ -189,8 +167,6 @@ async function applyCaseOp(
 		});
 		return result.kind === "ok" ? null : result.kind;
 	}
-	// `blocked`（被测试任务引用，plan §3.4）与 `not-found` 一样直接作为 reason
-	// 上抛，整批回滚——脑图批量里删一半留一半会让画布和库对不上。
 	const removed = await removeTestCaseInTx(tx, resolveId(idMap, op.id));
 	return removed.kind === "removed" ? null : removed.kind;
 }
@@ -206,11 +182,6 @@ function applyOperation(
 		: applyCaseOp(tx, op, idMap, actorName);
 }
 
-/**
- * Applies up to MINDMAP_BATCH_LIMIT mindmap operations in one transaction.
- * Creates may use tempIds which later operations can reference; the result
- * carries the tempId → real id mapping. Any failure rolls back the batch.
- */
 export async function runMindmapBatch(
 	operations: MindmapOperation[],
 	actorName: string | null

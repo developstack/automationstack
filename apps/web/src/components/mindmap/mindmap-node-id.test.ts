@@ -80,9 +80,6 @@ describe("step and expected node ids", () => {
 });
 
 describe("malformed ids", () => {
-	// The decoder is the only thing standing between a foreign id and the
-	// guards treating it as "unknown, therefore allowed" — every one of these
-	// must come back null rather than as a permissive ref.
 	const malformed = [
 		"",
 		"c:",

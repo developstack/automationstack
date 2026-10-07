@@ -42,7 +42,6 @@ class HttpResponse:
     body: bytes
 
 
-#: 一次请求进、一次响应出。抛异常 = 网络层没接通（可重试）。
 Transport = Callable[[HttpRequest], HttpResponse]
 
 
@@ -79,8 +78,6 @@ def _read_server_message(body: bytes) -> Optional[str]:
     try:
         parsed = json.loads(body.decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
-        # 体不是 JSON（反代返回的 HTML 错误页之类）。这时没有服务端原文可透传，
-        # 编一句会让人以为那是平台说的话——宁可只报状态码。
         return None
     if isinstance(parsed, dict) and isinstance(parsed.get("message"), str):
         return parsed["message"]
@@ -149,8 +146,6 @@ class IngestHttpClient:
             if not retriable or attempt == self._max_attempts:
                 raise error  # type: ignore[misc]
             self._sleep(_RETRY_BASE_DELAY_SECONDS * (2 ** (attempt - 1)))
-        # 循环至少跑一次且每条分支都 return/raise，这里不可达；写出来是为了让
-        # 「max_attempts 被配成 0」这种配置错误有一句能读懂的话，而不是 None。
         raise last_error or RuntimeError(
             "{0} 一次都没有尝试（max_attempts 配成了 0？）".format(request.url)
         )
@@ -159,7 +154,6 @@ class IngestHttpClient:
         try:
             response = self._transport(request)
         except Exception as error:  # noqa: BLE001 — 连不上、DNS 失败、超时都在这
-            # 这些正是重试存在的理由。
             return True, None, error
         if 200 <= response.status < 300:
             return False, response, None

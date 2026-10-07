@@ -12,8 +12,6 @@ from pytest_automationstack import plugin
 
 from conftest import WROTE_ALL, RecordingTransport, install_fake_reporter, receipt_with
 
-#: 仓库侧接线的最小样子：失败现场挂一个附件，并把返回值打出来好让测试看见。
-#: `tryfirst` 不是装饰用的——插件的 `pytest_sessionfinish` 就是发请求的那一下。
 WIRING = '''
 import pytest
 from automationstack_sdk import AttachmentInput

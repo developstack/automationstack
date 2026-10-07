@@ -1,8 +1,3 @@
-/**
- * Word-level text diff segments shared by the version diff helpers.
- * Wraps jsdiff's `diffWords` into a renderer-friendly shape so UI code
- * can map segments straight to <ins>/<del>/plain spans.
- */
 import { diffWords } from "diff";
 
 export type TextDiffSegmentKind = "added" | "removed" | "unchanged";
@@ -22,7 +17,6 @@ function segmentKind(added: boolean, removed: boolean): TextDiffSegmentKind {
 	return "unchanged";
 }
 
-/** Runs jsdiff `diffWords` and maps each change into a typed segment. */
 export function buildWordDiffSegments(
 	oldText: string,
 	newText: string

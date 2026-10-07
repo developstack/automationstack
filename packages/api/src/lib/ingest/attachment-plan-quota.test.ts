@@ -15,14 +15,6 @@ import {
 } from "./attachment-fixtures";
 import { planAttachmentUploads } from "./attachment-reconcile";
 
-/**
- * 配额裁剪（`./attachment-plan-quota` 的 `applyRunQuota`）的三条性质：
- * 不整组拒绝、一旦装不下就到此为止、配额按单个任务各算一份。
- *
- * 判据顺序与白名单分别在 `./attachment-reconcile.test` 与
- * `./attachment-plan-whitelist.test`；共用的构造器在 `./attachment-fixtures`。
- */
-
 test("条数配额：超出的那些逐条拒绝，前面的照常签", () => {
 	const overflow = 3;
 	const total = MAX_AUTOMATION_ATTACHMENTS_PER_RUN + overflow;
@@ -48,7 +40,6 @@ test("字节配额：一旦装不下，其后的全部拒绝，不去捡还能�
 	const total = fits + 2;
 	const planned = planAttachmentUploads({
 		attachments: Array.from({ length: total }, (_unused, index) =>
-			// 最后一条只有 1 KiB，仍然要被拒：配额判定不做最佳装箱。
 			screenshot(`S${index}`, index === total - 1 ? 1024 : perFile)
 		),
 		rows: manyRows(total),

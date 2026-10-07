@@ -1,23 +1,6 @@
 /** biome-ignore-all lint/suspicious/noConsole: 种子脚本的控制台输出就是它的交付物 */
 /* eslint-disable no-console */
 
-/**
- * 演示数据种子脚本（plan §7 M12）。
- *
- *   pnpm db:seed --owner <用户名>   幂等补齐：项目/模块按名复用，用例按 sourceRef 去重
- *   pnpm db:seed --reset            先清空全部业务数据（projects 级联）再插入
- *   pnpm db:seed --purge-smoke      只删除历史冒烟项目，不写入种子
- *
- * `--owner` 指定的账号会被设成种子项目的 owner。**不给就没人能看见这个项目**
- * （项目级授权见 `packages/db/src/schema/project-members.ts`），脚本会为此打一条
- * 警告——细节与错误文案在 `./seed-owner.ts`。
- *
- * 本脚本只做编排：所有 DB 访问都在 packages/db 的 repository 里
- * （docs/init-code-quantity.md 硬规则：packages/db 之外不得直接用 drizzle）。
- * 依赖 tsx 运行（见根 package.json 的 db:seed），cwd 为 apps/server，
- * 因此 dotenv 能自动读到 apps/server/.env 里的 DATABASE_URL。
- */
-
 import type {
 	SeedCaseSpec,
 	SeedProjectSpec,
@@ -30,7 +13,6 @@ import {
 import { BULK_ORDER_CASES } from "./seed-bulk-cases";
 import { ARGV_OFFSET, ownerSummaryLine, resolveSeedOwner } from "./seed-owner";
 
-/** 历史各轮冒烟残留的项目名，--reset / --purge-smoke 时清理。 */
 const SMOKE_PROJECT_NAMES = ["AI 冒烟 1787123122370", "T7s smoke"];
 
 function step(id: string, text: string, expected: string) {
@@ -186,12 +168,10 @@ const LOGIN_CASES: SeedCaseSpec[] = [
 	},
 ];
 
-/** 1 个项目 + 三层模块树 + 覆盖各优先级/状态/标签的用例。 */
 const DEMO_PROJECT: SeedProjectSpec = {
 	description: "演示用种子数据：三层模块树 + 覆盖各优先级/状态/标签的用例",
 	modules: [
 		{
-			// 3 条手写演示 + 45 条批量 = 48 条，供前端验证 pageSize=20 的三页分页。
 			cases: [...ORDER_CASES, ...BULK_ORDER_CASES],
 			path: ["电商平台", "交易中心", "订单管理"],
 		},
@@ -218,8 +198,6 @@ async function main(): Promise<void> {
 		await purgeSmokeProjects();
 		return;
 	}
-	// 在 --reset 之前解析：owner 写错了要在删库**之前**就退出，
-	// 而不是清空之后才发现，那样人得先把数据重建一遍才能重试。
 	const owner = await resolveSeedOwner(argv);
 	if (args.has("--reset")) {
 		const cleared = await resetBusinessData();

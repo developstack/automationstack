@@ -19,15 +19,13 @@ from automationstack_sdk import (
 from conftest import BASE_CONFIG, RUN_KEY, RecordingTransport, receipt_with
 
 WROTE_TWO = [{"runId": "run-a", "runName": "v2.3 回归", "updated": 2}]
-#: 服务端的错误体是 UTF-8 的 JSON；bytes 字面量只能写 ASCII，所以在这里编码一次。
 REJECT_400 = json.dumps({"message": "runId 不是可以传的字段"}).encode("utf-8")
 
 
 def _reporter(transport, **overrides) -> AutomationStackReporter:
     options = {
-        "exit_on_empty_write": False,  # 单测里不许摁进程退出码
+        "exit_on_empty_write": False,
         "sink": lambda line: None,
-        # 重试不睡：睡了测试就变成计时器测试，而这里要验的是「键有没有复用」。
         "sleep": lambda seconds: None,
         "transport": transport,
         **BASE_CONFIG,
@@ -85,7 +83,6 @@ def test_four_hundred_is_not_retried() -> None:
     with pytest.raises(IngestHttpError) as excinfo:
         reporter.finish()
     assert len(transport.calls) == 1
-    # 服务端原文透传，SDK 不概括。
     assert excinfo.value.server_message == "runId 不是可以传的字段"
 
 
@@ -103,7 +100,6 @@ def test_batches_each_carry_a_derived_key() -> None:
     assert transport.body_of(1)["idempotencyKey"] == derive_batch_idempotency_key(
         RUN_KEY, 1
     )
-    # 两批写的是同一个任务，对账单里合成一行、数字相加（D34）。
     assert [(e.run_name, e.updated) for e in outcome.receipt.written_to] == [
         ("v2.3 回归", 3)
     ]
@@ -130,10 +126,8 @@ def test_empty_written_to_raises_with_server_reasons_verbatim() -> None:
     with pytest.raises(IngestEmptyWriteError) as excinfo:
         reporter.finish()
     message = str(excinfo.value)
-    # 两条理由**原样**在异常里，SDK 没有把它们抹平成一句「上报失败」。
     assert "项目里没有这个 sourceRef 的用例" in message
     assert "任务已提交，不再接收自动化结果" in message
-    # 对账单照打不误——报错不能把唯一的反馈渠道一起吞掉。
     assert any(line.startswith("写入 0 个测试任务") for line in printed)
 
 

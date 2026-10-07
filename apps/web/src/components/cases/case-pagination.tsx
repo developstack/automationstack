@@ -1,7 +1,3 @@
-/**
- * 用例列表分页条。仓库的 packages/ui 里没有 pagination 组件，本轮又不允许
- * 新增 shadcn 组件，因此用 Button 组合出上一页/下一页 + 页码提示。
- */
 import { Button } from "@automationstack/ui/components/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useCallback } from "react";
@@ -14,11 +10,6 @@ interface CasePaginationProps {
 	total: number;
 }
 
-/**
- * 翻到首/末页的那一刻按钮会被禁用。原生 disabled 会把它移出 tab 序，
- * 焦点直接掉回 <body>，用户要重新按几十次 Tab 才能回到分页条。
- * 所以只用 aria-disabled 表达禁用，真正的拦截放在 onClick 里 early-return。
- */
 function useGuardedPageStep(
 	disabled: boolean,
 	onPageChange: (page: number) => void,

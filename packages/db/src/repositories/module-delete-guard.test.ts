@@ -1,13 +1,3 @@
-/**
- * 这道闸门唯一会被写错的地方是**范围**：只查模块自己或直接子级的用例，
- * 深层子模块下被测试任务引用的用例就漏过去了，级联删到它们时数据库抛 23503，
- * 脑图批量事务里那一整批改动会一起回滚。所以这里钉住两件事：
- * 引用查询必须带上递归 CTE 返回的**每一个**子树 id；以及被挡住时返回的是
- * 结构化的 blocked 结果（数量 + 点名），而不是布尔或异常。
- *
- * 这里不连库（packages/db 的 vitest project 只跑不 import `../index` 的文件），
- * SQL 本身的正确性由 Postgres 保证，本文件测的是「查了什么范围、返回了什么形态」。
- */
 import { describe, expect, it } from "vitest";
 
 import type { Module } from "../schema/modules";
@@ -38,7 +28,6 @@ interface TotalsRow {
 	runCount: number;
 }
 
-/** 被测代码用到的链式方法，全部返回自身；await 时吐出预置的行。 */
 interface FakeChain {
 	from: () => FakeChain;
 	groupBy: () => FakeChain;
@@ -55,11 +44,6 @@ interface FakeTxOptions {
 	totals?: TotalsRow[];
 }
 
-/**
- * `execute` 冒充 module-subtree 的递归 CTE（直接给出子树 id），
- * 两次 `select` 依次是「引用汇总」和「挡路用例样本」。
- * where 条件原样存下来，用来验证过滤范围。
- */
 function createFakeTx(options: FakeTxOptions) {
 	const whereConditions: unknown[] = [];
 	let selectCount = 0;
@@ -92,7 +76,6 @@ function createFakeTx(options: FakeTxOptions) {
 	return { tx: tx as unknown as DbTransaction, whereConditions };
 }
 
-/** drizzle 的条件对象里有环（列 ↔ 表），按引用去重地把里面的字符串全捞出来。 */
 function collectStrings(
 	value: unknown,
 	seen: WeakSet<object>,
@@ -111,7 +94,6 @@ function collectStrings(
 	}
 }
 
-/** where 条件里出现的所有字面量字符串（含 inArray 绑定的每个 id）。 */
 function conditionStrings(condition: unknown): string[] {
 	const found: string[] = [];
 	collectStrings(condition, new WeakSet(), found);
@@ -149,8 +131,6 @@ describe("checkModuleDeleteBlock", () => {
 	});
 
 	it("filters by every id in the subtree, not just the module itself", async () => {
-		// 孙模块只出现在递归 CTE 的返回里。若引用查询退化成「只看直接子级」，
-		// GRANDCHILD_ID 就不会出现在过滤条件里——这条断言就是那个回归的哨兵。
 		const { tx, whereConditions } = createFakeTx({
 			subtreeIds: [ROOT_ID, CHILD_ID, GRANDCHILD_ID],
 			totals: [{ caseCount: 0, runCount: 0 }],
@@ -163,8 +143,6 @@ describe("checkModuleDeleteBlock", () => {
 	});
 
 	it("skips the reference query when the subtree came back empty", async () => {
-		// 模块被并发删掉时 CTE 返回空集；拿空 id 列表去 inArray 会退化成
-		// 「匹配不到任何行」，看着像没引用，实则什么都没查。
 		const { tx, whereConditions } = createFakeTx({ subtreeIds: [] });
 		expect(await checkModuleDeleteBlock(tx, ROOT_MODULE)).toBeNull();
 		expect(whereConditions).toHaveLength(0);

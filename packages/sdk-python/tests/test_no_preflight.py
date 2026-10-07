@@ -87,7 +87,6 @@ def test_runtime_dependencies_stay_empty() -> None:
         .replace(" ", "")
     )
     assert "dependencies=[]" in manifest
-    # `[dependency-groups]` 里的 pytest 是**开发**依赖，装本包的人拿不到它。
     project_section = manifest.split("[dependency-groups]")[0]
     for framework in ("pytest", "unittest2", "nose", "robotframework", "behave"):
         assert framework not in project_section

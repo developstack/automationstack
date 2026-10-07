@@ -1,9 +1,3 @@
-/**
- * 乐观锁冲突的常驻提示条。
- *
- * 刻意不用 toast：409 冲突是最需要慢慢读、还要照着重做编辑的信息，
- * 而 toast 几秒后就从 DOM 里消失了。这里贴在详情面板内，直到用户自己关掉。
- */
 import { Button } from "@automationstack/ui/components/button";
 import { TriangleAlertIcon, XIcon } from "lucide-react";
 

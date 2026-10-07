@@ -1,13 +1,3 @@
-/**
- * MCP 的运行身份。
- *
- * 要测的不是「函数会不会抛」，而是**身份有没有被原样传下去**：这个映射的
- * 结果会成为 oRPC `Context.user`，而 `requireProjectMember` 全靠
- * `context.user.id` 去查项目角色。id 只要在这里被换成任何一个别的值
- * （比如从前那个写死的合成用户），授权判定就会去问一个不存在的人，
- * 整条通道要么全禁要么全放——两种都不会让 tsc 变红。
- */
-
 import type { User } from "@automationstack/db/schema/users";
 import { describe, expect, it } from "vitest";
 

@@ -40,14 +40,6 @@ const reorderModulesSchema = z.object({
 	projectId: z.uuid(),
 });
 
-/**
- * 按模块 id 寻址的三条（rename / move / remove）把 `id` 改名喂给中间件，
- * 与 `projects.get` 的 `toProjectScope` 同一种做法。
- *
- * 只解析被操作的那个模块：move 的目标父模块不必再解析一次——
- * `moveModule` 本身就会以 `invalid-parent` 拒绝跨项目的父模块，
- * 两处都判等于把同一条规则写两遍，而这两遍将来会各自漂移。
- */
 const toModuleScope = (input: { id: string }) => ({ moduleId: input.id });
 
 const MAX_MODULE_PATH_DEPTH = 10;
@@ -157,9 +149,6 @@ export const modulesRouter = {
 			if (result.kind === "not-found") {
 				throw errors.NOT_FOUND({ message: "模块不存在" });
 			}
-			// 与删用例同一条规矩（plan §3.4），只是范围是整棵子树：模块删除会级联
-			// 到子树里的每一条用例，其中只要有一条被测试任务引用就整体拒绝。
-			// CONFLICT 与 cases.remove 的被引用分支保持同一个错误码。
 			if (result.kind === "blocked") {
 				throw errors.CONFLICT({ message: describeModuleDeleteBlock(result) });
 			}

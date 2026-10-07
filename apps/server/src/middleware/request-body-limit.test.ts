@@ -45,8 +45,6 @@ describe("requestBodyLimit", () => {
 	});
 
 	it("额度按路由族分档，且 ingest 那档就是 ingest 自己的上限", () => {
-		// ingest 的天花板必须等于它自己那道闸的额度，否则外层会抢在 ingest 之前
-		// 拒掉本该拿到「分批重发」文案的请求。
 		expect(MAX_INGEST_BODY_BYTES).toBeGreaterThan(MAX_RPC_BODY_BYTES);
 		expect(MAX_RPC_BODY_BYTES).toBeGreaterThan(MAX_JIRA_WEBHOOK_BODY_BYTES);
 		expect(MAX_JIRA_WEBHOOK_BODY_BYTES).toBeGreaterThan(DEFAULT_MAX_BODY_BYTES);

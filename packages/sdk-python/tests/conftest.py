@@ -49,7 +49,6 @@ def receipt_with(written_to: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 RUN_KEY = "3f2a1b4c-5d6e-4f70-8912-a3b4c5d6e7f8"
 
-#: 测试里的 token 一律是占位符，不是任何真实凭据。
 BASE_CONFIG = {
     "base_url": "https://qa.example.com",
     "idempotency_key": RUN_KEY,

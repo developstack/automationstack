@@ -1,11 +1,5 @@
 "use client";
 
-/* 勾从 lucide 的 CheckIcon 换成 checkbox-primitives.tsx 里 vendored 的
-   Animate UI primitive：它用 motion 按 pathLength 把勾画出来 / 收回去，
-   indeterminate 则画一条横线（原来这一态是没有任何指示符的）。
-   原先指示符上的 transition-none 是为了压住 CSS 过渡，现在动画归 motion 管，
-   这个类没有对象可压，一并去掉。 */
-
 import {
 	Checkbox as CheckboxBase,
 	CheckboxIndicator,

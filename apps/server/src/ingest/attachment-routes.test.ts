@@ -1,20 +1,9 @@
 import { Hono } from "hono";
 import { beforeEach, expect, test, vi } from "vitest";
 
-// `vi.mock` 由 vitest 提升到所有 import 之前，所以下面这几个静态 import
-// 拿到的已经是换过的 handler，一行 db 都不会被加载。
 import { registerIngestAttachmentRoutes } from "./attachment-routes";
 import { MAX_INGEST_ATTACHMENT_BODY_BYTES } from "./body-limit";
 import { HTTP_PAYLOAD_TOO_LARGE, INVALID_JSON_MESSAGE } from "./responses";
-
-/**
- * 附件那条线两个端点的**搬运层**（§5.6）。
- *
- * 与 `./execution-routes.test.ts` 同构：api 侧 handler 被整个换掉，这里只验
- * 状态码映射、body 上限与「谁被调用、拿到了什么」。特别要盯住两条：
- * **R2 未配置是 200 降级、不是 5xx**，以及 register 没有 `project-not-found`
- * 分支（它的请求体里压根没有 `projectId`）。
- */
 
 const mocks = vi.hoisted(() => ({
 	handleIngestAttachmentPresign: vi.fn(),
@@ -113,8 +102,6 @@ test("presign：invalid-payload → 400 message 原样；project-not-found → 4
 });
 
 test("presign：R2 未配置是 **200 降级**，逐条 rejected，不是 5xx", async () => {
-	// §5.6 / 第二期 D9 同构：附件传不上去不能拖垮整次上报——结论那一轮早就写进去了，
-	// 做成 5xx 会让 SDK 把一次成功的上报判成失败。
 	const receipt = {
 		expiresInSeconds: 300,
 		rejected: [
@@ -211,7 +198,6 @@ test("register：超 4 MiB 直接 413，文案说的是分批登记", async () =
 });
 
 test("register 的写库故障不被吞掉：500，而不是让 SDK 以为登记成功了", async () => {
-	// 吞掉写库异常会让 SDK 以为附件已经登记完毕，而报告页上那一行根本不存在。
 	mocks.handleIngestAttachmentRegister.mockRejectedValue(
 		new Error("connect ECONNREFUSED")
 	);

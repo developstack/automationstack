@@ -3,13 +3,6 @@ package org.automationstack.sdk;
 import java.util.List;
 import java.util.Map;
 
-/**
- * {@link ReporterConfig#resolve} 的入参。全部可缺——缺的那些去环境变量里找。
- *
- * <p>Node 那边是一个可选字段的对象字面量，Python 那边是一堆关键字参数，Java 这边
- * 只能是个 builder。它是可变的、不做校验，校验全在 {@link ReporterConfig#resolve} 里
- * 一次做完：那样「缺了什么」只有一处答案。
- */
 public class ReporterConfigInput {
 
     private String baseUrl;
@@ -43,7 +36,6 @@ public class ReporterConfigInput {
         return this;
     }
 
-    /** 换掉环境变量的来源。测试里传一张假表，就不用去动真的 {@code System.getenv()}。 */
     public ReporterConfigInput env(Map<String, String> value) {
         this.env = value;
         return this;
@@ -64,7 +56,6 @@ public class ReporterConfigInput {
         return this;
     }
 
-    /** 每次调用可以传的收窄白名单。null = 全部候选。 */
     public ReporterConfigInput runIds(List<String> value) {
         this.runIds = value;
         return this;

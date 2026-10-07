@@ -27,18 +27,10 @@ from typing import List, Optional
 
 from automationstack_sdk import AttachmentInput
 
-#: 示例根目录（`examples/python`），从本文件位置推出来，**与 cwd 无关**：
-#: pytest 可以从仓库任何一层跑起来，用 cwd 拼路径会让现场落在别人的目录里。
 EXAMPLE_ROOT = Path(__file__).resolve().parent.parent
 
 ARTIFACT_DIR = EXAMPLE_ROOT / "artifacts"
 
-#: 一个 1×1 的合法 PNG。
-#:
-#: 示例里没有浏览器，也不该为了「有张截图」去装一个无头浏览器——这份示例的依赖
-#: 只有 pytest 和我们自己那两个包，加一个 playwright 就把「SDK 不绑框架」这件事
-#: 当场推翻了。真实项目里这里换成 `page.screenshot(path=...)`，上报侧一个字都不用改：
-#: SDK 只关心「一段字节 + 一个 kind」。
 _PLACEHOLDER_PNG_BASE64 = (
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
 )

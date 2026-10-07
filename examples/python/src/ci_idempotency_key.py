@@ -41,11 +41,8 @@ import sys
 
 from automationstack_sdk import derive_batch_idempotency_key
 
-#: 见模块顶部：0 是「原样返回」的捷径，这里要的是真的摘一次。
 _DERIVE_INDEX = 1
 
-#: 见模块顶部：CI 给三种语言的 job 标识是同一个字符串，不加区分 Python 与 Java 会
-#: 算出同一个键，第二轮直接命中第一轮的缓存对账单、一条都写不进去还显示成功。
 _LANGUAGE_TAG = "python:"
 
 _EXIT_USAGE = 1
@@ -67,8 +64,6 @@ def main(argv: list) -> int:
             file=sys.stderr,
         )
         return _EXIT_USAGE
-    # 这个入口的全部输出就是那一行 key：它要能被 $(...) 直接吃掉，
-    # 多打一个字（哪怕是「计算完成」）都会把它拼进环境变量里。
     print(ci_idempotency_key(argv[1].strip()))
     return 0
 

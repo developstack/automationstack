@@ -14,14 +14,6 @@ import {
 } from "./attachment-fixtures";
 import { planAttachmentUploads } from "./attachment-reconcile";
 
-/**
- * `planAttachmentUploads` 的**判据顺序**：一条附件只给一个最贴切的解释。
- *
- * `runIds` 白名单的用例在 `./attachment-plan-whitelist.test`，配额裁剪在
- * `./attachment-plan-quota.test`——分文件是因为仓库的 300 行上限对测试文件
- * 同样生效，共用的构造器在 `./attachment-fixtures`。
- */
-
 test("一条 sourceRef 落在两个任务上，各得一份独立的待签名条目", () => {
 	const planned = planAttachmentUploads({
 		attachments: [screenshot("A")],
@@ -49,7 +41,6 @@ test("一条 sourceRef 落在两个任务上，各得一份独立的待签名条
 		RUN_ONE,
 		RUN_TWO,
 	]);
-	// 同一个本地文件（index 0）拿到两条，SDK 据此传两次。
 	expect(
 		planned.groups.flatMap((group) =>
 			group.items.map((item) => [item.index, item.runCaseId])

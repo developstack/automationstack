@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** 手写解析器。它只需要读懂服务端会回的那点东西，但读错一个字节就是一次假成功。 */
 class JsonParserTest {
 
     @Test
@@ -24,7 +23,6 @@ class JsonParserTest {
 
     @Test
     void prefersLongForIntegers() {
-        // 浮点会让 updated 打成 "3.0"，对账单上那是明显的错字。
         assertInstanceOf(Long.class, JsonParser.parse("7"));
         assertInstanceOf(Double.class, JsonParser.parse("7.5"));
         assertEquals(-12L, JsonParser.parse("-12"));
@@ -60,7 +58,6 @@ class JsonParserTest {
 
     @Test
     void rejectsTrailingGarbage() {
-        // 半截响应体（连接被掐断）必须炸，不能当成一份「什么都没写」的对账单。
         assertThrows(IllegalArgumentException.class, () -> JsonParser.parse("{} {}"));
         assertThrows(IllegalArgumentException.class, () -> JsonParser.parse("{\"a\":1"));
     }

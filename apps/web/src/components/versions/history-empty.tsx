@@ -1,7 +1,3 @@
-/**
- * Empty state of the version history panel: shown when a case has no saved
- * versions yet. Split out of `version-history-panel.tsx`.
- */
 import {
 	Empty,
 	EmptyDescription,

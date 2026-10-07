@@ -25,7 +25,6 @@ import { useAddRunCases } from "@/components/test-runs/use-test-run-mutations";
 
 interface OutOfScopeRowProps {
 	item: ReportOutOfScopeCase;
-	/** 已提交的报告锁死（D15），这时只列事实、不给追加入口。 */
 	locked: boolean;
 	onAppend: (caseId: string) => void;
 	pending: boolean;
@@ -50,10 +49,6 @@ function OutOfScopeRow({
 					{item.priority}
 				</Badge>
 			</TableCell>
-			{/*
-			 * 脚本用的那个标识。对不上的时候，人要回代码里查的就是它，
-			 * 所以哪怕是空也得说清楚是「用例上没填」而不是「这里没显示」。
-			 */}
 			<TableCell className="font-mono text-xs">
 				{item.sourceRef ?? (
 					<span className="font-sans text-muted-foreground">用例上未填</span>
@@ -120,26 +115,11 @@ function OutOfScopeTable({
 interface ReportOutOfScopeCardProps {
 	cases: readonly ReportOutOfScopeCase[];
 	className?: string;
-	/** 已提交则整块只读：追加是写操作，后端也会在事务里拒掉。 */
 	locked: boolean;
 	projectId: string;
 	runId: string;
 }
 
-/**
- * 越界用例：脚本报了结论、当时却不在任何未提交任务里的那几条（§5.1.1 的 `outOfScope`）。
- *
- * ## 为什么这一块只有按钮，没有任何自动追加
- *
- * §9 明写「越界用例**不会被自动追加**进测试任务」。平台只负责把事实摆出来
- * ——「你的脚本报了这几条，谁都没收」——收不收是人的判断：那可能是本迭代
- * 故意不测的模块，也可能是挑用例时漏了。自动追加会让一次跑错配置的脚本
- * 把一堆用例塞进别人的测试任务，而且**分母会跟着变**，通过率当场被改写。
- * 所以这里唯一的入口是人点一下，追加走的还是既有的 `addCases`
- * （与「追加用例」抽屉同一个 mutation，行为、事件流水、状态回退全都一致）。
- *
- * 一条越界用例都没有时整块不渲染：那是常态，空卡只是噪声。
- */
 export function ReportOutOfScopeCard({
 	cases,
 	className,
@@ -179,10 +159,6 @@ export function ReportOutOfScopeCard({
 					<ReportOutOfScopeFooter locked={locked} onPick={openPicker} />
 				</CardContent>
 			</Card>
-			{/*
-			 * 上面那几个按钮是「就这一条，追加」；这里是「顺手把别的也挑了」——
-			 * 复用「追加用例」抽屉，不另写一份选择器（理由见该文件头）。
-			 */}
 			<AddRunCasesSheet
 				onClose={closePicker}
 				open={picking}

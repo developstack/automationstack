@@ -2,7 +2,6 @@ package org.automationstack.sdk;
 
 import java.util.Map;
 
-/** register 那一轮的拒绝。 */
 public record IngestAttachmentRegisterRejection(
         int index, String reason, String runCaseId, String storageKey) {
 

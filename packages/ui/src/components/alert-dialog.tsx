@@ -1,12 +1,5 @@
 "use client";
 
-/* 与 shadcn 原件的一处刻意偏离：进出场从 tw-animate-css 的关键帧
-   （data-open:animate-in / data-closed:animate-out 那一整套）换成
-   alert-dialog-primitives.tsx 里 vendored 的 Animate UI primitive，由 motion 驱动。
-   关键帧不可打断，退场播到一半再打开会跳回起点重播；motion 的 JS 动画从当前值
-   接着走。两套动画不能共存——关键帧会和 motion 抢同一批属性，所以这里连同
-   duration-200 一起删掉，只留布局与配色的类。 */
-
 import {
 	AlertDialogBackdrop,
 	AlertDialog as AlertDialogBase,

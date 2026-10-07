@@ -12,7 +12,6 @@ import type { MarkdownInline } from "@/components/cases/markdown-inline";
 const ATTACHMENT_ID = "11111111-2222-3333-4444-555555555555";
 const UPLOAD_TOKEN = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
 
-/** 把一棵块序列摊平成它包含的全部行内节点，断言时不用一层层往下点。 */
 function flattenInline(blocks: readonly MarkdownBlock[]): MarkdownInline[] {
 	const out: MarkdownInline[] = [];
 	const visitInline = (nodes: readonly MarkdownInline[]) => {
@@ -41,7 +40,6 @@ function flattenInline(blocks: readonly MarkdownBlock[]): MarkdownInline[] {
 	return out;
 }
 
-/** 渲染出来的可见文本（不含代码块），用来断言「一个字符都没被吃掉」。 */
 function plainText(blocks: readonly MarkdownBlock[]): string {
 	return flattenInline(blocks)
 		.filter((node) => node.kind === "text" || node.kind === "code")
@@ -58,7 +56,6 @@ describe("parseMarkdownDoc 不吃字符", () => {
 	);
 
 	it("认不出来的块级语法降级成原文，而不是被丢掉", () => {
-		// 表格不在支持的节点子集里：整段原文必须还在。
 		const text = "| a | b |\n| - | - |\n| 1 | 2 |";
 		expect(plainText(parseMarkdownDoc(text))).toContain("| 1 | 2 |");
 	});
@@ -130,8 +127,6 @@ describe("parseMarkdownDoc 图片", () => {
 	});
 
 	it("uploading 后面不是 uuid 就只是纯文本", () => {
-		// 用户手打的 ![](uploading:foo) 不该被当成我们的占位，否则会在预览里
-		// 挂出一个永远转圈的「上传中」。
 		const text = "![](uploading:foo)";
 		const blocks = parseMarkdownDoc(text);
 		expect(

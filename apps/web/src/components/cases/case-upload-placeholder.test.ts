@@ -37,8 +37,6 @@ describe("replaceCaseImageRef", () => {
 	});
 
 	it("替换串里的 $& 不会被当成模式引用展开", () => {
-		// 刻意不用 String.replace 就是为了这一条：$& 在 replace 里会展开成
-		// 被匹配的整段，正文里就会凭空多出一串占位。
 		expect(replaceCaseImageRef("a-b", "-", "$&")).toBe("a$&b");
 	});
 });

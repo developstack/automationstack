@@ -1,18 +1,3 @@
-/**
- * 审计流水那条**唯一的例外**：结论没变、但 `executedVia` 从 `manual` 翻成
- * `automation`（`buildRunCaseEventRows` 的 `automationTakeover`）。
- *
- * 与 `test-run-case-events-core.test.ts` 分文件只为 300 行上限，测的是同一个
- * 纯函数；分组语义一个字没改——那边钉的是丢弃规则本身，这边钉的是它的例外，
- * 以及**例外绝不能溢到手工路径上**：手工批量那条 SELECT 结构上就带着
- * `executedVia`，判据（旧来源是 manual、结论没变）在「一键全部通过」上同样成立，
- * 拦住它的只有「调用点没打开那个开关」这一件事。这里的第一条用例钉的就是它，
- * 一旦有人把开关改成默认打开、或改成从快照里嗅探，它会立刻变红。
- *
- * 例外的两个方向都不会报错：不记，被脚本顶掉的那句人工说明无声消失，
- * 时间线还停在「张三 未测 → 失败」；乱记，脚本重跑一次刷一屏
- * `failed → failed`，真正的接管淹在里面。
- */
 import { describe, expect, it } from "vitest";
 
 import {
@@ -39,9 +24,6 @@ function snapshot(
 
 describe("buildRunCaseEventRows（自动化接管人工结论）", () => {
 	it("结论没变时，手工路径即便快照带着 manual 也不记（回归保护）", () => {
-		// 手工批量那条 SELECT 结构上带着 executedVia，但它不传开关。
-		// 少了这道保护，「一键全部通过」扫过一批人工判过的行会凭空多出
-		// 一串 passed → passed——正是丢弃规则当初要挡的东西。
 		expect(
 			buildRunCaseEventRows({
 				actorId: ZHANG,
@@ -60,8 +42,6 @@ describe("buildRunCaseEventRows（自动化接管人工结论）", () => {
 	});
 
 	it("自动化顶掉人工结论时照记一行，说明是被覆盖掉的那一段", () => {
-		// 张三判 failed 写「支付网关 502」，脚本带 overwriteManual 报同样的 failed：
-		// 结论没变，但张三那句说明被脚本的 message 顶掉了，不留痕就永久消失。
 		expect(
 			buildRunCaseEventRows({
 				actorId: LI,
@@ -80,7 +60,6 @@ describe("buildRunCaseEventRows（自动化接管人工结论）", () => {
 			{
 				actorId: LI,
 				comment: "支付网关 502，联系运维了",
-				// 结论确实没变，这一行如实记 failed → failed，不造假来源结论。
 				fromResult: "failed",
 				runCaseId: CASE_A,
 				toResult: "failed",

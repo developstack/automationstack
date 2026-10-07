@@ -4,7 +4,6 @@ import { expect, test } from "vitest";
 
 import { resolveJiraClientFromConfig } from "./resolve-client";
 
-/** 32 字节，`decodeSecretKey` 的长度要求。 */
 const MASTER_KEY = btoa("0123456789abcdef0123456789abcdef");
 const OTHER_KEY = btoa("fedcba9876543210fedcba9876543210");
 
@@ -28,10 +27,6 @@ async function makeConfig(): Promise<JiraConfig> {
 	};
 }
 
-/**
- * D9 的硬性验收点：**未配置 = 没有 `jira_configs` 行**，此时必须安安静静地
- * 返回「未配置」，不抛异常、不发请求。绝大多数项目走的就是这条路径。
- */
 test("没有配置行时返回 unconfigured，不抛异常", async () => {
 	await expect(resolveJiraClientFromConfig(null, MASTER_KEY)).resolves.toEqual({
 		kind: "unconfigured",
@@ -39,8 +34,6 @@ test("没有配置行时返回 unconfigured，不抛异常", async () => {
 });
 
 test("没有配置行时，主密钥缺失也照样是 unconfigured", async () => {
-	// 顺序很重要：先判「有没有配」再判「解不解得开」。反过来会让所有没配
-	// Jira 的项目在没配主密钥的环境里被报成「凭据不可用」。
 	await expect(resolveJiraClientFromConfig(null, undefined)).resolves.toEqual({
 		kind: "unconfigured",
 	});

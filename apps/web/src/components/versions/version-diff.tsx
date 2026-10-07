@@ -1,8 +1,3 @@
-/**
- * Renders a `diffCaseSnapshots` result: scalar / preconditions / tags
- * block plus the step table. Pure presentation — the caller owns the
- * snapshots and the diff computation.
- */
 import { Badge } from "@automationstack/ui/components/badge";
 import { Separator } from "@automationstack/ui/components/separator";
 import { ArrowRightIcon } from "lucide-react";
@@ -12,10 +7,8 @@ import { VersionDiffScalars } from "./version-diff-scalars.tsx";
 import { VersionDiffSteps } from "./version-diff-steps.tsx";
 
 interface VersionDiffProps {
-	/** Older side of the comparison. */
 	baseVersion: number;
 	diff: CaseSnapshotDiff;
-	/** Newer side of the comparison. */
 	targetVersion: number;
 }
 
@@ -43,7 +36,6 @@ function DiffHeader({
 	);
 }
 
-/** Version-to-version diff view. */
 export function VersionDiff({
 	baseVersion,
 	diff,

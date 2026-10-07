@@ -1,9 +1,3 @@
-/**
- * 模块树拖拽的读屏播报（dnd-kit 默认文案是英文）。
- * 落点 id 里带的是模块 uuid，念出来对用户没有意义，
- * 因此播报把 uuid 映射回模块名——只说「插到之前 / 挂到之下」不带名字的话，
- * 连按方向键会得到多句一模一样的播报，纯听觉无从判断走到了哪、有没有走。
- */
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
 import type { Announcements, ScreenReaderInstructions } from "@dnd-kit/core";
 
@@ -43,7 +37,6 @@ function describeDrop(
 		: `落点：挂到「${name}」之下`;
 }
 
-/** 播报文案依赖当前树（要按 id 查名字），因此按树生成而不是全局常量。 */
 export function createModuleDragAnnouncements(
 	nodes: readonly ModuleTreeNode[]
 ): Announcements {

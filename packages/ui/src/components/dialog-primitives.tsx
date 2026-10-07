@@ -1,15 +1,5 @@
 "use client";
 
-/* Animate UI 的 base dialog primitive（上游 registry/primitives/base/dialog），
-   vendored 进来。与上游源码的四处出入及其理由与 tooltip-primitives.tsx 同一套
-   （包名 / props 类型 / keepMounted 位置 / reduced-motion），不再重复。
-
-   Popup 的进场是「翻牌」：绕 X 或 Y 轴从 ±20° 转正，同时去模糊、放大。写成
-   transform 整串而不是 motion 的 x/scale/rotateX 分量，是因为 perspective()
-   必须排在旋转之前才有透视，分量形式排不出这个顺序。Tailwind v4 的
-   -translate-x-1/2 走的是独立的 translate 属性，与这里的 transform 不互相覆盖，
-   居中和翻牌可以共存。 */
-
 import { useControlledState } from "@automationstack/ui/hooks/use-controlled-state";
 import { getStrictContext } from "@automationstack/ui/lib/get-strict-context";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";

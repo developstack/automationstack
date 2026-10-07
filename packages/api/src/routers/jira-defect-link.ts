@@ -13,16 +13,6 @@ import { resolveJiraClient } from "../lib/jira/get-client";
 import { parseIssueKey } from "../lib/jira/issue-key";
 import { publishInvalidate } from "../lib/realtime-publish";
 
-/**
- * `jira.linkDefect` 的主体（W4 反向关联）。
- *
- * 与 `./jira-defect-create.ts` 同一种拆法、同一个理由：router 里只留声明，
- * 编排搬到模块顶层的具名函数。两条链路各占一个文件而不是合成一个
- * `jira-defect-handlers.ts`——它们唯一共享的只有「写回 + 发失效事件」那三行，
- * 而各自的守卫、各自的降级分支、各自的错误码清单没有一处重合。
- */
-
-/** 见 `./jira-defect-create.ts` 里同名常量的注释：码表跟着实现走。 */
 export const linkDefectErrorMap = {
 	BAD_GATEWAY: {},
 	BAD_REQUEST: {},
@@ -38,12 +28,6 @@ export interface LinkDefectOptions {
 	input: { reference: string; runCaseId: string };
 }
 
-/**
- * 配了 Jira 的项目：先从粘贴的东西里认出 key，再去 Jira 确认它真的存在。
- *
- * 「Jira 上没有这条 issue」单独用 NOT_FOUND 而不是并进 BAD_GATEWAY：
- * 前者是用户粘错了（他自己能改），后者是 Jira 那边出了事（他改不了）。
- */
 async function viewFromJiraIssue(
 	client: JiraClient,
 	reference: string,
@@ -71,11 +55,6 @@ async function viewFromJiraIssue(
 	};
 }
 
-/**
- * 降级：只存 URL 原文。`defectKey` 保持 null——它的语义是
- * 「Jira 侧的 issue」，未配置的项目没有可校验的 Jira，
- * 存进去只会让后续的状态同步以为有得可同步。
- */
 function viewFromExternalUrl(
 	reference: string,
 	errors: LinkDefectErrors
@@ -106,8 +85,6 @@ export async function handleLinkDefect(
 	if (defect.submittedAt !== null) {
 		throw errors.CONFLICT({ message: "该测试任务已提交并锁定，不可修改" });
 	}
-	// **未配置 Jira 时一个外部请求都不发**（D9）：这条降级分支必须先于任何
-	// Jira 调用判断，否则没配 Jira 的项目手填个链接也会等一次超时。
 	const resolution = await resolveJiraClient(defect.projectId);
 	const view =
 		resolution.kind === "ok"

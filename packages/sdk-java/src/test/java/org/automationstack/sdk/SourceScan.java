@@ -1,15 +1,5 @@
 package org.automationstack.sdk;
 
-/**
- * 把 Java 源码里的注释剥掉，只留下真正会被编译的部分。
- *
- * <p>{@code NoPreflightTest} 和 {@code ExitSignalTest} 都要在源码里搜某些字样，
- * 而这两个文件的注释里**恰恰**在解释「为什么不这么做」——不剥注释，那些解释
- * 自己就会把测试染红，于是下一个人会去删注释而不是去改代码。
- *
- * <p>是个正经的小状态机而不是正则：字符串字面量里的 {@code //}（比如
- * {@code "https://..."}）不能被当成注释开头。
- */
 public final class SourceScan {
 
     private SourceScan() {

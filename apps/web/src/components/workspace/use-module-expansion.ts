@@ -1,14 +1,3 @@
-/**
- * 模块树展开状态的 React 层：把 module-expansion.ts 的纯规则接到组件上，
- * 并把「用户手动展开/折叠」持久化到 sessionStorage。
- *
- * 两条硬约束决定了这里的写法：
- * 1. 覆盖表存在这一个 hook 里，而不是每个节点各自 useState —— modules.tree
- *    每次 invalidate 都会换新树引用，节点级 state 只要节点重建就丢；
- *    集中存放才能保证「刷新数据不冲掉用户展开的状态」。
- * 2. 首帧不读 sessionStorage，挂载后才读 —— 这一页是 SSR 的，
- *    首帧读会话存储会让服务端 HTML 与客户端首次渲染不一致，触发 hydration 报错。
- */
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -23,7 +12,6 @@ import {
 
 const STORAGE_PREFIX = "automationstack:module-expansion:";
 
-/** 模块级常量：空覆盖表要保持同一个引用，否则每次渲染都算「变了」。 */
 const EMPTY_OVERRIDES: ModuleOpenOverrides = new Map<string, boolean>();
 
 function storageKey(projectId: string): string {
@@ -36,7 +24,6 @@ function readOverrides(projectId: string): ModuleOpenOverrides {
 			window.sessionStorage.getItem(storageKey(projectId))
 		);
 	} catch {
-		// 隐私模式/禁用存储时 sessionStorage 会抛，退回默认展开规则即可。
 		return EMPTY_OVERRIDES;
 	}
 }
@@ -50,9 +37,8 @@ function writeOverrides(
 			storageKey(projectId),
 			serializeModuleOverrides(overrides)
 		);
-	} catch {
-		// 同上：写不进去只是下次刷新回到默认展开，不影响本次会话。
-	}
+		// biome-ignore lint/suspicious/noEmptyBlockStatements: intentional
+	} catch {}
 }
 
 export interface ModuleExpansion {

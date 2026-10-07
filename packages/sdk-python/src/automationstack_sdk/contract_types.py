@@ -21,11 +21,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-#: 自动化能报出来的结论。**不含 `untested`**——「跑了但没结论」不是一件能表达的事。
 AutomationCaseResult = str
 AUTOMATION_CASE_RESULTS = ("blocked", "failed", "passed", "skipped")
 
-#: 与服务端 `attachmentKindSchema` 同一份词汇表。
 AttachmentKind = str
 ATTACHMENT_KINDS = ("log", "other", "screenshot", "video")
 
@@ -129,7 +127,6 @@ class IngestUnmatchedCaseEntry:
 class IngestOutOfScopeEntry:
     case_id: str
     reason: str
-    #: 「没有任何未提交任务收它」时为 None；某个具体任务拒了它时是那个任务的名字。
     run_name: Optional[str]
     source_ref: str
 

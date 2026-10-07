@@ -27,7 +27,6 @@ function node(
 	};
 }
 
-/** root → child → grandchild → great，外加一个平级的第二棵根。 */
 const tree: ModuleTreeNode[] = [
 	node("root", [
 		node(
@@ -39,14 +38,10 @@ const tree: ModuleTreeNode[] = [
 	node("other", [node("other-child", [], "other")]),
 ];
 
-/** 树里的模块总数（root/child/grand/great + other/other-child）。 */
 const TREE_SIZE = 6;
-/** 二级子模块所在深度（root=0、child=1、grand=2）。 */
 const GRANDCHILD_DEPTH = 2;
-/** 一个远小于全展开阈值的模块数。 */
 const TINY_PROJECT = 3;
 
-/** 默认上下文：模块数刻意超过全展开阈值，好让深度规则生效。 */
 function context(patch: Partial<ModuleOpenContext> = {}): ModuleOpenContext {
 	return {
 		ancestorIds: new Set<string>(),
@@ -107,7 +102,6 @@ describe("isModuleOpen", () => {
 		});
 		expect(isModuleOpen(deepLink, "child", 1)).toBe(true);
 		expect(isModuleOpen(deepLink, "grand", GRANDCHILD_DEPTH)).toBe(true);
-		// 兄弟分支不受深链影响，收益不会被一条深链吃掉
 		expect(isModuleOpen(deepLink, "other-child", 1)).toBe(false);
 	});
 

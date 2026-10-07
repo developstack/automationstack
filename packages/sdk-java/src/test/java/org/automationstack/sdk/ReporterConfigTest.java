@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
-/** 配置只有 token + projectId + baseUrl 三样（D31），而且缺一样就立刻炸。 */
 class ReporterConfigTest {
 
     private static Map<String, String> fullEnv() {
@@ -26,7 +25,6 @@ class ReporterConfigTest {
         assertEquals(TestFixtures.TOKEN, config.token());
         assertEquals(TestFixtures.PROJECT_ID, config.projectId());
         assertEquals(TestFixtures.BASE_URL, config.baseUrl());
-        // runIds 不是环境变量，否则它就变成了每迭代要维护的东西（D31）。
         assertNull(config.runIds());
         assertFalse(config.overwriteManual());
     }
@@ -43,8 +41,6 @@ class ReporterConfigTest {
 
     @Test
     void stripsTrailingSlashesFromBaseUrl() {
-        // 不削的话拼出 //ingest/...，有的反代会 301，而 301 之后 Authorization
-        // 按规范可以被丢掉——表现是莫名其妙的 401。
         ReporterConfig config = ReporterConfig.resolve(
                 new ReporterConfigInput().env(fullEnv()).baseUrl("https://qa.example.com///"));
         assertEquals("https://qa.example.com", config.baseUrl());
@@ -70,7 +66,6 @@ class ReporterConfigTest {
                 () -> ReporterConfig.resolve(new ReporterConfigInput().env(Map.of(
                         "AS_PROJECT", TestFixtures.PROJECT_ID,
                         "AS_BASE_URL", TestFixtures.BASE_URL))));
-        // 消息里必须写清楚去哪建 token，不能只说「缺少配置」。
         assertTrue(error.getMessage().contains("AS_TOKEN"));
         assertTrue(error.getMessage().contains("api-tokens"));
     }
@@ -106,8 +101,6 @@ class ReporterConfigTest {
 
     @Test
     void hasNoSingularRunIdField() {
-        // 服务端把单数 runId 声明成了 z.never()，发过去是一条 400（D31）。
-        // 这里连字段都不该有——用反射盯住它，加回来时立刻红。
         for (var component : ReporterConfig.class.getRecordComponents()) {
             assertFalse("runId".equals(component.getName()),
                     "ReporterConfig 不该有单数的 runId");

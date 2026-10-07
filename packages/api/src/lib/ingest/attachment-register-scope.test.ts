@@ -1,15 +1,3 @@
-/**
- * 登记阶段的作用域折算。
- *
- * 与 `../project-access.test.ts` 同一个理由要测：授权代码的失效方式是
- * 「多放行了一个」——既不抛异常也不让 tsc 变红。这一条尤其隐蔽，因为它的
- * 「放行」不是返回 true，而是**把某一组悄悄留在 allowed 里**。
- *
- * 三件事必须钉死：该拒的整组都进对账单（不能只拒组里第一条）、
- * 该放的原样放行、以及查不到归属（既不在禁止集也不该假装允许）的组必须
- * **原样流下去**——那一条是 `forbiddenRunIds` 的取舍在这里的落点，
- * 写反了就会把「任务不存在」误报成「你不是成员」。
- */
 import { describe, expect, it } from "vitest";
 
 import type { AttachmentRegisterGroup } from "./attachment-register-plan";

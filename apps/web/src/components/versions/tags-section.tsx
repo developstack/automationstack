@@ -1,8 +1,3 @@
-/**
- * Tags row of the version diff view: removed / added / kept badges.
- * Split out of `version-diff-scalars.tsx` together with the `TagBadges`
- * helper that only serves it.
- */
 import { Badge } from "@automationstack/ui/components/badge";
 
 import type { TagsDiff } from "./field-diff.ts";

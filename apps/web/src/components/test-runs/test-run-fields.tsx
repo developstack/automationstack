@@ -1,11 +1,3 @@
-/**
- * 测试任务的两个文本字段（名称、说明）。
- *
- * 新建抽屉与编辑对话框各自是一个组件、两种壳，但这两个输入框是同一件事，
- * 各写一份的下场是标签文案、占位文案、必填与否慢慢对不上。
- * 字段 id 写死不做参数：新建与编辑不会同时开着（列表页两者互斥），
- * 页面上永远只有一份，不会撞 id。
- */
 import { Input } from "@automationstack/ui/components/input";
 import { Label } from "@automationstack/ui/components/label";
 import { Textarea } from "@automationstack/ui/components/textarea";

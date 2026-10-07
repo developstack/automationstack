@@ -1,11 +1,5 @@
-/**
- * Single definition of the `cases.list` input derived from the URL search
- * params, shared by the route loader (SSR prefetch) and the list view so both
- * hit the exact same query key.
- */
 import type { WorkspaceSearch } from "@/components/workspace/workspace-search";
 
-/** Matches DEFAULT_PAGE_SIZE in the cases router. */
 export const CASE_PAGE_SIZE = 20;
 
 export interface CaseListInput {
@@ -40,7 +34,6 @@ export function caseListInput(
 	};
 }
 
-/** Total pages for `total` rows, at least 1 so the paginator never disappears. */
 export function casePageCount(total: number): number {
 	return Math.max(Math.ceil(total / CASE_PAGE_SIZE), 1);
 }
