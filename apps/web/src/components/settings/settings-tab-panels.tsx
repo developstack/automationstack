@@ -18,31 +18,33 @@ import { TestRunSettingsSection } from "@/components/settings/test-run-settings-
 
 export const PANEL = "flex flex-col gap-4";
 
-/**
- * 两个项目级分区都用 projectId 作 key。
+/*
+ * 逐格按内容定宽：表格那一格撑满整页（与同外壳的成员、用例两页同宽），
+ * 两个表单与那份指南收在 3xl——往宽了拉只会让单行输入框和中文正文都长到读不了。
  *
- * 不是为了「刷新」，是因为表单初值只在挂载那一次读服务端状态（见
- * use-jira-config-form.ts 顶部）。换项目走的是 `$projectId` 这个路由参数，
- * 同一个路由组件只是换了参数、并不会重挂，A 项目填了一半的站点地址会原封不动
- * 留在 B 项目的表单里，一按保存就写错了对象。
+ * 不是全页一条宽度：设置页原先整页居中，才不得不让四格共用最宽的那一档，
+ * 否则窄的那几格会在宽列里靠左摆、看着没居中。现在整页不再居中，
+ * 这条约束随之消失。
  */
+const READABLE_PANEL = `${PANEL} max-w-3xl`;
+
 export function SettingsTabPanels({ projectId }: { projectId: string }) {
 	return (
 		<>
-			<TabsContent className={PANEL} value={PROJECT_TAB}>
+			<TabsContent className={READABLE_PANEL} value={PROJECT_TAB}>
 				<TestRunSettingsSection
 					key={`test-run-${projectId}`}
 					projectId={projectId}
 				/>
 			</TabsContent>
-			<TabsContent className={PANEL} value={JIRA_TAB}>
+			<TabsContent className={READABLE_PANEL} value={JIRA_TAB}>
 				<JiraSettingsSection key={`jira-${projectId}`} projectId={projectId} />
 			</TabsContent>
 			<TabsContent className={PANEL} value={TOKENS_TAB}>
 				<SettingsScopeNote>{TOKENS_SCOPE_NOTE}</SettingsScopeNote>
 				<ApiTokensPage />
 			</TabsContent>
-			<TabsContent className={PANEL} value={AGENT_TAB}>
+			<TabsContent className={READABLE_PANEL} value={AGENT_TAB}>
 				<SettingsScopeNote>{AGENT_SCOPE_NOTE}</SettingsScopeNote>
 				<AgentSetupPanel />
 			</TabsContent>

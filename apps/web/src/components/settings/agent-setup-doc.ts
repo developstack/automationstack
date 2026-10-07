@@ -1,21 +1,38 @@
-import guide from "@/components/settings/agent-setup-guide.md?raw";
+import type { AgentDocTab } from "@/components/settings/agent-client-tab";
+import claudeCode from "@/components/settings/agent-setup/claude-code.md?raw";
+import codex from "@/components/settings/agent-setup/codex.md?raw";
+import common from "@/components/settings/agent-setup/common.md?raw";
+import opencode from "@/components/settings/agent-setup/opencode.md?raw";
+import pi from "@/components/settings/agent-setup/pi.md?raw";
+import zcode from "@/components/settings/agent-setup/zcode.md?raw";
 
-/**
- * 正文里的占位符。
- *
- * 用 `{{…}}` 而不是 `${…}`：这份 .md 是纯文本、不经过任何模板引擎，而它内部
- * 恰好要原样展示 Claude Code 的 `${AS_TOKEN}` 插值语法——两者共用一种写法的话，
- * 页面上给用户抄的那个占位符会在这里被当成待替换的槽位填掉。
- */
 const PLACEHOLDER_PATTERN = /\{\{(MCP_URL|SCRIPT_URL)\}\}/g;
+
+/*
+ * 一篇 markdown 一格，正文与那格的标签页一一对应；这里只负责把两个地址填进去。
+ *
+ * pi 那一篇一个占位符都不带（它没有 MCP 配置要抄），这不影响下面这条替换：
+ * 没有命中就原样返回。
+ */
+const SOURCES: Record<AgentDocTab, string> = {
+	claude: claudeCode,
+	codex,
+	common,
+	opencode,
+	pi,
+	zcode,
+};
 
 export interface AgentSetupDocValues {
 	mcpUrl: string;
 	scriptUrl: string;
 }
 
-export function buildAgentSetupDoc(values: AgentSetupDocValues): string {
-	return guide.replace(PLACEHOLDER_PATTERN, (_match, key: string) =>
+export function buildAgentSetupDoc(
+	tab: AgentDocTab,
+	values: AgentSetupDocValues
+): string {
+	return SOURCES[tab].replace(PLACEHOLDER_PATTERN, (_match, key: string) =>
 		key === "MCP_URL" ? values.mcpUrl : values.scriptUrl
 	);
 }

@@ -65,3 +65,17 @@ export const SEARCH_CASES_DESCRIPTION =
 	"It never returns steps or preconditions, so it cannot tell you how this " +
 	"project writes cases and cannot be used to judge whether a new case " +
 	"duplicates an existing one — use read_cases with detail 'full' for that.";
+
+export const DELETE_CASE_DESCRIPTION =
+	"Permanently delete ONE test case by id. This is a hard delete with no trash " +
+	"and no restore, so only call it when the user has explicitly asked to remove " +
+	"that case (e.g. a duplicate or a wrongly imported row) — never as cleanup " +
+	"you decided on your own, and confirm which case when the request is at all " +
+	"ambiguous. Get the id from read_cases or search_cases first. " +
+	"Retiring a case that is part of the project's real suite is NOT a delete: " +
+	"set its status to 'deprecated' via import_test_cases (onDuplicate 'overwrite') " +
+	"so it stays visible and its history keeps working. " +
+	"Deletion is refused (CONFLICT) while any test run references the case — the " +
+	"error reports how many — because removing it would silently change past " +
+	"reports; the answer there is to deprecate instead. " +
+	"Returns {id} of the deleted case.";

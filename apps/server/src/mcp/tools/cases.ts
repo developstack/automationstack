@@ -12,6 +12,7 @@ import {
 	shapeReadCases,
 } from "./case-read-shape";
 import {
+	DELETE_CASE_DESCRIPTION,
 	IMPORT_TEST_CASES_DESCRIPTION,
 	LIST_CASE_TAGS_DESCRIPTION,
 	READ_CASES_DESCRIPTION,
@@ -126,5 +127,16 @@ export function registerCaseTools(server: McpServer, client: ApiClient): void {
 		{ description: SEARCH_CASES_DESCRIPTION, inputSchema: searchCasesSchema },
 		(input) =>
 			safeToolCall(async () => jsonResult(await client.cases.search(input)))
+	);
+	server.registerTool(
+		"delete_cases",
+		{
+			description: DELETE_CASE_DESCRIPTION,
+			inputSchema: {
+				id: z.uuid().describe("Id of the case to delete (from read_cases)."),
+			},
+		},
+		({ id }) =>
+			safeToolCall(async () => jsonResult(await client.cases.remove({ id })))
 	);
 }

@@ -77,7 +77,24 @@ function viewFor(pathname: string): string {
 	return "list";
 }
 
-function WorkspaceHeader({ projectName }: { projectName: string }) {
+/* 与侧栏各条逐字同源：页头与侧栏说的是同一件事，措辞不该有两套。 */
+const VIEW_LABELS: Record<string, string> = {
+	list: "用例管理",
+	mindmap: "脑图",
+	overview: "项目概览",
+	settings: "设置",
+	testRuns: "测试任务",
+	users: "成员",
+};
+
+function WorkspaceHeader({
+	projectName,
+	view,
+}: {
+	projectName: string;
+	view: string;
+}) {
+	const sectionLabel = VIEW_LABELS[view];
 	return (
 		<ProjectShellHeader>
 			<div className="flex min-w-0 items-center gap-2 text-sm">
@@ -93,6 +110,16 @@ function WorkspaceHeader({ projectName }: { projectName: string }) {
 					</span>
 				</nav>
 				<h1 className="truncate font-medium">{projectName}</h1>
+				{sectionLabel === undefined ? null : (
+					<>
+						<span aria-hidden="true" className="text-muted-foreground">
+							/
+						</span>
+						<span className="truncate text-muted-foreground">
+							{sectionLabel}
+						</span>
+					</>
+				)}
 			</div>
 			<div className="ml-auto flex items-center">
 				<PresenceAvatars />
@@ -114,8 +141,7 @@ function WorkspaceLayout() {
 		<RealtimeProvider projectId={projectId} view={view}>
 			<ProjectShell projectId={projectId} projectName={projectName}>
 				<div className="grid min-h-0 grid-rows-header-body">
-					<WorkspaceHeader projectName={projectName} />
-					{/* relative + 内层 absolute：滚动区高度锁死在栅格行内，不撑破外壳 */}
+					<WorkspaceHeader projectName={projectName} view={view} />
 					<div className="relative min-h-0 min-w-0 overflow-hidden">
 						<div className="absolute inset-0 overflow-y-auto">
 							<Outlet />

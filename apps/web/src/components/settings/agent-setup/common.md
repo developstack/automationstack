@@ -4,7 +4,7 @@
 2. **跑一次安装脚本**——它装两个 skill，并按你本机装了哪些 agent 分别写好 MCP 配置。
 3. **`export AS_TOKEN=…` 之后重启 agent**，让它调一次 `list_projects`：能列出项目就算接上了。
 
-> 前两步是**一次性配置**，装完不必再回来。日常真正在用的只有下面这条端点和八个工具——其中最要紧的一条是：**动笔写用例之前先调 `read_cases` 把平台上已有的用例正文读进来**，理由见「动笔之前」那一节。
+> 前两步是**一次性配置**，装完不必再回来。日常真正在用的只有下面这条端点和九个工具——其中最要紧的一条是：**动笔写用例之前先调 `read_cases` 把平台上已有的用例正文读进来**，理由见「动笔之前」那一节。
 
 ---
 
@@ -26,9 +26,9 @@
 
 ---
 
-## 八个工具
+## 九个工具
 
-按「你什么时候会用到它」分四组，不是八件等权重的事。
+按「你什么时候会用到它」分四组，不是九件等权重的事。
 
 ### 一次性：找到项目
 
@@ -74,6 +74,10 @@
 
 > ⚠️ 两个默认值决定了你事后要不要返工。**新写的用例一律 `status: "draft"`**——平台的用例列表按 status 过滤，`draft` 就是「待评审」那一格；直接写 `active` 等于把没人看过的 AI 产出混进正式用例库。**`onDuplicate` 用 `skip`（补漏）或 `overwrite`（需求改了重出一版），别用 `create-anyway`**：它会把 `sourceRef` 置成 `null`，那条用例从此退出幂等体系，以后每次重跑都再复制一份。另注意 `overwrite` **只覆盖内容字段，不会把用例移动到别的模块**。
 
+### 删除：不可逆，先问人
+
+- **`delete_cases`** —— 按 `id` 永久删除一条用例，**硬删除、没有回收站**。只在用户明确要求删掉某条（重复、误导入）时调，`id` 先从前面的读工具拿到；拿不准是哪条就先问。**把一条还在正式用例库里的用例「下线」不是删除**：那是把它的 `status` 改成 `deprecated`（走 `import_test_cases` 的 `overwrite`），删了历史报告就对不上了。被任何测试任务引用时删除会被拒（`CONFLICT`，错误里带引用数）——这正是为了让历史报告可复现，那时的正解是改废弃而不是删。
+
 ### 事后抽查
 
 - **`search_cases`** —— 按用例名的子串查，返回摘要行（新更新的在前）。它只回答一个问题：**这一条到底进去没有**。典型用法是导入一批之后抽查几条。
@@ -104,7 +108,7 @@
 
 - 两者共用同一条写入通道和同一套字段，区别全在前半段：搬运做的是**字段映射**，设计做的是**从需求推导测试点**。
 - 两个 skill 都会在动笔前先读平台，也都会在写入前停下来等你确认。**它们停下来问你不是卡住了**：需求里没写清的边界、映射有歧义的那几列，正是评审时会被推翻的部分。
-- skill 正文里的工具名一律写全限定名，如 `testcase-platform:read_cases`——同一个会话里可能挂着别的 MCP server，裸名会歧义。**这里的 `testcase-platform` 是下面各家配置里那个 server 条目名，不是 skill 名**；那个键必须逐字叫这个，否则全限定名解析不到。
+- skill 正文里的工具名一律写全限定名，如 `testcase-platform:read_cases`——同一个会话里可能挂着别的 MCP server，裸名会歧义。**这里的 `testcase-platform` 是各家客户端配置里那个 server 条目名，不是 skill 名**；那个键必须逐字叫这个，否则全限定名解析不到。
 
 ---
 
@@ -144,103 +148,11 @@ export AS_TOKEN='<粘贴你的 token>'
 
 ---
 
-## 接进各家客户端
+## 各家客户端：配置互不通用
 
 MCP 配置是**惯例不是标准**，四家的写法互不通用；抄成邻居的格式不会报错，只会**静默地连不上**。第五家 pi 没有 MCP 客户端。四家的 server 条目名都必须是 `testcase-platform`。
 
-### Claude Code
-
-- **项目级**：`<仓库根>/.mcp.json`
-- **用户级**：`~/.claude.json`
-
-```json
-{
-  "mcpServers": {
-    "testcase-platform": {
-      "type": "http",
-      "url": "{{MCP_URL}}",
-      "headers": {
-        "Authorization": "Bearer ${AS_TOKEN}"
-      }
-    }
-  }
-}
-```
-
-- 支持 `${VAR}` 与 `${VAR:-默认值}` 插值，所以配置里留占位符即可，不必写死 token。
-- 用户级的 `~/.claude.json` 同时装着会话历史等一堆结构，建议用官方命令改它：`claude mcp add --scope user --transport http`（注意给 header 加单引号，否则 shell 会先把占位符吃掉）。
-
-### Codex
-
-- **项目级**：`<仓库根>/.codex/config.toml`
-- **用户级**：`~/.codex/config.toml`
-
-```toml
-[mcp_servers.testcase-platform]
-url = "{{MCP_URL}}"
-bearer_token_env_var = "AS_TOKEN"
-```
-
-- **不要写 `type` 字段**——Codex 的远程 server 没有这一项。
-- 不支持任何字符串插值，只接受「环境变量的名字」：`bearer_token_env_var` 填 `AS_TOKEN` 这个名字本身，**不是它的值**。要加别的头就用 `env_http_headers`，它的值同样是变量名，变量内容被整体当作头的值取用。
-- 项目级的 `.codex/config.toml` 要求该项目已被 trust，否则 Codex 根本不读它。
-
-### opencode
-
-- **项目级**：`<仓库根>/opencode.json`
-- **用户级**：`~/.config/opencode/opencode.json`
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "mcp": {
-    "testcase-platform": {
-      "type": "remote",
-      "url": "{{MCP_URL}}",
-      "enabled": true,
-      "oauth": false,
-      "headers": {
-        "Authorization": "Bearer {env:AS_TOKEN}"
-      }
-    }
-  }
-}
-```
-
-- 三处与众不同：顶层键是 `mcp`（不是 `mcpServers`）、`type` 是 `remote`（不是 `http`）、还必须显式写 `enabled`。
-- **`"oauth": false` 必须写。** 漏了它 opencode 会自己去试 OAuth 握手，而这个端点只认 Bearer。
-- 插值语法是 `{env:AS_TOKEN}`（另支持 `{file:路径}`），不是 `${...}`。
-
-### zcode
-
-- **项目级**：`<仓库根>/.agents/mcp.json`
-- **用户级**：`~/.agents/mcp.json`
-
-```json
-{
-  "mcpServers": {
-    "testcase-platform": {
-      "type": "http",
-      "url": "{{MCP_URL}}",
-      "headers": {
-        "Authorization": "Bearer <把这里换成你的 token>"
-      }
-    }
-  }
-}
-```
-
-> ⚠️ 上面这份正文里的 HTTP 字段名（`type` / `url` / `headers`）**不是官方文档写明的**，是照「`.agents/mcp.json` 采用与 Claude Code 相同的结构」推断出来的。zcode 官方只给了 stdio 的示例。如果它不认，改走图形界面：Settings → MCP Servers → New MCP Server，填端点地址加一个 `Authorization: Bearer` 头。
-
-> ⚠️ 同一作用域下只要 `.zcode` 的配置里声明了任何一个 MCP server，`.agents/mcp.json` 就会被**整份忽略、不做合并**。两边都配了以 `.zcode` 为准。
-
-- 没有确认可用的插值语法，所以上面写的是字面量占位符，需要你手工替换成真 token。换完请确认这个文件**没有被提交进 git**——它会含明文凭据。
-
-### pi
-
-- 没有 MCP 配置文件要写，只装 skill；它会直接扫 `.agents/skills/`，符号链接都不需要。
-- **pi 不支持 MCP**：它的 README 逐字写着 “No MCP”。别给它配 MCP，配了也不会生效。要在 pi 上用这个端点，得自己按标准 JSON-RPC over HTTP（`tools/list` / `tools/call`）直连。
-- 想让它认全局的 `~/.agents/skills`，在 `~/.pi/agent/settings.json` 里加 `{ "skills": ["~/.agents/skills"] }`——脚本不替你改这个文件。
+按你手上那个 agent，去上面那一条对应的格子里抄。
 
 ---
 

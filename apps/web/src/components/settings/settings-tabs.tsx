@@ -72,7 +72,7 @@ export function SettingsTabs({ children }: { children: ReactNode }) {
 
 	return (
 		<Tabs
-			className="mx-auto min-h-0 w-full max-w-4xl flex-1"
+			className="min-h-0 w-full flex-1"
 			onValueChange={selectTab}
 			value={tab}
 		>
