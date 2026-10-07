@@ -1,5 +1,5 @@
-import { env } from "@automationstack/env/server";
-import { PgBoss } from "pg-boss";
+import { pool } from "@automationstack/db";
+import { type Db, PgBoss } from "pg-boss";
 
 import { registerAutoSubmitScan } from "./auto-submit-scan";
 
@@ -13,12 +13,12 @@ export function getJobsStatus(): JobsStatus {
 	return status;
 }
 
-/**
- * pg-boss 自建 pg.Pool（与 packages/db 的 drizzle 池是两套连接）。不设 max
- * 会走 pg 默认的 10，为一个每天跑一次的扫描白占十条连接；两条足够
- * （一条给 worker/maintenance 轮询，一条给并发的 cron 写入）。
- */
-const BOSS_POOL_MAX = 2;
+// 让 pg-boss 走 drizzle 那个进程唯一的连接池，而不是自建第二个 pg.Pool。
+// 等价于 pg-boss 内置 Db.executeSql（同样是 pool.query）；useListenNotify 默认关，
+// 不会另开常驻 LISTEN 连接。pg-boss 只在自建池时才在 stop() 里关池，共用池不会被它关掉。
+export const sharedPoolDb: Db = {
+	executeSql: (text, values) => pool.query(text, values),
+};
 
 const STOP_TIMEOUT_MS = 5000;
 
@@ -39,8 +39,7 @@ export async function startJobs(): Promise<void> {
 	status = "starting";
 	try {
 		instance = new PgBoss({
-			connectionString: env.DATABASE_URL,
-			max: BOSS_POOL_MAX,
+			db: sharedPoolDb,
 			schema: "pgboss",
 		});
 		attachEventLogging(instance);

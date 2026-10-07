@@ -4,7 +4,10 @@ import { z } from "zod";
 
 const DEFAULT_PORT = 3000;
 
-/** 会话签名密钥的最小长度：等于 HMAC-SHA256 的摘要字节数。 */
+// 单实例部署、与其他应用共用宿主 Postgres（max_connections=100）。5 条已能覆盖
+// 单请求最大扇出（测试报告 7 路并行查询会在池内排队，单条均为毫秒级），且 pg-boss 共用此池。
+const DEFAULT_DATABASE_POOL_MAX = 5;
+
 const SESSION_SECRET_MIN_LENGTH = 32;
 
 const SECRET_ENCRYPTION_KEY_BYTES = 32;
@@ -40,6 +43,11 @@ export const env = createEnv({
 			)
 			.default("Asia/Shanghai"),
 		CORS_ORIGIN: z.url(),
+		DATABASE_POOL_MAX: z.coerce
+			.number()
+			.int()
+			.positive()
+			.default(DEFAULT_DATABASE_POOL_MAX),
 		DATABASE_URL: z.string().min(1),
 		NODE_ENV: z
 			.enum(["development", "production", "test"])
