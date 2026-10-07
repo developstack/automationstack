@@ -69,3 +69,12 @@ coverage
 .cache
 tmp
 temp
+
+# >>> dev-cli（同步产物不入库，请勿手改本块）>>>
+.dev-cli/settings.json
+.dev-cli/skills/
+.claude/skills/
+.codex/skills/
+.cursor/skills/
+.pi/skills/
+# <<< dev-cli <<<

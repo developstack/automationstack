@@ -8,7 +8,7 @@
 # 常用入口：
 #   make setup   首次配置（装依赖 + 补齐缺失的 .env，已存在的一律不动）
 #   make dev     前台跑 turbo dev，日常开发用这个
-#   make up      后台起全套（Postgres → 迁移 → dev 服务），日志落到 .dev-logs/
+#   make up      后台起全套（自动补齐 .env → Postgres → 迁移 → dev 服务），日志落到 .dev-logs/
 #   make down    停掉 up 起的一切
 #   make doctor  体检：版本 / 端口 / .env / 数据库连通性 / 迁移是否落后
 #
@@ -111,7 +111,7 @@ DB_BACKEND_RESOLVED = $(shell \
 
 .PHONY: help install setup dev up down restart logs ps status \
 	db-up db-down db-wait db-migrate db-generate db-seed db-seed-admin \
-	db-seed-demo db-studio db-reset check doctor clean _backend-guard
+	db-seed-demo db-studio db-reset check doctor clean _backend-guard _env
 
 .DEFAULT_GOAL := help
 
@@ -137,76 +137,10 @@ install: ## 安装依赖（pnpm install）
 	echo "▶ pnpm install"; \
 	pnpm install
 
-# ⚠️ 这个目标**永远不会覆盖已有的 .env**。
-#
-# apps/server/.env 和 apps/web/.env 里装的是真实口令、会话密钥、以及数据库
-# 凭据主密钥（SECRET_ENCRYPTION_KEY 一旦换掉，库里所有已存的第三方凭据全部
-# 解不开，没有任何办法找回，见 packages/env/src/server.ts 的注释）。所以判定
-# 只有一条：文件在 = 跳过，不备份、不追加、不改一个字节；文件不在才生成。
-# 重复跑必须完全幂等——这是「新人一键上手」和「老机器别被搞坏」的唯一交集。
-#
-# 生成的 DATABASE_URL 跟着后端走：brew 走 localhost:5432 且用当前系统用户
-# （Homebrew 的 initdb 用的是 OS 用户名，不是 postgres），docker 走
-# 127.0.0.1:5433 且用 postgres + 根 .env 里那个口令。
-setup: ## 首次配置：装依赖 + 生成缺失的 .env（已存在的一律跳过）
+# setup 是「新人一键上手」的入口：补齐缺失的 .env（复用 _env，直接 cp 模板）+ 装依赖。
+setup: ## 首次配置：补齐 .env + 装依赖（已存在的一律跳过）
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
-	backend='$(DB_BACKEND_RESOLVED)'; \
-	$(MAKE_CMD) --no-print-directory _backend-guard BACKEND="$${backend}"; \
-	echo "▶ Postgres 后端: $${backend}"; \
-	if [ "$${backend}" = docker ]; then \
-	  pghost=127.0.0.1; pgport=$(DOCKER_PG_PORT); pguser=postgres; \
-	else \
-	  pghost=localhost; pgport=$(BREW_PG_PORT); pguser="$$(id -un)"; \
-	fi; \
-	if command -v openssl >/dev/null 2>&1; then \
-	  sess="$$(openssl rand -base64 32)"; enc="$$(openssl rand -base64 32)"; \
-	else \
-	  sess="$$(node -e 'console.log(require("node:crypto").randomBytes(32).toString("base64"))')"; \
-	  enc="$$(node -e 'console.log(require("node:crypto").randomBytes(32).toString("base64"))')"; \
-	fi; \
-	echo "▶ 检查 .env"; \
-	if [ "$${backend}" = docker ]; then \
-	  if [ -f "$(ENV_ROOT)" ]; then echo "  已存在，跳过: .env"; \
-	  else \
-	    pw="$$(openssl rand -base64 24 2>/dev/null | tr -dc 'A-Za-z0-9' | cut -c1-24)"; \
-	    printf '%s\n' \
-	      '# 仅供 docker compose 展开 docker-compose.yml 里的变量占位符，' \
-	      '# 不是任何 app 的运行时配置（那两份在 apps/server/.env 与 apps/web/.env）。' \
-	      '# 由 make setup 生成。改口令要连带重建 postgres 卷，否则容器里那份旧口令不会变。' \
-	      "POSTGRES_PASSWORD=$${pw}" > "$(ENV_ROOT)"; \
-	    echo "  已生成: .env"; \
-	  fi; \
-	  dbpw="$$( set -a; . "$(ENV_ROOT)" >/dev/null 2>&1; printf '%s' "$${POSTGRES_PASSWORD:-}" )"; \
-	  if [ -z "$${dbpw}" ]; then echo "  ⚠️  根 .env 里 POSTGRES_PASSWORD 是空的，DATABASE_URL 需要你手工补上口令"; fi; \
-	  dburl="postgresql://$${pguser}:$${dbpw}@$${pghost}:$${pgport}/$(PG_DB)"; \
-	else \
-	  echo "  跳过: .env（只有 docker compose 需要它，当前后端是 brew）"; \
-	  dburl="postgresql://$${pguser}@$${pghost}:$${pgport}/$(PG_DB)"; \
-	fi; \
-	if [ -f "$(ENV_SERVER)" ]; then echo "  已存在，跳过: apps/server/.env"; \
-	else \
-	  printf '%s\n' \
-	    "# apps/server 的本地开发配置，由 make setup 生成（Postgres 后端: $${backend}）。" \
-	    '# 完整变量清单见 apps/server/.env.example，权威 schema 是 packages/env/src/server.ts。' \
-	    '# 端口说明：Homebrew 的 Postgres 是 5432，docker compose 那个映射到 5433。' \
-	    '' \
-	    "DATABASE_URL=$${dburl}" \
-	    'CORS_ORIGIN=http://localhost:3001' \
-	    "SESSION_SECRET=$${sess}" \
-	    '' \
-	    '# base64 编码的 32 字节 AES-256 主密钥。⚠️ 换掉它 = 库里所有已存的第三方' \
-	    '# 凭据（jira_configs.api_token_cipher）全部解不开，且无法找回。' \
-	    "SECRET_ENCRYPTION_KEY=$${enc}" > "$(ENV_SERVER)"; \
-	  echo "  已生成: apps/server/.env"; \
-	fi; \
-	if [ -f "$(ENV_WEB)" ]; then echo "  已存在，跳过: apps/web/.env"; \
-	else \
-	  printf '%s\n' \
-	    '# apps/web 的本地开发配置，由 make setup 生成。' \
-	    '# ⚠️ VITE_SERVER_URL 是构建期变量，Vite 会把它内联进产物；换地址要重新 build。' \
-	    'VITE_SERVER_URL=http://localhost:3000' > "$(ENV_WEB)"; \
-	  echo "  已生成: apps/web/.env"; \
-	fi; \
+	$(MAKE_CMD) --no-print-directory _env; \
 	if [ -d "$(ROOT_DIR)/node_modules" ]; then echo "▶ node_modules 已存在，跳过 install（要重装跑 make install）"; \
 	else $(MAKE_CMD) --no-print-directory install; fi; \
 	echo "✅ setup 完成。下一步: make up（后台）或 make dev（前台）"
@@ -219,8 +153,9 @@ dev: ## 前台跑 pnpm dev（turbo，热重载）
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
 	pnpm dev
 
-# 后台起全套。四步是有序的，中间任何一步失败都不往下走：
-#   Postgres 起来 → 真的 ready（轮询 pg_isready，不是 sleep 5）→ 迁移 → dev 服务
+# 后台起全套。起库之前先跑一遍 _env 把缺失的 .env 自动补齐（幂等，已存在的不动），
+# 之后四步有序、中间任何一步失败都不往下走：
+#   .env 就绪 → Postgres 起来 → 真的 ready（轮询 pg_isready，不是 sleep 5）→ 迁移 → dev 服务
 #
 # 为什么按包起而不是 `pnpm dev`（turbo）：turbo.json 里 ui 是 "tui"，把它塞进
 # 后台重定向到文件会得到一坨终端控制序列；而且 turbo 只有一个 PID，停的时候
@@ -230,11 +165,9 @@ dev: ## 前台跑 pnpm dev（turbo，热重载）
 # 就是 PGID。这样 `make down` 能 `kill -TERM -PID` 端掉整棵进程树（pnpm →
 # tsx/vite → esbuild 至少三层），而不是杀掉 pnpm 留下一堆还占着端口的孤儿。
 # 没有 perl 的机器退化成直接起 + 停的时候多走一遍 pkill -P，见 down。
-up: ## 后台起全套：Postgres → 迁移 → dev 服务（日志在 .dev-logs/）
+up: ## 后台起全套：自动补齐 .env → Postgres → 迁移 → dev 服务（日志在 .dev-logs/）
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
-	if [ ! -f "$(ENV_SERVER)" ] || [ ! -f "$(ENV_WEB)" ]; then \
-	  echo "❌ 缺少 .env（apps/server/.env 或 apps/web/.env），先跑: make setup"; exit 1; \
-	fi; \
+	$(MAKE_CMD) --no-print-directory _env; \
 	$(MAKE_CMD) --no-print-directory db-up; \
 	$(MAKE_CMD) --no-print-directory db-migrate; \
 	mkdir -p "$(LOG_DIR)"; \
@@ -331,10 +264,14 @@ status: ## 一屏总览：后端 / 数据库 / dev 进程 / 访问地址
 	backend='$(DB_BACKEND_RESOLVED)'; \
 	echo "Postgres 后端: $${backend}（DB_BACKEND=$(DB_BACKEND)）"; \
 	if [ "$${backend}" = docker ]; then host=127.0.0.1; port=$(DOCKER_PG_PORT); else host=localhost; port=$(BREW_PG_PORT); fi; \
-	if command -v pg_isready >/dev/null 2>&1 && pg_isready -q -h "$${host}" -p "$${port}" 2>/dev/null; then \
-	  echo "Postgres $${host}:$${port}: 可连接"; \
+	if command -v pg_isready >/dev/null 2>&1; then \
+	  if pg_isready -q -h "$${host}" -p "$${port}" 2>/dev/null; then echo "Postgres $${host}:$${port}: 可连接"; \
+	  else echo "Postgres $${host}:$${port}: 连不上（make db-up）"; fi; \
+	elif [ "$${backend}" = docker ]; then \
+	  if docker compose exec -T postgres pg_isready -q -U postgres >/dev/null 2>&1; then echo "Postgres $${host}:$${port}: 可连接"; \
+	  else echo "Postgres $${host}:$${port}: 连不上（make db-up）"; fi; \
 	else \
-	  echo "Postgres $${host}:$${port}: 连不上（make db-up）"; \
+	  echo "Postgres $${host}:$${port}: 无法探测（宿主机缺 pg_isready；brew 后端请装 postgresql 客户端）"; \
 	fi; \
 	echo; \
 	$(MAKE_CMD) --no-print-directory ps; \
@@ -426,9 +363,9 @@ db-seed: ## 灌基础种子数据
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
 	pnpm db:seed
 
-db-seed-admin: ## 灌管理员账号
+db-seed-admin: ## 灌管理员账号（USER=用户名 PASS=密码；PASS 省略则随机生成并只打印一次）
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
-	pnpm db:seed-admin
+	pnpm db:seed-admin $(USER) $(PASS)
 
 db-seed-demo: ## 灌自动化演示数据
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
@@ -574,8 +511,8 @@ clean: ## 清构建产物、缓存与 .dev-logs（不动 node_modules 和 .env�
 
 # ── 内部目标（不出现在 help 里）─────────────────────────────────────────────
 
-# 后端探测失败时统一的报错出口。放成一个目标而不是复制三遍，是因为这段话
-# 需要在 setup / db-up / db-reset 三处一字不差。
+# 后端探测失败时统一的报错出口。放成一个目标而不是复制两份，是因为这段话
+# 需要在 db-up / db-reset 两处一字不差。
 _backend-guard:
 	@set -euo pipefail; \
 	case "$(BACKEND)" in \
@@ -592,3 +529,23 @@ _backend-guard:
 	    echo "   已经装了但探测不到，就显式指定: make <target> DB_BACKEND=brew"; \
 	    exit 1 ;; \
 	esac
+
+# 把缺失的 .env 从同名 .env.example 直接复制过来，**永远不会覆盖已有的文件**。
+#
+# apps/server/.env 和 apps/web/.env 里装的是会话密钥和数据库凭据主密钥
+# （SECRET_ENCRYPTION_KEY 一旦换掉，库里所有已存的第三方凭据就解不开了，
+# 见 packages/env/src/server.ts）。所以判定只有一条：文件在 = 跳过，不备份、
+# 不追加、不改一个字节；文件不在才 cp。重复跑必须完全幂等——这是「新人一键
+# 上手」和「老机器别被搞坏」的唯一交集。
+#
+# ⚠️ 正因如此，.env.example 里的值必须是**直接可用的本地开发默认值**，不能留空。
+#
+# setup 和 up 都调它：up 在起库之前先补一遍，于是「忘了先跑 make setup」
+# 这种新人必经的坑直接消失——up 自己会补齐。
+_env:
+	@set -euo pipefail; cd "$(ROOT_DIR)"; \
+	echo "▶ 检查 .env"; \
+	for f in .env apps/server/.env apps/web/.env; do \
+	  if [ -f "$$f" ]; then echo "  已存在，跳过: $$f"; \
+	  else cp "$$f.example" "$$f"; echo "  已从 $$f.example 生成: $$f"; fi; \
+	done
