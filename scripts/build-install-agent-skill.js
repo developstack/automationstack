@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -103,8 +103,27 @@ function spliceBlock(script, block) {
 	return script.slice(0, begin) + block + script.slice(end + END_MARKER.length);
 }
 
+// skill 源不再进版本库（由 dev-cli 同步、已 gitignore），CI / 全新 clone 里没有它们。
+function missingSkillSources() {
+	return SKILLS.filter(
+		(skill) => !existsSync(join(SKILLS_ROOT, skill, "SKILL.md"))
+	);
+}
+
 function main() {
 	const check = process.argv.includes("--check");
+	const missing = missingSkillSources();
+	if (missing.length > 0) {
+		if (check) {
+			console.log(
+				`⚠️ 跳过漂移检查：找不到 skill 源（${missing.join("、")}），.claude/skills/ 由 dev-cli 同步、不在版本库内。本地同步 skill 后再跑即可校验。`
+			);
+			return;
+		}
+		throw new Error(
+			`找不到 skill 源：${missing.join("、")}（先用 dev-cli 同步 .claude/skills/）`
+		);
+	}
 	const current = readFileSync(TARGET, "utf-8");
 	const next = spliceBlock(current, renderBlock());
 

@@ -129,6 +129,9 @@ jobs:
       # 的正文（它是发给用户的单文件离线安装器，正文必须在它自己肚子里）。
       # 内嵌的那份是生成物：改了 skill 却忘了重新生成，用户装到的就是旧的一套，
       # 而这种漂移在本地看不出来——所以在这里卡一道。
+      # 注意：skill 源（.claude/skills/）已移出版本库，由 dev-cli 同步、被 gitignore，
+      # CI 里取不到源，脚本在缺源时会打印提示并跳过（退出 0）。所以这道只在本地
+      # 同步过 skill 的机器上真正生效；改了 skill 后须在本地重新生成并提交。
       # 失败时的修法：node scripts/build-install-agent-skill.js
       - name: 安装脚本内嵌的 skill 未漂移
         run: node scripts/build-install-agent-skill.js --check
