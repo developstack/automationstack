@@ -160,6 +160,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 只在 main 推送、且是 web 时校验：localhost 兜底只对本地 / PR 构建有意义，
+      # 一旦推上 GHCR 并被 GitOps 部署到生产，就是一个页面能开、请求全打向访客
+      # 自己 localhost 的静默坏镜像（见下方构建步骤的说明）。所以这里直接失败，
+      # 而不是 warning——warning 没人看，而镜像一旦推上去、tag 一旦写回就已经上线了。
+      # server 镜像不烘这个变量，不受影响；PR 不推镜像，保留兜底。
+      - name: 校验 VITE_SERVER_URL 已配置
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.app == 'web'
+        env:
+          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
+        run: |
+          if [ -z "${VITE_SERVER_URL}" ]; then
+            echo "::error::仓库变量 VITE_SERVER_URL 未配置。web 镜像会把它在构建期烘进前端产物，兜底的 http://localhost:3000 推到 GHCR 并部署后整站请求都会失败。请到 Settings -> Secrets and variables -> Actions -> Variables 设为生产后端地址（如 https://testcase.trendf.top）。"
+            exit 1
+          fi
+          echo "::notice::web 镜像将烘入 VITE_SERVER_URL=${VITE_SERVER_URL}"
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
@@ -168,6 +184,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             type=sha,format=long
+            type=sha,format=short
             type=raw,value=latest,enable={{is_default_branch}}
 
       # 两个 Dockerfile 的 context 都是仓库根（compose 里也是这么配的），
@@ -197,3 +214,162 @@ jobs:
             VITE_SERVER_URL=${{ vars.VITE_SERVER_URL || 'http://localhost:3000' }}
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  # 把新镜像 tag 写回 GitOps 仓库（developstack/k8s-gitops 的 automationstack/k8s），
+  # 由集群里的 ArgoCD 拉取部署。约定与 aidevstack / nimbus-docs 一致：
+  #   Variables: GITOPS_REPO（必填才写回，没配则跳过并给 notice）
+  #              GITOPS_OVERLAY_PATH（可选，默认 automationstack/k8s）
+  #   Secrets:   GITOPS_DEPLOY_KEY（首选，SSH 可写 deploy key）
+  #              GITOPS_TOKEN（备选，fine-grained PAT，Contents: Read and write）
+  # 两个镜像在**同一个提交**里一起改，避免 web / server 版本错位的中间态。
+  gitops:
+    name: 写回 GitOps 仓库
+    needs: docker
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 写回的目标是另一个仓库，用的是 deploy key / PAT，不碰 GITHUB_TOKEN。
+    permissions:
+      contents: read
+    # 串行化 main 上的写回；不取消在途的（取消点可能落在两次写之间）。
+    # key 写死而不用 github.workflow，免得改 name 后新旧 run 落进不同 group。
+    concurrency:
+      group: automationstack-gitops-writeback
+      cancel-in-progress: false
+    env:
+      GITOPS_REPO: ${{ vars.GITOPS_REPO }}
+      GITOPS_PATH: ${{ vars.GITOPS_OVERLAY_PATH || 'automationstack/k8s' }}
+      GITOPS_DEPLOY_KEY: ${{ secrets.GITOPS_DEPLOY_KEY }}
+      GITOPS_TOKEN: ${{ secrets.GITOPS_TOKEN }}
+    steps:
+      - name: 计算镜像坐标
+        id: img
+        run: |
+          set -euo pipefail
+          if [ -z "${GITOPS_REPO}" ]; then
+            echo "::notice::仓库变量 GITOPS_REPO 未配置，跳过写回 GitOps 仓库（镜像已推送，但不会自动部署）。"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "${GITOPS_DEPLOY_KEY}" ] && [ -z "${GITOPS_TOKEN}" ]; then
+            echo "::error::缺少写 ${GITOPS_REPO} 的凭据：请配 secret GITOPS_DEPLOY_KEY（首选，SSH 可写 deploy key）或 GITOPS_TOKEN（备选，fine-grained PAT）。"
+            exit 1
+          fi
+          # 与 docker job 里 metadata-action 同一口径：镜像名全小写，
+          # 短 tag = sha- + github.sha 前 7 位。
+          repo="$(printf '%s' "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')"
+          {
+            echo "enabled=true"
+            echo "tag=sha-${GITHUB_SHA:0:7}"
+            echo "server=ghcr.io/${repo}-server"
+            echo "web=ghcr.io/${repo}-web"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 配置凭据并克隆 GitOps 仓库
+        if: steps.img.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          if [ -n "${GITOPS_DEPLOY_KEY}" ]; then
+            echo "::notice::写回 ${GITOPS_REPO} 的 ${GITOPS_PATH}（SSH deploy key）"
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            printf '%s\n' "${GITOPS_DEPLOY_KEY}" > ~/.ssh/gitops_key
+            chmod 600 ~/.ssh/gitops_key
+            ssh-keyscan -t rsa,ecdsa,ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+            cat >> ~/.ssh/config <<'EOF'
+          Host github.com
+            User git
+            IdentityFile ~/.ssh/gitops_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+          EOF
+            chmod 600 ~/.ssh/config
+            git clone --depth 1 "git@github.com:${GITOPS_REPO}.git" gitops
+          else
+            echo "::notice::写回 ${GITOPS_REPO} 的 ${GITOPS_PATH}（HTTPS + GITOPS_TOKEN；PAT 会过期，建议改用 deploy key）"
+            # 凭据放 HTTP 头而不是 remote URL，免得 token 出现在 .git/config / 报错回显里。
+            cred="$(printf '%s' "x-access-token:${GITOPS_TOKEN}" | base64 -w0)"
+            echo "::add-mask::${cred}"
+            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${cred}" \
+              clone --depth 1 "https://github.com/${GITOPS_REPO}.git" gitops
+            git -C gitops config "http.https://github.com/.extraheader" "AUTHORIZATION: basic ${cred}"
+          fi
+
+      - name: 确保 kustomize 可用
+        if: steps.img.outputs.enabled == 'true'
+        run: |
+          set -euo pipefail
+          if ! command -v kustomize >/dev/null 2>&1; then
+            ver=v5.8.1
+            curl -fsSL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${ver}/kustomize_${ver}_linux_amd64.tar.gz" \
+              | sudo tar -xz -C /usr/local/bin kustomize
+          fi
+          kustomize version
+
+      - name: 写回镜像 tag 并推送
+        if: steps.img.outputs.enabled == 'true'
+        env:
+          TAG: ${{ steps.img.outputs.tag }}
+          IMAGE_SERVER: ${{ steps.img.outputs.server }}
+          IMAGE_WEB: ${{ steps.img.outputs.web }}
+        run: |
+          set -euo pipefail
+          gitops="${GITHUB_WORKSPACE}/gitops"
+          kfile="${gitops}/${GITOPS_PATH}/kustomization.yaml"
+
+          git -C "${gitops}" config user.name  'github-actions[bot]'
+          git -C "${gitops}" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          if [ ! -f "${kfile}" ]; then
+            echo "::error::${GITOPS_REPO} 里找不到 ${GITOPS_PATH}/kustomization.yaml。"
+            exit 1
+          fi
+
+          # 先站到 GitOps 仓库分支的最新顶端、再在其上重算（kustomize edit set image
+          # 是覆盖写），push 被拒就重来；这样不存在 rebase 冲突。
+          for attempt in 1 2 3; do
+            git -C "${gitops}" fetch --no-tags origin
+            branch="$(git -C "${gitops}" rev-parse --abbrev-ref HEAD)"
+            git -C "${gitops}" reset --hard "origin/${branch}"
+
+            # `kustomize edit set image` 对不存在的名字是"新增一条"而非报错，
+            # 会留下谁都不匹配的 images 项（部署 ImagePullBackOff 但 CI 全绿）。
+            # 所以先断言两个占位名都在，且必须与清单里一字不差。
+            for placeholder in automationstack-server automationstack-web; do
+              if ! grep -qE "^[[:space:]]*-?[[:space:]]*name:[[:space:]]*${placeholder}[[:space:]]*$" "${kfile}"; then
+                echo "::error::${GITOPS_REPO} 的 ${GITOPS_PATH}/kustomization.yaml 里没有占位名 ${placeholder}。"
+                exit 1
+              fi
+            done
+
+            ( cd "${gitops}/${GITOPS_PATH}" || exit 1
+              kustomize edit set image \
+                "automationstack-server=${IMAGE_SERVER}:${TAG}" \
+                "automationstack-web=${IMAGE_WEB}:${TAG}" )
+
+            if git -C "${gitops}" diff --quiet -- "${GITOPS_PATH}/kustomization.yaml"; then
+              echo "镜像 tag 已经是 ${TAG}，不提交。"
+              exit 0
+            fi
+
+            git -C "${gitops}" add "${GITOPS_PATH}/kustomization.yaml"
+            git -C "${gitops}" commit \
+              -m "chore(automationstack): image -> ${TAG}" \
+              -m "Source: ${GITHUB_REPOSITORY}@${GITHUB_SHA}" \
+              -m "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+            if git -C "${gitops}" push origin "HEAD:${branch}"; then
+              echo "已把 ${TAG} 写回 ${GITOPS_REPO} 的 ${branch}，等待 ArgoCD 同步。"
+              exit 0
+            fi
+            echo "::warning::push 被拒（${GITOPS_REPO} 的 ${branch} 有新提交），第 ${attempt}/3 次重算后重试。"
+            sleep $(( attempt * 5 ))
+          done
+
+          echo "::error::连续 3 次写回 ${GITOPS_REPO} 失败。镜像已在 ghcr，Re-run failed jobs 即可。"
+          exit 1
+
+      - name: 清理凭据
+        if: always() && steps.img.outputs.enabled == 'true'
+        run: |
+          rm -f ~/.ssh/gitops_key ~/.ssh/config
+          git -C gitops config --unset-all 'http.https://github.com/.extraheader' 2>/dev/null || true
