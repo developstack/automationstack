@@ -65,6 +65,9 @@ services:
       - path: apps/server/.env
         required: true
     environment:
+      # 镜像是生产构建，NODE_ENV 固定为 production。
+      # .env 里的空值会把它改成 development，生产检查会被跳过。
+      NODE_ENV: production
       # 以下两项覆盖 env_file 里的同名值（compose 中 environment 优先级高于 env_file）。
       #
       # 部署到真实域名时 CORS_ORIGIN 要改成「浏览器访问 web 的那个 origin」，

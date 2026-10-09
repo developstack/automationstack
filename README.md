@@ -168,6 +168,8 @@ pnpm docker:down
 ```
 
 compose 里有四个服务：`postgres`、一次性的 `migrate`（跑完就退出）、`server`、`web`。
+compose 的 `server` 固定以 `NODE_ENV=production` 运行。
+生产检查会拒绝公开的开发密钥，并在没有管理员时要求 `ADMIN_INITIAL_PASSWORD`。
 迁移由 `migrate` 服务跑——仓库里没有任何别的地方会自动跑迁移，
 server 的启动路径、两个 Dockerfile、CI 全都不跑。
 
