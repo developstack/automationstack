@@ -104,6 +104,9 @@
 5. **Casdoor 的部署**：参照 `k8s-gitops` 仓库的现有部署。详见 §8。
 6. **退出登录**：只清除本系统的 cookie，不退出 Casdoor。
 7. **新依赖 `openid-client`**：同意。（D8）
+9. **Casdoor 组织**（2026-10-09）：新建 `automationstack` 组织，与 aidevstack 的账号隔离。不使用 `built-in`。（§8）
+10. **重置密码后的 API token**（2026-10-09）：用户改完密码之前，他的 API token（MCP 调用）也被拦截。保持阶段 1 的实现。
+11. **T9 技术验证**（2026-10-09）：同意在本地用 docker 运行 Casdoor 4.11.0 完成验证。
 8. **认证设置页面**（2026-10-08 追加）：管理员在前端页面中切换认证方式和配置 Casdoor。**页面配置优先于环境变量**。实现参照 aidevstack 的做法。（修订 D1，见 §10）
 
 ## 3. 配置项
@@ -374,9 +377,10 @@ automationstack 的生产部署：
 - 数据库迁移由 ArgoCD 的 Sync hook Job 执行（sync-wave 1），先于 server（sync-wave 2）。所以 T3 的引导管理员运行时，迁移已经完成。
 - 环境变量来自 ConfigMap `automationstack-config` 和 Secret `automationstack-secrets`。
 
-### 待确认
+### 已确认
 
-- **组织**：**不使用 `built-in`。** `built-in` 中的每个用户都是 Casdoor 的全局管理员（aidevstack `docs/runbook/管理员与权限.md`）。可以选择：
+- **组织**：新建 `automationstack` 组织（§2 第 9 项）。以下是当时的分析，保留作记录。
+- **不使用 `built-in`。** `built-in` 中的每个用户都是 Casdoor 的全局管理员（aidevstack `docs/runbook/管理员与权限.md`）。可以选择：
   - 与 aidevstack 共用一个专用组织（aidevstack 的手册计划使用 `aidevstack` 组织）：用户只维护一套账号。
   - 新建 `automationstack` 组织：账号与 aidevstack 完全隔离。
 - 注意：k8s-gitops 中 aidevstack 的生产配置仍然是 `CASDOOR_ORGANIZATION: "built-in"`（`aidevstack/k8s/aidevstack.yaml:127`），与它自己的新手册不一致。共用组织时，必须先完成 aidevstack 的迁移。
@@ -489,3 +493,286 @@ automationstack 的生产部署：
 24. 页面保存过配置后，修改环境变量中的 Casdoor 参数不生效，页面显示来源为「页面配置」。
 25. 在 Casdoor 模式下执行 `scripts/auth-set-local.ts`：认证方式变回 local，本地用户可以登录。
 26. 切换到 Casdoor 后，本地普通用户的旧会话失效，本地管理员的会话仍然有效。
+
+## 11. T9 验证结果（2026-10-09）
+
+环境：本地 `casbin/casdoor:4.11.0`（`make casdoor-up`，`origin=http://localhost:8100`），组织 `automationstack`，应用 `automationstack`（Token 格式 `JWT`，授权类型 `authorization_code` + `client_credentials`），角色 `automationstack-admin`，测试用户 `alice`（在角色中）和 `bob`（不在角色中）。对象由 `make casdoor-bootstrap` 创建。`openid-client` 版本 6.8.8（`oauth4webapi` 3.8.8），只装在临时目录中，没有加入 `package.json`。
+
+模拟 D11 的地址分离：`CASDOOR_ISSUER` = `http://localhost:8100`（公网地址），`CASDOOR_INTERNAL_URL` = `http://127.0.0.1:8100`（集群内地址）。
+
+本节的「源码」指 Casdoor v4.11.0 的源码。
+
+### 11.1 ID token 的字段（Token 格式 `JWT`）
+
+| 字段 | 值的格式 | 说明 |
+| --- | --- | --- |
+| `sub` | UUID，例如 `4e1fe32c-…` | 等于 Casdoor 用户的 `id`。不是 `组织/用户名`。 |
+| `id` | UUID | 与 `sub` 相同。 |
+| `owner` | `"automationstack"` | 用户所属的组织。 |
+| `name` | `"alice"` | 用户名。 |
+| `displayName` | 字符串 | 显示名。 |
+| `email` | 字符串 | |
+| `roles` | 对象数组 | 每一项是 `{owner, name, displayName, description, users: null, groups, roles, domains, isEnabled}`。不是字符串。没有角色时是 `[]`，不是缺失。 |
+| `isForbidden` | 布尔 | |
+| `isDeleted` | 布尔 | |
+| `isAdmin` | 布尔 | Casdoor 的组织管理员标志，与本系统无关。 |
+| `iss` | `"http://localhost:8100"` | 等于 `origin`。 |
+| `aud` | `["<client id>"]` | 数组。应用的 Is shared 打开时变为 `<client id>-org-<组织>`。 |
+| `azp` | client id | |
+| `nonce` | 原样返回 | |
+| `tokenType` | `"id-token"` | access token 中是 `"access-token"`。 |
+
+- 签名：`RS256`，`kid` = `cert-built-in`（应用的证书）。
+- 用户的密码字段在 token 中是空字符串。
+- 角色被关闭（`isEnabled: false`）后，它仍然出现在 ID token 的 `roles` 中，`isEnabled` 是 `false`（实测）。所以必须检查 `isEnabled`。
+- userinfo（`/api/userinfo`）也有 `roles`，但格式是**角色名的字符串数组**（例如 `["automationstack-admin"]`），**没有组织**。没有角色时没有这个字段。所以不能用 userinfo 判断角色。
+
+### 11.2 `JWT-Standard` 和 `JWT-Empty`
+
+| 格式 | ID token 中的角色 | 用户名所在的字段 | `name` 的含义 |
+| --- | --- | --- | --- |
+| `JWT` | `roles`（对象数组） | `name` | 用户名 |
+| `JWT-Standard` | 没有 | `preferred_username` | **显示名** |
+| `JWT-Empty` | 没有 | `name` | 用户名 |
+
+- 三种格式中 `sub`、`owner`、`iss`、`aud` 相同。
+- `JWT-Standard` 中 `name` 是显示名。代码按 `JWT` 格式读取 `name` 时，会把显示名当作用户名。
+
+### 11.3 发现文档和地址分离
+
+从 `http://localhost:8100/.well-known/openid-configuration` 读取：
+
+| 字段 | 值 |
+| --- | --- |
+| `issuer` | `http://localhost:8100` |
+| `authorization_endpoint` | `http://localhost:8100/login/oauth/authorize` |
+| `token_endpoint` | `http://localhost:8100/api/login/oauth/access_token` |
+| `jwks_uri` | `http://localhost:8100/.well-known/jwks` |
+| `userinfo_endpoint` | `http://localhost:8100/api/userinfo` |
+
+- 用 `http://127.0.0.1:8100`、容器内的 `http://127.0.0.1:8000`、`Host: casdoor.casdoor.svc.cluster.local:8000` 读取，结果完全相同。
+- 结论：`origin` 固定时，发现文档中的全部地址都是 `origin`，不随请求的 Host 头变化。
+- 生产的 `origin` 是公网地址。所以服务端从集群内地址读到的 `token_endpoint` 和 `jwks_uri` 是公网地址。公网地址前面有 Cloudflare Access，所以服务端必须把它们改为集群内地址。改写的原因是这一点，不是 D11 中写的「地址来自 Host 头」。
+
+### 11.4 `openid-client` v6
+
+| 问题 | 结果 |
+| --- | --- |
+| (a) 从集群内地址读取发现文档，`iss` 是公网地址 | **可以**，但必须传完整的发现地址。`discovery(new URL(CASDOOR_INTERNAL_URL))` 会失败：`OAUTH_JSON_ATTRIBUTE_COMPARISON_FAILED`（issuer 与 URL 不同）。`discovery(new URL("/.well-known/openid-configuration", CASDOOR_INTERNAL_URL))` 不比较 issuer，服务端必须自己检查 `issuer === CASDOOR_ISSUER`。 |
+| (b) 改写地址 | **可以**。用 `serverMetadata()` 取出元数据，改写后传给 `new Configuration(...)`。 |
+| (c) PKCE + state + nonce | **可以**。`randomPKCECodeVerifier`、`calculatePKCECodeChallenge`、`randomState`、`randomNonce`、`buildAuthorizationUrl`、`authorizationCodeGrant(config, url, { pkceCodeVerifier, expectedState, expectedNonce, idTokenExpected: true })`。Casdoor 只支持 `S256`。 |
+| (d) `client_secret_basic` | **可以**。`ClientSecretBasic(secret)`。token 请求带 `Authorization: Basic`。 |
+| http 地址 | 开发环境和集群内地址是 http，必须调用 `allowInsecureRequests(config)`。 |
+| 签名校验 | `openid-client` 默认**不校验** token 端点返回的 ID token 签名（规范允许，因为是 TLS 直连）。集群内地址是 http，所以必须调用 `enableNonRepudiationChecks(config)`。调用后，它从改写后的集群内 `jwks_uri` 读取 JWKS，校验通过。 |
+| `clientCredentialsGrant` | **失败**：Casdoor 返回 `"refresh_token": ""`，`oauth4webapi` 拒绝空字符串（`OAUTH_INVALID_RESPONSE`）。管理 API 的 token 必须用普通 `fetch` 获取（11.6）。 |
+
+实测的请求记录：发现文档、token、JWKS、userinfo 都发往集群内地址；授权地址是公网地址。
+
+最小代码（已在本地运行通过）：
+
+```ts
+import * as client from "openid-client";
+
+const discovered = await client.discovery(
+  new URL("/.well-known/openid-configuration", internalUrl),
+  clientId,
+  undefined,
+  client.ClientSecretBasic(clientSecret),
+  { execute: [client.allowInsecureRequests] }, // 只在地址是 http 时使用
+);
+const md = discovered.serverMetadata();
+if (md.issuer !== issuer) throw new Error("issuer 与 CASDOOR_ISSUER 不同");
+const swap = (u: string, origin: string) => new URL(new URL(u).pathname + new URL(u).search, origin).href;
+const config = new client.Configuration(
+  {
+    ...md,
+    authorization_endpoint: swap(md.authorization_endpoint!, issuer),
+    token_endpoint: swap(md.token_endpoint!, internalUrl),
+    jwks_uri: swap(md.jwks_uri!, internalUrl),
+    userinfo_endpoint: swap(md.userinfo_endpoint!, internalUrl),
+  },
+  clientId,
+  { redirect_uris: [redirectUrl] },
+  client.ClientSecretBasic(clientSecret),
+);
+client.allowInsecureRequests(config); // 只在地址是 http 时使用
+client.enableNonRepudiationChecks(config); // 校验 ID token 签名
+
+// 登录
+const codeVerifier = client.randomPKCECodeVerifier();
+const state = client.randomState();
+const nonce = client.randomNonce();
+const url = client.buildAuthorizationUrl(config, {
+  redirect_uri: redirectUrl,
+  scope: "openid profile email",
+  code_challenge: await client.calculatePKCECodeChallenge(codeVerifier),
+  code_challenge_method: "S256",
+  state,
+  nonce,
+});
+
+// 回调
+const tokens = await client.authorizationCodeGrant(config, callbackUrl, {
+  pkceCodeVerifier: codeVerifier,
+  expectedState: state,
+  expectedNonce: nonce,
+  idTokenExpected: true,
+});
+const claims = tokens.claims(); // sub、owner、name、roles、isForbidden、isDeleted
+```
+
+### 11.5 授权码流程
+
+- 不用浏览器也可以完成。Casdoor 登录页提交的是 `POST /api/login?clientId=…&responseType=code&redirectUri=…&scope=…&state=…&nonce=…&code_challenge_method=S256&code_challenge=…`，请求体是 `{application, organization, username, password, type: "code", signinMethod: "Password"}`，响应的 `data` 是授权码。
+- 测试用这个方式取得授权码，再用 `openid-client` 换取 token。**没有开启 `password` 授权类型。**
+- 应用没有开启 `refresh_token` 授权类型，刷新 token 返回 `unsupported_grant_type`。本系统不需要刷新。
+
+### 11.6 管理 API（`client_credentials`）
+
+取 token：`POST {内部地址}/api/login/oauth/access_token`，请求头 `Authorization: Basic base64(client_id:client_secret)`，请求体 `grant_type=client_credentials`。
+
+- 返回 `{access_token, refresh_token: "", token_type: "bearer", expires_in: 604800, scope: ""}`。
+- token 中 `sub` = `admin/automationstack`，`type` = `application`。有效期 7 天，可以缓存。
+- 调用管理 API 时使用 `Authorization: Bearer <token>`。
+
+| 调用 | 结果 |
+| --- | --- |
+| `get-users?owner=automationstack` | 不带分页参数时返回**全部**用户，`data2` 是 `null`。没有默认页大小。 |
+| `get-users?owner=automationstack&p=1&pageSize=N` | 返回一页，`data2` 是总数。`p` 从 1 开始。 |
+| `get-users` 中的每个用户 | `roles` 是 `null`。成员关系必须用 `get-role` 读取。 |
+| `get-user?id=automationstack/alice` | 用户对象，有 `id`、`isForbidden`、`isDeleted`、`roles`（对象数组）。密码是 `***`。 |
+| `get-user?owner=automationstack&userId=<uuid>` | 同上。不带 `owner` 也可以。 |
+| `get-roles?owner=automationstack`（可以分页） | 角色数组，分页规则与 `get-users` 相同。 |
+| `get-role?id=automationstack/automationstack-admin` | `users` 是 `["automationstack/alice"]`，即 `组织/用户名` 字符串。 |
+| `get-organization?id=admin/automationstack` | 组织对象。 |
+| 对象不存在（用户或角色） | `status: "ok"`，`data: null`。**不是错误。** |
+
+应用属于非 built-in 组织时的权限（源码：应用作为它所属组织的管理员）：
+
+- 可以读取本组织的用户、角色和组织。
+- 可以修改本组织的对象：实测用这个 token 执行 `update-role` 成功。所以 client secret 等于本组织的管理员权限。
+- 读取其他组织（`built-in` 的用户、角色、组织，其他组织用户的 `userId`）返回 `Unauthorized operation`。
+- `get-organizations`、`get-account`、`get-webhooks` 不能使用。
+
+### 11.7 Webhook
+
+请求格式（实测）：
+
+- 方法 `POST`，`Content-Type: application/json`，`User-Agent: Go-http-client/1.1`。
+- 自定义请求头原样发送（测试中是 `X-Casdoor-Webhook-Secret`）。没有签名。
+- 请求体是 Casdoor 的操作记录（Record）：
+
+```json
+{
+  "id": 0,
+  "owner": "built-in",
+  "name": "<uuid>",
+  "createdTime": "2026-10-09T06:56:36Z",
+  "organization": "built-in",
+  "clientIp": "192.168.107.1",
+  "user": "admin",
+  "method": "POST",
+  "requestUri": "/api/update-role?id=automationstack/automationstack-admin",
+  "action": "update-role",
+  "language": "en",
+  "object": "{\"owner\":\"automationstack\",\"name\":\"automationstack-admin\",\"users\":[\"automationstack/alice\",\"automationstack/bob\"],…}",
+  "response": "{status:\"ok\", msg:\"\"}",
+  "statusCode": 200,
+  "detail": "",
+  "isTriggered": false,
+  "extendedUser": null
+}
+```
+
+| 字段 | 含义 |
+| --- | --- |
+| `action` | 事件名，等于 API 名：`add-user`、`update-user`、`delete-user`、`update-role`、`add-role`、`delete-role`。 |
+| `organization`、`user` | **操作人**的组织和用户名，不是被修改对象的组织。 |
+| `requestUri` | 原始请求地址。`update-*` 中有 `id=组织/名字`。 |
+| `object` | **字符串**，内容是原始请求体的 JSON。密码被替换为 `***`。 |
+| `response` | **字符串**，不是合法 JSON，例如 `{status:"ok", msg:""}`。 |
+| `statusCode` | 失败的操作也是 200。 |
+
+各事件中用户和角色的表示：
+
+| 操作 | `action` | 对象的表示 |
+| --- | --- | --- |
+| 修改用户 | `update-user` | `requestUri` 中是 `组织/用户名`；`object` 中有 `owner`、`name`，控制台发送完整对象时还有 `id`（UUID）。 |
+| 禁用或启用用户 | `update-user` | 同上，`object.isForbidden` 是新值。没有单独的事件。 |
+| 删除用户 | `delete-user` | `requestUri` 中没有 id。`object` 是请求体，控制台发送完整对象，有 `owner`、`name`、`id`。 |
+| 创建用户 | `add-user` | `object` 中有 `owner`、`name`，**没有 `id`**（id 由服务端生成）。 |
+| 修改角色成员 | `update-role` | `object.users` 是 `组织/用户名` 字符串数组。 |
+
+- **失败的操作也发送 webhook。** 实测：修改不存在的用户，webhook 照常发送，`response` 是 `{status:"error", msg:"The user: automationstack/ghost doesn't exist"}`。所以 `object` 不能作为事实，服务端必须用管理 API 重新读取。
+- 组织 `enableSoftDeletion` 关闭时（默认），删除是物理删除，管理 API 不再返回这个用户。
+
+发送机制（实测和源码）：
+
+- 发送是异步的。事件先写入 `webhook_event` 表，后台任务每 30 秒发送一次。
+- 失败后重试，默认 3 次，间隔 60 秒，可以设置指数退避。之后状态为 `Failed`，不再发送。
+- 发送时 webhook 已被关闭，事件直接失败，不再发送。
+- **后台任务只在 Casdoor 启动时检查有没有 webhook。** 没有 webhook 时不启动。第一次创建 webhook 后，必须重启 Casdoor。实测：重启前事件停在 `Pending`。
+- **组织不是 `built-in` 的 webhook 不能访问内网地址。** 源码 `object/webhook_util.go` 对这种 webhook 使用只允许公网地址的 HTTP 客户端。实测：组织为 `automationstack`、地址为内网地址的 webhook 失败，错误是 `the address: 192.168.107.2:5432 is not allowed, only Internet addresses can be requested`；组织为 `built-in` 的相同 webhook 可以连接。生产的集群内地址是内网地址，所以 webhook 必须建在 `built-in` 组织中。
+- `singleOrgOnly` 比较的是操作人的组织。打开后，`automationstack` 的应用或管理员做的修改不会发送给 `built-in` 的 webhook。所以必须关闭 `singleOrgOnly`，服务端自己按对象的组织过滤。
+
+### 11.8 禁用的用户
+
+- 登录被拒绝：`/api/login` 返回 `The user is forbidden to sign in, please contact the administrator`，不签发授权码。
+- 设置 `isForbidden` 时，Casdoor 立即使这个用户的全部 token 过期，并删除他的 Casdoor 会话（源码 `terminateUserAccess`）。实测：旧 access token 调用 userinfo 返回 `Access token has expired`，introspect 返回 `active: false`。
+- 已签发的 JWT 在离线校验时仍然有效，直到 `exp`。本系统的 cookie 和 API token 不受影响。所以 T11 和 T11a 仍然必须做。
+
+### 11.9 字段映射
+
+T10（登录回调，读 ID token）：
+
+| 本系统 | 来源 | 规则 |
+| --- | --- | --- |
+| `users.external_id` | `sub` | 为空时登录失败。 |
+| 组织检查 | `owner` | 必须等于配置的组织，否则登录失败。 |
+| `users.username` | `name` | 只用于显示和新建行。 |
+| `users.role` | `roles` | `roles.some(r => r.owner === 组织 && r.name === 管理员角色名 && r.isEnabled === true)` 为 admin，否则 member。`roles` 不是数组时为 member。 |
+| 登录拒绝 | `isForbidden`、`isDeleted` | 任何一个为 true，登录失败。 |
+| `iss` | | 必须等于 `CASDOOR_ISSUER`。 |
+| `aud` | | 必须包含 client id（`openid-client` 自动检查）。 |
+
+T11（webhook）：
+
+| 事件 | 处理 |
+| --- | --- |
+| 全部 | 先校验密钥请求头。然后从 `requestUri` 的 `id=` 或 `object` 中取出对象的组织，不是配置的组织就返回 200 并忽略。立即返回 200，再异步处理。 |
+| `update-user`、`add-user` | 取出 `组织/用户名`，用管理 API `get-user?id=组织/用户名` 重新读取。按返回的 `id` 匹配 `external_id`，同步 `isForbidden`、`isDeleted` 和角色。不信任 `object` 中的值。 |
+| `delete-user` | 用 `object.id` 匹配 `external_id`，并先用 `get-user?userId=<id>` 确认用户已不存在，再设置 `disabled_at`。`object` 中没有 `id` 时不处理，由 T11a 处理。 |
+| `update-role`、`add-role`、`delete-role` | 只处理名字等于管理员角色名的角色。用 `get-role` 重新读取成员（`组织/用户名`），再用 `get-user?id=` 逐个取得 `id`，按 `id` 更新。 |
+
+T11a（对账）：
+
+- `get-users?owner=<组织>&p=<页>&pageSize=<N>`，直到读完 `data2` 个用户。
+- `get-role?id=<组织>/<管理员角色名>` 读取成员。成员是 `组织/用户名`，按用户列表转换为 `id`。
+- 本地有 `external_id` 但 Casdoor 用户列表中没有的用户，设置 `disabled_at`。
+- `get-role` 返回 `data: null`（角色不存在）时，不修改任何角色，只写日志。否则全部管理员会被降级。
+- 角色的 `isEnabled` 是 `false` 时，全部成员按 member 处理。
+
+### 11.10 需要修改的计划条目（2026-10-09 已采纳；与前文冲突时以本节为准）
+
+> 设计补充：webhook 只是「立即对账」的触发信号（第 7 项）。所以生产环境是否配置 webhook，不影响代码。不配置时，定期对账（T11a）仍然保证同步，只是延迟最多一个对账周期。生产环境的 webhook 要建在 `built-in` 组织中，并重启共用的 Casdoor（第 10 项），这会影响 aidevstack，上线前由用户决定。
+
+1. **D11**：改写地址的原因改为「生产的 `origin` 是公网地址，发现文档中的 `token_endpoint` 和 `jwks_uri` 指向 Cloudflare Access 后面的公网地址」。增加：用完整的发现地址调用 `discovery()`，服务端自己比较 `issuer`（11.4）。
+2. **D8 / T10**：增加 `enableNonRepudiationChecks(config)`，校验 ID token 签名。`allowInsecureRequests` 只在地址是 http 时使用。
+3. **D13 / T11a / T13**：管理 API 的 token 不用 `openid-client` 的 `clientCredentialsGrant`（Casdoor 返回空的 `refresh_token`），用普通 `fetch` 和 Basic 头。
+4. **D13 / T11a**：管理 API 中对象不存在时返回 `status: "ok"` 和 `data: null`。代码必须把它当作「不存在」，并区分「请求失败」。
+5. **T10 / T11a**：角色从 ID token 的 `roles` 对象数组中读取，同时比较 `owner`、`name`，并要求 `isEnabled === true`。不使用 userinfo 的 `roles`（没有组织）。T11a 读取的角色也要检查 `isEnabled`。
+6. **T10 / T17**：Token 格式必须是 `JWT`。`JWT-Standard` 中 `name` 是显示名，会写错用户名。
+7. **T11**：webhook 只作为触发信号，所有事件（不只角色事件）都通过管理 API 重新读取。原因：失败的操作也发送 webhook，`object` 是原始请求体。
+8. **T11**：webhook 请求头名定为 `X-Casdoor-Webhook-Secret`。
+9. **T11**：按对象的组织过滤事件，不按请求体的 `organization`（那是操作人的组织）。
+10. **T17 第 4 步**：webhook 必须建在 `built-in` 组织中（只有 Casdoor 全局管理员可以创建），关闭 `singleOrgOnly`，事件选 `add-user`、`update-user`、`delete-user`、`add-role`、`update-role`、`delete-role`。这是生产 Casdoor 中第一个 webhook 时，创建后必须重启 Casdoor。另一个选择：webhook 建在 `automationstack` 组织中，地址用公网地址 `https://testcase.trendf.top/api/auth/casdoor/webhook`；这要求这个地址不被 Cloudflare Access 拦截，未验证。
+11. **T17**：增加说明：`client_credentials` 的 token 有本组织的管理员权限（可以修改用户和角色）。client secret 必须按管理员凭据保护。
+12. **§7 风险「webhook 丢失」**：T9 已确认重试机制：每 30 秒发送，默认重试 3 次，间隔 60 秒，之后放弃。T11a 必须保留。
+13. **T9 原文「`JWT-Empty` 和 `JWT-Standard` 格式没有角色」**：ID token 中确认没有。但 userinfo 在所有格式中都有角色名（没有组织）。
+14. **D10 / T14**：已实现。本地 Casdoor 的宿主机端口是 8100（8000 被其他项目占用），`origin` 是 `http://localhost:8100`。本地开发时 `CASDOOR_ISSUER` 和 `CASDOOR_INTERNAL_URL` 都可以是 `http://localhost:8100`。
+
+### 11.11 未验证
+
+- 组织打开 `enableSoftDeletion` 时 `delete-user` 的行为（应为设置 `isDeleted`）。生产按默认值关闭。
+- 本系统 server 接收 webhook：本地 Casdoor 中的 webhook `automationstack-dev` 已指向 `http://host.docker.internal:3000/api/auth/casdoor/webhook`，但处于关闭状态。T11 完成后打开它。
+- `client_secret` 中有需要 URL 编码的字符时 Basic 头是否正确。Casdoor 生成的 secret 只有十六进制字符，不受影响。
