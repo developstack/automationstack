@@ -83,8 +83,13 @@ describe("isSessionUserAllowed（§10.4、D7）", () => {
 		expect(isSessionUserAllowed(casdoorMember, casdoorMode)).toBe(true);
 	});
 
-	it("local 模式：都允许", () => {
+	it("local 模式：本地用户允许，Casdoor 用户不允许（§2 第 12 项）", () => {
 		expect(isSessionUserAllowed(localMember, localMode)).toBe(true);
+		expect(isSessionUserAllowed(localAdmin, localMode)).toBe(true);
+		expect(isSessionUserAllowed(casdoorMember, localMode)).toBe(false);
+		expect(
+			isSessionUserAllowed({ ...casdoorMember, role: "admin" }, localMode)
+		).toBe(false);
 	});
 });
 
@@ -106,6 +111,21 @@ describe("会话 cookie 和 API token 使用同一规则", () => {
 		it(`${name}：local 模式下本地普通用户有效`, async () => {
 			mocks.getEffectiveAuthSettings.mockResolvedValue(localMode);
 			await expect(resolve(localMember)).resolves.toEqual(localMember);
+		});
+
+		it(`${name}：local 模式下 Casdoor 用户被拒绝（§2 第 12 项）`, async () => {
+			mocks.getEffectiveAuthSettings.mockResolvedValue(localMode);
+			await expect(resolve(casdoorMember)).resolves.toBeNull();
+			await expect(
+				resolve({ ...casdoorMember, role: "admin" })
+			).resolves.toBeNull();
+		});
+
+		it(`${name}：再切到 casdoor 模式后，同一个 Casdoor 用户恢复有效`, async () => {
+			mocks.getEffectiveAuthSettings.mockResolvedValue(localMode);
+			await expect(resolve(casdoorMember)).resolves.toBeNull();
+			mocks.getEffectiveAuthSettings.mockResolvedValue(casdoorMode);
+			await expect(resolve(casdoorMember)).resolves.toEqual(casdoorMember);
 		});
 
 		it(`${name}：被停用的 Casdoor 用户被拒绝`, async () => {

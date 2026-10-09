@@ -47,7 +47,7 @@ export async function resolveUserFromCookies(
 	if (user === null || user.disabledAt !== null) {
 		return null;
 	}
-	// casdoor 模式下本地普通用户的会话失效（plan 021 §10.4）。
+	// casdoor 模式下的本地普通用户和 local 模式下的 Casdoor 用户：会话失效（plan 021 §10.4、§2 第 12 项）。
 	if (!isSessionUserAllowed(user, await getEffectiveAuthSettings())) {
 		return null;
 	}

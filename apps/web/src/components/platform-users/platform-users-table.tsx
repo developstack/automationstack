@@ -18,6 +18,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { formatDateTime } from "@/components/cases/case-meta";
 import {
 	AUTH_SOURCE_LABEL,
+	accountSourceNote,
 	type KnownProvider,
 	platformUserActionAccess,
 } from "@/components/platform-users/platform-user-access";
@@ -36,14 +37,20 @@ function PlatformUserRow({
 }) {
 	const disabled = row.user.disabledAt !== null;
 	const { authSource } = row.user;
+	const sourceNote = accountSourceNote(row.user, provider);
 
 	return (
 		<TableRow>
 			<TableCell className="font-medium">{row.user.username}</TableCell>
 			<TableCell>
-				<Badge variant={authSource === "casdoor" ? "secondary" : "outline"}>
-					{AUTH_SOURCE_LABEL[authSource]}
-				</Badge>
+				<div className="flex flex-col items-start gap-1">
+					<Badge variant={authSource === "casdoor" ? "secondary" : "outline"}>
+						{AUTH_SOURCE_LABEL[authSource]}
+					</Badge>
+					{sourceNote === null ? null : (
+						<span className="text-muted-foreground text-xs">{sourceNote}</span>
+					)}
+				</div>
 			</TableCell>
 			<TableCell>{PLATFORM_ROLE_LABEL[row.user.role]}</TableCell>
 			<TableCell>

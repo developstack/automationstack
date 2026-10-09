@@ -25,7 +25,7 @@ export async function resolveUserFromBearer(
 	if (user === null || user.disabledAt !== null) {
 		return null;
 	}
-	// API token 与会话 cookie 使用相同的规则（plan 021 §10.4）。
+	// API token 与会话 cookie 使用相同的规则（plan 021 §10.4、§2 第 12 项）。
 	if (!isSessionUserAllowed(user, await getEffectiveAuthSettings())) {
 		return null;
 	}

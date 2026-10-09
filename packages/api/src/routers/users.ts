@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import {
 	CASDOOR_MANAGED_USER_MESSAGE,
+	CASDOOR_NO_LOCAL_PASSWORD_MESSAGE,
 	CASDOOR_USER_CREATE_MESSAGE,
 	isManagedByCasdoor,
 	isUserCreateClosed,
@@ -64,11 +65,6 @@ async function isLastLocalAdmin(target: User): Promise<boolean> {
 	return (await countLocalLoginAdmins()) <= 1;
 }
 
-/** casdoor 模式下，Casdoor 用户的角色、禁用状态和密码只能在 Casdoor 中修改。 */
-async function isCasdoorManaged(target: User): Promise<boolean> {
-	return isManagedByCasdoor(target, await getEffectiveAuthSettings());
-}
-
 export const usersRouter = {
 	create: adminProcedure
 		.errors(routerErrors)
@@ -105,8 +101,9 @@ export const usersRouter = {
 			if (user === null) {
 				throw errors.NOT_FOUND({ message: "账号不存在" });
 			}
-			if (await isCasdoorManaged(user)) {
-				throw errors.FORBIDDEN({ message: CASDOOR_MANAGED_USER_MESSAGE });
+			// 任何模式下都拒绝（plan 021 §2 第 12 项）：Casdoor 账号不能用本地密码登录。
+			if (isManagedByCasdoor(user)) {
+				throw errors.FORBIDDEN({ message: CASDOOR_NO_LOCAL_PASSWORD_MESSAGE });
 			}
 			// 管理员知道这个密码，所以用户下次登录后必须自己修改。
 			await updateUserPasswordHash(
@@ -124,7 +121,7 @@ export const usersRouter = {
 			if (user === null) {
 				throw errors.NOT_FOUND({ message: "账号不存在" });
 			}
-			if (await isCasdoorManaged(user)) {
+			if (isManagedByCasdoor(user)) {
 				throw errors.FORBIDDEN({ message: CASDOOR_MANAGED_USER_MESSAGE });
 			}
 			if (input.disabled && user.id === context.user.id) {
@@ -147,7 +144,7 @@ export const usersRouter = {
 			if (user === null) {
 				throw errors.NOT_FOUND({ message: "账号不存在" });
 			}
-			if (await isCasdoorManaged(user)) {
+			if (isManagedByCasdoor(user)) {
 				throw errors.FORBIDDEN({ message: CASDOOR_MANAGED_USER_MESSAGE });
 			}
 			if (input.role !== "admin" && user.id === context.user.id) {

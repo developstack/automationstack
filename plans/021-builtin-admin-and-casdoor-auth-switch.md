@@ -107,6 +107,7 @@
 9. **Casdoor 组织**（2026-10-09）：新建 `automationstack` 组织，与 aidevstack 的账号隔离。不使用 `built-in`。（§8）
 10. **重置密码后的 API token**（2026-10-09）：用户改完密码之前，他的 API token（MCP 调用）也被拦截。保持阶段 1 的实现。
 11. **T9 技术验证**（2026-10-09）：同意在本地用 docker 运行 Casdoor 4.11.0 完成验证。
+12. **切回本地后的 Casdoor 用户**（2026-10-09）：切回 local 后，`auth_source = casdoor` 的用户不能使用本系统：不能登录，已有的会话和 API token 立即失效，管理员也不能为他们重置本地密码。§10.5 第 4 项中「管理员重置密码后可以登录」作废。再切到 Casdoor 后，这些用户按 `external_id` 恢复原账号。
 8. **认证设置页面**（2026-10-08 追加）：管理员在前端页面中切换认证方式和配置 Casdoor。**页面配置优先于环境变量**。实现参照 aidevstack 的做法。（修订 D1，见 §10）
 
 ## 3. 配置项
@@ -457,7 +458,7 @@ automationstack 的生产部署：
 1. 切换到 Casdoor，或者在 Casdoor 模式下保存时，服务端用提交的值重新测试连接（发现文档和 JWKS、`client_credentials`、组织、管理员角色）。任何一步失败，都不保存。
 2. 切换到 Casdoor 前，必须满足：`AUTH_ALLOW_LOCAL_LOGIN=true`，并且有至少一个可以本地登录的管理员（`countLocalLoginAdmins() > 0`）。否则拒绝切换。
 3. 生产环境中，公网地址必须是 `https`。
-4. 切换认证方式前，页面显示确认对话框，列出后果：Casdoor 用户没有本地密码；本地普通用户的会话会失效；切回 local 后，Casdoor 用户必须由管理员重置密码才能登录。
+4. 切换认证方式前，页面显示确认对话框，列出后果：Casdoor 用户没有本地密码；本地普通用户的会话会失效；切回 local 后，Casdoor 用户不能登录，已有的会话和 API token 立即失效（§2 第 12 项）。
 5. 恢复途径：新增运维命令 `scripts/auth-set-local.ts`，在 pod 中执行，把认证方式改回 local，并写 WARN 日志。命令格式与 `reset-password.ts` 相同。
 
 ### 10.6 页面

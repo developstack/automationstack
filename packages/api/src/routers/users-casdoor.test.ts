@@ -2,7 +2,10 @@ import type { User } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CASDOOR_MANAGED_USER_MESSAGE } from "../auth/casdoor/managed-users";
+import {
+	CASDOOR_MANAGED_USER_MESSAGE,
+	CASDOOR_NO_LOCAL_PASSWORD_MESSAGE,
+} from "../auth/casdoor/managed-users";
 import { effectiveSettings } from "../auth/settings-fixtures";
 import { usersRouter } from "./users";
 
@@ -139,13 +142,19 @@ beforeEach(() => {
 	mocks.updateUserPasswordHash.mockResolvedValue(true);
 });
 
+/** 每个接口拒绝 Casdoor 用户时的错误信息。 */
+const expectedMessage: Record<string, string> = {
+	resetPassword: CASDOOR_NO_LOCAL_PASSWORD_MESSAGE,
+	setDisabledFalse: CASDOOR_MANAGED_USER_MESSAGE,
+	setDisabledTrue: CASDOOR_MANAGED_USER_MESSAGE,
+	setRoleAdmin: CASDOOR_MANAGED_USER_MESSAGE,
+	setRoleMember: CASDOOR_MANAGED_USER_MESSAGE,
+};
+
 describe("casdoor 模式：没有接口可以修改 Casdoor 用户（T12）", () => {
 	for (const [name, mutate] of Object.entries(mutations)) {
 		it(`users.${name}：FORBIDDEN，不写数据库`, async () => {
-			await expect(mutate()).rejects.toMatchObject({
-				code: "FORBIDDEN",
-				message: expect.stringContaining("Casdoor 中管理"),
-			});
+			await expect(mutate()).rejects.toMatchObject({ code: "FORBIDDEN" });
 			expectNoWrites();
 		});
 	}
@@ -161,9 +170,9 @@ describe("casdoor 模式：没有接口可以修改 Casdoor 用户（T12）", ()
 		expect(writers.filter((name) => !covered.has(name))).toEqual([]);
 	});
 
-	it("Casdoor 用户被拒绝时的错误信息", async () => {
-		await expect(mutations.setRoleAdmin()).rejects.toMatchObject({
-			message: CASDOOR_MANAGED_USER_MESSAGE,
+	it("创建用户被拒绝时的错误信息", async () => {
+		await expect(mutations.create()).rejects.toMatchObject({
+			message: expect.stringContaining("Casdoor 中管理"),
 		});
 	});
 
@@ -184,19 +193,30 @@ describe("casdoor 模式：没有接口可以修改 Casdoor 用户（T12）", ()
 	});
 });
 
-describe("local 模式：限制不生效", () => {
-	beforeEach(() => {
+describe("任何模式：Casdoor 用户的密码、角色和禁用状态都不能在本系统中修改（§2 第 12 项）", () => {
+	for (const provider of ["casdoor", "local"] as const) {
+		for (const [name, message] of Object.entries(expectedMessage)) {
+			it(`${provider} 模式，users.${name}：FORBIDDEN「${message}」，不写数据库`, async () => {
+				mocks.getEffectiveAuthSettings.mockResolvedValue(
+					effectiveSettings({ provider })
+				);
+				const mutate = mutations[name as keyof typeof mutations];
+				await expect(mutate()).rejects.toMatchObject({
+					code: "FORBIDDEN",
+					message,
+				});
+				expectNoWrites();
+			});
+		}
+	}
+});
+
+describe("local 模式：可以创建用户", () => {
+	it("创建用户", async () => {
 		mocks.getEffectiveAuthSettings.mockResolvedValue(
 			effectiveSettings({ provider: "local" })
 		);
-	});
-
-	it("可以创建用户", async () => {
 		await expect(mutations.create()).resolves.toBeDefined();
-	});
-
-	it("可以修改 Casdoor 用户的角色", async () => {
-		await expect(mutations.setRoleAdmin()).resolves.toBeDefined();
 	});
 });
 
@@ -221,11 +241,11 @@ describe("最后一个管理员的检查只计算本地管理员（T12）", () =
 		});
 	});
 
-	it("Casdoor 管理员不计入：local 模式下降级 Casdoor 管理员不受限制", async () => {
+	it("没有本地密码的管理员不计入：降级不受限制", async () => {
 		mocks.getEffectiveAuthSettings.mockResolvedValue(
 			effectiveSettings({ provider: "local" })
 		);
-		mocks.getUserById.mockResolvedValue({ ...casdoorUser, role: "admin" });
+		mocks.getUserById.mockResolvedValue({ ...localAdmin, passwordHash: null });
 		mocks.countLocalLoginAdmins.mockResolvedValue(1);
 		await expect(mutations.setRoleMember()).resolves.toBeDefined();
 		expect(mocks.countLocalLoginAdmins).not.toHaveBeenCalled();
