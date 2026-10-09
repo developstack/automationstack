@@ -20,6 +20,12 @@ export const Route = createFileRoute("/login")({
 	},
 	component: LoginPage,
 	head: () => ({ meta: [{ title: "登录 · 测试用例平台" }] }),
+	// 预先读取登录方式。读取失败时登录页显示用户名密码表单。
+	loader: async ({ context }) => {
+		await context.queryClient.prefetchQuery(
+			context.orpc.auth.config.queryOptions()
+		);
+	},
 	validateSearch: loginSearchSchema,
 });
 

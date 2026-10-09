@@ -2,10 +2,12 @@ import type { User } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { effectiveSettings } from "../auth/settings-fixtures";
 import { resetLoginRateLimitState } from "../lib/login-rate-limit";
 import { authRouter } from "./auth";
 
 const mocks = vi.hoisted(() => ({
+	getEffectiveAuthSettings: vi.fn(),
 	getUserByUsername: vi.fn(),
 	hashPassword: vi.fn((password: string) =>
 		Promise.resolve(`hash:${password}`)
@@ -19,6 +21,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@automationstack/db/repositories/users-repository", () => ({
 	getUserByUsername: mocks.getUserByUsername,
 	updateUserPasswordHash: mocks.updateUserPasswordHash,
+}));
+vi.mock("../auth/settings-store", () => ({
+	getEffectiveAuthSettings: mocks.getEffectiveAuthSettings,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 	getProjectRole: vi.fn(),
@@ -80,6 +85,8 @@ function login(username: string, password: string) {
 
 beforeEach(() => {
 	resetLoginRateLimitState();
+	mocks.getEffectiveAuthSettings.mockReset();
+	mocks.getEffectiveAuthSettings.mockResolvedValue(effectiveSettings());
 	mocks.getUserByUsername.mockReset();
 	mocks.updateUserPasswordHash.mockReset();
 	mocks.verifyPassword.mockClear();
@@ -173,5 +180,85 @@ describe("auth.login：没有本地密码的账号", () => {
 			mustChangePassword: true,
 			username: "admin",
 		});
+	});
+});
+
+describe("auth.login：按当前生效的认证方式", () => {
+	it("casdoor 模式、AUTH_ALLOW_LOCAL_LOGIN=false：FORBIDDEN，不查询账号", async () => {
+		mocks.getEffectiveAuthSettings.mockResolvedValue(
+			effectiveSettings({ allowLocalLogin: false, provider: "casdoor" })
+		);
+		await expect(login("admin", CURRENT)).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		});
+		expect(mocks.getUserByUsername).not.toHaveBeenCalled();
+	});
+
+	it("casdoor 模式：本地管理员可以登录，写 WARN 日志", async () => {
+		mocks.getEffectiveAuthSettings.mockResolvedValue(
+			effectiveSettings({ provider: "casdoor" })
+		);
+		mocks.getUserByUsername.mockResolvedValue(user);
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {
+			// 测试检查审计日志的内容。
+		});
+		await expect(login("admin", CURRENT)).resolves.toMatchObject({
+			username: "admin",
+		});
+		expect(warn).toHaveBeenCalledTimes(1);
+		expect(String(warn.mock.calls[0]?.[0])).toContain("admin");
+		expect(String(warn.mock.calls[0]?.[0])).not.toContain(CURRENT);
+		warn.mockRestore();
+	});
+
+	it("casdoor 模式：本地普通用户不能登录", async () => {
+		mocks.getEffectiveAuthSettings.mockResolvedValue(
+			effectiveSettings({ provider: "casdoor" })
+		);
+		mocks.getUserByUsername.mockResolvedValue({ ...user, role: "member" });
+		await expect(login("admin", CURRENT)).rejects.toMatchObject({
+			code: "UNAUTHORIZED",
+		});
+	});
+});
+
+describe("auth.config", () => {
+	function config() {
+		return call(authRouter.config, undefined, {
+			context: contextFor(null),
+			path: ["auth", "config"],
+		});
+	}
+
+	it("local 模式：只有本地密码表单", async () => {
+		await expect(config()).resolves.toEqual({
+			casdoorLoginUrl: null,
+			localLoginEnabled: true,
+			provider: "local",
+		});
+	});
+
+	it("casdoor 模式：本地登录由 AUTH_ALLOW_LOCAL_LOGIN 决定，阶段 2 没有 Casdoor 入口", async () => {
+		mocks.getEffectiveAuthSettings.mockResolvedValue(
+			effectiveSettings({ allowLocalLogin: false, provider: "casdoor" })
+		);
+		await expect(config()).resolves.toEqual({
+			casdoorLoginUrl: null,
+			localLoginEnabled: false,
+			provider: "casdoor",
+		});
+	});
+
+	it("不返回任何 Casdoor 参数和密钥", async () => {
+		mocks.getEffectiveAuthSettings.mockResolvedValue(
+			effectiveSettings({
+				clientId: "client-id",
+				clientSecret: { present: true, value: "client-secret-value" },
+				issuer: "https://casdoor.example.com",
+			})
+		);
+		const result = JSON.stringify(await config());
+		expect(result).not.toContain("client-secret-value");
+		expect(result).not.toContain("client-id");
 	});
 });

@@ -1,7 +1,10 @@
 import "dotenv/config";
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
-
+import {
+	CASDOOR_WEBHOOK_SECRET_MIN_LENGTH,
+	parseOriginUrl,
+} from "./casdoor-rules";
 import { devSecretMessage, findDevSecretsInProduction } from "./dev-secrets";
 
 const DEFAULT_PORT = 3000;
@@ -20,6 +23,15 @@ const ADMIN_USERNAME_MAX_LENGTH = 32;
 const NO_WHITESPACE = /^\S+$/;
 
 const SECRET_ENCRYPTION_KEY_BYTES = 32;
+
+const originUrlSchema = (name: string) =>
+	z
+		.string()
+		.refine(
+			(value) => parseOriginUrl(value) !== null,
+			`${name} 只能包含协议、主机和端口，例如 https://casdoor.example.com`
+		)
+		.transform((value) => parseOriginUrl(value) ?? value);
 
 function isValidSecretEncryptionKey(value: string): boolean {
 	try {
@@ -76,6 +88,19 @@ export const env = createEnv({
 				"AUTO_SUBMIT_SCAN_TZ 必须是 IANA 时区名，如 Asia/Shanghai"
 			)
 			.default("Asia/Shanghai"),
+		// Casdoor 参数只是默认值。页面中保存过认证设置后，这些值不再生效（plan 021 §10.2）。
+		CASDOOR_ADMIN_ROLE: z.string().min(1).optional(),
+		CASDOOR_CLIENT_ID: z.string().min(1).optional(),
+		CASDOOR_CLIENT_SECRET: z.string().min(1).optional(),
+		// 集群内地址只能在环境变量中设置，页面只读显示。
+		CASDOOR_INTERNAL_URL: originUrlSchema("CASDOOR_INTERNAL_URL").optional(),
+		CASDOOR_ISSUER: originUrlSchema("CASDOOR_ISSUER").optional(),
+		CASDOOR_ORGANIZATION: z.string().min(1).optional(),
+		CASDOOR_REDIRECT_URL: z.url().optional(),
+		CASDOOR_WEBHOOK_SECRET: z
+			.string()
+			.min(CASDOOR_WEBHOOK_SECRET_MIN_LENGTH)
+			.optional(),
 		CORS_ORIGIN: z.url(),
 		DATABASE_POOL_MAX: z.coerce
 			.number()
@@ -111,12 +136,4 @@ export function isR2Configured(): boolean {
 			env.R2_BUCKET &&
 			(env.R2_ENDPOINT || env.R2_ACCOUNT_ID)
 	);
-}
-
-/**
- * 本地密码登录是否启用：local 模式总是启用；
- * casdoor 模式由 AUTH_ALLOW_LOCAL_LOGIN 决定（D7 应急登录）。
- */
-export function isLocalLoginEnabled(): boolean {
-	return env.AUTH_PROVIDER === "local" || env.AUTH_ALLOW_LOCAL_LOGIN;
 }

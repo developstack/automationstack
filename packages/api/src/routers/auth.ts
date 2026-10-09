@@ -5,15 +5,19 @@ import {
 	MIN_PASSWORD_LENGTH,
 	verifyPassword,
 } from "@automationstack/db/password";
-import {
-	getUserByUsername,
-	updateUserPasswordHash,
-} from "@automationstack/db/repositories/users-repository";
+import { updateUserPasswordHash } from "@automationstack/db/repositories/users-repository";
 import { toPublicUser } from "@automationstack/db/schema/users";
 import { env } from "@automationstack/env/server";
 import { z } from "zod";
 
+import { loginWithLocalPassword } from "../auth/providers/local-password-login";
+import {
+	type AuthConfig,
+	authConfigOf,
+	authProviderFor,
+} from "../auth/providers/resolve";
 import { createSessionToken, sessionCookieHeader } from "../auth/session";
+import { getEffectiveAuthSettings } from "../auth/settings-store";
 import { protectedProcedure, publicProcedure } from "../index";
 import {
 	checkLoginGate,
@@ -34,8 +38,7 @@ const changePasswordSchema = z.object({
 	newPassword: z.string().min(MIN_PASSWORD_LENGTH).max(MAX_PASSWORD_LENGTH),
 });
 
-const DECOY_HASH =
-	"pbkdf2_sha256$600000$LKdUtr/BOB3WfkBHwScmTA==$IxU7PLMzoWj+YBo4tw7g2ZgkA7NoMq0m4SsNeRE5k2Y=";
+const LOCAL_LOGIN_DISABLED_MESSAGE = "本地密码登录已关闭，请使用 Casdoor 登录";
 
 export const authRouter = {
 	// 当前密码错误时返回 BAD_REQUEST，不返回 UNAUTHORIZED：前端把 UNAUTHORIZED 当作会话过期。
@@ -81,41 +84,41 @@ export const authRouter = {
 			);
 			return { ok: true };
 		}),
+	// 认证方式和本地登录的开放范围来自 settings-store：页面保存后立即生效。
+	config: publicProcedure.handler(
+		async (): Promise<AuthConfig> =>
+			authConfigOf(await getEffectiveAuthSettings())
+	),
 	login: publicProcedure
-		.errors({ TOO_MANY_REQUESTS: {}, UNAUTHORIZED: {} })
+		.errors({ FORBIDDEN: {}, TOO_MANY_REQUESTS: {}, UNAUTHORIZED: {} })
 		.input(loginSchema)
 		.handler(async ({ context, errors, input }) => {
-			const username = input.username.trim();
-			const attempt = { clientIp: getClientIp(), username };
-			if (checkLoginGate(attempt).kind === "rejected") {
-				throw errors.TOO_MANY_REQUESTS({
-					message: TOO_MANY_LOGIN_ATTEMPTS_MESSAGE,
-				});
-			}
-			const user = await getUserByUsername(username);
-			// 没有本地密码的账号也用诱饵哈希算一次，响应时间与密码错误相同。
-			const storedHash = user === null ? null : localPasswordHashOf(user);
-			const verification = await runInVerificationSlot(() =>
-				verifyPassword(input.password, storedHash ?? DECOY_HASH)
+			const settings = await getEffectiveAuthSettings();
+			const outcome = await loginWithLocalPassword(
+				{
+					clientIp: getClientIp(),
+					password: input.password,
+					username: input.username.trim(),
+				},
+				authProviderFor(settings).localLoginPolicy(settings)
 			);
-			if (verification.kind === "saturated") {
+			if (outcome.kind === "disabled") {
+				throw errors.FORBIDDEN({ message: LOCAL_LOGIN_DISABLED_MESSAGE });
+			}
+			if (outcome.kind === "rate-limited") {
 				throw errors.TOO_MANY_REQUESTS({
 					message: TOO_MANY_LOGIN_ATTEMPTS_MESSAGE,
 				});
 			}
-			const authenticated =
-				user !== null &&
-				storedHash !== null &&
-				verification.value &&
-				user.disabledAt === null;
-			if (!authenticated) {
-				recordLoginFailure(attempt);
+			if (outcome.kind === "rejected") {
 				throw errors.UNAUTHORIZED({ message: "用户名或密码错误" });
 			}
-			recordLoginSuccess(attempt);
-			const token = await createSessionToken(user.id, env.SESSION_SECRET);
+			const token = await createSessionToken(
+				outcome.user.id,
+				env.SESSION_SECRET
+			);
 			context.cookies.push(sessionCookieHeader(token, context.secure));
-			return toPublicUser(user);
+			return toPublicUser(outcome.user);
 		}),
 	logout: publicProcedure.handler(({ context }) => {
 		context.cookies.push(sessionCookieHeader(null, context.secure));

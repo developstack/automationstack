@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsProjectIdRouteRouteImport } from './routes/projects/$projectId/route'
+import { Route as SettingsAuthRouteImport } from './routes/settings/auth'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
 import { Route as ProjectsProjectIdMindmapRouteImport } from './routes/projects/$projectId/mindmap'
 import { Route as ProjectsProjectIdOverviewRouteImport } from './routes/projects/$projectId/overview'
@@ -52,6 +53,11 @@ const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
 const ProjectsProjectIdRouteRoute = ProjectsProjectIdRouteRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsAuthRoute = SettingsAuthRouteImport.update({
+  id: '/settings/auth',
+  path: '/settings/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/users': typeof UsersRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
+  '/settings/auth': typeof SettingsAuthRoute
   '/projects/': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/users': typeof UsersRoute
+  '/settings/auth': typeof SettingsAuthRoute
   '/projects': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
@@ -139,6 +147,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/users': typeof UsersRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
+  '/settings/auth': typeof SettingsAuthRoute
   '/projects/': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/users'
     | '/projects/$projectId'
+    | '/settings/auth'
     | '/projects/'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/change-password'
     | '/login'
     | '/users'
+    | '/settings/auth'
     | '/projects'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/users'
     | '/projects/$projectId'
+    | '/settings/auth'
     | '/projects/'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
@@ -205,6 +217,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   UsersRoute: typeof UsersRoute
   ProjectsProjectIdRouteRoute: typeof ProjectsProjectIdRouteRouteWithChildren
+  SettingsAuthRoute: typeof SettingsAuthRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
 
@@ -250,6 +263,13 @@ declare module '@tanstack/react-router' {
       path: '/projects/$projectId'
       fullPath: '/projects/$projectId'
       preLoaderRoute: typeof ProjectsProjectIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/auth': {
+      id: '/settings/auth'
+      path: '/settings/auth'
+      fullPath: '/settings/auth'
+      preLoaderRoute: typeof SettingsAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId/': {
@@ -347,6 +367,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   UsersRoute: UsersRoute,
   ProjectsProjectIdRouteRoute: ProjectsProjectIdRouteRouteWithChildren,
+  SettingsAuthRoute: SettingsAuthRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
 }
 export const routeTree = rootRouteImport
