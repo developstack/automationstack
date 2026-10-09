@@ -110,7 +110,7 @@ DB_BACKEND_RESOLVED = $(shell \
 	else echo none; fi)
 
 .PHONY: help install setup dev up down restart logs ps status \
-	db-up db-down db-wait db-migrate db-generate db-seed db-seed-admin \
+	db-up db-down db-wait db-migrate db-generate db-seed db-seed-admin db-reset-password \
 	db-seed-demo db-studio db-reset check doctor clean _backend-guard _env
 
 .DEFAULT_GOAL := help
@@ -363,9 +363,30 @@ db-seed: ## 灌基础种子数据
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
 	pnpm db:seed
 
-db-seed-admin: ## 灌管理员账号（USER=用户名 PASS=密码；PASS 省略则随机生成并只打印一次）
+# USER 必须写在命令行上，理由同 db-reset-password。
+# 密码只经环境变量 NEW_PASSWORD 传给脚本，不进入命令参数（命令参数在进程列表中可见）。
+# 命令行上的 PASS 由 make 导出到 recipe 的环境，这里用 $$PASS 读取，不展开成 $(PASS)。
+# 只认命令行上的 PASS：shell 环境里碰巧有 PASS 时不使用它。
+# 也可以不写 PASS，直接设置环境变量 NEW_PASSWORD；都不设置时随机生成。
+db-seed-admin: ## 灌管理员账号（USER=用户名；密码用 PASS= 或环境变量 NEW_PASSWORD，省略则随机生成并只打印一次）
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
-	pnpm db:seed-admin $(USER) $(PASS)
+	if [ "$(origin USER)" != "command line" ]; then \
+		echo "用法：make db-seed-admin USER=<用户名> [PASS=<密码>]（也可以用环境变量 NEW_PASSWORD 传密码，省略则随机生成）" >&2; \
+		exit 1; \
+	fi; \
+	$(if $(filter command line,$(origin PASS)),export NEW_PASSWORD="$$PASS"; )\
+	pnpm db:seed-admin "$(USER)"
+
+# USER 必须写在命令行上：环境里本来就有 USER（当前系统用户名），
+# 不检查来源的话，漏写 USER= 会去重置一个同名账号。
+# 新密码用环境变量 NEW_PASSWORD 传入，不要写成 make 参数。
+db-reset-password: ## 重置本地账号密码（USER=用户名；NEW_PASSWORD 省略则随机生成并只打印一次）
+	@set -euo pipefail; cd "$(ROOT_DIR)"; \
+	if [ "$(origin USER)" != "command line" ]; then \
+		echo "用法：make db-reset-password USER=<用户名>（新密码用环境变量 NEW_PASSWORD 传入，省略则随机生成）" >&2; \
+		exit 1; \
+	fi; \
+	pnpm db:reset-password "$(USER)"
 
 db-seed-demo: ## 灌自动化演示数据
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \

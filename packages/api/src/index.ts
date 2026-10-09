@@ -1,6 +1,12 @@
 import { getProjectRole } from "@automationstack/db/repositories/project-members-repository";
 import { ORPCError, os } from "@orpc/server";
 
+import {
+	isBlockedByPasswordChange,
+	PASSWORD_CHANGE_REQUIRED,
+	PASSWORD_CHANGE_REQUIRED_MESSAGE,
+	PASSWORD_CHANGE_REQUIRED_STATUS,
+} from "./auth/password-change-gate";
 import type { Context } from "./context";
 import { canEnterProject, type ProjectAccess } from "./lib/project-access";
 
@@ -8,9 +14,15 @@ export const o = os.$context<Context>();
 
 export const publicProcedure = o;
 
-const requireUser = o.middleware(({ context, next }) => {
+const requireUser = o.middleware(({ context, next, path }) => {
 	if (context.user === null || context.actor === null) {
 		throw new ORPCError("UNAUTHORIZED", { message: "请先登录" });
+	}
+	if (isBlockedByPasswordChange(context.user, path)) {
+		throw new ORPCError(PASSWORD_CHANGE_REQUIRED, {
+			message: PASSWORD_CHANGE_REQUIRED_MESSAGE,
+			status: PASSWORD_CHANGE_REQUIRED_STATUS,
+		});
 	}
 	return next({ context: { actor: context.actor, user: context.user } });
 });

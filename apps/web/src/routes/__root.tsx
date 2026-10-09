@@ -21,6 +21,10 @@ import {
 	useThemeAppearance,
 } from "@/components/theme/use-theme";
 import type { orpc } from "@/utils/orpc";
+import {
+	CHANGE_PASSWORD_PATHNAME,
+	isChangePasswordPathname,
+} from "@/utils/password-change";
 import { isLoginPathname, LOGIN_PATHNAME } from "@/utils/session-expiry";
 
 import appCss from "../index.css?url";
@@ -39,6 +43,12 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 				search: { redirect: location.href },
 				to: LOGIN_PATHNAME,
 			});
+		}
+		if (
+			user?.mustChangePassword === true &&
+			!isChangePasswordPathname(location.pathname)
+		) {
+			throw redirect({ replace: true, to: CHANGE_PASSWORD_PATHNAME });
 		}
 	},
 	component: RootDocument,

@@ -4,9 +4,12 @@ import { describe, expect, it } from "vitest";
 import { MCP_CLIENT_ID, mcpContext } from "./identity";
 
 const tokenOwner: User = {
+	authSource: "local",
 	createdAt: new Date("2026-01-01T00:00:00Z"),
 	disabledAt: null,
+	externalId: null,
 	id: "55555555-5555-4555-8555-555555555555",
+	mustChangePassword: false,
 	passwordHash: "argon2id$placeholder",
 	role: "member",
 	updatedAt: new Date("2026-01-01T00:00:00Z"),

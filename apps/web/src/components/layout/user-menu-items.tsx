@@ -4,11 +4,13 @@ import {
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 } from "@automationstack/ui/components/dropdown-menu";
-import { LogOutIcon, MoonIcon, SunIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { KeyRoundIcon, LogOutIcon, MoonIcon, SunIcon } from "lucide-react";
 
 import type { ThemeTransitionClick } from "@/components/theme/theme-transition";
 
 interface UserMenuItemsProps {
+	canChangePassword: boolean;
 	isDark: boolean;
 	onLogout: () => void;
 	onToggleTheme: (event: ThemeTransitionClick) => void;
@@ -16,6 +18,7 @@ interface UserMenuItemsProps {
 }
 
 export function UserMenuItems({
+	canChangePassword,
 	isDark,
 	onLogout,
 	onToggleTheme,
@@ -34,6 +37,12 @@ export function UserMenuItems({
 					)}
 					{isDark ? "切换到浅色" : "切换到深色"}
 				</DropdownMenuItem>
+				{canChangePassword ? (
+					<DropdownMenuItem render={<Link to="/change-password" />}>
+						<KeyRoundIcon aria-hidden="true" />
+						修改密码
+					</DropdownMenuItem>
+				) : null}
 			</DropdownMenuGroup>
 			<DropdownMenuSeparator />
 			<DropdownMenuItem onClick={onLogout}>

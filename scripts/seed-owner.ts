@@ -43,7 +43,7 @@ export async function resolveSeedOwner(
 			[
 				`账号「${username}」不存在，种子脚本不会替你创建账号。`,
 				"先把账号弄出来再重跑本命令：",
-				"  第一个管理员：pnpm db:seed-admin <用户名> [密码]",
+				"  第一个管理员：pnpm db:seed-admin <用户名>（密码用环境变量 NEW_PASSWORD 传入，省略则随机生成）",
 				"  其余账号：用管理员登录后在「成员管理」页面创建",
 			].join("\n")
 		);

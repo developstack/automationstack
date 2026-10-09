@@ -5,6 +5,14 @@ const SALT_BYTES = 16;
 const ALGORITHM = "pbkdf2_sha256";
 const HASH_SEGMENTS = 4;
 
+export const MIN_PASSWORD_LENGTH = 8;
+export const MAX_PASSWORD_LENGTH = 128;
+
+const GENERATED_PASSWORD_BYTES = 24;
+const PLUS_TO_DASH = /\+/g;
+const SLASH_TO_UNDERSCORE = /\//g;
+const TRAILING_EQUALS = /[=]+$/;
+
 const encoder = new TextEncoder();
 
 function toBase64(bytes: Uint8Array): string {
@@ -54,6 +62,16 @@ async function deriveKey(
 		KEY_BITS
 	);
 	return new Uint8Array(bits);
+}
+
+/** 随机密码：24 字节熵，base64url 编码（32 个字符），可以直接复制粘贴。 */
+export function generateRandomPassword(): string {
+	return toBase64(
+		crypto.getRandomValues(new Uint8Array(GENERATED_PASSWORD_BYTES))
+	)
+		.replace(PLUS_TO_DASH, "-")
+		.replace(SLASH_TO_UNDERSCORE, "_")
+		.replace(TRAILING_EQUALS, "");
 }
 
 export async function hashPassword(password: string): Promise<string> {

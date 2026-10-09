@@ -11,6 +11,10 @@ import { toast } from "sonner";
 
 import { getClientId } from "@/realtime/identity";
 import {
+	isPasswordChangeRequiredError,
+	notifyPasswordChangeRequired,
+} from "@/utils/password-change";
+import {
 	isUnauthorizedError,
 	notifySessionExpired,
 } from "@/utils/session-expiry";
@@ -44,6 +48,10 @@ export function createQueryClient() {
 					notifySessionExpired();
 					return;
 				}
+				if (isPasswordChangeRequiredError(error)) {
+					notifyPasswordChangeRequired();
+					return;
+				}
 				if (mutation.meta?.suppressErrorToast) {
 					return;
 				}
@@ -54,6 +62,10 @@ export function createQueryClient() {
 			onError: (error, query) => {
 				if (isUnauthorizedError(error)) {
 					notifySessionExpired();
+					return;
+				}
+				if (isPasswordChangeRequiredError(error)) {
+					notifyPasswordChangeRequired();
 					return;
 				}
 				toast.error(`Error: ${error.message}`, {

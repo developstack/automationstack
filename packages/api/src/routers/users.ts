@@ -1,4 +1,8 @@
-import { hashPassword } from "@automationstack/db/password";
+import {
+	hashPassword,
+	MAX_PASSWORD_LENGTH,
+	MIN_PASSWORD_LENGTH,
+} from "@automationstack/db/password";
 import {
 	countActiveAdmins,
 	createUser,
@@ -14,8 +18,6 @@ import { z } from "zod";
 
 import { adminProcedure } from "../index";
 
-const MIN_PASSWORD_LENGTH = 8;
-const MAX_PASSWORD_LENGTH = 128;
 const MIN_USERNAME_LENGTH = 2;
 const MAX_USERNAME_LENGTH = 32;
 const USERNAME_PATTERN = /^\S+$/;
@@ -82,7 +84,12 @@ export const usersRouter = {
 			if (user === null) {
 				throw errors.NOT_FOUND({ message: "账号不存在" });
 			}
-			await updateUserPasswordHash(user.id, await hashPassword(input.password));
+			// 管理员知道这个密码，所以用户下次登录后必须自己修改。
+			await updateUserPasswordHash(
+				user.id,
+				await hashPassword(input.password),
+				true
+			);
 			return { id: user.id };
 		}),
 	setDisabled: adminProcedure

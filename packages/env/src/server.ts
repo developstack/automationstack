@@ -2,6 +2,8 @@ import "dotenv/config";
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 
+import { devSecretMessage, findDevSecretsInProduction } from "./dev-secrets";
+
 const DEFAULT_PORT = 3000;
 
 // 单实例部署、与其他应用共用宿主 Postgres（max_connections=100）。5 条已能覆盖
@@ -9,6 +11,13 @@ const DEFAULT_PORT = 3000;
 const DEFAULT_DATABASE_POOL_MAX = 5;
 
 const SESSION_SECRET_MIN_LENGTH = 32;
+
+// 与 packages/db/src/password.ts 和 users 路由的账号规则一致。
+const ADMIN_PASSWORD_MIN_LENGTH = 8;
+const ADMIN_PASSWORD_MAX_LENGTH = 128;
+const ADMIN_USERNAME_MIN_LENGTH = 2;
+const ADMIN_USERNAME_MAX_LENGTH = 32;
+const NO_WHITESPACE = /^\S+$/;
 
 const SECRET_ENCRYPTION_KEY_BYTES = 32;
 
@@ -30,9 +39,34 @@ function isValidTimeZone(value: string): boolean {
 }
 
 export const env = createEnv({
+	// 生产环境拒绝仓库公开的开发密钥（见 dev-secrets.ts）。
+	// 这里拿到的是解析后的值，NODE_ENV 已经套用默认值。
+	createFinalSchema: (shape) =>
+		z.object(shape).superRefine((values, ctx) => {
+			for (const variable of findDevSecretsInProduction(values)) {
+				ctx.addIssue({
+					code: "custom",
+					message: devSecretMessage(variable),
+					path: [variable],
+				});
+			}
+		}),
 	emptyStringAsUndefined: true,
 	runtimeEnv: process.env,
 	server: {
+		ADMIN_INITIAL_PASSWORD: z
+			.string()
+			.min(ADMIN_PASSWORD_MIN_LENGTH)
+			.max(ADMIN_PASSWORD_MAX_LENGTH)
+			.optional(),
+		ADMIN_USERNAME: z
+			.string()
+			.min(ADMIN_USERNAME_MIN_LENGTH)
+			.max(ADMIN_USERNAME_MAX_LENGTH)
+			.regex(NO_WHITESPACE, "ADMIN_USERNAME 不能包含空白字符")
+			.default("admin"),
+		AUTH_ALLOW_LOCAL_LOGIN: z.stringbool().default(true),
+		AUTH_PROVIDER: z.enum(["local", "casdoor"]).default("local"),
 		AUTO_SUBMIT_SCAN_CRON: z.string().min(1).default("0 3 * * *"),
 		AUTO_SUBMIT_SCAN_TZ: z
 			.string()
@@ -77,4 +111,12 @@ export function isR2Configured(): boolean {
 			env.R2_BUCKET &&
 			(env.R2_ENDPOINT || env.R2_ACCOUNT_ID)
 	);
+}
+
+/**
+ * 本地密码登录是否启用：local 模式总是启用；
+ * casdoor 模式由 AUTH_ALLOW_LOCAL_LOGIN 决定（D7 应急登录）。
+ */
+export function isLocalLoginEnabled(): boolean {
+	return env.AUTH_PROVIDER === "local" || env.AUTH_ALLOW_LOCAL_LOGIN;
 }
