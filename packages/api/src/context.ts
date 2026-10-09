@@ -8,6 +8,8 @@ import {
 	SESSION_COOKIE,
 	verifySessionToken,
 } from "./auth/session";
+import { isSessionUserAllowed } from "./auth/session-policy";
+import { getEffectiveAuthSettings } from "./auth/settings-store";
 
 export interface CreateContextOptions {
 	context: HonoContext;
@@ -43,6 +45,10 @@ export async function resolveUserFromCookies(
 	}
 	const user = await getUserById(userId);
 	if (user === null || user.disabledAt !== null) {
+		return null;
+	}
+	// casdoor 模式下本地普通用户的会话失效（plan 021 §10.4）。
+	if (!isSessionUserAllowed(user, await getEffectiveAuthSettings())) {
 		return null;
 	}
 	return user;

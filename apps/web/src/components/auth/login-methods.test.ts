@@ -8,6 +8,7 @@ describe("loginMethodsOf", () => {
 	it("还没有读到配置：显示用户名密码表单", () => {
 		expect(loginMethodsOf(undefined)).toEqual({
 			casdoorLoginUrl: null,
+			emergencyOnly: false,
 			none: false,
 			password: true,
 		});
@@ -20,17 +21,27 @@ describe("loginMethodsOf", () => {
 				localLoginEnabled: true,
 				provider: "local",
 			})
-		).toEqual({ casdoorLoginUrl: null, none: false, password: true });
+		).toEqual({
+			casdoorLoginUrl: null,
+			emergencyOnly: false,
+			none: false,
+			password: true,
+		});
 	});
 
-	it("casdoor 模式并保留应急登录：两种都显示", () => {
-		expect(
-			loginMethodsOf({
-				casdoorLoginUrl: CASDOOR_URL,
-				localLoginEnabled: true,
-				provider: "casdoor",
-			})
-		).toEqual({ casdoorLoginUrl: CASDOOR_URL, none: false, password: true });
+	it("casdoor 模式并保留应急登录：两种都显示，密码表单只用于本地管理员应急登录", () => {
+		const methods = loginMethodsOf({
+			casdoorLoginUrl: CASDOOR_URL,
+			localLoginEnabled: true,
+			provider: "casdoor",
+		});
+		expect(methods).toEqual({
+			casdoorLoginUrl: CASDOOR_URL,
+			emergencyOnly: true,
+			none: false,
+			password: true,
+		});
+		expect(loginDescriptionOf(methods)).toContain("应急登录");
 	});
 
 	it("casdoor 模式并关闭本地登录：只有 Casdoor 按钮", () => {
@@ -41,6 +52,7 @@ describe("loginMethodsOf", () => {
 		});
 		expect(methods).toEqual({
 			casdoorLoginUrl: CASDOOR_URL,
+			emergencyOnly: false,
 			none: false,
 			password: false,
 		});

@@ -1,3 +1,5 @@
+import { casdoorHealth } from "@automationstack/api/auth/casdoor/health";
+import { getEffectiveAuthSettings } from "@automationstack/api/auth/settings-store";
 import { createContext } from "@automationstack/api/context";
 import { runWithClientIp } from "@automationstack/api/lib/request-client-ip";
 import { appRouter } from "@automationstack/api/routers/index";
@@ -15,6 +17,7 @@ import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 
 import { BootstrapAdminError, bootstrapAdmin } from "./auth/bootstrap-admin";
+import { registerCasdoorRoutes } from "./auth/casdoor-routes";
 import { registerIngestRoutes } from "./ingest/routes";
 import { registerJiraWebhook } from "./jira/webhook";
 import { getJobsStatus, startJobs, stopJobs } from "./jobs/boss";
@@ -47,6 +50,8 @@ app.use("/*", responseCompression());
 app.use("/*", requestBodyLimit());
 
 registerJiraWebhook(app);
+
+registerCasdoorRoutes(app);
 
 registerIngestRoutes(app);
 
@@ -127,7 +132,20 @@ app.all("/mcp", (c) => handleMcpRequest(c));
 
 app.get("/", (c) => c.text("OK"));
 
-app.get("/health", (c) => c.json({ jobs: getJobsStatus(), status: "ok" }));
+// casdoor 模式下报告 Casdoor 能否访问。只报告，不让 /health 失败（plan 021 T13）。
+app.get("/health", async (c) => {
+	let casdoor: Awaited<ReturnType<typeof casdoorHealth>> = null;
+	try {
+		casdoor = await casdoorHealth(await getEffectiveAuthSettings());
+	} catch (error) {
+		console.error("读取认证设置失败，/health 不报告 Casdoor 状态：", error);
+	}
+	return c.json({
+		jobs: getJobsStatus(),
+		status: "ok",
+		...(casdoor === null ? {} : { casdoor }),
+	});
+});
 
 const EXIT_FAILURE = 1;
 

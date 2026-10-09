@@ -96,6 +96,8 @@ export const env = createEnv({
 		CASDOOR_INTERNAL_URL: originUrlSchema("CASDOOR_INTERNAL_URL").optional(),
 		CASDOOR_ISSUER: originUrlSchema("CASDOOR_ISSUER").optional(),
 		CASDOOR_ORGANIZATION: z.string().min(1).optional(),
+		// Casdoor 定期对账的 cron 表达式（plan 021 T11a）。只在 casdoor 模式下执行。
+		CASDOOR_RECONCILE_CRON: z.string().min(1).default("*/10 * * * *"),
 		CASDOOR_REDIRECT_URL: z.url().optional(),
 		CASDOOR_WEBHOOK_SECRET: z
 			.string()

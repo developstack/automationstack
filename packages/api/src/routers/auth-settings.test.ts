@@ -14,20 +14,28 @@ const WEBHOOK_SECRET = "webhook-secret-value-0123456789abcdef";
 const ENV_CLIENT_SECRET = "env-client-secret-value";
 
 const mocks = vi.hoisted(() => ({
+	countLocalLoginAdmins: vi.fn(),
 	env: {} as Record<string, unknown>,
 	getAuthSettingsRow: vi.fn(),
 	getUserById: vi.fn(),
+	markAuthSettingsTestOk: vi.fn(),
 	saveAuthSettings: vi.fn(),
+	testCasdoorConnection: vi.fn(),
 }));
 
 vi.mock("@automationstack/env/server", () => ({ env: mocks.env }));
 vi.mock("@automationstack/db/repositories/auth-settings-repository", () => ({
 	getAuthSettingsRow: mocks.getAuthSettingsRow,
 	getAuthSettingsUpdatedAt: vi.fn(),
+	markAuthSettingsTestOk: mocks.markAuthSettingsTestOk,
 	saveAuthSettings: mocks.saveAuthSettings,
 }));
 vi.mock("@automationstack/db/repositories/users-repository", () => ({
+	countLocalLoginAdmins: mocks.countLocalLoginAdmins,
 	getUserById: mocks.getUserById,
+}));
+vi.mock("../auth/casdoor/test-connection", () => ({
+	testCasdoorConnection: mocks.testCasdoorConnection,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 	getProjectRole: vi.fn(),
@@ -44,6 +52,18 @@ const admin: User = {
 	role: "admin",
 	updatedAt: new Date("2026-01-01T00:00:00Z"),
 	username: "admin",
+};
+
+const STEP_IDS = ["discovery", "token", "organization", "adminRole"] as const;
+
+const PASSED = {
+	ok: true,
+	steps: STEP_IDS.map((id) => ({
+		detail: null,
+		id,
+		label: id,
+		status: "passed",
+	})),
 };
 
 let storedRow: AuthSettingsRow | null = null;
@@ -105,6 +125,11 @@ beforeEach(() => {
 	mocks.getAuthSettingsRow.mockImplementation(() => Promise.resolve(storedRow));
 	mocks.getUserById.mockReset();
 	mocks.getUserById.mockResolvedValue(admin);
+	mocks.countLocalLoginAdmins.mockReset();
+	mocks.countLocalLoginAdmins.mockResolvedValue(1);
+	mocks.markAuthSettingsTestOk.mockReset();
+	mocks.testCasdoorConnection.mockReset();
+	mocks.testCasdoorConnection.mockResolvedValue(PASSED);
 	mocks.saveAuthSettings.mockReset();
 	mocks.saveAuthSettings.mockImplementation((input: SaveRowInput) => {
 		const { values } = input;
@@ -175,14 +200,6 @@ describe("authSettings.get", () => {
 });
 
 describe("authSettings.save：校验", () => {
-	it("阶段 2 拒绝 provider = casdoor", async () => {
-		await expect(save({ provider: "casdoor" })).rejects.toMatchObject({
-			code: "BAD_REQUEST",
-			message: expect.stringContaining("Casdoor 模式尚未实现"),
-		});
-		expect(mocks.saveAuthSettings).not.toHaveBeenCalled();
-	});
-
 	it("组织为 built-in：BAD_REQUEST", async () => {
 		await expect(save({ organization: "built-in" })).rejects.toMatchObject({
 			code: "BAD_REQUEST",

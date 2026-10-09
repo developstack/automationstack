@@ -1,0 +1,233 @@
+import type { User } from "@automationstack/db/schema/users";
+import { call } from "@orpc/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { CASDOOR_MANAGED_USER_MESSAGE } from "../auth/casdoor/managed-users";
+import { effectiveSettings } from "../auth/settings-fixtures";
+import { usersRouter } from "./users";
+
+const mocks = vi.hoisted(() => ({
+	countLocalLoginAdmins: vi.fn(),
+	createUser: vi.fn(),
+	getEffectiveAuthSettings: vi.fn(),
+	getUserById: vi.fn(),
+	setUserDisabled: vi.fn(),
+	updateUserPasswordHash: vi.fn(),
+	updateUserRole: vi.fn(),
+}));
+
+vi.mock("@automationstack/db/repositories/users-repository", () => ({
+	countLocalLoginAdmins: mocks.countLocalLoginAdmins,
+	createUser: mocks.createUser,
+	getUserById: mocks.getUserById,
+	listUsers: vi.fn(),
+	listUsersWithProjects: vi.fn(),
+	setUserDisabled: mocks.setUserDisabled,
+	updateUserPasswordHash: mocks.updateUserPasswordHash,
+	updateUserRole: mocks.updateUserRole,
+}));
+vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
+	getProjectRole: vi.fn(),
+}));
+vi.mock("@automationstack/db/password", () => ({
+	hashPassword: vi.fn((password: string) =>
+		Promise.resolve(`hash:${password}`)
+	),
+	MAX_PASSWORD_LENGTH: 128,
+	MIN_PASSWORD_LENGTH: 8,
+}));
+vi.mock("../auth/settings-store", () => ({
+	getEffectiveAuthSettings: mocks.getEffectiveAuthSettings,
+}));
+
+const actingAdmin: User = {
+	authSource: "local",
+	createdAt: new Date("2026-01-01T00:00:00Z"),
+	disabledAt: null,
+	externalId: null,
+	id: "11111111-1111-4111-8111-111111111111",
+	mustChangePassword: false,
+	passwordHash: "hash",
+	role: "admin",
+	updatedAt: new Date("2026-01-01T00:00:00Z"),
+	username: "admin",
+};
+
+const casdoorUser: User = {
+	...actingAdmin,
+	authSource: "casdoor",
+	externalId: "ext-1",
+	id: "33333333-3333-4333-8333-333333333333",
+	passwordHash: null,
+	role: "member",
+	username: "alice",
+};
+
+const context = {
+	actor: { clientId: "t", name: "admin" },
+	cookies: [] as string[],
+	secure: false,
+	user: actingAdmin,
+};
+
+const ID = casdoorUser.id;
+
+/** mutations 中同一接口的不同输入用后缀区分，例如 setRoleAdmin。 */
+const VARIANT_SUFFIX = /(True|False|Admin|Member)$/;
+
+/** 修改用户的全部接口。新增修改用户的接口时，必须加到这里（plan 021 T12）。 */
+const mutations = {
+	create: () =>
+		call(
+			usersRouter.create,
+			{ password: "password-1", role: "admin", username: "newbie" },
+			{ context, path: ["users", "create"] }
+		),
+	resetPassword: () =>
+		call(
+			usersRouter.resetPassword,
+			{ id: ID, password: "password-1" },
+			{ context, path: ["users", "resetPassword"] }
+		),
+	setDisabledFalse: () =>
+		call(
+			usersRouter.setDisabled,
+			{ disabled: false, id: ID },
+			{ context, path: ["users", "setDisabled"] }
+		),
+	setDisabledTrue: () =>
+		call(
+			usersRouter.setDisabled,
+			{ disabled: true, id: ID },
+			{ context, path: ["users", "setDisabled"] }
+		),
+	setRoleAdmin: () =>
+		call(
+			usersRouter.setRole,
+			{ id: ID, role: "admin" },
+			{ context, path: ["users", "setRole"] }
+		),
+	setRoleMember: () =>
+		call(
+			usersRouter.setRole,
+			{ id: ID, role: "member" },
+			{ context, path: ["users", "setRole"] }
+		),
+};
+
+function expectNoWrites() {
+	for (const write of [
+		mocks.createUser,
+		mocks.setUserDisabled,
+		mocks.updateUserPasswordHash,
+		mocks.updateUserRole,
+	]) {
+		expect(write).not.toHaveBeenCalled();
+	}
+}
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	mocks.getEffectiveAuthSettings.mockResolvedValue(
+		effectiveSettings({ provider: "casdoor" })
+	);
+	mocks.getUserById.mockResolvedValue(casdoorUser);
+	mocks.countLocalLoginAdmins.mockResolvedValue(2);
+	mocks.createUser.mockResolvedValue(casdoorUser);
+	mocks.updateUserRole.mockResolvedValue(casdoorUser);
+	mocks.setUserDisabled.mockResolvedValue(casdoorUser);
+	mocks.updateUserPasswordHash.mockResolvedValue(true);
+});
+
+describe("casdoor 模式：没有接口可以修改 Casdoor 用户（T12）", () => {
+	for (const [name, mutate] of Object.entries(mutations)) {
+		it(`users.${name}：FORBIDDEN，不写数据库`, async () => {
+			await expect(mutate()).rejects.toMatchObject({
+				code: "FORBIDDEN",
+				message: expect.stringContaining("Casdoor 中管理"),
+			});
+			expectNoWrites();
+		});
+	}
+
+	it("users 路由中每个修改接口都在上面的列表中", () => {
+		const readOnly = new Set(["list", "listWithProjects"]);
+		const covered = new Set(
+			Object.keys(mutations).map((name) => name.replace(VARIANT_SUFFIX, ""))
+		);
+		const writers = Object.keys(usersRouter).filter(
+			(name) => !readOnly.has(name)
+		);
+		expect(writers.filter((name) => !covered.has(name))).toEqual([]);
+	});
+
+	it("Casdoor 用户被拒绝时的错误信息", async () => {
+		await expect(mutations.setRoleAdmin()).rejects.toMatchObject({
+			message: CASDOOR_MANAGED_USER_MESSAGE,
+		});
+	});
+
+	it("本地用户仍然可以修改", async () => {
+		mocks.getUserById.mockResolvedValue({
+			...casdoorUser,
+			authSource: "local",
+			passwordHash: "hash",
+		});
+		mocks.updateUserRole.mockResolvedValue({
+			...casdoorUser,
+			authSource: "local",
+			role: "admin",
+		});
+		await expect(mutations.setRoleAdmin()).resolves.toMatchObject({
+			role: "admin",
+		});
+	});
+});
+
+describe("local 模式：限制不生效", () => {
+	beforeEach(() => {
+		mocks.getEffectiveAuthSettings.mockResolvedValue(
+			effectiveSettings({ provider: "local" })
+		);
+	});
+
+	it("可以创建用户", async () => {
+		await expect(mutations.create()).resolves.toBeDefined();
+	});
+
+	it("可以修改 Casdoor 用户的角色", async () => {
+		await expect(mutations.setRoleAdmin()).resolves.toBeDefined();
+	});
+});
+
+describe("最后一个管理员的检查只计算本地管理员（T12）", () => {
+	const localAdmin: User = {
+		...actingAdmin,
+		id: "44444444-4444-4444-8444-444444444444",
+		username: "admin2",
+	};
+
+	it("只剩一个本地登录管理员：不能降级，也不能停用", async () => {
+		mocks.getEffectiveAuthSettings.mockResolvedValue(
+			effectiveSettings({ provider: "local" })
+		);
+		mocks.getUserById.mockResolvedValue(localAdmin);
+		mocks.countLocalLoginAdmins.mockResolvedValue(1);
+		await expect(mutations.setRoleMember()).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+		await expect(mutations.setDisabledTrue()).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+	});
+
+	it("Casdoor 管理员不计入：local 模式下降级 Casdoor 管理员不受限制", async () => {
+		mocks.getEffectiveAuthSettings.mockResolvedValue(
+			effectiveSettings({ provider: "local" })
+		);
+		mocks.getUserById.mockResolvedValue({ ...casdoorUser, role: "admin" });
+		mocks.countLocalLoginAdmins.mockResolvedValue(1);
+		await expect(mutations.setRoleMember()).resolves.toBeDefined();
+		expect(mocks.countLocalLoginAdmins).not.toHaveBeenCalled();
+	});
+});

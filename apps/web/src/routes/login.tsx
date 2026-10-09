@@ -1,11 +1,17 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
 
+import {
+	casdoorLoginErrorMessage,
+	sameOriginPath,
+} from "@/components/auth/login-casdoor";
 import { LoginForm } from "@/components/auth/login-form";
 import { sessionQueryOptions } from "@/components/auth/use-session";
 import { PageTransition } from "@/components/layout/page-transition";
 
 const loginSearchSchema = z.object({
+	/** Casdoor 登录失败时，服务端跳转回登录页带的错误码。 */
+	authError: z.string().optional(),
 	redirect: z.string().optional(),
 });
 
@@ -15,7 +21,7 @@ export const Route = createFileRoute("/login")({
 			sessionQueryOptions()
 		);
 		if (user !== null) {
-			throw redirect({ href: search.redirect ?? "/projects" });
+			throw redirect({ href: sameOriginPath(search.redirect) ?? "/projects" });
 		}
 	},
 	component: LoginPage,
@@ -30,10 +36,13 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-	const { redirect: redirectTo } = Route.useSearch();
+	const { authError, redirect: redirectTo } = Route.useSearch();
 	return (
 		<PageTransition className="flex min-h-svh items-center justify-center px-4 py-10">
-			<LoginForm redirectTo={redirectTo} />
+			<LoginForm
+				errorMessage={casdoorLoginErrorMessage(authError)}
+				redirectTo={sameOriginPath(redirectTo)}
+			/>
 		</PageTransition>
 	);
 }

@@ -214,7 +214,7 @@ describe("saveEffectiveAuthSettings：认证方式变化", () => {
 		await saveEffectiveAuthSettings(
 			input({ clientSecret: { kind: "set", value: CLIENT_SECRET } }),
 			ACTOR,
-			auditLog
+			{ auditLog }
 		);
 		expect(auditLog).toHaveBeenCalledTimes(1);
 		const message = String(auditLog.mock.calls[0]?.[0]);
@@ -230,7 +230,7 @@ describe("saveEffectiveAuthSettings：认证方式变化", () => {
 	it("认证方式不变：不写审计日志", async () => {
 		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
 		const auditLog = vi.fn();
-		await saveEffectiveAuthSettings(input(), ACTOR, auditLog);
+		await saveEffectiveAuthSettings(input(), ACTOR, { auditLog });
 		expect(auditLog).not.toHaveBeenCalled();
 	});
 });

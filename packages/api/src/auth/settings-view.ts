@@ -14,7 +14,7 @@ export interface AuthSettingsView {
 	adminRole: string | null;
 	allowLocalLogin: boolean;
 	callbackPath: string;
-	/** 阶段 2 中 Casdoor 模式尚未实现，页面不能选择它。 */
+	/** 页面能否选择 Casdoor 模式。阶段 3 实现后总是 true。 */
 	casdoorSelectable: boolean;
 	clientId: string | null;
 	credentialProblem: AuthCredentialProblem | null;
@@ -48,7 +48,7 @@ export async function toAuthSettingsView(
 		adminRole: settings.adminRole,
 		allowLocalLogin: settings.allowLocalLogin,
 		callbackPath: CASDOOR_CALLBACK_PATH,
-		casdoorSelectable: false,
+		casdoorSelectable: true,
 		clientId: settings.clientId,
 		credentialProblem: settings.credentialProblem,
 		hasClientSecret: settings.clientSecret.present,

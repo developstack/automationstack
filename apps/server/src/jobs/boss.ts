@@ -2,6 +2,7 @@ import { pool } from "@automationstack/db";
 import { type Db, PgBoss } from "pg-boss";
 
 import { registerAutoSubmitScan } from "./auto-submit-scan";
+import { registerCasdoorReconcile } from "./casdoor-reconcile";
 
 let boss: PgBoss | null = null;
 
@@ -45,6 +46,7 @@ export async function startJobs(): Promise<void> {
 		attachEventLogging(instance);
 		await instance.start();
 		await registerAutoSubmitScan(instance);
+		await registerCasdoorReconcile(instance);
 		boss = instance;
 		status = "running";
 		console.log('pg-boss 后台任务已启动（schema "pgboss"）');

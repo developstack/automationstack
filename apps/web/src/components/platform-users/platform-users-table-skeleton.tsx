@@ -5,6 +5,7 @@ import {
 
 const PLATFORM_USER_SKELETON_COLUMNS: readonly TableSkeletonColumn[] = [
 	{ head: "w-10", label: "用户名", value: "w-3/5", width: "flex-1" },
+	{ head: "w-14", label: "账号来源", value: "w-1/2", width: "flex-1" },
 	{ head: "w-14", label: "平台角色", value: "w-1/2", width: "flex-1" },
 	{ head: "w-7", label: "状态", value: "w-1/2", width: "flex-1" },
 	{ head: "w-14", label: "所属项目", value: "w-2/3", width: "flex-1" },

@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
 	constructed: [] as unknown[],
 	poolQuery: vi.fn(),
 	registerAutoSubmitScan: vi.fn(),
+	registerCasdoorReconcile: vi.fn(),
 	start: vi.fn(),
 	stop: vi.fn(),
 }));
@@ -14,6 +15,10 @@ vi.mock("@automationstack/db", () => ({
 
 vi.mock("./auto-submit-scan", () => ({
 	registerAutoSubmitScan: mocks.registerAutoSubmitScan,
+}));
+
+vi.mock("./casdoor-reconcile", () => ({
+	registerCasdoorReconcile: mocks.registerCasdoorReconcile,
 }));
 
 vi.mock("pg-boss", () => ({
@@ -37,6 +42,7 @@ beforeEach(() => {
 	mocks.start.mockResolvedValue(undefined);
 	mocks.stop.mockResolvedValue(undefined);
 	mocks.registerAutoSubmitScan.mockResolvedValue(undefined);
+	mocks.registerCasdoorReconcile.mockResolvedValue(undefined);
 });
 
 afterEach(async () => {

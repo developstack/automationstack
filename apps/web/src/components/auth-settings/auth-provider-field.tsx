@@ -10,18 +10,31 @@ interface ProviderOption {
 	value: AuthProviderValue;
 }
 
-const OPTIONS: readonly ProviderOption[] = [
-	{
-		description: "用户用本系统的用户名和密码登录。",
-		label: "本地",
-		value: "local",
-	},
-	{
-		description: "用户在 Casdoor 中登录。尚未实现，现在不能选择。",
-		label: "Casdoor（尚未实现）",
-		value: "casdoor",
-	},
-];
+const LOCAL_OPTION: ProviderOption = {
+	description: "用户用本系统的用户名和密码登录。",
+	label: "本地",
+	value: "local",
+};
+
+const CASDOOR_OPTION: ProviderOption = {
+	description:
+		"用户在 Casdoor 中登录，平台角色由 Casdoor 的管理员角色决定。本地管理员可以用本地密码应急登录。",
+	label: "Casdoor",
+	value: "casdoor",
+};
+
+const CASDOOR_UNAVAILABLE_OPTION: ProviderOption = {
+	description: "用户在 Casdoor 中登录。尚未实现，现在不能选择。",
+	label: "Casdoor（尚未实现）",
+	value: "casdoor",
+};
+
+function providerOptions(casdoorSelectable: boolean): ProviderOption[] {
+	return [
+		LOCAL_OPTION,
+		casdoorSelectable ? CASDOOR_OPTION : CASDOOR_UNAVAILABLE_OPTION,
+	];
+}
 
 const RADIO_NAME = "auth-settings-provider";
 
@@ -43,7 +56,7 @@ export function AuthProviderField(props: AuthSettingsFieldGroupProps) {
 		>
 			<fieldset className="flex flex-col gap-3">
 				<legend className="sr-only">认证方式</legend>
-				{OPTIONS.map((option) => (
+				{providerOptions(props.view.casdoorSelectable).map((option) => (
 					<label
 						className="flex items-start gap-2 text-sm has-disabled:opacity-50"
 						key={option.value}

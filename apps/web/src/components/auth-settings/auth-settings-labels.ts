@@ -41,18 +41,24 @@ export function emergencyLoginLabel(view: AuthSettingsView): string {
 		: "关闭（AUTH_ALLOW_LOCAL_LOGIN，只能在环境变量中修改）";
 }
 
-/** 切换认证方式前，确认对话框中列出的后果（plan 021 §10.5 第 4 项）。 */
+/**
+ * 切换认证方式前，确认对话框中列出的后果（plan 021 §10.5 第 4 项）。
+ * 切回本地后 Casdoor 用户不能登录：服务端的本地密码登录只接受 auth_source = local 的账号。
+ */
 export function providerChangeConsequences(
 	target: AuthSettingsView["provider"]
 ): string[] {
 	if (target === "casdoor") {
 		return [
 			"Casdoor 用户没有本地密码，只能在 Casdoor 中登录。",
-			"本地普通用户的现有会话会失效，只有本地管理员可以用本地密码登录。",
+			"本地普通用户的会话和 API token 立即失效。只有本地管理员可以用本地密码应急登录。",
+			"Casdoor 用户的平台角色、停用状态和密码只能在 Casdoor 中管理。本系统不能创建用户。",
+			"以后切回本地时，Casdoor 用户没有本地密码，不能登录。",
 		];
 	}
 	return [
 		"所有本地账号都可以用本地密码登录。",
-		"Casdoor 用户没有本地密码。管理员必须为他们重置密码，他们才能登录。",
+		"Casdoor 用户没有本地密码，切回本地后不能登录。",
+		"Casdoor 登录入口关闭。正在进行的 Casdoor 登录会失败。",
 	];
 }
