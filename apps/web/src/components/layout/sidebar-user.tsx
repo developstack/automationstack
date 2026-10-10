@@ -1,3 +1,4 @@
+import type { UserRole } from "@automationstack/db/schema/users";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -15,11 +16,10 @@ import { ChevronsUpDownIcon } from "lucide-react";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { useUserMenu } from "@/components/layout/user-menu";
 import { UserMenuItems } from "@/components/layout/user-menu-items";
-
-const ROLE_LABEL = { admin: "管理员", member: "成员" } as const;
+import { PLATFORM_ROLE_LABEL } from "@/components/platform-users/platform-user-meta";
 
 interface UserMenuTriggerProps {
-	role: keyof typeof ROLE_LABEL;
+	role: UserRole;
 	username: string;
 }
 
@@ -38,7 +38,7 @@ function UserMenuTrigger({ role, username }: UserMenuTriggerProps) {
 					<span className="flex min-w-0 flex-1 flex-col text-left">
 						<span className="truncate font-medium">{username}</span>
 						<span className="truncate text-sidebar-foreground/70">
-							{ROLE_LABEL[role]}
+							{PLATFORM_ROLE_LABEL[role]}
 						</span>
 					</span>
 					{collapsed ? null : <ChevronsUpDownIcon aria-hidden="true" />}

@@ -7,7 +7,15 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 
-export const userRoleEnum = pgEnum("user_role", ["admin", "member"]);
+/**
+ * 平台角色：admin 是平台管理员，project_admin 是项目管理员，member 是普通用户。
+ * member 沿用原来的存储值，不迁移数据（ADR 0001）。
+ */
+export const userRoleEnum = pgEnum("user_role", [
+	"admin",
+	"project_admin",
+	"member",
+]);
 
 export type UserRole = (typeof userRoleEnum.enumValues)[number];
 

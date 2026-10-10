@@ -21,3 +21,8 @@ export function canAdministerProject(access: ProjectAccess): boolean {
 export function seesAllProjects(platformRole: UserRole): boolean {
 	return platformRole === "admin";
 }
+
+/** 平台管理员和项目管理员可以新建项目，普通用户不可以。服务端和 web 共用这条规则。 */
+export function canCreateProject(platformRole: UserRole): boolean {
+	return platformRole === "admin" || platformRole === "project_admin";
+}

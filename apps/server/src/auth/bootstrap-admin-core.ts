@@ -34,7 +34,7 @@ const BLOCKER_HINT: Record<LocalLoginAdminBlocker, string> = {
 	"external-account": "请修改 ADMIN_USERNAME。",
 	"no-password": RESET_PASSWORD_HINT,
 	"not-admin":
-		"请修改 ADMIN_USERNAME，或由其他管理员在「用户管理」页面把该账号设为管理员。",
+		"请修改 ADMIN_USERNAME，或由其他平台管理员在「用户管理」页面把该账号设为平台管理员。",
 };
 
 function missingOrBlocked(

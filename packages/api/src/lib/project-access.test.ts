@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	canAdministerProject,
+	canCreateProject,
 	canEnterProject,
 	type ProjectAccess,
 	seesAllProjects,
@@ -90,7 +91,18 @@ describe("seesAllProjects：projects.list 要不要过滤", () => {
 		expect(seesAllProjects("admin")).toBe(true);
 	});
 
-	it("普通用户只看自己所属的——list 因此必须走 listProjectsByMember", () => {
+	it("项目管理员和普通用户只看自己所属的——list 因此必须走 listProjectsByMember", () => {
+		expect(seesAllProjects("project_admin")).toBe(false);
 		expect(seesAllProjects("member")).toBe(false);
+	});
+});
+
+describe("canCreateProject：谁能新建项目", () => {
+	it.each([
+		["admin", "平台管理员", true],
+		["project_admin", "项目管理员", true],
+		["member", "普通用户", false],
+	] as const)("%s（%s）：%s", (platformRole, _label, expected) => {
+		expect(canCreateProject(platformRole)).toBe(expected);
 	});
 });

@@ -1,4 +1,4 @@
-import type { PublicUser } from "@automationstack/db/schema/users";
+import type { PublicUser, UserRole } from "@automationstack/db/schema/users";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -11,7 +11,10 @@ import {
 } from "@automationstack/ui/components/alert-dialog";
 
 import { PlatformUserFormError } from "@/components/platform-users/platform-user-form-error";
-import type { PlatformUserConfirmKind } from "@/components/platform-users/platform-user-meta";
+import {
+	PLATFORM_ROLE_LABEL,
+	type PlatformUserConfirm,
+} from "@/components/platform-users/platform-user-meta";
 import type { PlatformUserActions } from "@/components/platform-users/use-platform-user-actions";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 
@@ -21,22 +24,12 @@ interface ConfirmCopy {
 	destructive: boolean;
 }
 
-const CONFIRM_COPY: Record<PlatformUserConfirmKind, ConfirmCopy> = {
-	demote: {
-		action: "设为成员",
-		description: "该账号将失去平台用户管理入口；已加入的项目与用例照常读写。",
-		destructive: false,
-	},
+const ACCOUNT_COPY: Record<"disable" | "restore", ConfirmCopy> = {
 	disable: {
 		action: "停用",
 		description:
 			"停用后该账号无法登录；项目归属与用例上留下的署名都会原样保留。",
 		destructive: true,
-	},
-	promote: {
-		action: "设为管理员",
-		description: "管理员可以创建、停用账号，重置任何人的密码，并调整项目归属。",
-		destructive: false,
 	},
 	restore: {
 		action: "恢复",
@@ -44,6 +37,27 @@ const CONFIRM_COPY: Record<PlatformUserConfirmKind, ConfirmCopy> = {
 		destructive: false,
 	},
 };
+
+/** 改成每个平台角色后，该账号可以做什么。 */
+const ROLE_DESCRIPTION: Record<UserRole, string> = {
+	admin:
+		"平台管理员可以看到和管理所有项目，并管理平台用户和设置：创建、停用账号，重置任何人的密码，调整项目归属。",
+	member:
+		"普通用户不能新建项目，也不能管理平台用户和设置；已加入的项目与用例照常读写。",
+	project_admin:
+		"项目管理员可以新建项目，但不能管理平台用户和设置；已加入的项目与用例照常读写。",
+};
+
+function confirmCopy(confirm: PlatformUserConfirm): ConfirmCopy {
+	if (confirm.kind === "set-role") {
+		return {
+			action: `设为${PLATFORM_ROLE_LABEL[confirm.role]}`,
+			description: ROLE_DESCRIPTION[confirm.role],
+			destructive: false,
+		};
+	}
+	return ACCOUNT_COPY[confirm.kind];
+}
 
 interface PlatformUserConfirmDialogProps {
 	actions: PlatformUserActions;
@@ -55,7 +69,7 @@ export function PlatformUserConfirmDialog({
 	user,
 }: PlatformUserConfirmDialogProps) {
 	const handleOpenChange = useCloseOnDismiss(actions.closeConfirm);
-	const copy = actions.kind === null ? null : CONFIRM_COPY[actions.kind];
+	const copy = actions.pending === null ? null : confirmCopy(actions.pending);
 
 	return (
 		<AlertDialog onOpenChange={handleOpenChange} open={copy !== null}>
