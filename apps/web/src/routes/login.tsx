@@ -1,11 +1,11 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
-
+import { LoginBackdrop } from "@/components/auth/login-backdrop";
 import {
 	casdoorLoginErrorMessage,
 	sameOriginPath,
 } from "@/components/auth/login-casdoor";
-import { LoginForm } from "@/components/auth/login-form";
+import { LoginPanel } from "@/components/auth/login-panel";
 import { sessionQueryOptions } from "@/components/auth/use-session";
 import { PageTransition } from "@/components/layout/page-transition";
 
@@ -38,11 +38,14 @@ export const Route = createFileRoute("/login")({
 function LoginPage() {
 	const { authError, redirect: redirectTo } = Route.useSearch();
 	return (
-		<PageTransition className="flex min-h-svh items-center justify-center px-4 py-10">
-			<LoginForm
-				errorMessage={casdoorLoginErrorMessage(authError)}
-				redirectTo={sameOriginPath(redirectTo)}
-			/>
+		<PageTransition className="grid min-h-svh md:grid-cols-2">
+			<LoginBackdrop />
+			<div className="flex items-center justify-center px-4 py-10">
+				<LoginPanel
+					errorMessage={casdoorLoginErrorMessage(authError)}
+					redirectTo={sameOriginPath(redirectTo)}
+				/>
+			</div>
 		</PageTransition>
 	);
 }

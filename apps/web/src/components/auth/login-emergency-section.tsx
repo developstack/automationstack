@@ -1,9 +1,12 @@
-import { LoginPasswordForm } from "@/components/auth/login-password-form";
+import {
+	LoginPasswordForm,
+	type LoginPasswordFormProps,
+} from "@/components/auth/login-password-form";
 
 const HEADING_ID = "login-emergency-heading";
 
 /** Casdoor 模式下的用户名密码表单。只有本地管理员可以用它登录（plan 021 D7）。 */
-export function LoginEmergencySection({ redirectTo }: { redirectTo?: string }) {
+export function LoginEmergencySection({ onLogin }: LoginPasswordFormProps) {
 	return (
 		<section aria-labelledby={HEADING_ID} className="flex flex-col gap-3">
 			<div className="flex flex-col gap-1">
@@ -14,7 +17,7 @@ export function LoginEmergencySection({ redirectTo }: { redirectTo?: string }) {
 					只有本地管理员账号可以使用。其他用户请使用 Casdoor 登录。
 				</p>
 			</div>
-			<LoginPasswordForm redirectTo={redirectTo} />
+			<LoginPasswordForm onLogin={onLogin} />
 		</section>
 	);
 }

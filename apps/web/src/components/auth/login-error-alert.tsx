@@ -1,6 +1,6 @@
 import { TriangleAlertIcon } from "lucide-react";
 
-/** Casdoor 登录失败后，服务端跳转回登录页时显示的提示。 */
+/** 登录页的提示区：Casdoor 登录失败的原因，或登录请求的网络错误、5xx 错误和限流提示。 */
 export function LoginErrorAlert({ message }: { message: string }) {
 	return (
 		<div
