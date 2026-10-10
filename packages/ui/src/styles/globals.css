@@ -39,7 +39,7 @@
 }
 
 @utility press-scale {
-	&:active:not([aria-haspopup]):not(:disabled) {
+	&:active:not([aria-haspopup]):not(:disabled):not([aria-disabled="true"]) {
 		scale: 0.96;
 	}
 }

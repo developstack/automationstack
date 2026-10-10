@@ -11,8 +11,9 @@ import {
 } from "motion/react";
 import type * as React from "react";
 
-const INSTANT: Transition = { duration: 0 };
 const BACKDROP_TRANSITION: Transition = { duration: 0.2, ease: "easeInOut" };
+// 退场与减弱动效共用：150ms ease-out，遮罩与弹层同时结束
+const SHORT_TRANSITION: Transition = { duration: 0.15, ease: "easeOut" };
 const POPUP_TRANSITION: Transition = {
 	damping: 25,
 	stiffness: 150,
@@ -87,11 +88,23 @@ function DialogBackdrop({
 			{...props}
 			render={
 				<motion.div
-					animate={{ filter: "blur(0px)", opacity: 1 }}
-					exit={{ filter: "blur(4px)", opacity: 0 }}
-					initial={{ filter: "blur(4px)", opacity: 0 }}
+					animate={
+						reduce ? { opacity: 1 } : { filter: "blur(0px)", opacity: 1 }
+					}
+					exit={
+						reduce
+							? { opacity: 0 }
+							: {
+									filter: "blur(4px)",
+									opacity: 0,
+									transition: SHORT_TRANSITION,
+								}
+					}
+					initial={
+						reduce ? { opacity: 0 } : { filter: "blur(4px)", opacity: 0 }
+					}
 					key="dialog-backdrop"
-					transition={reduce ? INSTANT : transition}
+					transition={reduce ? SHORT_TRANSITION : transition}
 				/>
 			}
 		/>
@@ -115,7 +128,10 @@ function DialogPopup({
 		from === "bottom" || from === "left" ? "20deg" : "-20deg";
 	const isVertical = from === "top" || from === "bottom";
 	const rotateAxis = isVertical ? "rotateX" : "rotateY";
-	const closed = `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8)`;
+	// 三个状态共用同一变换模板，motion 才能按项插值
+	const closed = `perspective(500px) ${rotateAxis}(${initialRotation}) scale(0.8) translateY(0px)`;
+	const opened = `perspective(500px) ${rotateAxis}(0deg) scale(1) translateY(0px)`;
+	const exited = `perspective(500px) ${rotateAxis}(0deg) scale(1) translateY(-12px)`;
 
 	return (
 		<DialogPrimitive.Popup
@@ -123,15 +139,28 @@ function DialogPopup({
 			{...props}
 			render={
 				<motion.div
-					animate={{
-						filter: "blur(0px)",
-						opacity: 1,
-						transform: `perspective(500px) ${rotateAxis}(0deg) scale(1)`,
-					}}
-					exit={{ filter: "blur(4px)", opacity: 0, transform: closed }}
-					initial={{ filter: "blur(4px)", opacity: 0, transform: closed }}
+					animate={
+						reduce
+							? { opacity: 1 }
+							: { filter: "blur(0px)", opacity: 1, transform: opened }
+					}
+					exit={
+						reduce
+							? { opacity: 0 }
+							: {
+									filter: "blur(4px)",
+									opacity: 0,
+									transform: exited,
+									transition: SHORT_TRANSITION,
+								}
+					}
+					initial={
+						reduce
+							? { opacity: 0 }
+							: { filter: "blur(4px)", opacity: 0, transform: closed }
+					}
 					key="dialog-popup"
-					transition={reduce ? INSTANT : transition}
+					transition={reduce ? SHORT_TRANSITION : transition}
 				/>
 			}
 		/>
