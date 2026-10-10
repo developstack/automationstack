@@ -88,7 +88,7 @@ describe("memberIdsFromRole（T11）", () => {
 		expect(result.warnings).toHaveLength(4);
 	});
 
-	it("角色被关闭：没有成员", () => {
+	it("角色被禁用：没有成员", () => {
 		expect(
 			memberIdsFromRole(role([`${ORG}/alice`], false), users, ORG).ids.size
 		).toBe(0);
@@ -214,7 +214,7 @@ describe("planReconcile：项目管理员角色（#15）", () => {
 		]);
 	});
 
-	it("项目管理员角色被关闭：成员变为 member，有平台管理员角色的成员仍是 admin", () => {
+	it("项目管理员角色被禁用：成员变为 member，有平台管理员角色的成员仍是 admin", () => {
 		const result = plan({
 			adminRole: role([`${ORG}/carol`]),
 			casdoorUsers: users,
@@ -229,7 +229,7 @@ describe("planReconcile：项目管理员角色（#15）", () => {
 		]);
 	});
 
-	it("平台管理员角色被关闭：项目管理员角色的成员是 project_admin", () => {
+	it("平台管理员角色被禁用：项目管理员角色的成员是 project_admin", () => {
 		const result = plan({
 			adminRole: role([`${ORG}/alice`], false),
 			casdoorUsers: users,

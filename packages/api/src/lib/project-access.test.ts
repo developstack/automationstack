@@ -5,6 +5,7 @@ import {
 	canBecomeProjectOwner,
 	canCreateProject,
 	canEnterProject,
+	isProjectOwnerSuspended,
 	type ProjectAccess,
 	seesAllProjects,
 } from "./project-access";
@@ -102,6 +103,23 @@ describe("canBecomeProjectOwner：谁能成为项目 owner", () => {
 	] as const)("%s（%s）：%s", (platformRole, _label, expected) => {
 		expect(canBecomeProjectOwner(platformRole)).toBe(expected);
 	});
+});
+
+describe("isProjectOwnerSuspended：项目 owner 的管理权限是否暂停", () => {
+	it.each([
+		["owner", "admin", "平台管理员", false],
+		["owner", "project_admin", "项目管理员", false],
+		["owner", "member", "普通用户", true],
+		["member", "admin", "平台管理员", false],
+		["member", "project_admin", "项目管理员", false],
+		["member", "member", "普通用户", false],
+		[null, "member", "普通用户", false],
+	] as const)(
+		"项目角色 %s + %s（%s）：%s",
+		(projectRole, platformRole, _label, expected) => {
+			expect(isProjectOwnerSuspended(projectRole, platformRole)).toBe(expected);
+		}
+	);
 });
 
 describe("seesAllProjects：projects.list 要不要过滤", () => {

@@ -5,6 +5,7 @@ import type {
 	CasdoorRoleRecord,
 	CasdoorUserRecord,
 } from "./management-records";
+import { platformRoleFor } from "./platform-role";
 
 const WILDCARD = "*";
 
@@ -61,7 +62,7 @@ export function memberIdsFromRole(
 ): RoleMemberIds {
 	const result: RoleMemberIds = { ids: new Set(), warnings: [] };
 	if (!role.isEnabled) {
-		// 角色被关闭时，视为没有成员（§11.9、#15）。
+		// 角色在 Casdoor 中被禁用时，视为没有成员（§11.9、#15）。
 		return result;
 	}
 	const idByName = new Map(
@@ -143,13 +144,10 @@ function desiredRole(
 	if (members === null || !local.externalId) {
 		return local.role;
 	}
-	if (members.admins.ids.has(local.externalId)) {
-		return "admin";
-	}
-	if (members.projectAdmins.ids.has(local.externalId)) {
-		return "project_admin";
-	}
-	return "member";
+	return platformRoleFor({
+		isAdmin: members.admins.ids.has(local.externalId),
+		isProjectAdmin: members.projectAdmins.ids.has(local.externalId),
+	});
 }
 
 /**

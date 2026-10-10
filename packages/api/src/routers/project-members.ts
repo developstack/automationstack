@@ -33,7 +33,8 @@ const routerErrors = {
 	NOT_FOUND: {},
 } as const;
 
-const OWNER_REQUIRED_MESSAGE = "只有项目 owner 能管理成员";
+const OWNER_REQUIRED_MESSAGE =
+	"只有平台管理员和身为项目 owner 的项目管理员能管理成员";
 
 const SELF_REMOVE_MESSAGE = "不能把自己移出项目";
 

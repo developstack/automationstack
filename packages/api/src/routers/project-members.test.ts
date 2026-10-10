@@ -34,7 +34,7 @@ vi.mock("../lib/realtime-publish", () => ({
 
 const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
 const OWNER_NOT_ELIGIBLE = "只有平台管理员和项目管理员可以成为项目 owner";
-const OWNER_REQUIRED = "只有项目 owner 能管理成员";
+const OWNER_REQUIRED = "只有平台管理员和身为项目 owner 的项目管理员能管理成员";
 
 const caller: User = {
 	authSource: "local",

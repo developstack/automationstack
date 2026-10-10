@@ -1,5 +1,7 @@
 import type { UserRole } from "@automationstack/db/schema/users";
 
+import { platformRoleFor } from "./platform-role";
+
 /** ID token 中的角色对象（Token 格式 JWT，plan 021 §11.1）。 */
 interface CasdoorRoleClaim {
 	isEnabled?: unknown;
@@ -45,13 +47,14 @@ export function platformRoleFromRoles(
 	if (!Array.isArray(roles)) {
 		return "member";
 	}
-	if (hasEnabledRole(roles, options.adminRole, options.organization)) {
-		return "admin";
-	}
-	if (hasEnabledRole(roles, options.projectAdminRole, options.organization)) {
-		return "project_admin";
-	}
-	return "member";
+	return platformRoleFor({
+		isAdmin: hasEnabledRole(roles, options.adminRole, options.organization),
+		isProjectAdmin: hasEnabledRole(
+			roles,
+			options.projectAdminRole,
+			options.organization
+		),
+	});
 }
 
 export interface CasdoorIdentity {

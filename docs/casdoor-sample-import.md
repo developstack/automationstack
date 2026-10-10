@@ -41,7 +41,7 @@
 
 ### 1.3 列名的来源
 
-Casdoor v4.11.0 的源码决定列名。不要使用 Casdoor 控制台的「下载模板」，也不要使用 Casdoor 源码中的样例 XLSX 文件。
+Casdoor 4.11.0 的源码决定列名。不要使用 Casdoor 控制台的「下载模板」，也不要使用 Casdoor 源码中的样例 XLSX 文件。
 
 - `object/user_upload.go` 和 `object/role_upload.go`：Casdoor 读取第一个工作表，第一行是列名。列名中有 `#` 时，Casdoor 只使用 `#` 后面的部分。
 - `object/user_util.go` 的 `StringArrayToStruct`：Casdoor 删除列名中的 `_`，然后不区分大小写地与 `User` 或 `Role` 的字段名比较。Casdoor 忽略不能匹配的列。
@@ -52,7 +52,7 @@ Casdoor v4.11.0 的源码决定列名。不要使用 Casdoor 控制台的「下�
 
 - Casdoor 的版本是 4.11.0。在本地，用 `make casdoor-up` 启动 Casdoor，地址是 `http://localhost:8100`。
 - 用 Casdoor 全局管理员（`built-in` 组织中的管理员）登录 Casdoor 控制台。本地 Casdoor 的默认全局管理员是 `admin`。
-- Casdoor 中没有角色 `automationstack-admin` 和 `automationstack-project-admin`。原因见第 6 节。
+- Casdoor 中没有角色 `automationstack-admin` 和 `automationstack-project-admin`。原因见第 6.4 节。
 - 不要在导入前运行 `make casdoor-bootstrap`。这个命令创建角色 `automationstack-admin`，角色文件的上传会失败。
 
 ## 3. 步骤 1：创建组织和应用
@@ -115,14 +115,15 @@ Casdoor v4.11.0 的源码决定列名。不要使用 Casdoor 控制台的「下�
 ### 6.2 角色名
 
 - 角色名必须与平台认证设置页中的「平台管理员角色名」和「项目管理员角色名」相同。
-- 两个设置的默认值是 `automationstack-admin` 和 `automationstack-project-admin`。
+- 「平台管理员角色名」没有默认值。把它设为 `automationstack-admin`，与角色文件一致。
+- 「项目管理员角色名」的默认值是 `automationstack-project-admin`，与角色文件一致。
 - 认证设置使用其他角色名时，上传前修改角色文件的 `name` 列。
 - 平台只计算组织与认证设置一致的、已启用的角色。
 
 ### 6.3 修改文件
 
 - 不要删除 `owner` 列。全局管理员上传用户文件时，Casdoor 把第一行的 `owner` 用作组织。`owner` 是空的时，用户进入 `built-in` 组织。
-- `is_enabled` 必须是文本 `1`。Excel 中的布尔值 `TRUE` 使角色保持关闭状态。
+- `is_enabled` 必须是文本 `1`。Excel 中的布尔值 `TRUE` 使上传的角色禁用。
 - `users` 必须是 JSON 数组，例如 `["automationstack/platform-admin"]`。
 
 ### 6.4 再次上传

@@ -35,7 +35,7 @@ describe("platformRoleFromRoles（D4、§11.10 第 5 项）", () => {
 		expect(platformRoleFromRoles([adminRole], options)).toBe("admin");
 	});
 
-	it("角色被关闭（isEnabled: false）：member", () => {
+	it("角色被禁用（isEnabled: false）：member", () => {
 		expect(
 			platformRoleFromRoles([{ ...adminRole, isEnabled: false }], options)
 		).toBe("member");
@@ -83,7 +83,7 @@ describe("platformRoleFromRoles：项目管理员角色（#15）", () => {
 		);
 	});
 
-	it("项目管理员角色被关闭：member", () => {
+	it("项目管理员角色被禁用：member", () => {
 		expect(
 			platformRoleFromRoles(
 				[{ ...projectAdminRole, isEnabled: false }],
@@ -92,7 +92,7 @@ describe("platformRoleFromRoles：项目管理员角色（#15）", () => {
 		).toBe("member");
 	});
 
-	it("平台管理员角色被关闭、项目管理员角色已启用：project_admin", () => {
+	it("平台管理员角色被禁用、项目管理员角色已启用：project_admin", () => {
 		expect(
 			platformRoleFromRoles(
 				[{ ...adminRole, isEnabled: false }, projectAdminRole],

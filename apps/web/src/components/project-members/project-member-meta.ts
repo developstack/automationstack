@@ -1,6 +1,7 @@
 import {
 	canAdministerProject,
 	canBecomeProjectOwner,
+	isProjectOwnerSuspended,
 } from "@automationstack/api/lib/project-access";
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { UserRole } from "@automationstack/db/schema/users";
@@ -93,9 +94,9 @@ export function isSuspendedOwner(
 	if (session === null) {
 		return false;
 	}
-	return (
-		ownProjectRole(session, members) === "owner" &&
-		!canBecomeProjectOwner(session.role)
+	return isProjectOwnerSuspended(
+		ownProjectRole(session, members),
+		session.role
 	);
 }
 
@@ -103,7 +104,7 @@ export function projectRoleLabelFor(member: {
 	platformRole: UserRole;
 	role: ProjectRole;
 }): string {
-	if (member.role === "owner" && !canBecomeProjectOwner(member.platformRole)) {
+	if (isProjectOwnerSuspended(member.role, member.platformRole)) {
 		return `${PROJECT_ROLE_LABEL.owner}（管理权限已暂停）`;
 	}
 	return PROJECT_ROLE_LABEL[member.role];

@@ -38,7 +38,8 @@ const routerErrors = {
 	NOT_FOUND: {},
 } as const;
 
-const OWNER_REQUIRED_MESSAGE = "只有项目 owner 能执行该操作";
+const OWNER_REQUIRED_MESSAGE =
+	"只有平台管理员和身为项目 owner 的项目管理员能执行该操作";
 
 const CREATE_FORBIDDEN_MESSAGE = "只有平台管理员和项目管理员可以新建项目";
 

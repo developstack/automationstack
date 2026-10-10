@@ -32,6 +32,14 @@ export function canBecomeProjectOwner(platformRole: UserRole): boolean {
 	return platformRole === "admin" || platformRole === "project_admin";
 }
 
+/** 用户是项目 owner，但平台角色不能成为项目 owner：管理权限暂停。web 用这条规则显示暂停状态。 */
+export function isProjectOwnerSuspended(
+	projectRole: ProjectRole | null,
+	platformRole: UserRole
+): boolean {
+	return projectRole === "owner" && !canBecomeProjectOwner(platformRole);
+}
+
 export function seesAllProjects(platformRole: UserRole): boolean {
 	return platformRole === "admin";
 }
