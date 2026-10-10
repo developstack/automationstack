@@ -4,20 +4,29 @@ import { defineConfig } from "vitest/config";
 const resolveFromRoot = (relative: string): string =>
 	fileURLToPath(new URL(relative, import.meta.url));
 
+const webAlias = { "@": resolveFromRoot("./apps/web/src") };
+
 export default defineConfig({
 	test: {
 		projects: [
 			{
-				resolve: {
-					alias: {
-						"@": resolveFromRoot("./apps/web/src"),
-					},
-				},
+				resolve: { alias: webAlias },
 				test: {
 					environment: "node",
 					include: ["src/**/*.test.ts"],
 					name: "web",
 					root: resolveFromRoot("./apps/web"),
+				},
+			},
+			{
+				// 组件测试（.test.tsx）需要 DOM。vitest 4 没有按文件选环境的配置，所以单独建项目
+				resolve: { alias: webAlias },
+				test: {
+					environment: "jsdom",
+					include: ["src/**/*.test.tsx"],
+					name: "web-dom",
+					root: resolveFromRoot("./apps/web"),
+					setupFiles: ["./vitest-setup-dom.ts"],
 				},
 			},
 			{
