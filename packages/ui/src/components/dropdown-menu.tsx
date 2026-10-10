@@ -61,7 +61,7 @@ function DropdownMenuContent({
 			>
 				<MenuPopup
 					className={cn(
-						"popup-transition z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-y-auto overflow-x-hidden rounded-md bg-popover p-1 text-popover-foreground shadow-md outline-none ring-1 ring-foreground/10 data-closed:overflow-hidden",
+						"popup-transition z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border border-transparent bg-popover p-1 text-popover-foreground shadow-md outline-none ring-1 ring-foreground/10 data-closed:overflow-hidden",
 						className
 					)}
 					data-slot="dropdown-menu-content"

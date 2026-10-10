@@ -53,9 +53,15 @@ export function JiraConnectionResult({
 			role="status"
 		>
 			{copy.ok ? (
-				<CircleCheckIcon aria-hidden="true" className="size-4 shrink-0" />
+				<CircleCheckIcon
+					aria-hidden="true"
+					className="icon-stroke-medium mt-0.5 size-3.5 shrink-0"
+				/>
 			) : (
-				<TriangleAlertIcon aria-hidden="true" className="size-4 shrink-0" />
+				<TriangleAlertIcon
+					aria-hidden="true"
+					className="icon-stroke-medium mt-0.5 size-3.5 shrink-0"
+				/>
 			)}
 			<div className="flex flex-col gap-1">
 				<p className="font-medium">{copy.title}</p>

@@ -11,7 +11,10 @@ export function CredentialProblemNotice({ reason }: { reason: string }) {
 			className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3 text-destructive text-xs"
 			role="status"
 		>
-			<TriangleAlertIcon aria-hidden="true" className="size-4 shrink-0" />
+			<TriangleAlertIcon
+				aria-hidden="true"
+				className="icon-stroke-medium mt-0.5 size-3.5 shrink-0"
+			/>
 			<div className="flex flex-col gap-1">
 				<p className="font-medium">当前 Jira 凭据不可用</p>
 				<p>{detail}</p>

@@ -38,6 +38,11 @@
 	stroke-width: 1.5;
 }
 
+/* 图标旁文字为 font-medium（500）时使用 */
+@utility icon-stroke-medium {
+	stroke-width: 2;
+}
+
 @utility skip-link {
 	position: absolute;
 	width: 1px;
