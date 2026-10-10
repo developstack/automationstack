@@ -1,3 +1,4 @@
+import { canBecomeProjectOwner } from "@automationstack/api/lib/project-access";
 import type { ProjectMemberView } from "@automationstack/db/repositories/project-members-repository";
 import { Button } from "@automationstack/ui/components/button";
 import {
@@ -18,6 +19,25 @@ interface ProjectMemberActionsMenuProps {
 	onDemote: () => void;
 	onPromote: () => void;
 	onRemove: () => void;
+}
+
+function RoleChangeItem({
+	member,
+	onDemote,
+	onPromote,
+}: Pick<ProjectMemberActionsMenuProps, "member" | "onDemote" | "onPromote">) {
+	if (member.role === "owner") {
+		return <DropdownMenuItem onClick={onDemote}>设为成员</DropdownMenuItem>;
+	}
+	// 普通用户不能成为项目拥有者：禁用这一项，并在名称里说明原因。服务端也检查。
+	if (!canBecomeProjectOwner(member.platformRole)) {
+		return (
+			<DropdownMenuItem disabled={true}>
+				设为拥有者（普通用户不能成为拥有者）
+			</DropdownMenuItem>
+		);
+	}
+	return <DropdownMenuItem onClick={onPromote}>设为拥有者</DropdownMenuItem>;
 }
 
 function ProjectMemberActionsMenu({
@@ -41,11 +61,11 @@ function ProjectMemberActionsMenu({
 				}
 			/>
 			<DropdownMenuContent align="end">
-				{member.role === "owner" ? (
-					<DropdownMenuItem onClick={onDemote}>设为成员</DropdownMenuItem>
-				) : (
-					<DropdownMenuItem onClick={onPromote}>设为拥有者</DropdownMenuItem>
-				)}
+				<RoleChangeItem
+					member={member}
+					onDemote={onDemote}
+					onPromote={onPromote}
+				/>
 				{isSelf ? null : (
 					<DropdownMenuItem onClick={onRemove} variant="destructive">
 						移出项目

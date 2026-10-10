@@ -11,7 +11,10 @@ import { getUserById } from "@automationstack/db/repositories/users-repository";
 import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
-import { canAdministerProject } from "../lib/project-access";
+import {
+	canAdministerProject,
+	canBecomeProjectOwner,
+} from "../lib/project-access";
 import { publishMembershipRevoked } from "../lib/realtime-publish";
 
 const projectScopeSchema = z.object({ projectId: z.uuid() });
@@ -33,6 +36,15 @@ const routerErrors = {
 const OWNER_REQUIRED_MESSAGE = "只有项目 owner 能管理成员";
 
 const SELF_REMOVE_MESSAGE = "不能把自己移出项目";
+
+const OWNER_NOT_ELIGIBLE_MESSAGE =
+	"只有平台管理员和项目管理员可以成为项目 owner";
+
+/** 用户不存在时返回 false：由后续步骤报告"不是项目成员"。 */
+async function isIneligibleOwner(userId: string): Promise<boolean> {
+	const user = await getUserById(userId);
+	return user !== null && !canBecomeProjectOwner(user.role);
+}
 
 async function wouldRemoveLastOwner(
 	projectId: string,
@@ -58,8 +70,12 @@ export const projectMembersRouter = {
 			if (!canAdministerProject(context.projectAccess)) {
 				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
 			}
-			if ((await getUserById(input.userId)) === null) {
+			const target = await getUserById(input.userId);
+			if (target === null) {
 				throw errors.NOT_FOUND({ message: "用户不存在" });
+			}
+			if (input.role === "owner" && !canBecomeProjectOwner(target.role)) {
+				throw errors.BAD_REQUEST({ message: OWNER_NOT_ELIGIBLE_MESSAGE });
 			}
 			const member = await addProjectMember({
 				projectId: input.projectId,
@@ -115,6 +131,9 @@ export const projectMembersRouter = {
 		.handler(async ({ context, errors, input }) => {
 			if (!canAdministerProject(context.projectAccess)) {
 				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
+			}
+			if (input.role === "owner" && (await isIneligibleOwner(input.userId))) {
+				throw errors.BAD_REQUEST({ message: OWNER_NOT_ELIGIBLE_MESSAGE });
 			}
 			const isDemotion = input.role !== "owner";
 			if (

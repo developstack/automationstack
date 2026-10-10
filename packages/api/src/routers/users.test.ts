@@ -9,7 +9,9 @@ const mocks = vi.hoisted(() => ({
 	countLocalLoginAdmins: vi.fn(),
 	createUser: vi.fn(),
 	getUserById: vi.fn(),
+	removeProjectMember: vi.fn(),
 	setUserDisabled: vi.fn(),
+	updateProjectMemberRole: vi.fn(),
 	updateUserRole: vi.fn(),
 }));
 
@@ -25,6 +27,8 @@ vi.mock("@automationstack/db/repositories/users-repository", () => ({
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 	getProjectRole: vi.fn(),
+	removeProjectMember: mocks.removeProjectMember,
+	updateProjectMemberRole: mocks.updateProjectMemberRole,
 }));
 vi.mock("@automationstack/db/password", () => ({
 	hashPassword: vi.fn((password: string) =>
@@ -163,6 +167,21 @@ describe("users.setRole：降级为项目管理员时，原有保护仍然有效
 		await expect(setRole(localUser.id, "project_admin")).resolves.toMatchObject(
 			{ role: "project_admin" }
 		);
+	});
+});
+
+describe("users.setRole：项目管理员降级为普通用户", () => {
+	it("只修改平台角色，不修改项目成员记录（项目 owner 记录保留）", async () => {
+		mocks.getUserById.mockResolvedValue({
+			...localUser,
+			role: "project_admin",
+		});
+		await expect(setRole(localUser.id, "member")).resolves.toMatchObject({
+			role: "member",
+		});
+		expect(mocks.updateUserRole).toHaveBeenCalledWith(localUser.id, "member");
+		expect(mocks.updateProjectMemberRole).not.toHaveBeenCalled();
+		expect(mocks.removeProjectMember).not.toHaveBeenCalled();
 	});
 });
 

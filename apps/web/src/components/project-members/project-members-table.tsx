@@ -10,7 +10,7 @@ import {
 } from "@automationstack/ui/components/table";
 import { useCurrentUser } from "@/components/auth/use-session";
 import { formatDateTime } from "@/components/cases/case-meta";
-import { PROJECT_ROLE_LABEL } from "@/components/project-members/project-member-meta";
+import { projectRoleLabelFor } from "@/components/project-members/project-member-meta";
 import { ProjectMemberRowActions } from "@/components/project-members/project-member-row-actions";
 
 interface ProjectMemberRowProps {
@@ -31,7 +31,7 @@ function ProjectMemberRow({
 	return (
 		<TableRow>
 			<TableCell className="font-medium">{member.username}</TableCell>
-			<TableCell>{PROJECT_ROLE_LABEL[member.role]}</TableCell>
+			<TableCell>{projectRoleLabelFor(member)}</TableCell>
 			<TableCell>
 				<Badge variant={disabled ? "outline" : "secondary"}>
 					{disabled ? "已停用" : "启用"}

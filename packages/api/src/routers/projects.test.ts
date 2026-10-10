@@ -1,3 +1,4 @@
+import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { Project } from "@automationstack/db/schema/projects";
 import type { User, UserRole } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
@@ -7,21 +8,23 @@ import { projectsRouter } from "./projects";
 
 const mocks = vi.hoisted(() => ({
 	createProjectWithOwner: vi.fn(),
+	getProjectRole: vi.fn(),
 	listProjects: vi.fn(),
 	listProjectsByMember: vi.fn(),
 	publishInvalidate: vi.fn(),
+	updateProject: vi.fn(),
 }));
 
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 	createProjectWithOwner: mocks.createProjectWithOwner,
-	getProjectRole: vi.fn(),
+	getProjectRole: mocks.getProjectRole,
 	listProjectsByMember: mocks.listProjectsByMember,
 }));
 vi.mock("@automationstack/db/repositories/projects-repository", () => ({
 	getProjectById: vi.fn(),
 	listProjects: mocks.listProjects,
 	removeProject: vi.fn(),
-	updateProject: vi.fn(),
+	updateProject: mocks.updateProject,
 }));
 vi.mock("../lib/realtime-publish", () => ({
 	publishInvalidate: mocks.publishInvalidate,
@@ -76,11 +79,21 @@ function listAs(role: UserRole) {
 	});
 }
 
+function renameAs(platformRole: UserRole, projectRole: ProjectRole | null) {
+	mocks.getProjectRole.mockResolvedValue(projectRole);
+	return call(
+		projectsRouter.update,
+		{ id: project.id, name: "新名字" },
+		{ context: contextFor(platformRole), path: ["projects", "update"] }
+	);
+}
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	mocks.createProjectWithOwner.mockResolvedValue(project);
 	mocks.listProjects.mockResolvedValue(allProjects);
 	mocks.listProjectsByMember.mockResolvedValue(joinedProjects);
+	mocks.updateProject.mockResolvedValue(project);
 });
 
 describe("projects.create：只有平台管理员和项目管理员可以新建项目", () => {
@@ -120,4 +133,30 @@ describe("projects.list：平台管理员看到所有项目，其他人只看到
 		expect(mocks.listProjectsByMember).toHaveBeenCalledWith(baseUser.id);
 		expect(mocks.listProjects).not.toHaveBeenCalled();
 	});
+});
+
+describe("projects.update：管理项目必须是项目 owner，并且平台角色至少是项目管理员", () => {
+	it.each([
+		["admin", "平台管理员", null],
+		["project_admin", "项目管理员", "owner"],
+	] as const)(
+		"%s（%s）+ 项目角色 %s：可以修改",
+		async (role, _label, projectRole) => {
+			await expect(renameAs(role, projectRole)).resolves.toEqual(project);
+			expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+		}
+	);
+
+	it.each([
+		["project_admin", "项目管理员", "member"],
+		["member", "降级后的普通用户", "owner"],
+	] as const)(
+		"%s（%s）+ 项目角色 %s：FORBIDDEN，不写数据库",
+		async (role, _label, projectRole) => {
+			await expect(renameAs(role, projectRole)).rejects.toMatchObject({
+				code: "FORBIDDEN",
+			});
+			expect(mocks.updateProject).not.toHaveBeenCalled();
+		}
+	);
 });

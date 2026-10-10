@@ -1,5 +1,6 @@
 import type { UserProjectMembership } from "@automationstack/db/repositories/users-with-projects-core";
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
+import type { UserRole } from "@automationstack/db/schema/users";
 import { Button } from "@automationstack/ui/components/button";
 import {
 	Select,
@@ -12,26 +13,26 @@ import { XIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import type { useUserProjectActions } from "@/components/platform-users/use-user-project-actions";
-import { PROJECT_ROLE_OPTIONS } from "@/components/project-members/project-member-meta";
-
-interface MembershipRowProps {
-	disabled: boolean;
-	membership: UserProjectMembership;
-	onRemove: (projectId: string) => void;
-	onSetRole: (projectId: string, role: ProjectRole) => void;
-}
+import { projectRoleOptionsFor } from "@/components/project-members/project-member-meta";
 
 interface MembershipRoleSelectProps {
 	disabled: boolean;
 	membership: UserProjectMembership;
 	onSetRole: (projectId: string, role: ProjectRole) => void;
+	platformRole: UserRole;
+}
+
+interface MembershipRowProps extends MembershipRoleSelectProps {
+	onRemove: (projectId: string) => void;
 }
 
 function MembershipRoleSelect({
 	disabled,
 	membership,
 	onSetRole,
+	platformRole,
 }: MembershipRoleSelectProps) {
+	const options = projectRoleOptionsFor(platformRole);
 	const handleRoleChange = useCallback(
 		(next: string | null) => {
 			if (next === "member" || next === "owner") {
@@ -43,7 +44,7 @@ function MembershipRoleSelect({
 
 	return (
 		<Select
-			items={PROJECT_ROLE_OPTIONS}
+			items={options}
 			onValueChange={handleRoleChange}
 			value={membership.role}
 		>
@@ -55,8 +56,12 @@ function MembershipRoleSelect({
 				<SelectValue />
 			</SelectTrigger>
 			<SelectContent>
-				{PROJECT_ROLE_OPTIONS.map((option) => (
-					<SelectItem key={option.value} value={option.value}>
+				{options.map((option) => (
+					<SelectItem
+						disabled={option.disabled}
+						key={option.value}
+						value={option.value}
+					>
 						{option.label}
 					</SelectItem>
 				))}
@@ -70,6 +75,7 @@ function MembershipRow({
 	membership,
 	onRemove,
 	onSetRole,
+	platformRole,
 }: MembershipRowProps) {
 	const handleRemove = useCallback(
 		() => onRemove(membership.id),
@@ -85,6 +91,7 @@ function MembershipRow({
 				disabled={disabled}
 				membership={membership}
 				onSetRole={onSetRole}
+				platformRole={platformRole}
 			/>
 			<Button
 				aria-label={`把他移出「${membership.name}」`}
@@ -102,9 +109,15 @@ function MembershipRow({
 interface MembershipListProps {
 	actions: ReturnType<typeof useUserProjectActions>;
 	memberships: readonly UserProjectMembership[];
+	/** 这个用户的平台角色。普通用户不能设为项目拥有者。 */
+	platformRole: UserRole;
 }
 
-export function MembershipList({ actions, memberships }: MembershipListProps) {
+export function MembershipList({
+	actions,
+	memberships,
+	platformRole,
+}: MembershipListProps) {
 	if (memberships.length === 0) {
 		return (
 			<p className="text-muted-foreground text-sm">
@@ -121,6 +134,7 @@ export function MembershipList({ actions, memberships }: MembershipListProps) {
 					membership={membership}
 					onRemove={actions.remove}
 					onSetRole={actions.setRole}
+					platformRole={platformRole}
 				/>
 			))}
 		</ul>
