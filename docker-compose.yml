@@ -65,6 +65,9 @@ services:
       - path: apps/server/.env
         required: true
     environment:
+      # 镜像是生产构建，NODE_ENV 固定为 production。
+      # .env 里的空值会把它改成 development，生产检查会被跳过。
+      NODE_ENV: production
       # 以下两项覆盖 env_file 里的同名值（compose 中 environment 优先级高于 env_file）。
       #
       # 部署到真实域名时 CORS_ORIGIN 要改成「浏览器访问 web 的那个 origin」，
@@ -172,6 +175,57 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  # 本地调试 Casdoor 认证模式用的 Casdoor（plan 021 D10、T14）。
+  # 只在 `--profile casdoor` 时启动，默认的 `docker compose up` 和 `make up` 不启动它。
+  # 启动和停止用 `make casdoor-up` / `make casdoor-down`。
+  # 配置与生产相同（k8s-gitops `casdoor/k8s/configmap.yaml`），只有地址和口令不同。
+  casdoor:
+    profiles: ["casdoor"]
+    # 版本与生产相同。生产升级时这里一起改。
+    image: casbin/casdoor:4.11.0
+    container_name: automationstack-casdoor
+    environment:
+      # Casdoor 的每个 app.conf 键都可以用同名环境变量覆盖，键名区分大小写。
+      # 不要设置 BEEGO_RUNMODE：它改的是配置文件名，设置后 app.conf 的默认值全部丢失。
+      driverName: postgres
+      # postgres 连接的库名来自 DSN 中的 dbname，dbName 只用于 -createDatabase。
+      # 与生产相同，不使用 -createDatabase。库和角色由 make casdoor-up 创建。
+      dbName: casdoor
+      # 使用专用角色 casdoor，它只能访问 casdoor 库，不能访问 automationstack 库。
+      # 默认口令只用于本地开发。Postgres 只监听 127.0.0.1。
+      dataSourceName: user=casdoor password=${CASDOOR_DB_PASSWORD:-casdoor-dev-only} host=postgres port=5432 sslmode=disable dbname=casdoor
+      # origin 必须固定为浏览器使用的地址。为空时，发现文档和 ID token 的 iss
+      # 来自请求的 Host 头，服务端用其他地址访问时 iss 会不同（plan 021 D11）。
+      origin: http://localhost:8100
+      originFrontend: ""
+      runmode: prod
+      logConfig: '{"adapter":"console"}'
+      httpport: "8000"
+      isCloudIntranet: "false"
+      showGithubCorner: "false"
+      defaultLanguage: zh
+    ports:
+      # 宿主机端口 8100：8000 常被其他项目的 Casdoor 占用。
+      # 只发布到 127.0.0.1，原因与 postgres 相同。
+      - "127.0.0.1:8100:8000"
+    extra_hosts:
+      # Linux 上的 Docker 没有默认的 host.docker.internal。
+      # webhook 调试时 Casdoor 用这个名字访问宿主机上的 server（:3000）。
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # /api/health 不访问数据库，与生产的 livenessProbe 相同。
+      # 数据库连接失败时 Casdoor 进程直接退出，不需要探针发现。
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # 第一次启动要创建全部表。
+      start_period: 60s
     restart: unless-stopped
 
 volumes:

@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import { projectMembers } from "../schema/project-members";
@@ -10,6 +10,7 @@ import {
 } from "./users-with-projects-core";
 
 export interface CreateUserInput {
+	mustChangePassword?: boolean;
 	passwordHash: string;
 	role?: UserRole;
 	username: string;
@@ -26,9 +27,11 @@ export async function listUsersWithProjects(): Promise<UserWithProjects[]> {
 			projectName: projects.name,
 			projectRole: projectMembers.role,
 			user: {
+				authSource: users.authSource,
 				createdAt: users.createdAt,
 				disabledAt: users.disabledAt,
 				id: users.id,
+				mustChangePassword: users.mustChangePassword,
 				role: users.role,
 				username: users.username,
 			},
@@ -60,6 +63,7 @@ export async function createUser(input: CreateUserInput): Promise<User | null> {
 	const [row] = await db
 		.insert(users)
 		.values({
+			mustChangePassword: input.mustChangePassword ?? false,
 			passwordHash: input.passwordHash,
 			role: input.role ?? "member",
 			username: input.username,
@@ -69,13 +73,25 @@ export async function createUser(input: CreateUserInput): Promise<User | null> {
 	return row ?? null;
 }
 
+export async function getUserByExternalId(
+	externalId: string
+): Promise<User | null> {
+	const [row] = await db
+		.select()
+		.from(users)
+		.where(eq(users.externalId, externalId))
+		.limit(1);
+	return row ?? null;
+}
+
 export async function updateUserPasswordHash(
 	id: string,
-	passwordHash: string
+	passwordHash: string,
+	mustChangePassword: boolean
 ): Promise<boolean> {
 	const rows = await db
 		.update(users)
-		.set({ passwordHash })
+		.set({ mustChangePassword, passwordHash })
 		.where(eq(users.id, id))
 		.returning({ id: users.id });
 	return rows.length > 0;
@@ -91,6 +107,18 @@ export async function updateUserRole(
 		.where(eq(users.id, id))
 		.returning();
 	return row ?? null;
+}
+
+export async function setMustChangePassword(
+	id: string,
+	mustChangePassword: boolean
+): Promise<boolean> {
+	const rows = await db
+		.update(users)
+		.set({ mustChangePassword })
+		.where(eq(users.id, id))
+		.returning({ id: users.id });
+	return rows.length > 0;
 }
 
 export async function setUserDisabled(
@@ -110,5 +138,20 @@ export async function countActiveAdmins(): Promise<number> {
 		.select({ value: sql<number>`count(*)::int` })
 		.from(users)
 		.where(sql`${users.role} = 'admin' and ${users.disabledAt} is null`);
+	return row?.value ?? 0;
+}
+
+export async function countLocalLoginAdmins(): Promise<number> {
+	const [row] = await db
+		.select({ value: sql<number>`count(*)::int` })
+		.from(users)
+		.where(
+			and(
+				eq(users.role, "admin"),
+				isNull(users.disabledAt),
+				isNotNull(users.passwordHash),
+				eq(users.authSource, "local")
+			)
+		);
 	return row?.value ?? 0;
 }

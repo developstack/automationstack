@@ -7,9 +7,11 @@ import {
 } from "./users-with-projects-core";
 
 const makeUser = (id: string, username: string): PublicUser => ({
+	authSource: "local",
 	createdAt: new Date("2026-01-01T00:00:00Z"),
 	disabledAt: null,
 	id,
+	mustChangePassword: false,
 	role: "member",
 	username,
 });

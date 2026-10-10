@@ -10,10 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChangePasswordRouteImport } from './routes/change-password'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsProjectIdRouteRouteImport } from './routes/projects/$projectId/route'
+import { Route as SettingsAuthRouteImport } from './routes/settings/auth'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
 import { Route as ProjectsProjectIdMindmapRouteImport } from './routes/projects/$projectId/mindmap'
 import { Route as ProjectsProjectIdOverviewRouteImport } from './routes/projects/$projectId/overview'
@@ -26,6 +28,11 @@ import { Route as ProjectsProjectIdTestRunsRunIdReportRouteImport } from './rout
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChangePasswordRoute = ChangePasswordRouteImport.update({
+  id: '/change-password',
+  path: '/change-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -46,6 +53,11 @@ const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
 const ProjectsProjectIdRouteRoute = ProjectsProjectIdRouteRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsAuthRoute = SettingsAuthRouteImport.update({
+  id: '/settings/auth',
+  path: '/settings/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
@@ -97,9 +109,11 @@ const ProjectsProjectIdTestRunsRunIdReportRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/users': typeof UsersRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
+  '/settings/auth': typeof SettingsAuthRoute
   '/projects/': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
@@ -112,8 +126,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/users': typeof UsersRoute
+  '/settings/auth': typeof SettingsAuthRoute
   '/projects': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
@@ -127,9 +143,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/users': typeof UsersRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteRouteWithChildren
+  '/settings/auth': typeof SettingsAuthRoute
   '/projects/': typeof ProjectsIndexRoute
   '/projects/$projectId/mindmap': typeof ProjectsProjectIdMindmapRoute
   '/projects/$projectId/overview': typeof ProjectsProjectIdOverviewRoute
@@ -144,9 +162,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/change-password'
     | '/login'
     | '/users'
     | '/projects/$projectId'
+    | '/settings/auth'
     | '/projects/'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
@@ -159,8 +179,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/change-password'
     | '/login'
     | '/users'
+    | '/settings/auth'
     | '/projects'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
@@ -173,9 +195,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/change-password'
     | '/login'
     | '/users'
     | '/projects/$projectId'
+    | '/settings/auth'
     | '/projects/'
     | '/projects/$projectId/mindmap'
     | '/projects/$projectId/overview'
@@ -189,9 +213,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
   UsersRoute: typeof UsersRoute
   ProjectsProjectIdRouteRoute: typeof ProjectsProjectIdRouteRouteWithChildren
+  SettingsAuthRoute: typeof SettingsAuthRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
 }
 
@@ -202,6 +228,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/change-password': {
+      id: '/change-password'
+      path: '/change-password'
+      fullPath: '/change-password'
+      preLoaderRoute: typeof ChangePasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -230,6 +263,13 @@ declare module '@tanstack/react-router' {
       path: '/projects/$projectId'
       fullPath: '/projects/$projectId'
       preLoaderRoute: typeof ProjectsProjectIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings/auth': {
+      id: '/settings/auth'
+      path: '/settings/auth'
+      fullPath: '/settings/auth'
+      preLoaderRoute: typeof SettingsAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId/': {
@@ -323,9 +363,11 @@ const ProjectsProjectIdRouteRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
   UsersRoute: UsersRoute,
   ProjectsProjectIdRouteRoute: ProjectsProjectIdRouteRouteWithChildren,
+  SettingsAuthRoute: SettingsAuthRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
 }
 export const routeTree = rootRouteImport

@@ -1,4 +1,3 @@
-import { Button } from "@automationstack/ui/components/button";
 import {
 	Card,
 	CardContent,
@@ -6,116 +5,71 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@automationstack/ui/components/card";
-import { Input } from "@automationstack/ui/components/input";
-import { Label } from "@automationstack/ui/components/label";
-import { useMutation } from "@tanstack/react-query";
-import { useRouter } from "@tanstack/react-router";
-import { type ChangeEvent, type FormEvent, useCallback, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { useResetSessionCache } from "@/components/auth/use-session";
+import { CasdoorLoginButton } from "@/components/auth/casdoor-login-button";
+import { LoginEmergencySection } from "@/components/auth/login-emergency-section";
+import { LoginErrorAlert } from "@/components/auth/login-error-alert";
+import {
+	type LoginMethods,
+	loginDescriptionOf,
+	loginMethodsOf,
+} from "@/components/auth/login-methods";
+import { LoginPasswordForm } from "@/components/auth/login-password-form";
 import { orpc } from "@/utils/orpc";
 
 interface LoginFormProps {
+	/** Casdoor 登录失败时的提示。 */
+	errorMessage: string | null;
+	/** 登录后跳转的本站路径。 */
 	redirectTo?: string;
 }
 
-interface LoginFieldProps {
-	autoComplete: string;
-	id: string;
-	label: string;
-	onChange: (event: ChangeEvent<HTMLInputElement>) => void;
-	type?: string;
-	value: string;
-}
-
-function LoginField({ id, label, type, ...props }: LoginFieldProps) {
-	return (
-		<div className="flex flex-col gap-2">
-			<Label htmlFor={id}>{label}</Label>
-			<Input id={id} required={true} type={type} {...props} />
-		</div>
+function PasswordSection({
+	methods,
+	redirectTo,
+}: {
+	methods: LoginMethods;
+	redirectTo?: string;
+}) {
+	if (!methods.password) {
+		return null;
+	}
+	return methods.emergencyOnly ? (
+		<LoginEmergencySection redirectTo={redirectTo} />
+	) : (
+		<LoginPasswordForm redirectTo={redirectTo} />
 	);
 }
 
-function useLoginForm(redirectTo: string | undefined) {
-	const router = useRouter();
-	const resetCache = useResetSessionCache();
-	const [username, setUsername] = useState("");
-	const [password, setPassword] = useState("");
-
-	const login = useMutation(
-		orpc.auth.login.mutationOptions({
-			meta: { suppressErrorToast: true },
-			onSuccess: async () => {
-				await resetCache();
-				await router.navigate({
-					href: redirectTo ?? "/projects",
-					replace: true,
-				});
-			},
-		})
-	);
-
-	return {
-		error: login.error,
-		isPending: login.isPending,
-		onPassword: useCallback(
-			(event: ChangeEvent<HTMLInputElement>) => setPassword(event.target.value),
-			[]
-		),
-		onSubmit: useCallback(
-			(event: FormEvent<HTMLFormElement>) => {
-				event.preventDefault();
-				login.mutate({ password, username });
-			},
-			[login, password, username]
-		),
-		onUsername: useCallback(
-			(event: ChangeEvent<HTMLInputElement>) => setUsername(event.target.value),
-			[]
-		),
-		password,
-		username,
-	};
-}
-
-export function LoginForm({ redirectTo }: LoginFormProps) {
-	const form = useLoginForm(redirectTo);
+/** 登录页按 auth.config 显示 Casdoor 登录按钮、用户名密码表单，或两者都显示。 */
+export function LoginForm({ errorMessage, redirectTo }: LoginFormProps) {
+	const config = useQuery(orpc.auth.config.queryOptions());
+	const methods = loginMethodsOf(config.data);
+	const showDivider = methods.password && methods.casdoorLoginUrl !== null;
 
 	return (
 		<Card className="w-full max-w-sm">
 			<CardHeader>
-				<CardTitle>登录</CardTitle>
-				<CardDescription>
-					账号由管理员统一创建；忘记密码请联系管理员重置。
-				</CardDescription>
+				<CardTitle>
+					<h1>登录</h1>
+				</CardTitle>
+				<CardDescription>{loginDescriptionOf(methods)}</CardDescription>
 			</CardHeader>
-			<CardContent>
-				<form className="flex flex-col gap-4" onSubmit={form.onSubmit}>
-					<LoginField
-						autoComplete="username"
-						id="login-username"
-						label="用户名"
-						onChange={form.onUsername}
-						value={form.username}
+			<CardContent className="flex flex-col gap-4">
+				{errorMessage === null ? null : (
+					<LoginErrorAlert message={errorMessage} />
+				)}
+				{methods.casdoorLoginUrl === null ? null : (
+					<CasdoorLoginButton
+						redirectTo={redirectTo}
+						url={methods.casdoorLoginUrl}
 					/>
-					<LoginField
-						autoComplete="current-password"
-						id="login-password"
-						label="密码"
-						onChange={form.onPassword}
-						type="password"
-						value={form.password}
-					/>
-					{form.error ? (
-						<p className="text-destructive text-xs" role="alert">
-							{form.error.message}
-						</p>
-					) : null}
-					<Button disabled={form.isPending} type="submit">
-						{form.isPending ? "登录中…" : "登录"}
-					</Button>
-				</form>
+				)}
+				{showDivider ? (
+					<p className="text-center text-muted-foreground text-xs">或</p>
+				) : null}
+				<PasswordSection methods={methods} redirectTo={redirectTo} />
 			</CardContent>
 		</Card>
 	);

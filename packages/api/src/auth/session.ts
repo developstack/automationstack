@@ -1,3 +1,10 @@
+import {
+	fromBase64Url,
+	hmacSha256 as sign,
+	timingSafeEqual,
+	toBase64Url,
+} from "./hmac";
+
 export const SESSION_COOKIE = "automationstack_session";
 
 const MS_PER_SECOND = 1000;
@@ -12,66 +19,10 @@ const SESSION_TTL_MS = SESSION_TTL_SECONDS * MS_PER_SECOND;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-const PLUS_TO_DASH = /\+/g;
-const SLASH_TO_UNDERSCORE = /\//g;
-const TRAILING_EQUALS = /[=]+$/;
-const DASH_TO_PLUS = /-/g;
-const UNDERSCORE_TO_SLASH = /_/g;
-const BASE64_GROUP = 4;
-
 interface SessionPayload {
 	exp: number;
 	iat: number;
 	sub: string;
-}
-
-function toBase64Url(bytes: Uint8Array): string {
-	let binary = "";
-	for (const byte of bytes) {
-		binary += String.fromCharCode(byte);
-	}
-	return btoa(binary)
-		.replace(PLUS_TO_DASH, "-")
-		.replace(SLASH_TO_UNDERSCORE, "_")
-		.replace(TRAILING_EQUALS, "");
-}
-
-function fromBase64Url(value: string): Uint8Array {
-	const padding = (BASE64_GROUP - (value.length % BASE64_GROUP)) % BASE64_GROUP;
-	const base64 = value
-		.replace(DASH_TO_PLUS, "+")
-		.replace(UNDERSCORE_TO_SLASH, "/")
-		.padEnd(value.length + padding, "=");
-	const binary = atob(base64);
-	const bytes = new Uint8Array(binary.length);
-	for (let index = 0; index < binary.length; index += 1) {
-		bytes[index] = binary.charCodeAt(index);
-	}
-	return bytes;
-}
-
-function timingSafeEqual(left: Uint8Array, right: Uint8Array): boolean {
-	if (left.length !== right.length) {
-		return false;
-	}
-	let diff = 0;
-	for (let index = 0; index < left.length; index += 1) {
-		// biome-ignore lint/suspicious/noBitwiseOperators: 恒定时间比较靠异或累积差异
-		diff |= (left[index] ?? 0) ^ (right[index] ?? 0);
-	}
-	return diff === 0;
-}
-
-async function sign(data: string, secret: string): Promise<Uint8Array> {
-	const key = await crypto.subtle.importKey(
-		"raw",
-		encoder.encode(secret),
-		{ hash: "SHA-256", name: "HMAC" },
-		false,
-		["sign"]
-	);
-	const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
-	return new Uint8Array(signature);
 }
 
 export async function createSessionToken(

@@ -5,6 +5,11 @@ import { useEffect } from "react";
 
 import { sessionQueryOptions } from "@/components/auth/use-session";
 import {
+	CHANGE_PASSWORD_PATHNAME,
+	isChangePasswordPathname,
+	setPasswordChangeRequiredHandler,
+} from "@/utils/password-change";
+import {
 	isLoginPathname,
 	LOGIN_PATHNAME,
 	notifySessionExpired,
@@ -31,6 +36,19 @@ async function redirectToLogin(
 	queryClient.clear();
 }
 
+async function redirectToChangePassword(
+	router: AppRouterInstance,
+	queryClient: QueryClient
+): Promise<void> {
+	await queryClient.invalidateQueries({
+		queryKey: sessionQueryOptions().queryKey,
+	});
+	if (isChangePasswordPathname(router.state.location.pathname)) {
+		return;
+	}
+	await router.navigate({ replace: true, to: CHANGE_PASSWORD_PATHNAME });
+}
+
 export type SessionGateState = "ready" | "waiting";
 
 export function useSessionGate(): SessionGateState {
@@ -45,7 +63,13 @@ export function useSessionGate(): SessionGateState {
 		setSessionExpiredHandler(() => {
 			redirectToLogin(router, queryClient).catch(resetSessionExpiredNotice);
 		});
-		return () => setSessionExpiredHandler(null);
+		setPasswordChangeRequiredHandler(() =>
+			redirectToChangePassword(router, queryClient)
+		);
+		return () => {
+			setSessionExpiredHandler(null);
+			setPasswordChangeRequiredHandler(null);
+		};
 	}, [queryClient, router]);
 
 	const expired = session.isSuccess && session.data === null;
