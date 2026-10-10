@@ -71,11 +71,31 @@ const defaultDeps: ReconcileDeps = {
 
 async function readCasdoor(connection: CasdoorConnection, deps: ReconcileDeps) {
 	const client = await deps.clientFor(connection);
-	const [users, role] = await Promise.all([
+	const [users, adminRole, projectAdminRole] = await Promise.all([
 		client.listUsers(connection.organization),
 		client.getRole(connection.organization, connection.adminRole),
+		client.getRole(connection.organization, connection.projectAdminRole),
 	]);
-	return { role, users };
+	return { adminRole, projectAdminRole, users };
+}
+
+type CasdoorSnapshot = Awaited<ReturnType<typeof readCasdoor>>;
+
+/** 角色不存在时写 WARN（T11a、#15）。这时对账不修改任何用户的平台角色。 */
+function warnMissingRoles(
+	connection: CasdoorConnection,
+	remote: CasdoorSnapshot,
+	log: ReconcileLog
+): void {
+	const missing = [
+		remote.adminRole === null ? connection.adminRole : null,
+		remote.projectAdminRole === null ? connection.projectAdminRole : null,
+	].filter((name): name is string => name !== null);
+	for (const name of missing) {
+		log.warn(
+			`Casdoor 对账：组织 ${connection.organization} 中没有角色 ${name}，不修改任何角色。`
+		);
+	}
 }
 
 /**
@@ -94,7 +114,7 @@ export async function reconcileCasdoorUsers(
 		deps.log.warn("Casdoor 对账：连接参数不完整，跳过。");
 		return { kind: "skipped", reason: "not-configured" };
 	}
-	let remote: Awaited<ReturnType<typeof readCasdoor>>;
+	let remote: CasdoorSnapshot;
 	try {
 		remote = await readCasdoor(connection, deps);
 	} catch (error) {
@@ -102,17 +122,14 @@ export async function reconcileCasdoorUsers(
 		deps.log.error(`Casdoor 对账失败，本地数据不变：${message}`);
 		return { kind: "failed", message };
 	}
-	if (remote.role === null) {
-		deps.log.warn(
-			`Casdoor 对账：组织 ${connection.organization} 中没有角色 ${connection.adminRole}，不修改任何角色。`
-		);
-	}
+	warnMissingRoles(connection, remote, deps.log);
 	const plan = planReconcile({
-		adminRole: remote.role,
+		adminRole: remote.adminRole,
 		casdoorUsers: remote.users,
 		localUsers: await deps.listLocalUsers(),
 		now: deps.now(),
 		organization: connection.organization,
+		projectAdminRole: remote.projectAdminRole,
 	});
 	for (const warning of plan.warnings) {
 		deps.log.warn(`Casdoor 对账：${warning}`);

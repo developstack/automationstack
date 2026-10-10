@@ -11,6 +11,8 @@ export interface CasdoorConnection {
 	/** 公网地址。浏览器跳转使用它，ID token 的 iss 必须等于它。 */
 	issuer: string;
 	organization: string;
+	/** 项目管理员角色名（#15）。 */
+	projectAdminRole: string;
 	redirectUrl: string;
 }
 
@@ -18,12 +20,13 @@ export type CasdoorField = keyof CasdoorConnection;
 
 /** 连接参数的中文名称。错误信息使用这些名称。 */
 export const CASDOOR_FIELD_LABELS: Record<CasdoorField, string> = {
-	adminRole: "管理员角色名",
+	adminRole: "平台管理员角色名",
 	clientId: "Client ID",
 	clientSecret: "Client Secret",
 	internalUrl: "集群内地址（CASDOOR_INTERNAL_URL）",
 	issuer: "公网地址",
 	organization: "组织",
+	projectAdminRole: "项目管理员角色名",
 	redirectUrl: "回调地址",
 };
 
@@ -44,6 +47,7 @@ const FIELD_ORDER: readonly CasdoorField[] = [
 	"clientSecret",
 	"redirectUrl",
 	"adminRole",
+	"projectAdminRole",
 ];
 
 export function draftFromSettings(
@@ -56,6 +60,7 @@ export function draftFromSettings(
 		internalUrl: settings.internalUrl,
 		issuer: settings.issuer,
 		organization: settings.organization,
+		projectAdminRole: settings.projectAdminRole,
 		redirectUrl: settings.redirectUrl,
 	};
 }

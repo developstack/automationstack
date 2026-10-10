@@ -41,6 +41,7 @@ const connection: CasdoorConnection = {
 	internalUrl: INTERNAL,
 	issuer: ISSUER,
 	organization: "automationstack",
+	projectAdminRole: "automationstack-project-admin",
 	redirectUrl: "https://testcase.example.com/api/auth/casdoor/callback",
 };
 

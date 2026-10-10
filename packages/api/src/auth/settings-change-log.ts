@@ -10,6 +10,7 @@ const PLAIN_FIELDS = [
 	"clientId",
 	"redirectUrl",
 	"adminRole",
+	"projectAdminRole",
 ] as const;
 
 function secretChange(

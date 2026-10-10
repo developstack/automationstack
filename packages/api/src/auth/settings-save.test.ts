@@ -36,6 +36,7 @@ function input(
 		clientSecret: { kind: "keep" },
 		issuer: "https://casdoor.example.com",
 		organization: "automationstack",
+		projectAdminRole: "automationstack-project-admin",
 		provider: "local",
 		redirectUrl: null,
 		webhookSecret: { kind: "keep" },
@@ -55,6 +56,7 @@ async function storedRow(
 		issuer: "https://casdoor.example.com",
 		lastTestOkAt: new Date("2026-10-01T00:00:00Z"),
 		organization: "automationstack",
+		projectAdminRole: "automationstack-project-admin",
 		provider: "local",
 		redirectUrl: null,
 		updatedAt: new Date("2026-10-01T00:00:00Z"),
@@ -194,6 +196,18 @@ describe("saveEffectiveAuthSettings：修改记录", () => {
 		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
 		await saveEffectiveAuthSettings(input({ adminRole: "other" }), ACTOR);
 		expect(savedRow().values.lastTestOkAt).toBeNull();
+	});
+
+	it("修改项目管理员角色名：写入新值，修改记录只有字段名（#15）", async () => {
+		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
+		await saveEffectiveAuthSettings(
+			input({ projectAdminRole: "other-project-admin" }),
+			ACTOR
+		);
+		expect(savedRow().values.projectAdminRole).toBe("other-project-admin");
+		expect(savedRow().changedFields).toEqual([
+			{ change: "changed", field: "projectAdminRole" },
+		]);
 	});
 
 	it("清空一个本来没有的密钥：不记录", async () => {

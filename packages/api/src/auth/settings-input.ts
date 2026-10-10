@@ -40,6 +40,7 @@ export const saveAuthSettingsSchema = z.object({
 	),
 	issuer: optionalText(MAX_URL_LENGTH),
 	organization: optionalText(MAX_NAME_LENGTH),
+	projectAdminRole: optionalText(MAX_NAME_LENGTH),
 	provider: z.enum(["local", "casdoor"]),
 	redirectUrl: optionalText(MAX_URL_LENGTH),
 	webhookSecret: secretUpdateSchema(

@@ -1,0 +1,1 @@
+ALTER TABLE "auth_settings" ADD COLUMN "project_admin_role" text DEFAULT 'automationstack-project-admin';

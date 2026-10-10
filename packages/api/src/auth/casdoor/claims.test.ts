@@ -4,9 +4,19 @@ import { identityFromClaims, platformRoleFromRoles } from "./claims";
 
 const ORG = "automationstack";
 const ADMIN_ROLE = "automationstack-admin";
-const options = { adminRole: ADMIN_ROLE, organization: ORG };
+const PROJECT_ADMIN_ROLE = "automationstack-project-admin";
+const options = {
+	adminRole: ADMIN_ROLE,
+	organization: ORG,
+	projectAdminRole: PROJECT_ADMIN_ROLE,
+};
 
 const adminRole = { isEnabled: true, name: ADMIN_ROLE, owner: ORG };
+const projectAdminRole = {
+	isEnabled: true,
+	name: PROJECT_ADMIN_ROLE,
+	owner: ORG,
+};
 
 function claims(overrides: Record<string, unknown> = {}) {
 	return {
@@ -53,6 +63,60 @@ describe("platformRoleFromRoles（D4、§11.10 第 5 项）", () => {
 
 	it("字符串形式的角色名（userinfo 的格式）不被接受：member", () => {
 		expect(platformRoleFromRoles([ADMIN_ROLE], options)).toBe("member");
+		expect(platformRoleFromRoles([PROJECT_ADMIN_ROLE], options)).toBe("member");
+	});
+});
+
+describe("platformRoleFromRoles：项目管理员角色（#15）", () => {
+	it("只有已启用的项目管理员角色：project_admin", () => {
+		expect(platformRoleFromRoles([projectAdminRole], options)).toBe(
+			"project_admin"
+		);
+	});
+
+	it("同时有两个角色：平台管理员优先，与顺序无关", () => {
+		expect(platformRoleFromRoles([projectAdminRole, adminRole], options)).toBe(
+			"admin"
+		);
+		expect(platformRoleFromRoles([adminRole, projectAdminRole], options)).toBe(
+			"admin"
+		);
+	});
+
+	it("项目管理员角色被关闭：member", () => {
+		expect(
+			platformRoleFromRoles(
+				[{ ...projectAdminRole, isEnabled: false }],
+				options
+			)
+		).toBe("member");
+	});
+
+	it("平台管理员角色被关闭、项目管理员角色已启用：project_admin", () => {
+		expect(
+			platformRoleFromRoles(
+				[{ ...adminRole, isEnabled: false }, projectAdminRole],
+				options
+			)
+		).toBe("project_admin");
+	});
+
+	it("其他组织的项目管理员角色：member", () => {
+		expect(
+			platformRoleFromRoles(
+				[{ ...projectAdminRole, owner: "built-in" }],
+				options
+			)
+		).toBe("member");
+	});
+
+	it("其他组织的平台管理员角色不覆盖本组织的项目管理员角色：project_admin", () => {
+		expect(
+			platformRoleFromRoles(
+				[{ ...adminRole, owner: "built-in" }, projectAdminRole],
+				options
+			)
+		).toBe("project_admin");
 	});
 });
 
@@ -64,6 +128,17 @@ describe("identityFromClaims（§11.9 T10）", () => {
 				role: "admin",
 				username: "alice",
 			},
+			kind: "ok",
+		});
+	});
+
+	it("项目管理员角色：登录成功，角色为 project_admin", () => {
+		const result = identityFromClaims(
+			claims({ roles: [projectAdminRole] }),
+			options
+		);
+		expect(result).toMatchObject({
+			identity: { role: "project_admin" },
 			kind: "ok",
 		});
 	});

@@ -27,6 +27,7 @@ const view: AuthSettingsView = {
 	issuer: "https://casdoor.example.com",
 	lastTestOkAt: null,
 	organization: "automationstack",
+	projectAdminRole: "automationstack-project-admin",
 	provider: "local",
 	redirectUrl: null,
 	secretStorageAvailable: true,
@@ -47,6 +48,14 @@ describe("initialAuthSettingsValues", () => {
 		expect(values().redirectUrl).toBe(
 			"https://testcase.example.com/api/auth/casdoor/callback"
 		);
+	});
+
+	it("项目管理员角色名取页面数据；没有值时为空（#15）", () => {
+		expect(values().projectAdminRole).toBe("automationstack-project-admin");
+		expect(
+			initialAuthSettingsValues({ ...view, projectAdminRole: null }, SERVER_URL)
+				.projectAdminRole
+		).toBe("");
 	});
 
 	it("密钥输入框总是空的", () => {
@@ -123,6 +132,17 @@ describe("toAuthSettingsSaveInput", () => {
 		expect(
 			toAuthSettingsSaveInput(values({ adminRole: "  " })).adminRole
 		).toBeNull();
+		expect(
+			toAuthSettingsSaveInput(values({ projectAdminRole: " " }))
+				.projectAdminRole
+		).toBeNull();
+	});
+
+	it("项目管理员角色名去掉首尾空白后保存（#15）", () => {
+		expect(
+			toAuthSettingsSaveInput(values({ projectAdminRole: " pm-role " }))
+				.projectAdminRole
+		).toBe("pm-role");
 	});
 });
 

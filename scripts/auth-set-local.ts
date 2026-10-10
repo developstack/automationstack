@@ -21,6 +21,7 @@ async function main(): Promise<void> {
 			clientId: env.CASDOOR_CLIENT_ID ?? null,
 			issuer: env.CASDOOR_ISSUER ?? null,
 			organization: env.CASDOOR_ORGANIZATION ?? null,
+			projectAdminRole: env.CASDOOR_PROJECT_ADMIN_ROLE,
 			redirectUrl: env.CASDOOR_REDIRECT_URL ?? null,
 		},
 		envProvider: env.AUTH_PROVIDER,

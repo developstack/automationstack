@@ -13,6 +13,7 @@ const envDefaults = {
 	clientId: "client-id",
 	issuer: "https://casdoor.example.com",
 	organization: "automationstack",
+	projectAdminRole: "automationstack-project-admin",
 	redirectUrl: "https://testcase.example.com/api/auth/casdoor/callback",
 };
 

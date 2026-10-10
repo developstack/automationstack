@@ -5,7 +5,7 @@ import type {
 	CasdoorRoleRecord,
 	CasdoorUserRecord,
 } from "./management-records";
-import { adminIdsFromRole, planReconcile } from "./reconcile-plan";
+import { memberIdsFromRole, planReconcile } from "./reconcile-plan";
 
 const ORG = "automationstack";
 const NOW = new Date("2026-10-09T00:00:00Z");
@@ -38,14 +38,23 @@ function local(
 	};
 }
 
-function role(users: string[], isEnabled = true): CasdoorRoleRecord {
-	return { isEnabled, name: "automationstack-admin", owner: ORG, users };
+function role(
+	users: string[],
+	isEnabled = true,
+	name = "automationstack-admin"
+): CasdoorRoleRecord {
+	return { isEnabled, name, owner: ORG, users };
+}
+
+function projectRole(users: string[], isEnabled = true): CasdoorRoleRecord {
+	return role(users, isEnabled, "automationstack-project-admin");
 }
 
 function plan(input: {
 	adminRole?: CasdoorRoleRecord | null;
 	casdoorUsers: CasdoorUserRecord[];
 	localUsers: CasdoorShadowUser[];
+	projectAdminRole?: CasdoorRoleRecord | null;
 }) {
 	return planReconcile({
 		adminRole: input.adminRole === undefined ? role([]) : input.adminRole,
@@ -53,20 +62,24 @@ function plan(input: {
 		localUsers: input.localUsers,
 		now: NOW,
 		organization: ORG,
+		projectAdminRole:
+			input.projectAdminRole === undefined
+				? projectRole([])
+				: input.projectAdminRole,
 	});
 }
 
-describe("adminIdsFromRole（T11）", () => {
+describe("memberIdsFromRole（T11）", () => {
 	const users = [remote("alice"), remote("bob")];
 
 	it("「组织/用户名」按 Casdoor 用户列表转换为 id", () => {
-		expect(adminIdsFromRole(role([`${ORG}/alice`]), users, ORG).ids).toEqual(
+		expect(memberIdsFromRole(role([`${ORG}/alice`]), users, ORG).ids).toEqual(
 			new Set(["id-alice"])
 		);
 	});
 
 	it("其他组织的成员和通配符：丢弃并写 WARN", () => {
-		const result = adminIdsFromRole(
+		const result = memberIdsFromRole(
 			role(["built-in/alice", `${ORG}/*`, `${ORG}/ghost`, "noslash"]),
 			users,
 			ORG
@@ -75,9 +88,9 @@ describe("adminIdsFromRole（T11）", () => {
 		expect(result.warnings).toHaveLength(4);
 	});
 
-	it("角色被关闭：没有管理员", () => {
+	it("角色被关闭：没有成员", () => {
 		expect(
-			adminIdsFromRole(role([`${ORG}/alice`], false), users, ORG).ids.size
+			memberIdsFromRole(role([`${ORG}/alice`], false), users, ORG).ids.size
 		).toBe(0);
 	});
 });
@@ -167,5 +180,91 @@ describe("planReconcile（T11a）", () => {
 			localUsers: [local("alice", { role: "admin" })],
 		});
 		expect(result.changes).toEqual([]);
+	});
+});
+
+describe("planReconcile：项目管理员角色（#15）", () => {
+	const users = [remote("alice"), remote("bob"), remote("carol")];
+
+	it("只在项目管理员角色中：project_admin；两个角色都没有：member", () => {
+		const result = plan({
+			casdoorUsers: users,
+			localUsers: [local("alice"), local("bob", { role: "project_admin" })],
+			projectAdminRole: projectRole([`${ORG}/alice`]),
+		});
+		expect(result.changes).toEqual([
+			{
+				changes: { role: "project_admin" },
+				id: "local-alice",
+				username: "alice",
+			},
+			{ changes: { role: "member" }, id: "local-bob", username: "bob" },
+		]);
+	});
+
+	it("同时在两个角色中：平台管理员优先", () => {
+		const result = plan({
+			adminRole: role([`${ORG}/alice`]),
+			casdoorUsers: users,
+			localUsers: [local("alice", { role: "project_admin" })],
+			projectAdminRole: projectRole([`${ORG}/alice`]),
+		});
+		expect(result.changes).toEqual([
+			{ changes: { role: "admin" }, id: "local-alice", username: "alice" },
+		]);
+	});
+
+	it("项目管理员角色被关闭：成员变为 member，有平台管理员角色的成员仍是 admin", () => {
+		const result = plan({
+			adminRole: role([`${ORG}/carol`]),
+			casdoorUsers: users,
+			localUsers: [
+				local("alice", { role: "project_admin" }),
+				local("carol", { role: "admin" }),
+			],
+			projectAdminRole: projectRole([`${ORG}/alice`, `${ORG}/carol`], false),
+		});
+		expect(result.changes).toEqual([
+			{ changes: { role: "member" }, id: "local-alice", username: "alice" },
+		]);
+	});
+
+	it("平台管理员角色被关闭：项目管理员角色的成员是 project_admin", () => {
+		const result = plan({
+			adminRole: role([`${ORG}/alice`], false),
+			casdoorUsers: users,
+			localUsers: [local("alice", { role: "admin" })],
+			projectAdminRole: projectRole([`${ORG}/alice`]),
+		});
+		expect(result.changes).toEqual([
+			{
+				changes: { role: "project_admin" },
+				id: "local-alice",
+				username: "alice",
+			},
+		]);
+	});
+
+	it("项目管理员角色不存在（null）：不修改任何角色，仍同步禁用状态", () => {
+		const result = plan({
+			adminRole: role([`${ORG}/alice`]),
+			casdoorUsers: [remote("alice"), remote("bob", { isForbidden: true })],
+			localUsers: [local("alice"), local("bob", { role: "project_admin" })],
+			projectAdminRole: null,
+		});
+		expect(result.changes).toEqual([
+			{ changes: { disabledAt: NOW }, id: "local-bob", username: "bob" },
+		]);
+	});
+
+	it("其他组织的项目管理员角色成员：丢弃并写 WARN，不授予 project_admin", () => {
+		const result = plan({
+			casdoorUsers: users,
+			localUsers: [local("alice")],
+			projectAdminRole: projectRole(["built-in/alice"]),
+		});
+		expect(result.changes).toEqual([]);
+		expect(result.warnings).toHaveLength(1);
+		expect(result.warnings[0]).toContain("automationstack-project-admin");
 	});
 });

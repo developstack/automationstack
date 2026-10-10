@@ -52,6 +52,11 @@
   - **平台角色（admin / member）的来源改为 Casdoor**，通过配置的角色名映射（`CASDOOR_ADMIN_ROLE`）。登录时、webhook 事件到达时和定期对账时，同步到本地 `users.role`。
   - **同步必须覆盖，不能只增加**：`role = roles 中有 CASDOOR_ADMIN_ROLE ? admin : member`。`roles` 缺失或为空时，结果是 `member`。（aidevstack `353b16e` 修复了「Casdoor 移除角色后本地仍是管理员」的问题。）
   - 只接受所属组织等于 `CASDOOR_ORGANIZATION` 的角色。角色名使用本系统专用的名字，例如 `automationstack-admin`，不与 aidevstack 的 `platform-admin` 共用。
+  - **#15 补充：项目管理员角色**（`CASDOOR_PROJECT_ADMIN_ROLE`，默认 `automationstack-project-admin`）。平台按顺序取第一个满足的结果：
+    1. 有已启用的平台管理员角色：`admin`。
+    2. 有已启用的项目管理员角色：`project_admin`。
+    3. 其他情况：`member`。
+  - 两个角色都只计算所属组织等于 `CASDOOR_ORGANIZATION` 的角色。
   - `auth_source = local` 的用户不参与同步，所以应急管理员不受 Casdoor 影响。
   - **项目级权限（project owner / member）保留在本地。** 原因见评估文档 §3.3：`requireProjectMember` 是高频路径，改为远程调用会改变延迟和故障模式。
   - API token、MCP、ingest、WebSocket 不改。它们都通过本地 `users` 行解析身份。
@@ -129,6 +134,7 @@
 | `CASDOOR_CLIENT_SECRET` | `casdoor` | 无 | Casdoor 应用的 client secret。 |
 | `CASDOOR_REDIRECT_URL` | `casdoor` | 无 | OIDC 回调地址，指向 `/api/auth/casdoor/callback`。必须与 Casdoor 应用中的配置逐字相同。 |
 | `CASDOOR_ADMIN_ROLE` | `casdoor` | 无 | Casdoor 中的角色名。拥有这个角色的用户映射为平台 admin。 |
+| `CASDOOR_PROJECT_ADMIN_ROLE` | `casdoor` | `automationstack-project-admin` | Casdoor 中的项目管理员角色名（#15）。拥有这个角色、没有平台管理员角色的用户映射为 `project_admin`。 |
 | `CASDOOR_WEBHOOK_SECRET` | `casdoor` | 无 | webhook 共享密钥，至少 32 位。 |
 
 变量名与 aidevstack 的现有配置一致（`CASDOOR_ISSUER`、`CASDOOR_INTERNAL_URL`、`CASDOOR_REDIRECT_URL`、`CASDOOR_ORGANIZATION`），以便运维人员使用同一套检查清单。
@@ -234,6 +240,9 @@
 - 新增 pg-boss 定期任务，默认每 10 分钟运行一次。
 - 分页读取组织中的全部用户（检查 `isForbidden` 和已删除的用户）和 `CASDOOR_ADMIN_ROLE` 的成员，按 D4 和 D6 同步本地的 `role` 和 `disabled_at`。
 - 读取失败时只写日志，不修改本地数据。
+- #15 补充：对账也读取 `CASDOOR_PROJECT_ADMIN_ROLE` 的成员，按 D4 的优先级计算平台角色。
+  - 角色在 Casdoor 中被禁用时，对账认为它没有成员。
+  - 任何一个角色在 Casdoor 中不存在时，对账不修改任何用户的平台角色，并写一条 WARN。对账仍然同步 `disabled_at`。
 - 管理 API 的凭据放在 HTTP Basic 头中。错误信息中不得包含 client secret。
 
 #### T12 `packages/api` + `apps/web`：用户管理页面的限制
@@ -428,7 +437,8 @@ automationstack 的生产部署：
 | Client ID | 是 | `CASDOOR_CLIENT_ID`，作为默认值 | |
 | Client Secret | 是，只写 | `CASDOOR_CLIENT_SECRET`，作为默认值 | 加密保存。 |
 | 回调地址 | 是 | `CASDOOR_REDIRECT_URL`，作为默认值 | 必须以 `/api/auth/casdoor/callback` 结尾。页面按当前域名预填。 |
-| 管理员角色名 | 是 | `CASDOOR_ADMIN_ROLE`，作为默认值 | |
+| 平台管理员角色名 | 是 | `CASDOOR_ADMIN_ROLE`，作为默认值 | |
+| 项目管理员角色名 | 是 | `CASDOOR_PROJECT_ADMIN_ROLE`，作为默认值 | #15。环境变量的默认值是 `automationstack-project-admin`。 |
 | Webhook 密钥 | 是，只写，可以生成 | `CASDOOR_WEBHOOK_SECRET`，作为默认值 | 加密保存。 |
 | 集群内地址 | 否，只读显示 | `CASDOOR_INTERNAL_URL` | 部署结构。 |
 | 应急登录 | 否，只读显示 | `AUTH_ALLOW_LOCAL_LOGIN` | 页面不能关闭应急登录。 |
@@ -440,6 +450,7 @@ automationstack 的生产部署：
 ### 10.3 存储
 
 - 新表 `auth_settings`，只有一行（`CHECK (id = 1)`）。列：`provider`、`issuer`、`organization`、`client_id`、`client_secret_cipher`、`redirect_url`、`admin_role`、`webhook_secret_cipher`、`last_test_ok_at`、`updated_by`（用户删除时设为 null）、`updated_at`。
+- #15 补充：迁移 0017 新增列 `project_admin_role`，默认值是 `automationstack-project-admin`。已有的行取这个默认值。
 - 密钥用现有的 `packages/db/src/secret-box.ts` 和 `SECRET_ENCRYPTION_KEY` 加密。
 - 没有配置 `SECRET_ENCRYPTION_KEY`，或者密钥无法解密时：页面显示提示，保存返回 `PRECONDITION_FAILED`。做法与 Jira 配置相同（`credential-problem-notice.tsx`）。
 - 密钥字段的更新分三种：保留、设置、清空。只有在 local 模式下才能清空 client secret。

@@ -7,30 +7,51 @@ interface CasdoorRoleClaim {
 	owner?: unknown;
 }
 
-/**
- * 平台角色（D4、§11.10 第 5 项）：roles 中有一个角色的 owner 等于组织、name 等于
- * 管理员角色名、isEnabled === true 时为 admin，否则为 member。
- * roles 缺失、不是数组或为空时为 member。同步总是覆盖，不只增加。
- */
-export function platformRoleFromRoles(
-	roles: unknown,
-	options: { adminRole: string; organization: string }
-): UserRole {
-	if (!Array.isArray(roles)) {
-		return "member";
-	}
-	const isAdmin = roles.some((role: unknown) => {
+/** 计算平台角色需要的配置：组织和两个角色名。 */
+export interface RoleMappingOptions {
+	adminRole: string;
+	organization: string;
+	projectAdminRole: string;
+}
+
+/** roles 中有没有一个角色的 owner 等于组织、name 等于角色名、isEnabled === true。 */
+function hasEnabledRole(
+	roles: readonly unknown[],
+	name: string,
+	organization: string
+): boolean {
+	return roles.some((role: unknown) => {
 		if (typeof role !== "object" || role === null) {
 			return false;
 		}
 		const claim = role as CasdoorRoleClaim;
 		return (
-			claim.owner === options.organization &&
-			claim.name === options.adminRole &&
+			claim.owner === organization &&
+			claim.name === name &&
 			claim.isEnabled === true
 		);
 	});
-	return isAdmin ? "admin" : "member";
+}
+
+/**
+ * 平台角色（D4、§11.10 第 5 项、#15）。只计算 owner 等于组织、isEnabled === true 的角色。
+ * 按顺序取第一个满足的结果：平台管理员角色 → admin；项目管理员角色 → project_admin；
+ * 其他 → member。roles 缺失、不是数组或为空时为 member。同步总是覆盖，不只增加。
+ */
+export function platformRoleFromRoles(
+	roles: unknown,
+	options: RoleMappingOptions
+): UserRole {
+	if (!Array.isArray(roles)) {
+		return "member";
+	}
+	if (hasEnabledRole(roles, options.adminRole, options.organization)) {
+		return "admin";
+	}
+	if (hasEnabledRole(roles, options.projectAdminRole, options.organization)) {
+		return "project_admin";
+	}
+	return "member";
 }
 
 export interface CasdoorIdentity {
@@ -60,7 +81,7 @@ function text(value: unknown): string {
  */
 export function identityFromClaims(
 	claims: Record<string, unknown>,
-	options: { adminRole: string; organization: string }
+	options: RoleMappingOptions
 ): IdentityResult {
 	const externalId = text(claims.sub);
 	if (externalId === "") {

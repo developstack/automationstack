@@ -76,6 +76,7 @@ function casdoorInput(overrides: Record<string, unknown> = {}) {
 		clientSecret: { kind: "set", value: CLIENT_SECRET },
 		issuer: "https://casdoor.example.com",
 		organization: "automationstack",
+		projectAdminRole: "automationstack-project-admin",
 		provider: "casdoor",
 		redirectUrl: "https://testcase.example.com/api/auth/casdoor/callback",
 		webhookSecret: { kind: "keep" },

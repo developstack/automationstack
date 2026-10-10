@@ -3,6 +3,7 @@ import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
 import {
 	CASDOOR_WEBHOOK_SECRET_MIN_LENGTH,
+	DEFAULT_CASDOOR_PROJECT_ADMIN_ROLE,
 	parseOriginUrl,
 } from "./casdoor-rules";
 import { devSecretMessage, findDevSecretsInProduction } from "./dev-secrets";
@@ -96,6 +97,11 @@ export const env = createEnv({
 		CASDOOR_INTERNAL_URL: originUrlSchema("CASDOOR_INTERNAL_URL").optional(),
 		CASDOOR_ISSUER: originUrlSchema("CASDOOR_ISSUER").optional(),
 		CASDOOR_ORGANIZATION: z.string().min(1).optional(),
+		// 项目管理员角色名（#15）。与 CASDOOR_ADMIN_ROLE 的规则相同，只是有默认值。
+		CASDOOR_PROJECT_ADMIN_ROLE: z
+			.string()
+			.min(1)
+			.default(DEFAULT_CASDOOR_PROJECT_ADMIN_ROLE),
 		// Casdoor 定期对账的 cron 表达式（plan 021 T11a）。只在 casdoor 模式下执行。
 		CASDOOR_RECONCILE_CRON: z.string().min(1).default("*/10 * * * *"),
 		CASDOOR_REDIRECT_URL: z.url().optional(),
