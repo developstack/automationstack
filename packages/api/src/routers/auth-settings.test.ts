@@ -84,6 +84,7 @@ function baseInput(): Record<string, unknown> {
 		clientSecret: { kind: "keep" },
 		issuer: "https://casdoor.example.com/",
 		organization: "automationstack",
+		projectAdminRole: "automationstack-project-admin",
 		provider: "local",
 		redirectUrl: "https://testcase.example.com/api/auth/casdoor/callback",
 		webhookSecret: { kind: "keep" },

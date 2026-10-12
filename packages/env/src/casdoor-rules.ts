@@ -3,6 +3,13 @@
 /** webhook 共享密钥至少 32 个字符（plan 021 §3）。 */
 export const CASDOOR_WEBHOOK_SECRET_MIN_LENGTH = 32;
 
+/**
+ * 项目管理员角色名的默认值（#15）。环境变量 CASDOOR_PROJECT_ADMIN_ROLE 可以替换它。
+ * auth_settings.project_admin_role 列的默认值也是它。
+ */
+export const DEFAULT_CASDOOR_PROJECT_ADMIN_ROLE =
+	"automationstack-project-admin";
+
 const HTTP_PROTOCOLS = new Set(["http:", "https:"]);
 
 /**

@@ -10,9 +10,11 @@ export const USERNAME_HINT = `${MIN_USERNAME_LENGTH}–${MAX_USERNAME_LENGTH} �
 
 export const PASSWORD_HINT = `${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} 个字符`;
 
+/** 平台角色的中文名称（CONTEXT.md）。存储值 member 表示普通用户。 */
 export const PLATFORM_ROLE_LABEL: Record<UserRole, string> = {
-	admin: "管理员",
-	member: "成员",
+	admin: "平台管理员",
+	member: "普通用户",
+	project_admin: "项目管理员",
 };
 
 interface RoleOption {
@@ -20,10 +22,19 @@ interface RoleOption {
 	value: UserRole;
 }
 
+/** 按权限从低到高排列。 */
 export const PLATFORM_ROLE_OPTIONS: readonly RoleOption[] = [
 	{ label: PLATFORM_ROLE_LABEL.member, value: "member" },
+	{ label: PLATFORM_ROLE_LABEL.project_admin, value: "project_admin" },
 	{ label: PLATFORM_ROLE_LABEL.admin, value: "admin" },
 ];
+
+/** 用户菜单中可以改成的平台角色：当前角色以外的两个。 */
+export function roleChangeTargets(current: UserRole): UserRole[] {
+	return PLATFORM_ROLE_OPTIONS.map((option) => option.value).filter(
+		(role) => role !== current
+	);
+}
 
 export function validateUsername(value: string): string | null {
 	const trimmed = value.trim();
@@ -50,11 +61,11 @@ export function validatePassword(value: string): string | null {
 }
 
 export function isUserRole(value: string | null): value is UserRole {
-	return value === "admin" || value === "member";
+	return PLATFORM_ROLE_OPTIONS.some((option) => option.value === value);
 }
 
-export type PlatformUserConfirmKind =
-	| "demote"
-	| "disable"
-	| "promote"
-	| "restore";
+/** 用户菜单中需要确认的操作。set-role 把平台角色改成 role。 */
+export type PlatformUserConfirm =
+	| { kind: "disable" }
+	| { kind: "restore" }
+	| { kind: "set-role"; role: UserRole };

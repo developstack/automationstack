@@ -1,5 +1,5 @@
 import type { UserProjectMembership } from "@automationstack/db/repositories/users-with-projects-core";
-import type { PublicUser } from "@automationstack/db/schema/users";
+import type { PublicUser, UserRole } from "@automationstack/db/schema/users";
 import { Button } from "@automationstack/ui/components/button";
 import {
 	DropdownMenu,
@@ -16,17 +16,18 @@ import { useCallback, useState } from "react";
 import { ManageUserProjectsDialog } from "@/components/platform-users/manage-user-projects-dialog";
 import type { PlatformUserActionAccess } from "@/components/platform-users/platform-user-access";
 import { PlatformUserConfirmDialog } from "@/components/platform-users/platform-user-confirm-dialog";
+import { roleChangeTargets } from "@/components/platform-users/platform-user-meta";
+import { PlatformUserRoleChangeItem } from "@/components/platform-users/platform-user-role-change-item";
 import { ResetPasswordDialog } from "@/components/platform-users/reset-password-dialog";
 import { usePlatformUserActions } from "@/components/platform-users/use-platform-user-actions";
 
 interface PlatformUserActionsMenuProps {
 	access: PlatformUserActionAccess;
-	onDemote: () => void;
 	onDisable: () => void;
 	onManageProjects: () => void;
-	onPromote: () => void;
 	onReset: () => void;
 	onRestore: () => void;
+	onSetRole: (role: UserRole) => void;
 	user: PublicUser;
 }
 
@@ -38,11 +39,10 @@ type AccountActionItemsProps = Omit<
 /** 重置密码、修改平台角色、停用和恢复。Casdoor 管理的用户只显示提示，菜单项不可用。 */
 function AccountActionItems({
 	access,
-	onDemote,
 	onDisable,
-	onPromote,
 	onReset,
 	onRestore,
+	onSetRole,
 	user,
 }: AccountActionItemsProps) {
 	const locked = !access.accountActions;
@@ -54,15 +54,14 @@ function AccountActionItems({
 			<DropdownMenuItem disabled={locked} onClick={onReset}>
 				重置密码
 			</DropdownMenuItem>
-			{user.role === "admin" ? (
-				<DropdownMenuItem disabled={locked} onClick={onDemote}>
-					设为成员
-				</DropdownMenuItem>
-			) : (
-				<DropdownMenuItem disabled={locked} onClick={onPromote}>
-					设为管理员
-				</DropdownMenuItem>
-			)}
+			{roleChangeTargets(user.role).map((role) => (
+				<PlatformUserRoleChangeItem
+					disabled={locked}
+					key={role}
+					onSetRole={onSetRole}
+					role={role}
+				/>
+			))}
 			{user.disabledAt === null ? (
 				<DropdownMenuItem
 					disabled={locked}
@@ -128,21 +127,22 @@ export function PlatformUserRowActions({
 	const closeReset = useCallback(() => setResetting(false), []);
 	const openManage = useCallback(() => setManaging(true), []);
 	const closeManage = useCallback(() => setManaging(false), []);
-	const askDemote = useCallback(() => open("demote"), [open]);
-	const askDisable = useCallback(() => open("disable"), [open]);
-	const askPromote = useCallback(() => open("promote"), [open]);
-	const askRestore = useCallback(() => open("restore"), [open]);
+	const askDisable = useCallback(() => open({ kind: "disable" }), [open]);
+	const askRestore = useCallback(() => open({ kind: "restore" }), [open]);
+	const askSetRole = useCallback(
+		(role: UserRole) => open({ kind: "set-role", role }),
+		[open]
+	);
 
 	return (
 		<>
 			<PlatformUserActionsMenu
 				access={access}
-				onDemote={askDemote}
 				onDisable={askDisable}
 				onManageProjects={openManage}
-				onPromote={askPromote}
 				onReset={openReset}
 				onRestore={askRestore}
+				onSetRole={askSetRole}
 				user={user}
 			/>
 			<PlatformUserConfirmDialog actions={actions} user={user} />

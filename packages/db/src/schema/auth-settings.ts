@@ -1,3 +1,4 @@
+import { DEFAULT_CASDOOR_PROJECT_ADMIN_ROLE } from "@automationstack/env/casdoor-rules";
 import { sql } from "drizzle-orm";
 import {
 	check,
@@ -29,6 +30,10 @@ export const authSettings = pgTable(
 		issuer: text("issuer"),
 		lastTestOkAt: timestamp("last_test_ok_at", { withTimezone: true }),
 		organization: text("organization"),
+		/** Casdoor 中的项目管理员角色名（#15）。已有的行取默认值。 */
+		projectAdminRole: text("project_admin_role").default(
+			DEFAULT_CASDOOR_PROJECT_ADMIN_ROLE
+		),
 		provider: authProviderEnum("provider").notNull().default("local"),
 		redirectUrl: text("redirect_url"),
 		updatedAt: timestamp("updated_at", { withTimezone: true })

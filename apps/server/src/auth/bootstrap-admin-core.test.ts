@@ -90,7 +90,7 @@ describe("decideBootstrapAdmin：生产环境", () => {
 		});
 		expect(decision).toHaveProperty(
 			"message",
-			expect.stringContaining("「用户管理」页面把该账号设为管理员")
+			expect.stringContaining("「用户管理」页面把该账号设为平台管理员")
 		);
 		expect(JSON.stringify(decision)).not.toContain("reset-password");
 	});

@@ -16,6 +16,7 @@ export interface AuthSettingsFormValues {
 	clientSecret: string;
 	issuer: string;
 	organization: string;
+	projectAdminRole: string;
 	provider: AuthProviderValue;
 	redirectUrl: string;
 	webhookSecret: string;
@@ -55,6 +56,7 @@ export function initialAuthSettingsValues(
 		clientSecret: "",
 		issuer: view.issuer ?? "",
 		organization: view.organization ?? "",
+		projectAdminRole: view.projectAdminRole ?? "",
 		provider: view.provider,
 		redirectUrl:
 			view.redirectUrl ?? suggestedRedirectUrl(serverUrl, view.callbackPath),
@@ -138,6 +140,7 @@ export function toAuthSettingsSaveInput(
 		clientSecret: secretUpdateOf(values.clientSecret, values.clearClientSecret),
 		issuer: textOrNull(values.issuer),
 		organization: textOrNull(values.organization),
+		projectAdminRole: textOrNull(values.projectAdminRole),
 		provider: values.provider,
 		redirectUrl: textOrNull(values.redirectUrl),
 		webhookSecret: secretUpdateOf(

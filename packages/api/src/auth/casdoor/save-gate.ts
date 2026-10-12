@@ -24,7 +24,12 @@ export const CONNECTION_TEST_FAILED_MESSAGE =
 /** 页面表单中与连接有关的字段。密钥用「保留 / 设置 / 清空」表示。 */
 export type ConnectionForm = Pick<
 	SaveAuthSettingsInput,
-	"adminRole" | "clientId" | "clientSecret" | "issuer" | "organization"
+	| "adminRole"
+	| "clientId"
+	| "clientSecret"
+	| "issuer"
+	| "organization"
+	| "projectAdminRole"
 > & { redirectUrl?: string | null };
 
 function secretValue(
@@ -52,6 +57,7 @@ export function draftFromForm(
 		internalUrl: current.internalUrl,
 		issuer: form.issuer,
 		organization: form.organization,
+		projectAdminRole: form.projectAdminRole,
 		redirectUrl: form.redirectUrl ?? null,
 	};
 }

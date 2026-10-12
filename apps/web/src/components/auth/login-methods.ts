@@ -35,7 +35,7 @@ export function loginDescriptionOf(methods: LoginMethods): string {
 		return "使用 Casdoor 账号登录。Casdoor 不可用时，本地管理员可以用应急登录。";
 	}
 	if (methods.password) {
-		return "账号由管理员统一创建；忘记密码请联系管理员重置。";
+		return "使用平台管理员创建的账号登录。";
 	}
 	if (methods.casdoorLoginUrl !== null) {
 		return "使用 Casdoor 账号登录。";

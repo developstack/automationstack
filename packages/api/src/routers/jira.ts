@@ -29,7 +29,8 @@ const projectIdSchema = z.object({ projectId: z.uuid() });
 
 const ownerOnlyErrors = { FORBIDDEN: {} } as const;
 
-const NOT_PROJECT_OWNER_MESSAGE = "只有项目 owner 能改 Jira 配置";
+const NOT_PROJECT_OWNER_MESSAGE =
+	"只有平台管理员和身为项目 owner 的项目管理员能改 Jira 配置";
 
 export interface JiraConfigView {
 	defaultIssueType: string;

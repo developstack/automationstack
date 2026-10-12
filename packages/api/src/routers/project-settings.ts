@@ -37,7 +37,9 @@ export const projectSettingsRouter = {
 		.use(requireProjectMember)
 		.handler(({ context, errors, input }) => {
 			if (!canAdministerProject(context.projectAccess)) {
-				throw errors.FORBIDDEN({ message: "只有项目 owner 能改项目设置" });
+				throw errors.FORBIDDEN({
+					message: "只有平台管理员和身为项目 owner 的项目管理员能改项目设置",
+				});
 			}
 			return upsertProjectSettings(input.projectId, {
 				autoSubmitAfterCompletedDays: input.autoSubmitAfterCompletedDays,

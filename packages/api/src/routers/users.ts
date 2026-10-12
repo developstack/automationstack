@@ -14,7 +14,11 @@ import {
 	updateUserPasswordHash,
 	updateUserRole,
 } from "@automationstack/db/repositories/users-repository";
-import { toPublicUser, type User } from "@automationstack/db/schema/users";
+import {
+	toPublicUser,
+	type User,
+	userRoleEnum,
+} from "@automationstack/db/schema/users";
 import { z } from "zod";
 
 import {
@@ -31,7 +35,8 @@ const MIN_USERNAME_LENGTH = 2;
 const MAX_USERNAME_LENGTH = 32;
 const USERNAME_PATTERN = /^\S+$/;
 
-const roleSchema = z.enum(["admin", "member"]);
+/** 三个平台角色：平台管理员、项目管理员、普通用户。 */
+const roleSchema = z.enum(userRoleEnum.enumValues);
 
 const usernameSchema = z
 	.string()
@@ -55,8 +60,9 @@ const routerErrors = {
 } as const;
 
 /**
- * 「不能降级或停用最后一个管理员」只计算可以本地登录的管理员（plan 021 T12）。
- * Casdoor 管理员不能用本地密码登录，Casdoor 不可用时不能用来恢复。
+ * 「不能降级或停用最后一个平台管理员」只计算可以本地登录的平台管理员（plan 021 T12）。
+ * Casdoor 平台管理员不能用本地密码登录，Casdoor 不可用时不能用来恢复。
+ * 改成项目管理员或普通用户都算降级。
  */
 async function isLastLocalAdmin(target: User): Promise<boolean> {
 	if (localLoginAdminBlocker(target) !== null) {
@@ -128,7 +134,7 @@ export const usersRouter = {
 				throw errors.BAD_REQUEST({ message: "不能停用自己的账号" });
 			}
 			if (input.disabled && (await isLastLocalAdmin(user))) {
-				throw errors.CONFLICT({ message: "不能停用最后一个管理员" });
+				throw errors.CONFLICT({ message: "不能停用最后一个平台管理员" });
 			}
 			const updated = await setUserDisabled(user.id, input.disabled);
 			if (updated === null) {
@@ -148,10 +154,10 @@ export const usersRouter = {
 				throw errors.FORBIDDEN({ message: CASDOOR_MANAGED_USER_MESSAGE });
 			}
 			if (input.role !== "admin" && user.id === context.user.id) {
-				throw errors.BAD_REQUEST({ message: "不能取消自己的管理员身份" });
+				throw errors.BAD_REQUEST({ message: "不能取消自己的平台管理员身份" });
 			}
 			if (input.role !== "admin" && (await isLastLocalAdmin(user))) {
-				throw errors.CONFLICT({ message: "不能降级最后一个管理员" });
+				throw errors.CONFLICT({ message: "不能降级最后一个平台管理员" });
 			}
 			const updated = await updateUserRole(user.id, input.role);
 			if (updated === null) {

@@ -3,7 +3,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
-import type { PlatformUserConfirmKind } from "@/components/platform-users/platform-user-meta";
+import {
+	PLATFORM_ROLE_LABEL,
+	type PlatformUserConfirm,
+} from "@/components/platform-users/platform-user-meta";
 import { orpc } from "@/utils/orpc";
 
 export interface PlatformUserActions {
@@ -11,8 +14,9 @@ export interface PlatformUserActions {
 	confirm: () => void;
 	error: string | undefined;
 	isPending: boolean;
-	kind: PlatformUserConfirmKind | null;
-	open: (kind: PlatformUserConfirmKind) => void;
+	open: (confirm: PlatformUserConfirm) => void;
+	/** 等待确认的操作。没有打开确认对话框时为 null。 */
+	pending: PlatformUserConfirm | null;
 }
 
 type Settle = (message: string) => void;
@@ -22,9 +26,7 @@ function useRoleMutation(settle: Settle) {
 		orpc.users.setRole.mutationOptions({
 			meta: { suppressErrorToast: true },
 			onSuccess: (user) =>
-				settle(
-					`「${user.username}」已${user.role === "admin" ? "设为管理员" : "设为成员"}`
-				),
+				settle(`「${user.username}」已设为${PLATFORM_ROLE_LABEL[user.role]}`),
 		})
 	);
 }
@@ -43,7 +45,7 @@ function useDisabledMutation(settle: Settle) {
 
 export function usePlatformUserActions(user: PublicUser): PlatformUserActions {
 	const queryClient = useQueryClient();
-	const [kind, setKind] = useState<PlatformUserConfirmKind | null>(null);
+	const [pending, setPending] = useState<PlatformUserConfirm | null>(null);
 
 	const settle = useCallback(
 		(message: string) => {
@@ -51,7 +53,7 @@ export function usePlatformUserActions(user: PublicUser): PlatformUserActions {
 				queryKey: orpc.users.listWithProjects.key(),
 			});
 			toast.success(message);
-			setKind(null);
+			setPending(null);
 		},
 		[queryClient]
 	);
@@ -60,35 +62,35 @@ export function usePlatformUserActions(user: PublicUser): PlatformUserActions {
 	const setDisabled = useDisabledMutation(settle);
 
 	const confirm = useCallback(() => {
-		if (kind === "demote" || kind === "promote") {
-			setRole.mutate({
-				id: user.id,
-				role: kind === "promote" ? "admin" : "member",
-			});
+		if (pending?.kind === "set-role") {
+			setRole.mutate({ id: user.id, role: pending.role });
 			return;
 		}
-		if (kind !== null) {
-			setDisabled.mutate({ disabled: kind === "disable", id: user.id });
+		if (pending !== null) {
+			setDisabled.mutate({
+				disabled: pending.kind === "disable",
+				id: user.id,
+			});
 		}
-	}, [kind, setDisabled, setRole, user.id]);
+	}, [pending, setDisabled, setRole, user.id]);
 
 	const open = useCallback(
-		(next: PlatformUserConfirmKind) => {
+		(next: PlatformUserConfirm) => {
 			setRole.reset();
 			setDisabled.reset();
-			setKind(next);
+			setPending(next);
 		},
 		[setDisabled, setRole]
 	);
 
-	const closeConfirm = useCallback(() => setKind(null), []);
+	const closeConfirm = useCallback(() => setPending(null), []);
 
 	return {
 		closeConfirm,
 		confirm,
 		error: (setRole.error ?? setDisabled.error)?.message,
 		isPending: setRole.isPending || setDisabled.isPending,
-		kind,
 		open,
+		pending,
 	};
 }

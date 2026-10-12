@@ -12,31 +12,47 @@ vi.mock("../settings-store", () => ({ getEffectiveAuthSettings: vi.fn() }));
 
 const ORG = "automationstack";
 const SECRET = "client-secret-value-0001";
+const ADMIN_ROLE = "automationstack-admin";
+const PROJECT_ADMIN_ROLE = "automationstack-project-admin";
 
 const casdoorSettings = effectiveSettings({
-	adminRole: "automationstack-admin",
+	adminRole: ADMIN_ROLE,
 	clientId: "client-id",
 	clientSecret: { present: true, value: SECRET },
 	internalUrl: "http://casdoor.internal:8000",
 	issuer: "https://casdoor.example.com",
 	organization: ORG,
+	projectAdminRole: PROJECT_ADMIN_ROLE,
 	provider: "casdoor",
 	redirectUrl: "https://testcase.example.com/api/auth/casdoor/callback",
 });
 
-function deps(overrides: Partial<ReconcileDeps> = {}): ReconcileDeps {
+/** 每个角色名的成员。没有列出的角色名表示 Casdoor 中没有这个角色。 */
+type RoleMembers = Record<string, string[]>;
+
+const DEFAULT_ROLES: RoleMembers = {
+	[ADMIN_ROLE]: [`${ORG}/alice`],
+	[PROJECT_ADMIN_ROLE]: [],
+};
+
+function getRoleFrom(roles: RoleMembers) {
+	return vi.fn((owner: string, name: string) => {
+		const users = roles[name];
+		return Promise.resolve(
+			users === undefined ? null : { isEnabled: true, name, owner, users }
+		);
+	});
+}
+
+function deps(
+	overrides: Partial<ReconcileDeps> = {},
+	roles: RoleMembers = DEFAULT_ROLES
+): ReconcileDeps {
 	return {
 		applyChange: vi.fn(() => Promise.resolve(null)),
 		clientFor: vi.fn(() =>
 			Promise.resolve({
-				getRole: vi.fn(() =>
-					Promise.resolve({
-						isEnabled: true,
-						name: "automationstack-admin",
-						owner: ORG,
-						users: [`${ORG}/alice`],
-					})
-				),
+				getRole: getRoleFrom(roles),
 				listUsers: vi.fn(() =>
 					Promise.resolve([
 						{
@@ -141,6 +157,28 @@ describe("reconcileCasdoorUsers", () => {
 		await reconcileCasdoorUsers(run);
 		expect(run.log.warn).toHaveBeenCalledWith(
 			expect.stringContaining("不修改任何角色")
+		);
+		for (const [, changes] of vi.mocked(run.applyChange).mock.calls) {
+			expect(changes.role).toBeUndefined();
+		}
+	});
+
+	it("项目管理员角色的成员：同步为 project_admin", async () => {
+		const run = deps(
+			{},
+			{ [ADMIN_ROLE]: [], [PROJECT_ADMIN_ROLE]: [`${ORG}/alice`] }
+		);
+		await reconcileCasdoorUsers(run);
+		expect(run.applyChange).toHaveBeenCalledWith("local-alice", {
+			role: "project_admin",
+		});
+	});
+
+	it("项目管理员角色不存在：写 WARN，不修改任何角色", async () => {
+		const run = deps({}, { [ADMIN_ROLE]: [`${ORG}/alice`] });
+		await reconcileCasdoorUsers(run);
+		expect(run.log.warn).toHaveBeenCalledWith(
+			expect.stringContaining(`没有角色 ${PROJECT_ADMIN_ROLE}，不修改任何角色`)
 		);
 		for (const [, changes] of vi.mocked(run.applyChange).mock.calls) {
 			expect(changes.role).toBeUndefined();

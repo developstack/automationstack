@@ -140,6 +140,7 @@ function ChangePasswordFields({ form }: { form: ChangePasswordFormState }) {
 				id="change-password-current"
 				label="当前密码"
 				onChange={form.field("currentPassword")}
+				revealable={true}
 				type="password"
 				value={form.values.currentPassword}
 			/>
@@ -150,6 +151,7 @@ function ChangePasswordFields({ form }: { form: ChangePasswordFormState }) {
 				id="change-password-new"
 				label="新密码"
 				onChange={form.field("newPassword")}
+				revealable={true}
 				type="password"
 				value={form.values.newPassword}
 			/>
@@ -160,6 +162,7 @@ function ChangePasswordFields({ form }: { form: ChangePasswordFormState }) {
 				id="change-password-confirm"
 				label="确认新密码"
 				onChange={form.field("confirmPassword")}
+				revealable={true}
 				type="password"
 				value={form.values.confirmPassword}
 			/>

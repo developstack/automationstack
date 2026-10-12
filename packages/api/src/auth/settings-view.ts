@@ -24,6 +24,7 @@ export interface AuthSettingsView {
 	issuer: string | null;
 	lastTestOkAt: Date | null;
 	organization: string | null;
+	projectAdminRole: string | null;
 	provider: AuthProviderId;
 	redirectUrl: string | null;
 	secretStorageAvailable: boolean;
@@ -57,6 +58,7 @@ export async function toAuthSettingsView(
 		issuer: settings.issuer,
 		lastTestOkAt: settings.lastTestOkAt,
 		organization: settings.organization,
+		projectAdminRole: settings.projectAdminRole,
 		provider: settings.provider,
 		redirectUrl: settings.redirectUrl,
 		secretStorageAvailable: isSecretStorageAvailable(),

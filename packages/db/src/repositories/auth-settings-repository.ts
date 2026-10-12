@@ -45,6 +45,7 @@ export interface SaveAuthSettingsInput {
 		issuer: string | null;
 		lastTestOkAt?: Date | null;
 		organization: string | null;
+		projectAdminRole: string | null;
 		provider: AuthProviderId;
 		redirectUrl: string | null;
 		webhookSecretCipher?: string | null;
@@ -92,6 +93,7 @@ export interface LocalProviderDefaults {
 	clientId: string | null;
 	issuer: string | null;
 	organization: string | null;
+	projectAdminRole: string | null;
 	redirectUrl: string | null;
 }
 

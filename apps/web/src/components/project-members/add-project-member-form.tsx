@@ -1,4 +1,5 @@
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
+import type { UserRole } from "@automationstack/db/schema/users";
 import { Button } from "@automationstack/ui/components/button";
 import { DialogFooter } from "@automationstack/ui/components/dialog";
 import { Label } from "@automationstack/ui/components/label";
@@ -14,15 +15,21 @@ import { type FormEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { ProjectMemberFormError } from "@/components/project-members/project-member-form-error";
-import { PROJECT_ROLE_OPTIONS } from "@/components/project-members/project-member-meta";
+import {
+	allowedProjectRole,
+	OWNER_NOT_ELIGIBLE_HINT,
+	projectRoleOptionsFor,
+} from "@/components/project-members/project-member-meta";
 import { orpc } from "@/utils/orpc";
 
 const CANDIDATE_FIELD_ID = "project-member-candidate";
 const ROLE_FIELD_ID = "project-member-role";
+const ROLE_HINT_ID = "project-member-role-hint";
 const NO_CANDIDATE = "__none__";
 
 interface CandidateOption {
 	label: string;
+	platformRole?: UserRole;
 	value: string;
 }
 
@@ -79,10 +86,13 @@ function CandidateField({ onChange, options, value }: CandidateFieldProps) {
 
 interface RoleFieldProps {
 	onChange: (role: ProjectRole) => void;
+	platformRole: UserRole | undefined;
 	value: ProjectRole;
 }
 
-function RoleField({ onChange, value }: RoleFieldProps) {
+function RoleField({ onChange, platformRole, value }: RoleFieldProps) {
+	const options = projectRoleOptionsFor(platformRole);
+	const ownerBlocked = options.some((option) => option.disabled === true);
 	const handleValueChange = useCallback(
 		(next: string | null) => {
 			if (next === "member" || next === "owner") {
@@ -95,29 +105,42 @@ function RoleField({ onChange, value }: RoleFieldProps) {
 	return (
 		<div className="flex flex-col gap-2">
 			<Label htmlFor={ROLE_FIELD_ID}>项目角色</Label>
-			<Select
-				items={PROJECT_ROLE_OPTIONS}
-				onValueChange={handleValueChange}
-				value={value}
-			>
-				<SelectTrigger className="w-full" id={ROLE_FIELD_ID}>
+			<Select items={options} onValueChange={handleValueChange} value={value}>
+				<SelectTrigger
+					aria-describedby={ownerBlocked ? ROLE_HINT_ID : undefined}
+					className="w-full"
+					id={ROLE_FIELD_ID}
+				>
 					<SelectValue />
 				</SelectTrigger>
 				<SelectContent>
-					{PROJECT_ROLE_OPTIONS.map((option) => (
-						<SelectItem key={option.value} value={option.value}>
+					{options.map((option) => (
+						<SelectItem
+							disabled={option.disabled}
+							key={option.value}
+							value={option.value}
+						>
 							{option.label}
 						</SelectItem>
 					))}
 				</SelectContent>
 			</Select>
+			{ownerBlocked ? (
+				<p className="text-muted-foreground text-xs" id={ROLE_HINT_ID}>
+					{OWNER_NOT_ELIGIBLE_HINT}
+				</p>
+			) : null}
 		</div>
 	);
 }
 
 function buildCandidateOptions(
 	isPending: boolean,
-	candidates: readonly { id: string; username: string }[]
+	candidates: readonly {
+		id: string;
+		platformRole: UserRole;
+		username: string;
+	}[]
 ): CandidateOption[] {
 	return [
 		{
@@ -126,6 +149,7 @@ function buildCandidateOptions(
 		},
 		...candidates.map((candidate) => ({
 			label: candidate.username,
+			platformRole: candidate.platformRole,
 			value: candidate.id,
 		})),
 	];
@@ -136,20 +160,31 @@ interface AddProjectMemberFormProps {
 	projectId: string;
 }
 
-export function AddProjectMemberForm({
-	onClose,
-	projectId,
-}: AddProjectMemberFormProps) {
+/** 表单里选中的账号和项目角色。 */
+function useMemberDraft(projectId: string) {
 	const candidatesQuery = useQuery(
 		orpc.projectMembers.listCandidates.queryOptions({ input: { projectId } })
 	);
-	const add = useAddMember(projectId, onClose);
 	const [role, setRole] = useState<ProjectRole>("member");
 	const [userId, setUserId] = useState(NO_CANDIDATE);
 	const options = buildCandidateOptions(
 		candidatesQuery.isPending,
 		candidatesQuery.data ?? []
 	);
+	const { platformRole } =
+		options.find((option) => option.value === userId) ?? {};
+	// 普通用户只能设为成员：选了「拥有者」后再换成普通用户，实际提交「成员」。
+	const effectiveRole = allowedProjectRole(role, platformRole);
+	return { effectiveRole, options, platformRole, setRole, setUserId, userId };
+}
+
+export function AddProjectMemberForm({
+	onClose,
+	projectId,
+}: AddProjectMemberFormProps) {
+	const add = useAddMember(projectId, onClose);
+	const { effectiveRole, options, platformRole, setRole, setUserId, userId } =
+		useMemberDraft(projectId);
 
 	const handleSubmit = useCallback(
 		(event: FormEvent<HTMLFormElement>) => {
@@ -157,9 +192,9 @@ export function AddProjectMemberForm({
 			if (userId === NO_CANDIDATE) {
 				return;
 			}
-			add.mutate({ projectId, role, userId });
+			add.mutate({ projectId, role: effectiveRole, userId });
 		},
-		[add, projectId, role, userId]
+		[add, effectiveRole, projectId, userId]
 	);
 
 	return (
@@ -169,7 +204,11 @@ export function AddProjectMemberForm({
 			onSubmit={handleSubmit}
 		>
 			<CandidateField onChange={setUserId} options={options} value={userId} />
-			<RoleField onChange={setRole} value={role} />
+			<RoleField
+				onChange={setRole}
+				platformRole={platformRole}
+				value={effectiveRole}
+			/>
 			<ProjectMemberFormError message={add.error?.message} />
 			<DialogFooter>
 				<Button onClick={onClose} type="button" variant="outline">

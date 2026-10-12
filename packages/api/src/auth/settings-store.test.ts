@@ -34,6 +34,7 @@ function row(overrides: Partial<AuthSettingsRow> = {}): AuthSettingsRow {
 		issuer: "https://casdoor.db.example.com",
 		lastTestOkAt: null,
 		organization: "db-org",
+		projectAdminRole: "automationstack-project-admin",
 		provider: "local",
 		redirectUrl: null,
 		updatedAt: SAVED_AT,
@@ -97,6 +98,21 @@ describe("settings-store：来源", () => {
 			provider: "local",
 			redirectUrl: null,
 			source: "database",
+		});
+	});
+
+	it("项目管理员角色名：没有行时取环境变量，有行时取行的值（#15）", async () => {
+		mocks.env.CASDOOR_PROJECT_ADMIN_ROLE = "env-project-admin";
+		mocks.getAuthSettingsRow.mockResolvedValue(null);
+		await expect(getEffectiveAuthSettings()).resolves.toMatchObject({
+			projectAdminRole: "env-project-admin",
+		});
+		invalidateAuthSettingsCache();
+		mocks.getAuthSettingsRow.mockResolvedValue(
+			row({ projectAdminRole: "db-project-admin" })
+		);
+		await expect(getEffectiveAuthSettings()).resolves.toMatchObject({
+			projectAdminRole: "db-project-admin",
 		});
 	});
 

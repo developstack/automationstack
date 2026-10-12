@@ -76,7 +76,7 @@ const context = {
 const ID = casdoorUser.id;
 
 /** mutations 中同一接口的不同输入用后缀区分，例如 setRoleAdmin。 */
-const VARIANT_SUFFIX = /(True|False|Admin|Member)$/;
+const VARIANT_SUFFIX = /(True|False|ProjectAdmin|Admin|Member)$/;
 
 /** 修改用户的全部接口。新增修改用户的接口时，必须加到这里（plan 021 T12）。 */
 const mutations = {
@@ -116,6 +116,12 @@ const mutations = {
 			{ id: ID, role: "member" },
 			{ context, path: ["users", "setRole"] }
 		),
+	setRoleProjectAdmin: () =>
+		call(
+			usersRouter.setRole,
+			{ id: ID, role: "project_admin" },
+			{ context, path: ["users", "setRole"] }
+		),
 };
 
 function expectNoWrites() {
@@ -149,6 +155,7 @@ const expectedMessage: Record<string, string> = {
 	setDisabledTrue: CASDOOR_MANAGED_USER_MESSAGE,
 	setRoleAdmin: CASDOOR_MANAGED_USER_MESSAGE,
 	setRoleMember: CASDOOR_MANAGED_USER_MESSAGE,
+	setRoleProjectAdmin: CASDOOR_MANAGED_USER_MESSAGE,
 };
 
 describe("casdoor 模式：没有接口可以修改 Casdoor 用户（T12）", () => {

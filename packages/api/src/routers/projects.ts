@@ -11,7 +11,11 @@ import {
 import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
-import { canAdministerProject, seesAllProjects } from "../lib/project-access";
+import {
+	canAdministerProject,
+	canCreateProject,
+	seesAllProjects,
+} from "../lib/project-access";
 import { publishInvalidate } from "../lib/realtime-publish";
 
 const projectIdSchema = z.object({ id: z.uuid() });
@@ -34,12 +38,20 @@ const routerErrors = {
 	NOT_FOUND: {},
 } as const;
 
-const OWNER_REQUIRED_MESSAGE = "只有项目 owner 能执行该操作";
+const OWNER_REQUIRED_MESSAGE =
+	"只有平台管理员和身为项目 owner 的项目管理员能执行该操作";
+
+const CREATE_FORBIDDEN_MESSAGE = "只有平台管理员和项目管理员可以新建项目";
 
 export const projectsRouter = {
 	create: protectedProcedure
+		.errors(routerErrors)
 		.input(createProjectSchema)
-		.handler(async ({ context, input }) => {
+		.handler(async ({ context, errors, input }) => {
+			if (!canCreateProject(context.user.role)) {
+				throw errors.FORBIDDEN({ message: CREATE_FORBIDDEN_MESSAGE });
+			}
+			// 新建者自动成为项目 owner。
 			const project = await createProjectWithOwner(
 				{ description: input.description, name: input.name },
 				context.user.id

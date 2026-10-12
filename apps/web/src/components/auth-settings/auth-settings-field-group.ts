@@ -25,6 +25,10 @@ export function useAuthFieldHandlers(patch: Patch) {
 			(organization: string) => patch({ organization }),
 			[patch]
 		),
+		projectAdminRole: useCallback(
+			(projectAdminRole: string) => patch({ projectAdminRole }),
+			[patch]
+		),
 		provider: useCallback(
 			(provider: AuthProviderValue) => patch({ provider }),
 			[patch]

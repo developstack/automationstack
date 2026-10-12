@@ -39,7 +39,7 @@ export interface ConnectionTestResult {
 }
 
 export const CONNECTION_STEP_LABELS: Record<ConnectionStepId, string> = {
-	adminRole: "管理员角色存在",
+	adminRole: "平台管理员角色存在",
 	discovery: "发现文档和 JWKS",
 	organization: "读取组织",
 	token: "用 client_credentials 获取管理 token",
@@ -168,7 +168,7 @@ function discoveryStep(
 
 /**
  * 测试 Casdoor 连接（plan 021 §10.1、§10.5 第 1 项）。每一步的结果是通过、失败或跳过。
- * 步骤：发现文档和 JWKS、client_credentials、读取组织、管理员角色存在。
+ * 步骤：发现文档和 JWKS、client_credentials、读取组织、平台管理员角色存在。
  * 总时限 12 秒。结果中不包含 client secret。
  */
 export async function testCasdoorConnection(
@@ -264,7 +264,7 @@ function adminRoleStep(
 		}
 		if (!role.isEnabled) {
 			throw new StepFailure(
-				`角色「${roleName}」已关闭：它的成员不会成为管理员`
+				`角色「${roleName}」已关闭：它的成员不会成为平台管理员`
 			);
 		}
 		return `角色有 ${role.users.length} 个成员`;

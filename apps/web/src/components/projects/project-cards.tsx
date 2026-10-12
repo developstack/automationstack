@@ -79,30 +79,37 @@ function ProjectCard({ onDelete, onEdit, project }: ProjectCardProps) {
 	);
 }
 
-function ProjectsEmpty() {
+function ProjectsEmpty({ canCreate }: { canCreate: boolean }) {
 	return (
 		<Empty>
 			<EmptyHeader>
 				<EmptyTitle>还没有项目</EmptyTitle>
-				<EmptyDescription>点击「新建项目」创建第一个项目。</EmptyDescription>
+				<EmptyDescription>
+					{canCreate
+						? "点击「新建项目」创建第一个项目。"
+						: "你还没有加入任何项目，请联系项目 owner 把你加入项目。"}
+				</EmptyDescription>
 			</EmptyHeader>
 		</Empty>
 	);
 }
 
 interface ProjectCardsProps {
+	/** 当前用户能否新建项目。决定空状态的提示。 */
+	canCreate: boolean;
 	onDelete: (project: Project) => void;
 	onEdit: (project: Project) => void;
 	projects: Project[];
 }
 
 export function ProjectCards({
+	canCreate,
 	onDelete,
 	onEdit,
 	projects,
 }: ProjectCardsProps) {
 	if (projects.length === 0) {
-		return <ProjectsEmpty />;
+		return <ProjectsEmpty canCreate={canCreate} />;
 	}
 	return (
 		<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

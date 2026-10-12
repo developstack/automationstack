@@ -7,7 +7,7 @@ import {
 	projectMembers,
 } from "../schema/project-members";
 import { type Project, projects } from "../schema/projects";
-import { users } from "../schema/users";
+import { type UserRole, users } from "../schema/users";
 import {
 	type CreateProjectInput,
 	createProjectInTx,
@@ -16,6 +16,8 @@ import {
 export interface ProjectMemberView {
 	createdAt: Date;
 	disabledAt: Date | null;
+	/** 平台角色。web 用它判断这个用户能否成为项目 owner。 */
+	platformRole: UserRole;
 	role: ProjectRole;
 	userId: string;
 	username: string;
@@ -34,6 +36,7 @@ export function listProjectMembers(
 		.select({
 			createdAt: projectMembers.createdAt,
 			disabledAt: users.disabledAt,
+			platformRole: users.role,
 			role: projectMembers.role,
 			userId: users.id,
 			username: users.username,
@@ -46,6 +49,8 @@ export function listProjectMembers(
 
 export interface ProjectMemberCandidate {
 	id: string;
+	/** 平台角色。web 用它判断这个用户能否成为项目 owner。 */
+	platformRole: UserRole;
 	username: string;
 }
 
@@ -53,7 +58,11 @@ export function listProjectMemberCandidates(
 	projectId: string
 ): Promise<ProjectMemberCandidate[]> {
 	return db
-		.select({ id: users.id, username: users.username })
+		.select({
+			id: users.id,
+			platformRole: users.role,
+			username: users.username,
+		})
 		.from(users)
 		.where(
 			and(

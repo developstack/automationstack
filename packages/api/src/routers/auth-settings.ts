@@ -58,6 +58,7 @@ const testConnectionSchema = saveAuthSettingsSchema.pick({
 	clientSecret: true,
 	issuer: true,
 	organization: true,
+	projectAdminRole: true,
 });
 
 export interface ConnectionTestView extends ConnectionTestResult {

@@ -30,6 +30,8 @@ export interface EffectiveAuthSettings {
 	issuer: string | null;
 	lastTestOkAt: Date | null;
 	organization: string | null;
+	/** Casdoor 中的项目管理员角色名（#15）。 */
+	projectAdminRole: string | null;
 	provider: AuthProviderId;
 	redirectUrl: string | null;
 	source: AuthSettingsSource;

@@ -29,7 +29,7 @@ const requireUser = o.middleware(({ context, next, path }) => {
 
 const requireAdmin = o.middleware(({ context, next }) => {
 	if (context.user?.role !== "admin") {
-		throw new ORPCError("FORBIDDEN", { message: "需要管理员权限" });
+		throw new ORPCError("FORBIDDEN", { message: "需要平台管理员权限" });
 	}
 	return next();
 });

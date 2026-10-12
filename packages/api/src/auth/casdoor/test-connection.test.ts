@@ -17,6 +17,7 @@ const draft: CasdoorConnectionDraft = {
 	internalUrl: "http://casdoor.internal:8000",
 	issuer: "https://casdoor.example.com",
 	organization: "automationstack",
+	projectAdminRole: "automationstack-project-admin",
 	redirectUrl: null,
 };
 

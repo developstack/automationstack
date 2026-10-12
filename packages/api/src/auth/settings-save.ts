@@ -58,6 +58,7 @@ export async function saveEffectiveAuthSettings(
 			lastTestOkAt:
 				options.testedOkAt ?? (changedFields.length > 0 ? null : undefined),
 			organization: input.organization,
+			projectAdminRole: input.projectAdminRole,
 			provider: input.provider,
 			redirectUrl: input.redirectUrl,
 			webhookSecretCipher: webhookSecret.cipher,
