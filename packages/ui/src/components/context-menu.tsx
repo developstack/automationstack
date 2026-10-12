@@ -70,7 +70,7 @@ function ContextMenuContent({
 			>
 				<MenuPopup
 					className={cn(
-						"popup-transition z-50 max-h-(--available-height) min-w-36 origin-(--transform-origin) overflow-y-auto overflow-x-hidden overscroll-contain rounded-md bg-popover p-1 text-popover-foreground shadow-md outline-none ring-1 ring-foreground/10 data-closed:overflow-hidden",
+						"popup-transition z-50 max-h-(--available-height) min-w-36 origin-(--transform-origin) overflow-y-auto overflow-x-hidden overscroll-contain rounded-md bg-popover p-1 text-popover-foreground shadow-popover outline-none ring-1 ring-foreground/10 data-closed:overflow-hidden",
 						className
 					)}
 					data-slot="context-menu-content"
