@@ -2,6 +2,10 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
+import {
+	MARKDOWN_EDITOR_BODY_CLASS,
+	MARKDOWN_EDITOR_FRAME_CLASS,
+} from "@/components/cases/markdown-editor-classes";
 import { markdownExtensions } from "@/components/cases/markdown-extensions";
 import { MarkdownToolbar } from "@/components/cases/markdown-toolbar";
 
@@ -69,8 +73,8 @@ export function MarkdownCodeEditor(props: MarkdownCodeEditorProps) {
 	}, [onView, view]);
 
 	return (
-		<div className="flex w-full min-w-0 flex-col rounded-md border border-input bg-transparent focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/50 dark:bg-input/30">
-			<div className="min-h-16" ref={setHost} />
+		<div className={MARKDOWN_EDITOR_FRAME_CLASS}>
+			<div className={MARKDOWN_EDITOR_BODY_CLASS} ref={setHost} />
 			<MarkdownToolbar view={view} />
 		</div>
 	);

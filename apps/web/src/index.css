@@ -5,7 +5,7 @@
 }
 
 @utility grid-cols-case-step {
-	grid-template-columns: 1fr 1fr auto;
+	grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1fr) auto;
 }
 
 @utility grid-cols-run-execution {
