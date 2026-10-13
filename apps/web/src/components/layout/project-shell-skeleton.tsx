@@ -15,7 +15,7 @@ import { ProjectSidebar } from "@/components/layout/project-sidebar";
 import { PROJECTS_PATH_ITEM } from "@/components/layout/projects-path-item";
 import { readSecondaryPanelDefaultOpen } from "@/components/layout/sidebar-state";
 import { useIsCaseSection } from "@/components/layout/use-case-section";
-import { ModuleTreeSkeleton } from "@/components/skeletons/module-tree-skeleton";
+import { ModulePanelSkeleton } from "@/components/skeletons/module-panel-skeleton";
 
 const PANEL_FALLBACK_TITLE = "项目";
 
@@ -57,7 +57,7 @@ export function ProjectShellSkeleton() {
 						header={<ProjectNameSkeleton />}
 						title={PANEL_FALLBACK_TITLE}
 					>
-						<ModuleTreeSkeleton rows={3} title={true} />
+						<ModulePanelSkeleton rows={3} />
 					</SecondaryPanel>
 				) : null}
 				<div className="grid min-h-0 min-w-0 flex-1 grid-rows-1">

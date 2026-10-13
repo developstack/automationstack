@@ -3,16 +3,13 @@ import { Button } from "@automationstack/ui/components/button";
 import { CollapsibleTrigger } from "@automationstack/ui/components/collapsible";
 import {
 	ContextMenu,
-	ContextMenuContent,
-	ContextMenuItem,
-	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@automationstack/ui/components/context-menu";
 import { cn } from "@automationstack/ui/lib/utils";
 import { ChevronRightIcon } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useRef } from "react";
-
+import { ModuleContextMenuContent } from "@/components/workspace/module-context-menu-content";
 import { ModuleDragHandle } from "@/components/workspace/module-drag-handle";
 import {
 	useModuleRowDrag,
@@ -25,36 +22,15 @@ import {
 	contextMenuPointFromRect,
 	isContextMenuKey,
 } from "@/components/workspace/module-row-context-key";
+import { ModuleRowMenu } from "@/components/workspace/module-row-menu";
+import type { ModuleTreeEditing } from "@/components/workspace/use-module-tree-edit";
 
-export interface ModuleNodeActions {
-	onCreateChild: (parentId: string) => void;
-	onDelete: (node: ModuleTreeNode) => void;
-}
-
-interface NodeMenuProps {
-	actions: ModuleNodeActions;
-	node: ModuleTreeNode;
-	onRename: () => void;
-}
-
-function NodeMenu({ actions, node, onRename }: NodeMenuProps) {
-	const createChild = useCallback(
-		() => actions.onCreateChild(node.id),
-		[actions, node.id]
-	);
-	const remove = useCallback(() => actions.onDelete(node), [actions, node]);
-
-	return (
-		<ContextMenuContent aria-label={`模块「${node.name}」操作`}>
-			<ContextMenuItem onClick={onRename}>重命名</ContextMenuItem>
-			<ContextMenuItem onClick={createChild}>新建子模块</ContextMenuItem>
-			<ContextMenuSeparator />
-			<ContextMenuItem onClick={remove} variant="destructive">
-				删除
-			</ContextMenuItem>
-		</ContextMenuContent>
-	);
-}
+/**
+ * 行尾的操作按钮平时隐藏，鼠标悬停、键盘焦点在行内、菜单打开时显示。
+ * 触摸屏没有悬停，所以一直显示。
+ */
+const ROW_ACTIONS_CLASS =
+	"flex shrink-0 items-center opacity-0 transition-opacity group-hover/module-row:opacity-100 group-focus-within/module-row:opacity-100 group-has-[[data-popup-open]]/module-row:opacity-100 pointer-coarse:opacity-100";
 
 function useContextMenuKey() {
 	return useCallback((event: KeyboardEvent<HTMLDivElement>) => {
@@ -77,38 +53,31 @@ function useContextMenuKey() {
 
 interface ModuleToggleProps {
 	hasChildren: boolean;
+	name: string;
 	open: boolean;
 }
 
-function ModuleToggle({ hasChildren, open }: ModuleToggleProps) {
+function ModuleToggle({ hasChildren, name, open }: ModuleToggleProps) {
 	return (
 		<CollapsibleTrigger
 			render={
 				<Button
-					aria-label={open ? "折叠" : "展开"}
-					className={cn(!hasChildren && "invisible")}
+					aria-label={`${open ? "折叠" : "展开"}模块「${name}」`}
+					className={cn("text-muted-foreground", !hasChildren && "invisible")}
 					size="icon-xs"
 					variant="ghost"
 				>
 					<ChevronRightIcon
-						className={cn("transition-transform", open && "rotate-90")}
+						aria-hidden="true"
+						className={cn(
+							"transition-transform duration-150 ease-out",
+							open && "rotate-90"
+						)}
 					/>
 				</Button>
 			}
 		/>
 	);
-}
-
-interface ModuleNodeRowProps {
-	actions: ModuleNodeActions;
-	depth: number;
-	editing: boolean;
-	hasChildren: boolean;
-	node: ModuleTreeNode;
-	onStartRename: () => void;
-	onStopRename: () => void;
-	open: boolean;
-	selected: boolean;
 }
 
 function useScrollSelectedIntoView(selected: boolean) {
@@ -121,10 +90,9 @@ function useScrollSelectedIntoView(selected: boolean) {
 	return rowRef;
 }
 
-export function ModuleNodeRow(props: ModuleNodeRowProps) {
-	const { actions, depth, editing, hasChildren, node, open, selected } = props;
-	const drag = useModuleRowDrag(node.id);
-	const drop = useModuleRowDrop(node.id);
+function useRowDragAndScroll(moduleId: string, selected: boolean) {
+	const drag = useModuleRowDrag(moduleId);
+	const drop = useModuleRowDrop(moduleId);
 	const rowRef = useScrollSelectedIntoView(selected);
 	const setRowRef = useCallback(
 		(element: HTMLElement | null) => {
@@ -133,40 +101,79 @@ export function ModuleNodeRow(props: ModuleNodeRowProps) {
 		},
 		[drag.setRowRef, rowRef]
 	);
+	return { drag, drop, setRowRef };
+}
+
+function useRowActions(node: ModuleTreeNode, editing: ModuleTreeEditing) {
+	const { startCreate, startDelete, startRename } = editing;
+	const onRename = useCallback(
+		() => startRename(node.id),
+		[node.id, startRename]
+	);
+	const onCreateChild = useCallback(
+		() => startCreate(node.id),
+		[node.id, startCreate]
+	);
+	const onDelete = useCallback(() => startDelete(node), [node, startDelete]);
+	return { name: node.name, onCreateChild, onDelete, onRename };
+}
+
+interface ModuleNodeRowProps {
+	editing: ModuleTreeEditing;
+	hasChildren: boolean;
+	node: ModuleTreeNode;
+	open: boolean;
+	renaming: boolean;
+	selected: boolean;
+}
+
+/**
+ * 模块树的一行。选中的行有底色、左侧竖线和加粗的名称。
+ * 右键、菜单键或行尾的「更多操作」打开同一个菜单。
+ */
+export function ModuleNodeRow(props: ModuleNodeRowProps) {
+	const { editing, hasChildren, node, open, renaming, selected } = props;
+	const { drag, drop, setRowRef } = useRowDragAndScroll(node.id, selected);
 	const handleContextMenuKey = useContextMenuKey();
+	const actions = useRowActions(node, editing);
 
 	return (
-		<ContextMenu>
+		<ContextMenu disabled={renaming}>
 			<ContextMenuTrigger
 				className={cn(
-					"group/module-row relative flex items-center gap-1 rounded-md px-2 py-0.5 before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-foreground",
+					"group/module-row relative flex min-h-8 items-center gap-1 rounded-md px-1 py-0.5 transition-control",
+					"before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-foreground before:transition-opacity",
 					selected
 						? "bg-sidebar-selected before:opacity-100"
-						: "before:opacity-0 hover:bg-sidebar-accent",
-					!selected && "data-popup-open:bg-sidebar-accent",
+						: "before:opacity-0 hover:bg-sidebar-accent data-popup-open:bg-sidebar-accent",
 					drag.isDragging && "opacity-50"
 				)}
 				onKeyDown={handleContextMenuKey}
 				render={<div ref={setRowRef} />}
 			>
 				<ModuleDragHandle drag={drag} name={node.name} />
-				<ModuleToggle hasChildren={hasChildren} open={open} />
+				<ModuleToggle hasChildren={hasChildren} name={node.name} open={open} />
 				<div
 					className={cn(
-						"flex min-w-0 flex-1 items-center",
+						"flex min-w-0 flex-1 items-center rounded-sm",
 						drop.insideClassName
 					)}
 					ref={drop.setNodeRef}
 				>
-					{editing ? (
-						<ModuleRenameInput node={node} onDone={props.onStopRename} />
+					{renaming ? (
+						<ModuleRenameInput node={node} onDone={editing.stop} />
 					) : (
-						<ModuleNodeLink depth={depth} node={node} />
+						<ModuleNodeLink node={node} selected={selected} />
 					)}
 				</div>
-				<ModuleMindmapLink node={node} />
+				{renaming ? null : (
+					<div className={ROW_ACTIONS_CLASS}>
+						<ModuleMindmapLink node={node} />
+						<ModuleRowMenu {...actions} />
+					</div>
+				)}
 			</ContextMenuTrigger>
-			<NodeMenu actions={actions} node={node} onRename={props.onStartRename} />
+			<ModuleContextMenuContent {...actions} />
 		</ContextMenu>
 	);
 }
