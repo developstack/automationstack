@@ -51,7 +51,7 @@ function TabsList({
 			className={cn(tabsListVariants({ variant }), className)}
 			data-slot="tabs-list"
 			data-variant={variant}
-			highlightClassName="rounded-md border border-transparent bg-background shadow-sm dark:border-input dark:bg-input/30"
+			highlightClassName="rounded-md border border-transparent bg-card shadow-sm dark:border-input dark:bg-input/30"
 			highlightEnabled={variant === "default"}
 			{...props}
 		/>

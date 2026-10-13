@@ -12,6 +12,7 @@ import {
 	SidebarMenuItem,
 } from "@automationstack/ui/components/sidebar-menu";
 import { ChevronsUpDownIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { useUserMenu } from "@/components/layout/user-menu";
@@ -48,11 +49,17 @@ function UserMenuTrigger({ role, username }: UserMenuTriggerProps) {
 	);
 }
 
-export function SidebarUser() {
+interface SidebarUserProps {
+	/** 显示在用户卡片上方的内容，例如实时协作状态。用户卡片总在侧栏最底部。 */
+	status?: ReactNode;
+}
+
+export function SidebarUser({ status }: SidebarUserProps) {
 	const { isDark, logout, toggleTheme, user } = useUserMenu();
 
 	return (
 		<SidebarFooter>
+			{status}
 			<SidebarMenu>
 				<SidebarMenuItem>
 					<DropdownMenu>

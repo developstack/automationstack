@@ -57,6 +57,7 @@ export function ProjectShellSkeleton() {
 			<SecondaryPanelProvider defaultOpen={readSecondaryPanelDefaultOpen()}>
 				{showModulePanel ? (
 					<SecondaryPanel
+						className="bg-card"
 						header={<ProjectNameSkeleton />}
 						title={PANEL_FALLBACK_TITLE}
 					>

@@ -9,6 +9,7 @@ import {
 	type ProjectRoleHolder,
 	projectRoleLabelFor,
 	projectRoleOptionsFor,
+	viewerProjectRoleLabel,
 } from "@/components/project-members/project-member-meta";
 
 const OWNER_ID = "11111111-1111-4111-8111-111111111111";
@@ -120,4 +121,25 @@ describe("projectRoleLabelFor：被暂停的项目 owner 在名单里标出", ()
 			expect(projectRoleLabelFor({ platformRole, role })).toBe(expected);
 		}
 	);
+});
+
+describe("viewerProjectRoleLabel：项目切换器显示当前用户在项目中的角色", () => {
+	it.each([
+		["project_admin", OWNER_ID, "拥有者"],
+		["member", OWNER_ID, "拥有者（管理权限已暂停）"],
+		["member", MEMBER_ID, "成员"],
+		["admin", MEMBER_ID, "成员"],
+		["admin", OUTSIDER_ID, "平台管理员"],
+	] as const)("平台角色 %s，用户 %s：%s", (role, id, expected) => {
+		expect(viewerProjectRoleLabel({ id, role }, MEMBERS)).toBe(expected);
+	});
+
+	it("不在成员列表里的非平台管理员：没有项目角色", () => {
+		expect(
+			viewerProjectRoleLabel(
+				{ id: OUTSIDER_ID, role: "project_admin" },
+				MEMBERS
+			)
+		).toBeNull();
+	});
 });

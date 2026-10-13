@@ -2,6 +2,7 @@ import {
 	Sidebar,
 	SidebarContent,
 	SidebarGroup,
+	SidebarGroupLabel,
 	SidebarRail,
 } from "@automationstack/ui/components/sidebar";
 import {
@@ -17,6 +18,8 @@ import { AuthSettingsNavItem } from "@/components/layout/auth-settings-nav-item"
 import { PlatformUsersNavItem } from "@/components/layout/platform-users-nav-item";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
 import { SidebarUser } from "@/components/layout/sidebar-user";
+
+const PLATFORM_GROUP_LABEL_ID = "platform-nav";
 
 const selectPathname = (state: { location: { pathname: string } }) =>
 	state.location.pathname;
@@ -43,7 +46,8 @@ function PlatformNavGroup() {
 
 	return (
 		<SidebarGroup>
-			<SidebarMenu>
+			<SidebarGroupLabel id={PLATFORM_GROUP_LABEL_ID}>平台</SidebarGroupLabel>
+			<SidebarMenu aria-labelledby={PLATFORM_GROUP_LABEL_ID}>
 				<ProjectsNavItem pathname={pathname} />
 				{user?.role === "admin" ? (
 					<>

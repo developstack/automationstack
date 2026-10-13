@@ -11,7 +11,7 @@ interface ModulePanelProps {
 
 export function ModulePanel({ projectId, projectName }: ModulePanelProps) {
 	return (
-		<SecondaryPanel title={projectName}>
+		<SecondaryPanel className="bg-card" title={projectName}>
 			<Suspense fallback={<ModuleTreeSkeleton rows={4} title={false} />}>
 				<ModuleTree projectId={projectId} />
 			</Suspense>
