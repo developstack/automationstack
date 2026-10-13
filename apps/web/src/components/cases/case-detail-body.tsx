@@ -47,7 +47,9 @@ export function useCaseEditor(caseId: string, testCase: TestCase | undefined) {
 			return;
 		}
 		if (hasUnfinishedCaseUploads(form)) {
-			toast.error("还有图片正在上传，等它传完再保存。");
+			toast.error(
+				"还有图片没有上传完成。等上传结束，或者在编辑区下方重试、移除上传失败的图片，再保存。"
+			);
 			return;
 		}
 		mutation.mutate({

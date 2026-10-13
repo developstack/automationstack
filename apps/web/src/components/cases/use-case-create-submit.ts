@@ -10,7 +10,8 @@ import type { CaseDraftAttachments } from "@/components/cases/use-case-draft-att
 import { useCreateCase } from "@/components/cases/use-case-mutations";
 import { useCaseNameCheck } from "@/components/cases/use-case-name-check";
 
-const UPLOADING_MESSAGE = "还有图片正在上传，等它传完再创建。";
+const UPLOADING_MESSAGE =
+	"还有图片没有上传完成。等上传结束，或者在编辑区下方重试、移除上传失败的图片，再创建。";
 
 export type CaseCreateMutation = ReturnType<typeof useCreateCase>;
 

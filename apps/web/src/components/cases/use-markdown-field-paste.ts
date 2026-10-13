@@ -9,7 +9,7 @@ import {
 
 import { useCaseAttachments } from "@/components/cases/case-attachment-context";
 import { replaceCaseImageRef } from "@/components/cases/case-upload-placeholder";
-import type { CasePasteTarget } from "@/components/cases/use-case-paste-upload";
+import type { CasePasteTarget } from "@/components/cases/use-case-upload-commands";
 
 const IMAGE_MIME_PREFIX = "image/";
 

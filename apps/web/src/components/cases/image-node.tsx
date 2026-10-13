@@ -1,3 +1,4 @@
+import { cn } from "@automationstack/ui/lib/utils";
 import type { ReactElement } from "react";
 
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
@@ -38,8 +39,11 @@ export function ImageNode({
 	return (
 		// biome-ignore lint/correctness/useImageSize: 我们没有这张图的宽高——附件表只存 contentType/sizeBytes（服务端 HeadObject 读回来的），拿不到像素尺寸。填一个猜的宽高会给出错误的宽高比，那比不填更糟：图会先按错误比例撑开再跳回真实比例。上方的占位块已经预留了固定高度，把加载期的位移限制在「占位高度 → 真实高度」这一次。
 		<img
-			alt="用例插图"
-			className="my-1 block h-auto max-w-full rounded-md border"
+			alt={pending ? "用例插图（上传中）" : "用例插图"}
+			className={cn(
+				"my-1 block h-auto max-w-full rounded-md border",
+				pending && "opacity-60"
+			)}
 			loading="lazy"
 			src={url}
 		/>
