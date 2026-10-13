@@ -12,11 +12,11 @@ export function SnapshotFields({ snapshot }: { snapshot: CaseSnapshot }) {
 	return (
 		<dl className="divide-y rounded-lg border px-3">
 			<SnapshotField label="名称">{snapshot.name}</SnapshotField>
-			<SnapshotField label="用例状态">
-				<StatusBadge kind="caseStatus" value={snapshot.status} />
-			</SnapshotField>
 			<SnapshotField label="优先级">
 				<StatusBadge kind="priority" value={snapshot.priority} />
+			</SnapshotField>
+			<SnapshotField label="用例状态">
+				<StatusBadge kind="caseStatus" value={snapshot.status} />
 			</SnapshotField>
 			<SnapshotField label="用例类型">
 				{CASE_TYPE_LABELS[snapshot.caseType]}

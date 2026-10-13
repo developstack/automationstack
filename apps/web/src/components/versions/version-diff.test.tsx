@@ -85,6 +85,14 @@ describe("VersionDiff：新增和删除的内容不只用颜色区分", () => {
 		expect(tones).toEqual(expect.arrayContaining(["新增", "删除", "修改"]));
 	});
 
+	it("修改的用例状态，旧值和新值都用统一状态标签", () => {
+		const { container } = renderDiff();
+		const deleted = [...container.querySelectorAll("del [data-tone]")];
+		const inserted = [...container.querySelectorAll("ins [data-tone]")];
+		expect(deleted.map((badge) => badge.textContent)).toContain("草稿");
+		expect(inserted.map((badge) => badge.textContent)).toContain("生效");
+	});
+
 	it("所有颜色来自主题令牌，浅色和暗色模式各自取值", () => {
 		const { container } = renderDiff();
 		for (const element of container.querySelectorAll("[class]")) {

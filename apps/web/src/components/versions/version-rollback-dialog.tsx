@@ -17,8 +17,6 @@ import { orpc } from "@/utils/orpc";
 
 interface VersionRollbackDialogProps {
 	caseId: string;
-	/** 最新的版本号。回滚产生的新版本是它的下一个版本 */
-	latestVersion: number;
 	onClose: () => void;
 	targetVersion: number | null;
 }
@@ -53,7 +51,6 @@ function useRollback(caseId: string, onClose: () => void) {
  */
 export function VersionRollbackDialog({
 	caseId,
-	latestVersion,
 	onClose,
 	targetVersion,
 }: VersionRollbackDialogProps) {
@@ -84,7 +81,11 @@ export function VersionRollbackDialog({
 						回滚到 <span className="numeric">{`v${shownVersion}`}</span>？
 					</AlertDialogTitle>
 					<AlertDialogDescription>
-						{`回滚会用 v${shownVersion} 的内容产生一个新版本 v${latestVersion + 1}。现有的版本都会保留，不会被修改或删除。如果 v${shownVersion} 与当前内容相同，不会产生新版本。`}
+						{"回滚会用 "}
+						<span className="numeric">{`v${shownVersion}`}</span>
+						{
+							" 的内容产生一个新版本，成为最新版本。现有的版本都会保留，不会被修改或删除。如果这个版本与当前内容相同，不会产生新版本。"
+						}
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>

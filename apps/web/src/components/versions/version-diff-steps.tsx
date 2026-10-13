@@ -11,12 +11,12 @@ import { cn } from "@automationstack/ui/lib/utils";
 import { CASE_TABLE_HEAD_CLASS } from "@/components/cases/case-table-layout";
 import { StatusBadge } from "@/components/status/status-badge";
 
-import { CHANGE_KIND_LABELS } from "./change-kind.ts";
-import type { StepDiffEntry, StepDiffKind, StepsDiff } from "./step-diff.ts";
+import { CHANGE_KIND_LABELS, type ChangeKind } from "./change-kind.ts";
+import type { StepDiffEntry, StepsDiff } from "./step-diff.ts";
 import { StepTextCell } from "./step-text-cell.tsx";
 import { VersionSection } from "./version-section.tsx";
 
-const KIND_ORDER: readonly StepDiffKind[] = [
+const KIND_ORDER: readonly ChangeKind[] = [
 	"added",
 	"removed",
 	"modified",

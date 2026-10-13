@@ -1,29 +1,13 @@
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
-import { Badge } from "@automationstack/ui/components/badge";
 
 import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
 import { CaseStepsTable } from "@/components/cases/case-steps-table";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 
 import { SnapshotFields } from "./snapshot-fields.tsx";
+import { TagsSection } from "./tags-section.tsx";
 import { VersionSection } from "./version-section.tsx";
 import { VersionTag } from "./version-tag.tsx";
-
-function SnapshotTags({ tags }: { tags: readonly string[] }) {
-	const unique = [...new Set(tags)];
-	if (unique.length === 0) {
-		return <p className="text-muted-foreground text-sm">没有标签。</p>;
-	}
-	return (
-		<div className="flex flex-wrap items-center gap-1.5">
-			{unique.map((tag) => (
-				<Badge className="font-normal" key={tag} variant="outline">
-					{tag}
-				</Badge>
-			))}
-		</div>
-	);
-}
 
 interface VersionSnapshotViewProps {
 	caseId: string;
@@ -57,9 +41,14 @@ export function VersionSnapshotView({
 					<p className="text-muted-foreground text-sm">没有前置条件。</p>
 				)}
 			</VersionSection>
-			<VersionSection title="标签">
-				<SnapshotTags tags={snapshot.tags} />
-			</VersionSection>
+			<TagsSection
+				tags={{
+					added: [],
+					kept: snapshot.tags,
+					kind: "unchanged",
+					removed: [],
+				}}
+			/>
 			<VersionSection title="操作步骤">
 				<CaseStepsTable
 					emptyText="这个版本没有步骤。"

@@ -37,7 +37,7 @@ export function TagsSection({ tags }: { tags: TagsDiff }) {
 				<div className="flex flex-wrap items-center gap-1.5">
 					<TagMarks kind="removed" tags={tags.removed} />
 					<TagMarks kind="added" tags={tags.added} />
-					{tags.kept.map((tag) => (
+					{[...new Set(tags.kept)].map((tag) => (
 						<Badge
 							className="font-normal"
 							key={`kept:${tag}`}

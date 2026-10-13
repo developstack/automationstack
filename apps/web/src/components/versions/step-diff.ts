@@ -6,12 +6,10 @@ import {
 	type TextDiffSegment,
 } from "./diff-segments.ts";
 
-export type StepDiffKind = ChangeKind;
-
 export interface StepDiffEntry {
 	expectedSegments: TextDiffSegment[] | null;
 	id: string;
-	kind: StepDiffKind;
+	kind: ChangeKind;
 	newIndex: number | null;
 	newStep: CaseStep | null;
 	oldIndex: number | null;
@@ -19,7 +17,7 @@ export interface StepDiffEntry {
 	stepSegments: TextDiffSegment[] | null;
 }
 
-export type StepsDiffCounts = Record<StepDiffKind, number>;
+export type StepsDiffCounts = Record<ChangeKind, number>;
 
 export interface StepsDiff {
 	counts: StepsDiffCounts;

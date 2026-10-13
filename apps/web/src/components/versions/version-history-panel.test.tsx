@@ -7,7 +7,7 @@ import { formatDateTime } from "@/components/cases/case-meta";
 import { VersionHistoryPanel } from "@/components/versions/version-history-panel";
 
 const CASE_ID = "c1";
-const NEW_VERSION_PATTERN = /产生一个新版本 v4/;
+const NEW_VERSION_PATTERN = /回滚会用 v1 的内容产生一个新版本/;
 const ROLLBACK_PATTERN = /回滚/;
 const EMPTY_HINT = /点击「编辑」/;
 

@@ -26,7 +26,7 @@ interface CaseListErrorProps {
 
 /**
  * 加载失败时显示原因和重试按钮。用例列表把它放在表格的位置，筛选栏仍然可以使用；
- * 用例详情面板把它放在内容区，标题由 title 指定。
+ * 用例详情面板和版本历史把它放在内容区，标题由 title 指定。
  */
 export function CaseListError({
 	query,

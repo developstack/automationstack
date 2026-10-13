@@ -7,7 +7,7 @@ export type DiffMarkKind = "added" | "removed";
  * 新增的内容带下划线，删除的内容带删除线，所以不只用颜色区分。
  * 颜色使用状态令牌，浅色和暗色模式各自取值。
  */
-export const DIFF_MARK_CLASSES: Record<DiffMarkKind, string> = {
+const DIFF_MARK_CLASSES: Record<DiffMarkKind, string> = {
 	added:
 		"rounded-xs bg-success-soft text-success-soft-foreground underline decoration-1 underline-offset-2",
 	removed:

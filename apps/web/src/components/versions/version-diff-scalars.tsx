@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { CASE_TYPE_LABELS, STATUS_LABELS } from "@/components/cases/case-meta";
+import { CASE_TYPE_LABELS } from "@/components/cases/case-meta";
 import { StatusBadge } from "@/components/status/status-badge";
 
 import type {
@@ -15,7 +15,7 @@ import { TagsSection } from "./tags-section.tsx";
 import { TextDiff } from "./text-diff.tsx";
 import { VersionSection } from "./version-section.tsx";
 
-const EMPTY_VALUE = "—";
+const EMPTY_VALUE = <span className="text-muted-foreground">—</span>;
 
 interface ScalarRow {
 	key: string;
@@ -23,45 +23,51 @@ interface ScalarRow {
 	value: ReactNode;
 }
 
-/** 修改的字段显示旧值和新值；没有修改的字段只显示当前值，用例状态和优先级用统一状态标签。 */
+interface ScalarFormat<V> {
+	/** 值是统一状态标签 */
+	badge?: boolean;
+	render: (value: V) => ReactNode;
+}
+
+/** 修改的字段显示旧值和新值；没有修改的字段只显示当前值。 */
 function toRow<V>(
 	key: string,
 	label: string,
 	field: ScalarFieldDiff<V>,
-	format: { node?: (value: V) => ReactNode; text: (value: V) => string }
+	format: ScalarFormat<V>
 ): ScalarRow {
-	if (field.kind === "changed") {
-		return {
-			key,
-			label,
-			value: (
-				<OldNewValue
-					newText={format.text(field.newValue)}
-					oldText={format.text(field.oldValue)}
-				/>
-			),
-		};
+	if (field.kind === "unchanged") {
+		return { key, label, value: format.render(field.newValue) };
 	}
-	const node = format.node ?? format.text;
-	return { key, label, value: node(field.newValue) };
+	return {
+		key,
+		label,
+		value: (
+			<OldNewValue
+				badge={format.badge}
+				newValue={format.render(field.newValue)}
+				oldValue={format.render(field.oldValue)}
+			/>
+		),
+	};
 }
 
 function buildScalarRows(scalars: CaseScalarsDiff): ScalarRow[] {
 	return [
-		toRow("name", "名称", scalars.name, { text: (value) => value }),
-		toRow("status", "用例状态", scalars.status, {
-			node: (value) => <StatusBadge kind="caseStatus" value={value} />,
-			text: (value) => STATUS_LABELS[value],
-		}),
+		toRow("name", "名称", scalars.name, { render: (value) => value }),
 		toRow("priority", "优先级", scalars.priority, {
-			node: (value) => <StatusBadge kind="priority" value={value} />,
-			text: (value) => value,
+			badge: true,
+			render: (value) => <StatusBadge kind="priority" value={value} />,
+		}),
+		toRow("status", "用例状态", scalars.status, {
+			badge: true,
+			render: (value) => <StatusBadge kind="caseStatus" value={value} />,
 		}),
 		toRow("caseType", "用例类型", scalars.caseType, {
-			text: (value) => CASE_TYPE_LABELS[value],
+			render: (value) => CASE_TYPE_LABELS[value],
 		}),
 		toRow("maintainer", "维护人", scalars.maintainer, {
-			text: (value) => value ?? EMPTY_VALUE,
+			render: (value) => value ?? EMPTY_VALUE,
 		}),
 	];
 }

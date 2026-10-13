@@ -149,7 +149,6 @@ export function VersionHistoryPanel({
 			</div>
 			<VersionRollbackDialog
 				caseId={caseId}
-				latestVersion={rows[0]?.version ?? currentVersion}
 				onClose={handleRollbackClose}
 				targetVersion={rollbackTarget}
 			/>
