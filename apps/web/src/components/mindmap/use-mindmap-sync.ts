@@ -10,6 +10,7 @@ import {
 	type MindmapGuardHost,
 } from "./mindmap-guards.ts";
 import type { MindmapScope } from "./mindmap-scope.ts";
+import type { MindmapSyncFailure } from "./mindmap-sync-error.ts";
 import { MindmapSyncRunner } from "./mindmap-sync-runner.ts";
 import type { MindmapProject, MindmapTreeData } from "./mindmap-tree-input.ts";
 
@@ -38,6 +39,10 @@ export interface MindmapSync {
 
 const notify = (message: string) => {
 	toast.error(message);
+};
+
+const notifySyncFailure = ({ description, title }: MindmapSyncFailure) => {
+	toast.error(title, { description });
 };
 
 const notifyLimit = (message: string) => {
@@ -116,6 +121,7 @@ export function useMindmapSync(scope: MindmapScope): MindmapSync {
 			new MindmapSyncRunner({
 				notifyError: notify,
 				notifyLimit,
+				notifySyncFailure,
 				queryClient,
 				scope,
 			}),
