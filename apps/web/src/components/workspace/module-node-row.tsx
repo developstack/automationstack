@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { ModuleContextMenuContent } from "@/components/workspace/module-context-menu-content";
 import { ModuleDragHandle } from "@/components/workspace/module-drag-handle";
 import {
+	type ModuleRowDrag,
 	useModuleRowDrag,
 	useModuleRowDrop,
 } from "@/components/workspace/module-drag-parts";
@@ -30,7 +31,7 @@ import type { ModuleTreeEditing } from "@/components/workspace/use-module-tree-e
  * 触摸屏没有悬停，所以一直显示。
  */
 const ROW_ACTIONS_CLASS =
-	"flex shrink-0 items-center opacity-0 transition-opacity group-hover/module-row:opacity-100 group-focus-within/module-row:opacity-100 group-has-[[data-popup-open]]/module-row:opacity-100 pointer-coarse:opacity-100";
+	"flex shrink-0 items-center pe-1 opacity-0 transition-opacity group-hover/module-row:opacity-100 group-focus-within/module-row:opacity-100 group-has-[[data-popup-open]]/module-row:opacity-100 pointer-coarse:opacity-100";
 
 function useContextMenuKey() {
 	return useCallback((event: KeyboardEvent<HTMLDivElement>) => {
@@ -92,7 +93,6 @@ function useScrollSelectedIntoView(selected: boolean) {
 
 function useRowDragAndScroll(moduleId: string, selected: boolean) {
 	const drag = useModuleRowDrag(moduleId);
-	const drop = useModuleRowDrop(moduleId);
 	const rowRef = useScrollSelectedIntoView(selected);
 	const setRowRef = useCallback(
 		(element: HTMLElement | null) => {
@@ -101,11 +101,11 @@ function useRowDragAndScroll(moduleId: string, selected: boolean) {
 		},
 		[drag.setRowRef, rowRef]
 	);
-	return { drag, drop, setRowRef };
+	return { drag, setRowRef };
 }
 
 function useRowActions(node: ModuleTreeNode, editing: ModuleTreeEditing) {
-	const { startCreate, startDelete, startRename } = editing;
+	const { startCreate, requestDelete, startRename } = editing;
 	const onRename = useCallback(
 		() => startRename(node.id),
 		[node.id, startRename]
@@ -114,11 +114,15 @@ function useRowActions(node: ModuleTreeNode, editing: ModuleTreeEditing) {
 		() => startCreate(node.id),
 		[node.id, startCreate]
 	);
-	const onDelete = useCallback(() => startDelete(node), [node, startDelete]);
+	const onDelete = useCallback(
+		() => requestDelete(node),
+		[node, requestDelete]
+	);
 	return { name: node.name, onCreateChild, onDelete, onRename };
 }
 
 interface ModuleNodeRowProps {
+	depth: number;
 	editing: ModuleTreeEditing;
 	hasChildren: boolean;
 	node: ModuleTreeNode;
@@ -127,32 +131,29 @@ interface ModuleNodeRowProps {
 	selected: boolean;
 }
 
-/**
- * 模块树的一行。选中的行有底色、左侧竖线和加粗的名称。
- * 右键、菜单键或行尾的「更多操作」打开同一个菜单。
- */
-export function ModuleNodeRow(props: ModuleNodeRowProps) {
-	const { editing, hasChildren, node, open, renaming, selected } = props;
-	const { drag, drop, setRowRef } = useRowDragAndScroll(node.id, selected);
+interface ModuleRowMainProps extends ModuleNodeRowProps {
+	actions: ReturnType<typeof useRowActions>;
+	drag: ModuleRowDrag;
+}
+
+/** 行的主体：拖拽手柄、展开按钮和名称。右键或按菜单键在这里打开模块菜单。 */
+function ModuleRowMain(props: ModuleRowMainProps) {
+	const { actions, drag, editing, node, renaming } = props;
+	const drop = useModuleRowDrop(node.id);
 	const handleContextMenuKey = useContextMenuKey();
-	const actions = useRowActions(node, editing);
 
 	return (
 		<ContextMenu disabled={renaming}>
 			<ContextMenuTrigger
-				className={cn(
-					"group/module-row relative flex min-h-8 items-center gap-1 rounded-md px-1 py-0.5 transition-control",
-					"before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-foreground before:transition-opacity",
-					selected
-						? "bg-sidebar-selected before:opacity-100"
-						: "before:opacity-0 hover:bg-sidebar-accent data-popup-open:bg-sidebar-accent",
-					drag.isDragging && "opacity-50"
-				)}
+				className="flex min-w-0 flex-1 items-center gap-1 py-0.5 ps-1"
 				onKeyDown={handleContextMenuKey}
-				render={<div ref={setRowRef} />}
 			>
 				<ModuleDragHandle drag={drag} name={node.name} />
-				<ModuleToggle hasChildren={hasChildren} name={node.name} open={open} />
+				<ModuleToggle
+					hasChildren={props.hasChildren}
+					name={node.name}
+					open={props.open}
+				/>
 				<div
 					className={cn(
 						"flex min-w-0 flex-1 items-center rounded-sm",
@@ -163,17 +164,49 @@ export function ModuleNodeRow(props: ModuleNodeRowProps) {
 					{renaming ? (
 						<ModuleRenameInput node={node} onDone={editing.stop} />
 					) : (
-						<ModuleNodeLink node={node} selected={selected} />
+						<ModuleNodeLink
+							depth={props.depth}
+							node={node}
+							selected={props.selected}
+						/>
 					)}
 				</div>
-				{renaming ? null : (
-					<div className={ROW_ACTIONS_CLASS}>
-						<ModuleMindmapLink node={node} />
-						<ModuleRowMenu {...actions} />
-					</div>
-				)}
 			</ContextMenuTrigger>
 			<ModuleContextMenuContent {...actions} />
 		</ContextMenu>
+	);
+}
+
+/**
+ * 模块树的一行。选中的行有底色、左侧竖线和加粗的名称。
+ * 右键、菜单键或行尾的「更多操作」打开同一个菜单。
+ * 行尾的按钮不放在右键菜单的触发区域内：「更多操作」菜单的事件会经过 React 冒泡到触发区域，
+ * 在菜单中右键或长按会同时打开右键菜单。
+ */
+export function ModuleNodeRow(props: ModuleNodeRowProps) {
+	const { editing, node, renaming, selected } = props;
+	const { drag, setRowRef } = useRowDragAndScroll(node.id, selected);
+	const actions = useRowActions(node, editing);
+
+	return (
+		<div
+			className={cn(
+				"group/module-row relative flex min-h-8 items-center rounded-md transition-control",
+				"before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-sidebar-foreground before:transition-opacity",
+				selected
+					? "bg-sidebar-selected before:opacity-100"
+					: "before:opacity-0 hover:bg-sidebar-accent has-[[data-popup-open]]:bg-sidebar-accent",
+				drag.isDragging && "opacity-50"
+			)}
+			ref={setRowRef}
+		>
+			<ModuleRowMain {...props} actions={actions} drag={drag} />
+			{renaming ? null : (
+				<div className={ROW_ACTIONS_CLASS}>
+					<ModuleMindmapLink node={node} />
+					<ModuleRowMenu {...actions} />
+				</div>
+			)}
+		</div>
 	);
 }

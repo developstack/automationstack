@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { NetworkIcon, PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { createRootButtonAttributes } from "@/components/workspace/use-module-tree-edit";
+import { createRootButtonAttributes } from "@/components/workspace/module-tree-focus";
 import { clearModuleSelection } from "@/components/workspace/workspace-search";
 
 const HEADING_ID = "workspace-module-section-heading";

@@ -107,4 +107,17 @@ describe("ModuleNameInput：在模块树中就地输入模块名称", () => {
 		fireEvent.blur(input);
 		expect(handlers.onCancel).toHaveBeenCalledWith("blur");
 	});
+
+	it("保存失败、错误还显示时失去焦点：不再提交，也不取消，输入框和原因留在原处", () => {
+		const { handlers, input } = renderInput({ error: "模块不存在" });
+		type(input, "退款");
+		fireEvent.blur(input);
+		expect(handlers.onSubmit).not.toHaveBeenCalled();
+		expect(handlers.onCancel).not.toHaveBeenCalled();
+	});
+
+	it("保存中显示加载图标，看得出正在保存", () => {
+		renderInput({ defaultValue: "支付", pending: true });
+		expect(screen.getByTestId("module-name-saving")).toBeDefined();
+	});
 });

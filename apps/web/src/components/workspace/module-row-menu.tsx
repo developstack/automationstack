@@ -6,7 +6,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@automationstack/ui/components/dropdown-menu";
-import { cn } from "@automationstack/ui/lib/utils";
 import {
 	EllipsisIcon,
 	FolderPlusIcon,
@@ -19,12 +18,8 @@ import {
 	useInlineEditFocus,
 } from "@/components/workspace/module-menu-focus";
 
-interface ModuleRowMenuProps extends ModuleMenuProps {
-	className?: string;
-}
-
 /** 模块行右侧的「更多操作」按钮和菜单。 */
-export function ModuleRowMenu(props: ModuleRowMenuProps) {
+export function ModuleRowMenu(props: ModuleMenuProps) {
 	const { createChild, finalFocus, rename } = useInlineEditFocus(props);
 	return (
 		<DropdownMenu>
@@ -32,7 +27,7 @@ export function ModuleRowMenu(props: ModuleRowMenuProps) {
 				render={
 					<Button
 						aria-label={`模块「${props.name}」更多操作`}
-						className={cn("text-muted-foreground", props.className)}
+						className="text-muted-foreground"
 						size="icon-xs"
 						variant="ghost"
 					/>

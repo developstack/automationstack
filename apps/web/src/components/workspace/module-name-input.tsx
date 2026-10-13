@@ -1,5 +1,5 @@
 import { Input } from "@automationstack/ui/components/input";
-import { cn } from "@automationstack/ui/lib/utils";
+import { Loader2Icon } from "lucide-react";
 import {
 	type ChangeEvent,
 	type KeyboardEvent,
@@ -19,7 +19,6 @@ import {
 export type ModuleNameEndTrigger = ModuleNameCommitTrigger | "escape";
 
 interface ModuleNameInputProps {
-	className?: string;
 	/** 原来的名称。新建时为空字符串 */
 	defaultValue: string;
 	/** 保存失败的原因，显示在字段下方 */
@@ -62,6 +61,7 @@ function useNameKeyDown(
 
 function useModuleNameInput(props: ModuleNameInputProps) {
 	const { defaultValue, onCancel, onEdit, onSubmit, pending } = props;
+	const serverError = props.error;
 	const [value, setValue] = useState(defaultValue);
 	const [localError, setLocalError] = useState<string | null>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -73,7 +73,8 @@ function useModuleNameInput(props: ModuleNameInputProps) {
 
 	const commit = useCallback(
 		(trigger: ModuleNameCommitTrigger) => {
-			if (pending) {
+			// 保存失败的原因还显示时，失去焦点不重复提交同一个名称，输入框和原因留在原处
+			if (pending || (trigger === "blur" && serverError !== null)) {
 				return;
 			}
 			const decision = decideModuleNameCommit(value, defaultValue, trigger);
@@ -87,7 +88,7 @@ function useModuleNameInput(props: ModuleNameInputProps) {
 			}
 			onSubmit(decision.name, trigger);
 		},
-		[defaultValue, onCancel, onSubmit, pending, value]
+		[defaultValue, onCancel, onSubmit, pending, serverError, value]
 	);
 
 	const handleChange = useCallback(
@@ -103,7 +104,7 @@ function useModuleNameInput(props: ModuleNameInputProps) {
 	const handleBlur = useCallback(() => commit("blur"), [commit]);
 
 	return {
-		error: localError ?? props.error,
+		error: localError ?? serverError,
 		handleBlur,
 		handleChange,
 		handleKeyDown,
@@ -114,7 +115,7 @@ function useModuleNameInput(props: ModuleNameInputProps) {
 
 /**
  * 在模块树中就地输入模块名称：Enter 保存，Esc 取消，失去焦点时有新名称就保存。
- * 出现时获得焦点并选中原来的名称。保存中只读，焦点不丢失。
+ * 出现时获得焦点并选中原来的名称。保存中只读并显示加载图标，焦点不丢失。
  */
 export function ModuleNameInput(props: ModuleNameInputProps) {
 	const { pending } = props;
@@ -124,28 +125,32 @@ export function ModuleNameInput(props: ModuleNameInputProps) {
 
 	// 模块行是 select-none 的右键菜单触发器。Safari 中父元素 select-none 时输入框不能编辑，所以这里恢复 select-text
 	return (
-		<div
-			className={cn(
-				"flex min-w-0 flex-1 select-text flex-col gap-1",
-				props.className
-			)}
-		>
-			<Input
-				aria-busy={pending ? true : undefined}
-				aria-describedby={error === null ? undefined : errorId}
-				aria-invalid={error === null ? undefined : true}
-				aria-label={props.label}
-				autoComplete="off"
-				className="h-7 px-2 md:text-sm"
-				onBlur={handleBlur}
-				onChange={handleChange}
-				onKeyDown={handleKeyDown}
-				placeholder={props.placeholder}
-				readOnly={pending}
-				ref={inputRef}
-				spellCheck={false}
-				value={value}
-			/>
+		<div className="flex min-w-0 flex-1 select-text flex-col gap-1">
+			<div className="relative">
+				<Input
+					aria-busy={pending ? true : undefined}
+					aria-describedby={error === null ? undefined : errorId}
+					aria-invalid={error === null ? undefined : true}
+					aria-label={props.label}
+					autoComplete="off"
+					className="h-7 px-2 md:text-sm"
+					onBlur={handleBlur}
+					onChange={handleChange}
+					onKeyDown={handleKeyDown}
+					placeholder={props.placeholder}
+					readOnly={pending}
+					ref={inputRef}
+					spellCheck={false}
+					value={value}
+				/>
+				{pending ? (
+					<Loader2Icon
+						aria-hidden="true"
+						className="pointer-events-none absolute end-2 top-1/2 size-3.5 -translate-y-1/2 animate-spin text-muted-foreground motion-reduce:animate-none"
+						data-testid="module-name-saving"
+					/>
+				) : null}
+			</div>
 			<FieldError id={errorId} message={error} />
 		</div>
 	);

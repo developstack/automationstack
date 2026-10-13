@@ -45,6 +45,7 @@ export function ModuleNodeItem({
 		<Collapsible onOpenChange={handleOpenChange} open={open}>
 			<ModuleDropStrip moduleId={node.id} />
 			<ModuleNodeRow
+				depth={depth}
 				editing={editing}
 				hasChildren={hasChildren}
 				node={node}
