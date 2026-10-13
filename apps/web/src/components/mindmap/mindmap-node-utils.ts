@@ -1,14 +1,17 @@
 import type { MindElixirInstance, NodeObj, Topic } from "mind-elixir";
 
-import { buildPriorityTag, type MindmapNodeMeta } from "./mindmap-adapter.ts";
+import type { MindmapNodeMeta } from "./mindmap-adapter.ts";
 import {
 	decodeMindmapNodeId,
 	encodeCaseNodeId,
 	encodeModuleNodeId,
 	isStepNodeRef,
 } from "./mindmap-node-id.ts";
+import { buildCaseTags } from "./mindmap-tags.ts";
 
+// 与服务端新建用例的默认值相同
 const DEFAULT_CASE_PRIORITY = "P2" as const;
+const DEFAULT_CASE_STATUS = "draft" as const;
 
 export const NEW_MODULE_TOPIC = "新模块";
 export const NEW_CASE_TOPIC = "新用例";
@@ -56,7 +59,7 @@ export function adoptNewNode(
 	};
 	node.metadata = metadata;
 	if (kind === "case") {
-		node.tags = [buildPriorityTag(DEFAULT_CASE_PRIORITY)];
+		node.tags = buildCaseTags(DEFAULT_CASE_STATUS, DEFAULT_CASE_PRIORITY);
 	}
 	setNodeId(
 		mind,
@@ -93,7 +96,7 @@ export function buildNewCaseNode(): NodeObj {
 	return {
 		id: encodeCaseNodeId(mintTempId()),
 		metadata,
-		tags: [buildPriorityTag(DEFAULT_CASE_PRIORITY)],
+		tags: buildCaseTags(DEFAULT_CASE_STATUS, DEFAULT_CASE_PRIORITY),
 		topic: NEW_CASE_TOPIC,
 	};
 }
