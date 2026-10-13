@@ -4,7 +4,7 @@ import { useCallback } from "react";
 
 import { casePageCount } from "@/components/cases/case-list-query";
 
-interface CasePaginationProps {
+export interface CasePaginationProps {
 	onPageChange: (page: number) => void;
 	page: number;
 	total: number;
@@ -39,23 +39,21 @@ export function CasePagination({
 	}
 
 	return (
-		<nav
-			aria-label="用例分页"
-			className="flex items-center justify-end gap-2 pt-1"
-		>
+		<nav aria-label="用例分页" className="flex items-center justify-end gap-1">
 			<Button
 				aria-disabled={atFirst}
 				aria-label="上一页"
 				onClick={goPrevious}
 				size="sm"
 				type="button"
-				variant="outline"
+				variant="ghost"
 			>
 				<ChevronLeftIcon data-icon="inline-start" />
 				上一页
 			</Button>
-			<span aria-live="polite" className="text-muted-foreground text-xs">
-				第 {page} / {pageCount} 页
+			<span className="px-1 text-muted-foreground text-xs">
+				第 <span className="numeric text-foreground">{page}</span> /{" "}
+				<span className="numeric">{pageCount}</span> 页
 			</span>
 			<Button
 				aria-disabled={atLast}
@@ -63,7 +61,7 @@ export function CasePagination({
 				onClick={goNext}
 				size="sm"
 				type="button"
-				variant="outline"
+				variant="ghost"
 			>
 				下一页
 				<ChevronRightIcon data-icon="inline-end" />

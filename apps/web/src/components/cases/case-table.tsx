@@ -13,32 +13,28 @@ import { cn } from "@automationstack/ui/lib/utils";
 import { CaseCollaboratorsCell } from "@/components/cases/case-collaborators-cell";
 import { CASE_TYPE_LABELS, formatDateTime } from "@/components/cases/case-meta";
 import { CaseNameCell } from "@/components/cases/case-name-cell";
-import { CaseTableEmpty } from "@/components/cases/case-table-empty";
+import { useEnteringRowIds } from "@/components/cases/case-row-enter";
+import {
+	CASE_TABLE_COLUMNS,
+	CASE_TABLE_HEAD_CLASS,
+	CASE_TABLE_ROW_HEIGHT,
+} from "@/components/cases/case-table-layout";
 import { StatusBadge } from "@/components/status/status-badge";
 import {
 	type CaseCollaborators,
 	useCollaboratorsByCaseId,
 } from "@/realtime/use-editing";
 
-const COLUMNS = [
-	{ label: "名称", width: "" },
-	{ label: "优先级", width: "w-16" },
-	{ label: "类型", width: "w-16" },
-	{ label: "状态", width: "w-20" },
-	{ label: "标签", width: "" },
-	{ label: "维护人", width: "" },
-	{ label: "更新时间", width: "w-28" },
-	{ label: "协作", width: "w-24" },
-] as const;
+const PLACEHOLDER = <span className="text-muted-foreground">—</span>;
 
 function CaseTags({ tags }: { tags: string[] }) {
 	if (tags.length === 0) {
-		return <span className="text-muted-foreground">—</span>;
+		return PLACEHOLDER;
 	}
 	return (
 		<div className="flex flex-wrap gap-1">
 			{tags.map((tag) => (
-				<Badge key={tag} variant="outline">
+				<Badge className="font-normal" key={tag} variant="outline">
 					{tag}
 				</Badge>
 			))}
@@ -48,24 +44,38 @@ function CaseTags({ tags }: { tags: string[] }) {
 
 interface CaseRowProps {
 	collaborators: CaseCollaborators | undefined;
+	entering: boolean;
 	selected: boolean;
 	testCase: TestCase;
 }
 
+// 选中的行：左侧指示条加淡底（plans/009）
 const ROW_MARKER = "border-l-2";
 
-function CaseRow({ collaborators, selected, testCase }: CaseRowProps) {
+// 改筛选条件和翻页后新出现的行淡入。留下的行 key 不变，不会重播
+const ROW_ENTER = "animate-in fade-in-0 duration-200";
+
+function CaseRow({
+	collaborators,
+	entering,
+	selected,
+	testCase,
+}: CaseRowProps) {
 	return (
 		<TableRow
 			aria-selected={selected}
 			className={cn(
 				ROW_MARKER,
+				CASE_TABLE_ROW_HEIGHT,
+				"last:border-b-0",
 				selected
 					? "border-l-primary bg-accent/60 hover:bg-accent"
-					: "border-l-transparent"
+					: "border-l-transparent",
+				entering && ROW_ENTER
 			)}
+			data-entering={entering ? "true" : undefined}
 		>
-			<CaseNameCell testCase={testCase} />
+			<CaseNameCell className="pl-4" testCase={testCase} />
 			<TableCell>
 				<StatusBadge kind="priority" value={testCase.priority} />
 			</TableCell>
@@ -76,15 +86,11 @@ function CaseRow({ collaborators, selected, testCase }: CaseRowProps) {
 			<TableCell>
 				<CaseTags tags={testCase.tags} />
 			</TableCell>
-			<TableCell>
-				{testCase.maintainer ?? (
-					<span className="text-muted-foreground">—</span>
-				)}
-			</TableCell>
-			<TableCell className="whitespace-nowrap text-muted-foreground tabular-nums">
+			<TableCell>{testCase.maintainer ?? PLACEHOLDER}</TableCell>
+			<TableCell className="numeric text-muted-foreground text-xs">
 				{formatDateTime(testCase.updatedAt)}
 			</TableCell>
-			<TableCell>
+			<TableCell className="pr-4">
 				<CaseCollaboratorsCell collaborators={collaborators} />
 			</TableCell>
 		</TableRow>
@@ -93,39 +99,24 @@ function CaseRow({ collaborators, selected, testCase }: CaseRowProps) {
 
 interface CaseTableProps {
 	cases: TestCase[];
-	filtered: boolean;
-	onClearFilters: () => void;
 	selectedCaseId: string | undefined;
+	/** 正在加载新的筛选结果或新的一页。表格留在原位，只标记为忙碌。 */
 	stale: boolean;
 }
 
-const STALE_CLASS = "transition-crossfade";
-
-export function CaseTable({
-	cases,
-	filtered,
-	onClearFilters,
-	selectedCaseId,
-	stale,
-}: CaseTableProps) {
+export function CaseTable({ cases, selectedCaseId, stale }: CaseTableProps) {
 	const collaboratorsByCaseId = useCollaboratorsByCaseId();
-
-	if (cases.length === 0) {
-		return (
-			<CaseTableEmpty
-				className={cn(STALE_CLASS, stale && "opacity-60")}
-				filtered={filtered}
-				onClearFilters={onClearFilters}
-			/>
-		);
-	}
+	const enteringIds = useEnteringRowIds(cases.map((testCase) => testCase.id));
 
 	return (
-		<Table className={cn(STALE_CLASS, stale && "opacity-60")}>
+		<Table aria-busy={stale} aria-label="用例列表">
 			<TableHeader>
-				<TableRow>
-					{COLUMNS.map((column) => (
-						<TableHead className={column.width} key={column.label}>
+				<TableRow className="hover:bg-transparent">
+					{CASE_TABLE_COLUMNS.map((column) => (
+						<TableHead
+							className={cn(CASE_TABLE_HEAD_CLASS, column.width)}
+							key={column.label}
+						>
 							{column.label}
 						</TableHead>
 					))}
@@ -135,6 +126,7 @@ export function CaseTable({
 				{cases.map((testCase) => (
 					<CaseRow
 						collaborators={collaboratorsByCaseId.get(testCase.id)}
+						entering={enteringIds.has(testCase.id)}
 						key={testCase.id}
 						selected={testCase.id === selectedCaseId}
 						testCase={testCase}

@@ -2,7 +2,7 @@ import { SecondaryPanel } from "@automationstack/ui/components/secondary-panel";
 import { SecondaryPanelProvider } from "@automationstack/ui/components/secondary-panel-context";
 import { useParams } from "@tanstack/react-router";
 
-import { CaseTableSkeleton } from "@/components/cases/case-table-skeleton";
+import { CaseListBodySkeleton } from "@/components/cases/case-list-body-skeleton";
 import { AppShell } from "@/components/layout/app-shell";
 import {
 	HeaderPath,
@@ -16,7 +16,6 @@ import { PROJECTS_PATH_ITEM } from "@/components/layout/projects-path-item";
 import { readSecondaryPanelDefaultOpen } from "@/components/layout/sidebar-state";
 import { useIsCaseSection } from "@/components/layout/use-case-section";
 import { ModuleTreeSkeleton } from "@/components/skeletons/module-tree-skeleton";
-import { ToolbarSkeleton } from "@/components/skeletons/toolbar-skeleton";
 
 const PANEL_FALLBACK_TITLE = "项目";
 
@@ -37,10 +36,9 @@ function ProjectBodySkeleton() {
 		<div className="grid min-h-0 grid-rows-header-body">
 			<ProjectHeaderSkeleton />
 			<div className="min-h-0 min-w-0 overflow-hidden">
-				<div className="flex min-h-0 flex-col gap-3 p-4">
+				<div className="flex min-h-0 flex-col gap-4 p-4">
 					<PageHeaderSkeleton actionCount={1} />
-					<ToolbarSkeleton endGap="gap-2" startWrap={false} />
-					<CaseTableSkeleton />
+					<CaseListBodySkeleton />
 				</div>
 			</div>
 		</div>

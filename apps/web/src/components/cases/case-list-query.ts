@@ -37,3 +37,17 @@ export function caseListInput(
 export function casePageCount(total: number): number {
 	return Math.max(Math.ceil(total / CASE_PAGE_SIZE), 1);
 }
+
+export interface CaseRange {
+	first: number;
+	last: number;
+}
+
+/** 当前页的第一条和最后一条用例是第几条。没有用例时都是 0。 */
+export function caseRange(page: number, total: number): CaseRange {
+	if (total === 0) {
+		return { first: 0, last: 0 };
+	}
+	const first = (page - 1) * CASE_PAGE_SIZE + 1;
+	return { first, last: Math.min(page * CASE_PAGE_SIZE, total) };
+}
