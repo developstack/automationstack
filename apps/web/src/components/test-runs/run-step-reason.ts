@@ -4,8 +4,7 @@ import type { TestRunStepResult } from "@automationstack/db/schema/test-runs";
 export type ReasonKind = "blocked" | "failed";
 
 export const REASON_FIELD_CLASSES: Record<ReasonKind, string> = {
-	blocked:
-		"border-amber-600/40 text-amber-700 placeholder:text-amber-700/50 dark:border-amber-400/40 dark:text-amber-300 dark:placeholder:text-amber-300/50",
+	blocked: "border-warning/40 text-warning placeholder:text-warning/50",
 	failed:
 		"border-destructive/40 text-destructive placeholder:text-destructive/50",
 };
@@ -25,8 +24,8 @@ export const REASON_FIELD_TEXT: Record<
 };
 
 export const REASON_NOTE_CLASSES: Record<ReasonKind, string> = {
-	blocked: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-	failed: "bg-destructive/10 text-destructive",
+	blocked: "bg-warning-soft text-warning-soft-foreground",
+	failed: "bg-destructive-soft text-destructive-soft-foreground",
 };
 
 export function reasonKindOf(

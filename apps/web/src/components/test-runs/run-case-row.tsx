@@ -1,11 +1,10 @@
-import { Badge } from "@automationstack/ui/components/badge";
 import { Checkbox } from "@automationstack/ui/components/checkbox";
 import { cn } from "@automationstack/ui/lib/utils";
 import { UserIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import { CaseCollaboratorsCell } from "@/components/cases/case-collaborators-cell";
-import { PRIORITY_BADGE_VARIANTS } from "@/components/cases/case-meta";
+import { StatusBadge } from "@/components/status/status-badge";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
 import {
 	RESULT_ICONS,
@@ -45,9 +44,7 @@ function RunCaseRowContent({
 			/>
 			<span className="sr-only">{RESULT_LABELS[runCase.result]}</span>
 			<span className="min-w-0 flex-1 truncate">{testCase.name}</span>
-			<Badge variant={PRIORITY_BADGE_VARIANTS[testCase.priority]}>
-				{testCase.priority}
-			</Badge>
+			<StatusBadge kind="priority" value={testCase.priority} />
 			{runCase.assigneeId !== null && (
 				<UserIcon
 					aria-hidden="true"

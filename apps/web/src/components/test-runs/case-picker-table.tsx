@@ -1,5 +1,4 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
-import { Badge } from "@automationstack/ui/components/badge";
 import { Checkbox } from "@automationstack/ui/components/checkbox";
 import {
 	Table,
@@ -10,8 +9,8 @@ import {
 	TableRow,
 } from "@automationstack/ui/components/table";
 import { useCallback } from "react";
-import { PRIORITY_BADGE_VARIANTS } from "@/components/cases/case-meta";
-import { CaseStatusBadge } from "@/components/cases/case-status-badge";
+
+import { StatusBadge } from "@/components/status/status-badge";
 
 interface PickerRowProps {
 	onToggle: (caseId: string) => void;
@@ -36,12 +35,10 @@ function PickerRow({ onToggle, selected, testCase }: PickerRowProps) {
 			</TableCell>
 			<TableCell className="font-medium">{testCase.name}</TableCell>
 			<TableCell className="w-16">
-				<Badge variant={PRIORITY_BADGE_VARIANTS[testCase.priority]}>
-					{testCase.priority}
-				</Badge>
+				<StatusBadge kind="priority" value={testCase.priority} />
 			</TableCell>
 			<TableCell className="w-20">
-				<CaseStatusBadge status={testCase.status} />
+				<StatusBadge kind="caseStatus" value={testCase.status} />
 			</TableCell>
 		</TableRow>
 	);

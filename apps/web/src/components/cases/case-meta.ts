@@ -12,37 +12,10 @@ export interface CaseOption {
 	value: string;
 }
 
-export type BadgeVariant =
-	| "default"
-	| "destructive"
-	| "destructive-solid"
-	| "ghost"
-	| "outline"
-	| "secondary";
-
-export const PRIORITY_BADGE_VARIANTS: Record<CasePriority, BadgeVariant> = {
-	P0: "destructive-solid",
-	P1: "destructive",
-	P2: "secondary",
-	P3: "ghost",
-};
-
 export const STATUS_LABELS: Record<CaseStatus, string> = {
 	active: "生效",
 	deprecated: "废弃",
 	draft: "草稿",
-};
-
-export const STATUS_BADGE_VARIANTS: Record<CaseStatus, BadgeVariant> = {
-	active: "outline",
-	deprecated: "outline",
-	draft: "outline",
-};
-
-export const STATUS_DOT_CLASSES: Record<CaseStatus, string> = {
-	active: "bg-success",
-	deprecated: "bg-muted-foreground/50",
-	draft: "border border-muted-foreground",
 };
 
 export const CASE_TYPE_LABELS: Record<CaseType, string> = {

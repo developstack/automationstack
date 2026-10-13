@@ -142,6 +142,7 @@ describe.each(["light", "dark"] as const)("%s 模式的主题令牌", (mode) => 
 		["sidebar-accent-foreground", "sidebar-accent"],
 		["sidebar-foreground", "sidebar-selected"],
 		["sidebar-primary-foreground", "sidebar-primary"],
+		["neutral-solid-foreground", "neutral-solid"],
 	])("%s 在 %s 上达到 WCAG AA", (text, surface) => {
 		expect(contrast(mode, text, surface)).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
 	});
@@ -158,6 +159,15 @@ describe.each(["light", "dark"] as const)("%s 模式的主题令牌", (mode) => 
 			`${status}-foreground 在 ${status} 上`
 		).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
 	});
+
+	it.each(STATUS_TOKENS)(
+		"状态标签的浅底 %s-soft 上的文字达到 WCAG AA",
+		(status) => {
+			expect(
+				contrast(mode, `${status}-soft-foreground`, `${status}-soft`)
+			).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
+		}
+	);
 
 	it.each(RESULT_FILL_TOKENS)("图表色 %s 在卡片上可以看清", (fill) => {
 		for (const surface of SURFACE_TOKENS) {

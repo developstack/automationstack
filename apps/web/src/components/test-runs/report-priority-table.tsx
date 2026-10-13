@@ -1,4 +1,3 @@
-import { Badge } from "@automationstack/ui/components/badge";
 import {
 	Table,
 	TableBody,
@@ -8,7 +7,7 @@ import {
 	TableRow,
 } from "@automationstack/ui/components/table";
 
-import { PRIORITY_BADGE_VARIANTS } from "@/components/cases/case-meta";
+import { StatusBadge } from "@/components/status/status-badge";
 import { formatRate } from "@/components/test-runs/rate-format";
 import type { ReportPriorityStat } from "@/components/test-runs/report-meta";
 
@@ -32,9 +31,7 @@ export function ReportPriorityTable({
 				{rows.map((row) => (
 					<TableRow key={row.priority}>
 						<TableCell>
-							<Badge variant={PRIORITY_BADGE_VARIANTS[row.priority]}>
-								{row.priority}
-							</Badge>
+							<StatusBadge kind="priority" value={row.priority} />
 						</TableCell>
 						<TableCell className="text-right tabular-nums">
 							{row.total}

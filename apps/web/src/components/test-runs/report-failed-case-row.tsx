@@ -2,10 +2,8 @@ import { Badge } from "@automationstack/ui/components/badge";
 import { TableCell, TableRow } from "@automationstack/ui/components/table";
 import { ExternalLinkIcon } from "lucide-react";
 
-import {
-	formatDateTime,
-	PRIORITY_BADGE_VARIANTS,
-} from "@/components/cases/case-meta";
+import { formatDateTime } from "@/components/cases/case-meta";
+import { StatusBadge } from "@/components/status/status-badge";
 import { AttachmentCell } from "@/components/test-runs/report-attachment-cell";
 import { ReportCommitLink } from "@/components/test-runs/report-commit-link";
 import {
@@ -68,9 +66,7 @@ export function ReportFailedCaseRow({ row }: { row: ReportFailedCase }) {
 			<TableCell className="font-medium">{row.name}</TableCell>
 			<TableCell>{row.moduleName}</TableCell>
 			<TableCell>
-				<Badge variant={PRIORITY_BADGE_VARIANTS[row.priority]}>
-					{row.priority}
-				</Badge>
+				<StatusBadge kind="priority" value={row.priority} />
 			</TableCell>
 			<TableCell>
 				{row.executedByName ?? (

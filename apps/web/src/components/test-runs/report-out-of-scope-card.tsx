@@ -1,4 +1,3 @@
-import { Badge } from "@automationstack/ui/components/badge";
 import { Button } from "@automationstack/ui/components/button";
 import {
 	Card,
@@ -17,7 +16,7 @@ import {
 } from "@automationstack/ui/components/table";
 import { useCallback, useState } from "react";
 
-import { PRIORITY_BADGE_VARIANTS } from "@/components/cases/case-meta";
+import { StatusBadge } from "@/components/status/status-badge";
 import { AddRunCasesSheet } from "@/components/test-runs/add-run-cases-sheet";
 import type { ReportOutOfScopeCase } from "@/components/test-runs/report-automation-meta";
 import { ReportOutOfScopeFooter } from "@/components/test-runs/report-out-of-scope-footer";
@@ -45,9 +44,7 @@ function OutOfScopeRow({
 			<TableCell className="font-medium">{item.name}</TableCell>
 			<TableCell>{item.moduleName}</TableCell>
 			<TableCell>
-				<Badge variant={PRIORITY_BADGE_VARIANTS[item.priority]}>
-					{item.priority}
-				</Badge>
+				<StatusBadge kind="priority" value={item.priority} />
 			</TableCell>
 			<TableCell className="font-mono text-xs">
 				{item.sourceRef ?? (

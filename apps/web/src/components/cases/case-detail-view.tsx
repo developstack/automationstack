@@ -11,14 +11,10 @@ import {
 import type { ReactNode } from "react";
 
 import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
-import {
-	CASE_TYPE_LABELS,
-	formatDateTime,
-	PRIORITY_BADGE_VARIANTS,
-} from "@/components/cases/case-meta";
-import { CaseStatusBadge } from "@/components/cases/case-status-badge";
+import { CASE_TYPE_LABELS, formatDateTime } from "@/components/cases/case-meta";
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
+import { StatusBadge } from "@/components/status/status-badge";
 
 function DetailRow({
 	children,
@@ -77,10 +73,8 @@ export function CaseDetailView({ testCase }: { testCase: TestCase }) {
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="flex flex-wrap items-center gap-2">
-				<Badge variant={PRIORITY_BADGE_VARIANTS[testCase.priority]}>
-					{testCase.priority}
-				</Badge>
-				<CaseStatusBadge status={testCase.status} />
+				<StatusBadge kind="priority" value={testCase.priority} />
+				<StatusBadge kind="caseStatus" value={testCase.status} />
 				<Badge variant="outline">{CASE_TYPE_LABELS[testCase.caseType]}</Badge>
 				{testCase.tags.map((tag) => (
 					<Badge key={tag} variant="secondary">

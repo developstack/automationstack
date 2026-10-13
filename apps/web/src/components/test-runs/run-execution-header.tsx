@@ -4,12 +4,12 @@ import { Link } from "@tanstack/react-router";
 import { FileTextIcon } from "lucide-react";
 import { useCallback } from "react";
 
+import { StatusBadge } from "@/components/status/status-badge";
 import {
 	formatPassRate,
 	type RunCounts,
 	testRunProgress,
 } from "@/components/test-runs/test-run-rates";
-import { TestRunStatusBadge } from "@/components/test-runs/test-run-status-badge";
 import {
 	useMarkRunReviewed,
 	useUnmarkRunReviewed,
@@ -69,7 +69,7 @@ export function RunExecutionHeader({
 	return (
 		<div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
 			<h2 className="min-w-0 truncate font-medium">{run.name}</h2>
-			<TestRunStatusBadge status={run.status} />
+			<StatusBadge kind="runStatus" value={run.status} />
 			<span className="text-muted-foreground text-sm tabular-nums">
 				完成 {progress.done}/{progress.total} · 通过率 {formatPassRate(counts)}
 			</span>

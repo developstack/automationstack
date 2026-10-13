@@ -1,5 +1,4 @@
 import type { CasePriority } from "@automationstack/db/schema/test-cases";
-import { Badge } from "@automationstack/ui/components/badge";
 import {
 	Card,
 	CardContent,
@@ -10,10 +9,8 @@ import {
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import {
-	formatDateTime,
-	PRIORITY_BADGE_VARIANTS,
-} from "@/components/cases/case-meta";
+import { formatDateTime } from "@/components/cases/case-meta";
+import { StatusBadge } from "@/components/status/status-badge";
 import { orpc } from "@/utils/orpc";
 
 interface StaleItemProps {
@@ -28,9 +25,7 @@ interface StaleItemProps {
 function StaleCaseRow(props: StaleItemProps) {
 	return (
 		<li className="flex items-center gap-2 text-sm">
-			<Badge variant={PRIORITY_BADGE_VARIANTS[props.priority]}>
-				{props.priority}
-			</Badge>
+			<StatusBadge kind="priority" value={props.priority} />
 			<Link
 				className="min-w-0 flex-1 truncate hover:underline"
 				params={{ projectId: props.projectId }}

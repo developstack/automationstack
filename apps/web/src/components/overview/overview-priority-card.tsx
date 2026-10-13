@@ -1,5 +1,4 @@
 import type { CasePriority } from "@automationstack/db/schema/test-cases";
-import { Badge } from "@automationstack/ui/components/badge";
 import {
 	Card,
 	CardContent,
@@ -9,11 +8,9 @@ import {
 } from "@automationstack/ui/components/card";
 import { useSuspenseQuery } from "@tanstack/react-query";
 
-import {
-	PRIORITY_BADGE_VARIANTS,
-	PRIORITY_VALUES,
-} from "@/components/cases/case-meta";
+import { PRIORITY_VALUES } from "@/components/cases/case-meta";
 import { OverviewPriorityBars } from "@/components/overview/overview-priority-bars";
+import { StatusBadge } from "@/components/status/status-badge";
 import { orpc } from "@/utils/orpc";
 
 const PERCENT = 100;
@@ -31,7 +28,7 @@ interface PrioritySliceProps {
 function PriorityLegendItem({ count, priority, total }: PrioritySliceProps) {
 	return (
 		<li className="flex items-center gap-1.5">
-			<Badge variant={PRIORITY_BADGE_VARIANTS[priority]}>{priority}</Badge>
+			<StatusBadge kind="priority" value={priority} />
 			<span className="text-muted-foreground text-xs tabular-nums">
 				{count} 条 · {Math.round(share(count, total))}%
 			</span>

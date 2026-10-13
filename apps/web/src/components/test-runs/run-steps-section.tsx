@@ -92,7 +92,7 @@ function RunStepsHeader({
 				) : null}
 			</div>
 			{staleDiscarded ? (
-				<p className="text-amber-600 text-sm dark:text-amber-400">
+				<p className="text-sm text-warning">
 					用例已被改过，本机上一份没保存的分步判定已作废，请对着新步骤重新判定。
 				</p>
 			) : null}

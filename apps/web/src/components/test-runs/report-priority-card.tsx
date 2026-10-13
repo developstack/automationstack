@@ -58,7 +58,9 @@ function P0Verdict({ stat }: { stat: ReportPriorityStat | undefined }) {
 	}
 	if (stat.failed > 0) {
 		return (
-			<p className={`${P0_LINE_CLASS} bg-destructive/10 text-destructive`}>
+			<p
+				className={`${P0_LINE_CLASS} bg-destructive-soft text-destructive-soft-foreground`}
+			>
 				<TriangleAlertIcon
 					aria-hidden="true"
 					className="mt-0.5 size-4 shrink-0"
