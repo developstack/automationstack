@@ -9,7 +9,9 @@ import { CaseFilters } from "@/components/cases/case-filters";
 import { CaseListOverlays } from "@/components/cases/case-list-overlays";
 import { caseListInput } from "@/components/cases/case-list-query";
 import { CaseListResult } from "@/components/cases/case-list-result";
+import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
+import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import type { WorkspaceNavigation } from "@/components/workspace/use-workspace-navigation";
 import { useWorkspaceNavigation } from "@/components/workspace/use-workspace-navigation";
 import type { WorkspaceSearch } from "@/components/workspace/workspace-search";
@@ -22,13 +24,12 @@ const NO_TAGS: string[] = [];
 
 const CREATE_HINT_ID = "case-create-hint";
 
-interface CaseListActionsProps {
+interface CaseCreateActionProps {
 	canCreate: boolean;
 	onCreate: () => void;
-	total: number | undefined;
 }
 
-function CaseListActions({ canCreate, onCreate, total }: CaseListActionsProps) {
+function CaseCreateAction({ canCreate, onCreate }: CaseCreateActionProps) {
 	const handleCreate = useCallback(() => {
 		if (!canCreate) {
 			return;
@@ -37,14 +38,7 @@ function CaseListActions({ canCreate, onCreate, total }: CaseListActionsProps) {
 	}, [canCreate, onCreate]);
 
 	return (
-		<div className="flex items-center gap-3">
-			<span
-				aria-busy={total === undefined}
-				className="text-muted-foreground text-xs"
-				role="status"
-			>
-				{total === undefined ? "" : `共 ${total} 条`}
-			</span>
+		<>
 			{canCreate ? null : (
 				<span className="text-muted-foreground text-xs" id={CREATE_HINT_ID}>
 					请先在左侧选择一个模块
@@ -58,18 +52,23 @@ function CaseListActions({ canCreate, onCreate, total }: CaseListActionsProps) {
 				<PlusIcon data-icon="inline-start" />
 				新建用例
 			</Button>
-		</div>
+		</>
 	);
 }
 
-interface CaseListToolbarProps extends CaseListActionsProps {
+interface CaseListToolbarProps {
 	navigation: WorkspaceNavigation;
 	projectId: string;
 	search: WorkspaceSearch;
+	total: number | undefined;
 }
 
-function CaseListToolbar(props: CaseListToolbarProps) {
-	const { navigation, search } = props;
+function CaseListToolbar({
+	navigation,
+	projectId,
+	search,
+	total,
+}: CaseListToolbarProps) {
 	return (
 		<div className="flex flex-wrap items-center justify-between gap-2">
 			<CaseFilters
@@ -79,15 +78,17 @@ function CaseListToolbar(props: CaseListToolbarProps) {
 				onStatusChange={navigation.setStatus}
 				onTagsChange={navigation.setTags}
 				priority={search.priority ?? NO_PRIORITY}
-				projectId={props.projectId}
+				projectId={projectId}
 				status={search.status}
 				tags={search.tags ?? NO_TAGS}
 			/>
-			<CaseListActions
-				canCreate={props.canCreate}
-				onCreate={props.onCreate}
-				total={props.total}
-			/>
+			<span
+				aria-busy={total === undefined}
+				className="text-muted-foreground text-xs"
+				role="status"
+			>
+				{total === undefined ? "" : `共 ${total} 条`}
+			</span>
 		</div>
 	);
 }
@@ -110,10 +111,17 @@ export function CaseListView({ projectId }: CaseListViewProps) {
 
 	return (
 		<PageTransition className={CASE_LIST_MAIN} phase="ready">
+			<PageHeader
+				actions={
+					<CaseCreateAction
+						canCreate={search.moduleId !== undefined}
+						onCreate={navigation.openCreate}
+					/>
+				}
+				title={WORKSPACE_VIEW_LABELS.list}
+			/>
 			<CaseListToolbar
-				canCreate={search.moduleId !== undefined}
 				navigation={navigation}
-				onCreate={navigation.openCreate}
 				projectId={projectId}
 				search={search}
 				total={listQuery.data?.total}

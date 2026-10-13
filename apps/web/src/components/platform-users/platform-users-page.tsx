@@ -10,10 +10,12 @@ import { PlusIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { useSession } from "@/components/auth/use-session";
+import { PageHeader } from "@/components/layout/page-header";
 import { CreatePlatformUserDialog } from "@/components/platform-users/create-platform-user-dialog";
 import { createUserAccess } from "@/components/platform-users/platform-user-access";
 import { PlatformUsersTable } from "@/components/platform-users/platform-users-table";
 import { PlatformUsersTableSkeleton } from "@/components/platform-users/platform-users-table-skeleton";
+import { PLATFORM_USERS_TITLE } from "@/components/platform-users/platform-users-title";
 import { useKnownProvider } from "@/components/platform-users/use-known-provider";
 
 const CREATE_HINT_ID = "platform-users-create-hint";
@@ -37,37 +39,54 @@ function PlatformUsersForbidden() {
 	);
 }
 
-export function PlatformUsersPage() {
-	const { isPending, user } = useSession();
+function PlatformUsersAdminView() {
 	const createAccess = createUserAccess(useKnownProvider());
 	const [creating, setCreating] = useState(false);
 	const openCreate = useCallback(() => setCreating(true), []);
 	const closeCreate = useCallback(() => setCreating(false), []);
 
-	if (isPending) {
-		return <PlatformUsersTableSkeleton />;
-	}
-	if (user?.role !== "admin") {
-		return <PlatformUsersForbidden />;
-	}
-
 	return (
-		<section className="flex flex-col gap-4">
-			<div className="flex items-center justify-between gap-2">
-				<p className="text-muted-foreground text-xs" id={CREATE_HINT_ID}>
-					{createAccess.hint ?? LOCAL_MODE_INTRO}
-				</p>
-				<Button
-					aria-describedby={createAccess.allowed ? undefined : CREATE_HINT_ID}
-					disabled={!createAccess.allowed}
-					onClick={openCreate}
-				>
-					<PlusIcon data-icon="inline-start" />
-					新建用户
-				</Button>
-			</div>
+		<>
+			<PageHeader
+				actions={
+					<Button
+						aria-describedby={createAccess.allowed ? undefined : CREATE_HINT_ID}
+						disabled={!createAccess.allowed}
+						onClick={openCreate}
+					>
+						<PlusIcon data-icon="inline-start" />
+						新建用户
+					</Button>
+				}
+				title={PLATFORM_USERS_TITLE}
+			/>
+			<p className="text-muted-foreground text-xs" id={CREATE_HINT_ID}>
+				{createAccess.hint ?? LOCAL_MODE_INTRO}
+			</p>
 			<PlatformUsersTable />
 			<CreatePlatformUserDialog onClose={closeCreate} open={creating} />
+		</>
+	);
+}
+
+export function PlatformUsersPage() {
+	const { isPending, user } = useSession();
+
+	if (isPending || user?.role !== "admin") {
+		return (
+			<section className="flex flex-col gap-4">
+				<PageHeader title={PLATFORM_USERS_TITLE} />
+				{isPending ? (
+					<PlatformUsersTableSkeleton />
+				) : (
+					<PlatformUsersForbidden />
+				)}
+			</section>
+		);
+	}
+	return (
+		<section className="flex flex-col gap-4">
+			<PlatformUsersAdminView />
 		</section>
 	);
 }

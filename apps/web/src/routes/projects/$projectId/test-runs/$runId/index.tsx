@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback } from "react";
 import { z } from "zod";
 
+import { PageHeaderSkeleton } from "@/components/layout/page-header-skeleton";
 import { PageTransition } from "@/components/layout/page-transition";
+import { RUN_EXECUTION_HEADER_CLASS } from "@/components/test-runs/run-execution-header";
 import { RunExecutionView } from "@/components/test-runs/run-execution-view";
 import type { RouterAppContext } from "@/routes/__root";
 
@@ -53,6 +55,10 @@ export const Route = createFileRoute("/projects/$projectId/test-runs/$runId/")({
 function RunExecutionPending() {
 	return (
 		<PageTransition className={EXECUTION_MAIN} phase="pending">
+			<PageHeaderSkeleton
+				actionCount={1}
+				className={RUN_EXECUTION_HEADER_CLASS}
+			/>
 			<p className="p-8 text-center text-muted-foreground text-sm">
 				正在载入测试任务…
 			</p>

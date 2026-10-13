@@ -24,7 +24,7 @@ import {
 
 const routeApi = getRouteApi("/projects/$projectId/settings");
 
-export const SETTINGS_MAIN = "flex min-h-0 flex-col p-4";
+export const SETTINGS_MAIN = "flex min-h-0 flex-col gap-4 p-4";
 
 export function useSettingsTab(): SettingsTab {
 	return resolveSettingsTab(routeApi.useSearch().tab);

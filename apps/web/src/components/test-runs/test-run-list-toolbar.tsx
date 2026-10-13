@@ -1,5 +1,4 @@
 import type { TestRunStatus } from "@automationstack/db/schema/test-runs";
-import { Button } from "@automationstack/ui/components/button";
 import { Input } from "@automationstack/ui/components/input";
 import {
 	Select,
@@ -8,7 +7,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@automationstack/ui/components/select";
-import { PlusIcon } from "lucide-react";
 import { type ChangeEvent, useCallback, useEffect, useState } from "react";
 
 import { RUN_STATUS_LABELS } from "@/components/test-runs/test-run-meta";
@@ -104,7 +102,6 @@ function StatusFilter({ onChange, status }: StatusFilterProps) {
 interface TestRunListToolbarProps {
 	count: number;
 	loaded: boolean;
-	onCreate: () => void;
 	onKeywordChange: (keyword: string) => void;
 	onStatusChange: (status: TestRunStatus | undefined) => void;
 	search: TestRunsSearch;
@@ -113,7 +110,6 @@ interface TestRunListToolbarProps {
 export function TestRunListToolbar({
 	count,
 	loaded,
-	onCreate,
 	onKeywordChange,
 	onStatusChange,
 	search,
@@ -127,19 +123,13 @@ export function TestRunListToolbar({
 				/>
 				<StatusFilter onChange={onStatusChange} status={search.runStatus} />
 			</div>
-			<div className="flex items-center gap-3">
-				<span
-					aria-busy={!loaded}
-					className="text-muted-foreground text-xs"
-					role="status"
-				>
-					{loaded ? `共 ${count} 个` : ""}
-				</span>
-				<Button onClick={onCreate} type="button">
-					<PlusIcon data-icon="inline-start" />
-					新建测试任务
-				</Button>
-			</div>
+			<span
+				aria-busy={!loaded}
+				className="text-muted-foreground text-xs"
+				role="status"
+			>
+				{loaded ? `共 ${count} 个` : ""}
+			</span>
 		</div>
 	);
 }

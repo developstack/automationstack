@@ -3,31 +3,14 @@ import {
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
-	DropdownMenuTrigger,
 } from "@automationstack/ui/components/dropdown-menu";
-import { SidebarMenuButton } from "@automationstack/ui/components/sidebar-menu";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { ChevronsUpDownIcon, FolderKanbanIcon } from "lucide-react";
+import { FolderKanbanIcon } from "lucide-react";
 
 import { ProjectSwitcherItem } from "@/components/layout/project-switcher-item";
+import { ProjectSwitcherTrigger } from "@/components/layout/project-switcher-trigger";
 import { orpc } from "@/utils/orpc";
-
-function ProjectSwitcherTrigger({ projectName }: { projectName: string }) {
-	return (
-		<DropdownMenuTrigger
-			render={
-				<SidebarMenuButton aria-label={`切换项目：当前是 ${projectName}`}>
-					<FolderKanbanIcon aria-hidden="true" />
-					<span className="min-w-0 flex-1 truncate font-medium">
-						{projectName}
-					</span>
-					<ChevronsUpDownIcon aria-hidden="true" />
-				</SidebarMenuButton>
-			}
-		/>
-	);
-}
 
 function ProjectSwitcherPlaceholder({ label }: { label: string }) {
 	return <DropdownMenuItem disabled>{label}</DropdownMenuItem>;
@@ -69,7 +52,7 @@ export function ProjectSwitcher({
 }: ProjectSwitcherProps) {
 	return (
 		<DropdownMenu>
-			<ProjectSwitcherTrigger projectName={projectName} />
+			<ProjectSwitcherTrigger projectId={projectId} projectName={projectName} />
 			<DropdownMenuContent align="start">
 				<ProjectSwitcherItems currentProjectId={projectId} />
 				<DropdownMenuSeparator />

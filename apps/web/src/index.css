@@ -20,6 +20,18 @@
 	grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
+@utility grid-cols-overview-priority {
+	grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+}
+
+@utility grid-cols-overview-change {
+	grid-template-columns: minmax(0, 1fr) auto;
+}
+
+@utility grid-cols-overview-change-wide {
+	grid-template-columns: minmax(0, 2fr) 3rem minmax(0, 3fr) 6rem 8.5rem;
+}
+
 @utility text-kbd-hint {
 	font-size: 0.625rem;
 	line-height: 1rem;

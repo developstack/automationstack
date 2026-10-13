@@ -80,7 +80,7 @@ function SidebarPanel({
 			/>
 			<div
 				className={cn(
-					"fixed inset-y-0 left-0 z-10 hidden h-svh w-(--sidebar-width) border-sidebar-border border-r transition-sidebar-offset group-data-[collapsible=offcanvas]:left-(--sidebar-width-negative) group-data-[collapsible=icon]:w-(--sidebar-width-icon) lg:flex",
+					"fixed inset-y-0 left-0 z-10 hidden h-svh w-(--sidebar-width) transition-sidebar-offset group-data-[collapsible=offcanvas]:left-(--sidebar-width-negative) group-data-[collapsible=icon]:w-(--sidebar-width-icon) lg:flex",
 					className
 				)}
 				data-slot="sidebar-container"
@@ -210,7 +210,7 @@ export function SidebarGroupLabel({
 	return (
 		<div
 			className={cn(
-				"flex h-7 shrink-0 items-center px-2 font-medium text-sidebar-foreground/70 text-xs transition-sidebar-label group-data-[collapsible=icon]:-mt-7 group-data-[collapsible=icon]:opacity-0",
+				"eyebrow flex h-7 shrink-0 items-center px-2 transition-sidebar-label group-data-[collapsible=icon]:-mt-7 group-data-[collapsible=icon]:opacity-0",
 				className
 			)}
 			data-slot="sidebar-group-label"

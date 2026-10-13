@@ -27,6 +27,11 @@ export function RunExecutionLayout(props: RunExecutionLayoutProps) {
 					: "lg:grid-rows-run-execution"
 			)}
 		>
+			<RunExecutionHeader
+				counts={{ ...props.selection.counts, total: data.cases.length }}
+				projectId={props.projectId}
+				run={data.run}
+			/>
 			{showBanner ? (
 				<RunLockedBanner
 					submittedAt={submittedAt}
@@ -34,11 +39,6 @@ export function RunExecutionLayout(props: RunExecutionLayoutProps) {
 					submittedByName={data.submittedByName}
 				/>
 			) : null}
-			<RunExecutionHeader
-				counts={{ ...props.selection.counts, total: data.cases.length }}
-				projectId={props.projectId}
-				run={data.run}
-			/>
 			<RunExecutionBody {...props} />
 			<RunEvents runId={data.run.id} />
 			<AddRunCasesSheet

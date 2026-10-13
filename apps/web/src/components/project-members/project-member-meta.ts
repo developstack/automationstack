@@ -6,6 +6,8 @@ import {
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { UserRole } from "@automationstack/db/schema/users";
 
+import { PLATFORM_ROLE_LABEL } from "@/components/platform-users/platform-user-meta";
+
 export const PROJECT_ROLE_LABEL: Record<ProjectRole, string> = {
 	member: "成员",
 	owner: "拥有者",
@@ -108,6 +110,21 @@ export function projectRoleLabelFor(member: {
 		return `${PROJECT_ROLE_LABEL.owner}（管理权限已暂停）`;
 	}
 	return PROJECT_ROLE_LABEL[member.role];
+}
+
+/**
+ * 当前用户在项目中的角色名称。平台管理员不加入项目也能进入，这时显示平台角色。
+ * 其他不在成员列表里的用户没有项目角色。
+ */
+export function viewerProjectRoleLabel(
+	session: SessionIdentity,
+	members: readonly ProjectRoleHolder[]
+): string | null {
+	const role = ownProjectRole(session, members);
+	if (role !== null) {
+		return projectRoleLabelFor({ platformRole: session.role, role });
+	}
+	return session.role === "admin" ? PLATFORM_ROLE_LABEL.admin : null;
 }
 
 export type ProjectMemberConfirmKind = "demote" | "promote" | "remove";

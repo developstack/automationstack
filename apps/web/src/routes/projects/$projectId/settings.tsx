@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
+import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import { SettingsPendingPanel } from "@/components/settings/settings-pending-panel";
 import {
 	resolveSettingsTab,
@@ -65,6 +67,7 @@ function ProjectSettingsPending() {
 	const tab = useSettingsTab();
 	return (
 		<PageTransition className={SETTINGS_MAIN} phase="pending">
+			<PageHeader title={WORKSPACE_VIEW_LABELS.settings} />
 			<SettingsTabs>
 				<SettingsPendingPanel tab={tab} />
 			</SettingsTabs>
@@ -76,6 +79,7 @@ function ProjectSettingsPage() {
 	const { projectId } = Route.useParams();
 	return (
 		<PageTransition className={SETTINGS_MAIN} phase="ready">
+			<PageHeader title={WORKSPACE_VIEW_LABELS.settings} />
 			<SettingsTabs>
 				<SettingsTabPanels projectId={projectId} />
 			</SettingsTabs>

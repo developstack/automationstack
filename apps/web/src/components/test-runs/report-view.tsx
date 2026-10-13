@@ -1,7 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { ChevronLeftIcon } from "lucide-react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
 import { StatusBadge } from "@/components/status/status-badge";
 import { ReportAutomationCard } from "@/components/test-runs/report-automation-card";
@@ -33,29 +32,6 @@ function hasSubmitBar(report: TestRunReportView): boolean {
 	return report.run.submittedAt !== null || report.run.status === "completed";
 }
 
-function ReportHeader({
-	projectId,
-	report,
-}: {
-	projectId: string;
-	report: TestRunReportView;
-}) {
-	return (
-		<header className={`flex flex-wrap items-center gap-3 ${FULL_WIDTH}`}>
-			<Link
-				className="inline-flex items-center gap-1 text-muted-foreground text-sm underline-offset-4 hover:underline"
-				params={{ projectId }}
-				to="/projects/$projectId/test-runs"
-			>
-				<ChevronLeftIcon aria-hidden="true" className="size-4" />
-				测试任务列表
-			</Link>
-			<h1 className="font-semibold text-lg">{report.run.name}</h1>
-			<StatusBadge kind="runStatus" value={report.run.status} />
-		</header>
-	);
-}
-
 export function ReportView({ projectId, runId }: ReportViewProps) {
 	const { data: report } = useSuspenseQuery(
 		orpc.testRuns.report.queryOptions({ input: { runId } })
@@ -63,7 +39,11 @@ export function ReportView({ projectId, runId }: ReportViewProps) {
 
 	return (
 		<PageTransition className={REPORT_MAIN} phase="ready">
-			<ReportHeader projectId={projectId} report={report} />
+			<PageHeader
+				badge={<StatusBadge kind="runStatus" value={report.run.status} />}
+				className={FULL_WIDTH}
+				title={report.run.name}
+			/>
 
 			{hasSubmitBar(report) ? (
 				<div className={FULL_WIDTH_ROW}>

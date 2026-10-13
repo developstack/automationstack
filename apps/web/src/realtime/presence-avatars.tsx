@@ -14,6 +14,7 @@ import {
 	PresenceAvatar,
 	type PresenceAvatarRenderProps,
 } from "./presence-avatar";
+import { uniquePresenceUsers } from "./presence-users";
 import { useRealtime } from "./realtime-context";
 import { usePresence } from "./use-presence";
 
@@ -28,6 +29,9 @@ const VIEW_LABELS: Record<string, string> = {
 	users: "成员",
 };
 
+const displayName = (entry: PresenceEntry, isSelf: boolean): string =>
+	isSelf ? `${entry.name}（我）` : entry.name;
+
 function PresenceAvatarTrigger({
 	entry,
 	isSelf,
@@ -36,7 +40,7 @@ function PresenceAvatarTrigger({
 	isSelf: boolean;
 }) {
 	const viewLabel = VIEW_LABELS[entry.view] ?? entry.view;
-	const label = `${entry.name}${isSelf ? "（我）" : ""} · ${viewLabel}`;
+	const label = `${displayName(entry, isSelf)} · ${viewLabel}`;
 	const renderTrigger = useCallback(
 		(avatar: PresenceAvatarRenderProps) => (
 			<TooltipTrigger
@@ -55,15 +59,25 @@ function PresenceAvatarTrigger({
 	);
 }
 
-function OverflowAvatar({ count }: { count: number }) {
-	const label = `还有 ${count} 人在线`;
+// 只列姓名不列所在页面：人多时每人只占一个词。
+function OverflowAvatar({
+	hiddenEntries,
+	selfClientId,
+}: {
+	hiddenEntries: readonly PresenceEntry[];
+	selfClientId: string | null;
+}) {
+	const names = hiddenEntries
+		.map((entry) => displayName(entry, entry.clientId === selfClientId))
+		.join("、");
+	const label = `还有 ${hiddenEntries.length} 人在线：${names}`;
 	return (
 		<Tooltip>
 			<TooltipTrigger
 				aria-label={label}
 				className={cn(PRESENCE_AVATAR_CLASS, PRESENCE_OVERFLOW_CLASS)}
 			>
-				{`+${count}`}
+				{`+${hiddenEntries.length}`}
 			</TooltipTrigger>
 			<TooltipContent>{label}</TooltipContent>
 		</Tooltip>
@@ -71,10 +85,11 @@ function OverflowAvatar({ count }: { count: number }) {
 }
 
 export function PresenceAvatars({ className }: { className?: string }) {
-	const entries = usePresence();
 	const selfClientId = useRealtime()?.clientId ?? null;
+	// 按用户去重，头像和「+N」与顶栏的「N 人在线」一致。
+	const entries = uniquePresenceUsers(usePresence(), selfClientId);
 	const visible = entries.slice(0, MAX_VISIBLE_AVATARS);
-	const overflow = entries.length - visible.length;
+	const hiddenEntries = entries.slice(MAX_VISIBLE_AVATARS);
 	return (
 		<AvatarGroup className={cn("-space-x-1.5", className)}>
 			{visible.map((entry) => (
@@ -84,7 +99,12 @@ export function PresenceAvatars({ className }: { className?: string }) {
 					key={entry.clientId}
 				/>
 			))}
-			{overflow > 0 ? <OverflowAvatar count={overflow} /> : null}
+			{hiddenEntries.length > 0 ? (
+				<OverflowAvatar
+					hiddenEntries={hiddenEntries}
+					selfClientId={selfClientId}
+				/>
+			) : null}
 		</AvatarGroup>
 	);
 }

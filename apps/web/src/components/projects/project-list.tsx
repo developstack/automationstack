@@ -6,6 +6,7 @@ import { PlusIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { useSession } from "@/components/auth/use-session";
+import { PageHeader } from "@/components/layout/page-header";
 import { DeleteProjectDialog } from "@/components/projects/delete-project-dialog";
 import { ProjectCards } from "@/components/projects/project-cards";
 import { ProjectFormDialog } from "@/components/projects/project-form-dialog";
@@ -41,15 +42,17 @@ export function ProjectList() {
 
 	return (
 		<section className="flex flex-col gap-4">
-			<div className="flex items-center justify-between">
-				<h1 className="font-semibold text-lg">项目</h1>
-				{canCreate ? (
-					<Button onClick={create}>
-						<PlusIcon data-icon="inline-start" />
-						新建项目
-					</Button>
-				) : null}
-			</div>
+			<PageHeader
+				actions={
+					canCreate ? (
+						<Button onClick={create}>
+							<PlusIcon data-icon="inline-start" />
+							新建项目
+						</Button>
+					) : undefined
+				}
+				title="项目"
+			/>
 			<ProjectCards
 				canCreate={canCreate}
 				onDelete={remove}

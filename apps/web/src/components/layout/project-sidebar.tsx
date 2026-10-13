@@ -29,7 +29,7 @@ function ProjectSwitcherRow({
 			<SidebarMenu>
 				<SidebarMenuItem>
 					{projectName === undefined ? (
-						<Skeleton aria-hidden="true" className="h-8 w-full" />
+						<Skeleton aria-hidden="true" className="h-14 w-full rounded-lg" />
 					) : (
 						<ProjectSwitcher projectId={projectId} projectName={projectName} />
 					)}

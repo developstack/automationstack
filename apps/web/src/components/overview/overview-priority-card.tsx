@@ -1,38 +1,48 @@
 import type { CasePriority } from "@automationstack/db/schema/test-cases";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@automationstack/ui/components/card";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import { PRIORITY_VALUES } from "@/components/cases/case-meta";
-import { OverviewPriorityBars } from "@/components/overview/overview-priority-bars";
+import { OverviewEmpty } from "@/components/overview/overview-empty";
+import { PRIORITY_GRID } from "@/components/overview/overview-layout";
+import { formatCount } from "@/components/overview/overview-metrics";
+import { OverviewQuery } from "@/components/overview/overview-query";
+import { OverviewSection } from "@/components/overview/overview-section";
+import { PriorityCardSkeleton } from "@/components/overview/priority-card-skeleton";
 import { StatusBadge } from "@/components/status/status-badge";
 import { orpc } from "@/utils/orpc";
+
+export const PRIORITY_CARD_TITLE = "优先级分布";
 
 const PERCENT = 100;
 
 function share(count: number, total: number): number {
-	return total === 0 ? 0 : (count / total) * PERCENT;
+	return total === 0 ? 0 : Math.round((count / total) * PERCENT);
 }
 
-interface PrioritySliceProps {
+interface PriorityRowProps {
 	count: number;
 	priority: CasePriority;
 	total: number;
 }
 
-function PriorityLegendItem({ count, priority, total }: PrioritySliceProps) {
+function PriorityRow({ count, priority, total }: PriorityRowProps) {
+	const percent = share(count, total);
+
 	return (
-		<li className="flex items-center gap-1.5">
-			<StatusBadge kind="priority" value={priority} />
-			<span className="text-muted-foreground text-xs tabular-nums">
-				{count} 条 · {Math.round(share(count, total))}%
-			</span>
-		</li>
+		<>
+			<dt>
+				<StatusBadge kind="priority" value={priority} />
+			</dt>
+			<dd aria-hidden="true" className="h-1.5 rounded-full bg-muted">
+				<div
+					className="h-full rounded-full bg-foreground"
+					style={{ width: `${percent}%` }}
+				/>
+			</dd>
+			<dd className="numeric text-right text-muted-foreground text-xs">
+				{`${formatCount(count)} 条 · ${percent}%`}
+			</dd>
+		</>
 	);
 }
 
@@ -41,38 +51,39 @@ interface OverviewPriorityCardProps {
 }
 
 export function OverviewPriorityCard({ projectId }: OverviewPriorityCardProps) {
-	const { data } = useSuspenseQuery(
+	const query = useQuery(
 		orpc.projectStats.overview.queryOptions({ input: { projectId } })
 	);
-	const { priorityCounts, totalCases } = data;
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle>优先级分布</CardTitle>
-				<CardDescription>P0 / P1 占比过低或过高都值得复核</CardDescription>
-			</CardHeader>
-			<CardContent>
-				{totalCases === 0 ? (
-					<p className="text-muted-foreground text-sm">
-						查过了：还没有用例，四档优先级都是 0，暂时画不出分布。
-					</p>
-				) : (
-					<>
-						<OverviewPriorityBars counts={priorityCounts} total={totalCases} />
-						<ul className="flex flex-wrap gap-x-3 gap-y-2">
+		<OverviewQuery
+			query={query}
+			skeleton={<PriorityCardSkeleton />}
+			title={PRIORITY_CARD_TITLE}
+		>
+			{({ priorityCounts, totalCases }) => (
+				<OverviewSection
+					description="P0/P1 占比过低或过高都需要复核"
+					title={PRIORITY_CARD_TITLE}
+				>
+					{totalCases === 0 ? (
+						<OverviewEmpty projectId={projectId}>
+							还没有用例。新建用例时选择优先级，这里显示各优先级的占比。
+						</OverviewEmpty>
+					) : (
+						<dl className={PRIORITY_GRID}>
 							{PRIORITY_VALUES.map((priority) => (
-								<PriorityLegendItem
+								<PriorityRow
 									count={priorityCounts[priority]}
 									key={priority}
 									priority={priority}
 									total={totalCases}
 								/>
 							))}
-						</ul>
-					</>
-				)}
-			</CardContent>
-		</Card>
+						</dl>
+					)}
+				</OverviewSection>
+			)}
+		</OverviewQuery>
 	);
 }

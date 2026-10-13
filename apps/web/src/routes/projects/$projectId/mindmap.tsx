@@ -1,7 +1,9 @@
 import { ClientOnly, createFileRoute } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
+import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import { MindmapSkeleton } from "@/components/mindmap/mindmap-skeleton";
 import { workspaceSearchSchema } from "@/components/workspace/workspace-search";
 
@@ -23,12 +25,18 @@ function MindmapPage() {
 	const { moduleId } = Route.useSearch();
 
 	return (
-		<PageTransition className="h-full">
-			<ClientOnly fallback={FALLBACK}>
-				<Suspense fallback={FALLBACK}>
-					<LazyMindmapView moduleId={moduleId} projectId={projectId} />
-				</Suspense>
-			</ClientOnly>
+		<PageTransition className="flex h-full flex-col">
+			<PageHeader
+				className="px-4 pt-4 pb-2"
+				title={WORKSPACE_VIEW_LABELS.mindmap}
+			/>
+			<div className="min-h-0 flex-1">
+				<ClientOnly fallback={FALLBACK}>
+					<Suspense fallback={FALLBACK}>
+						<LazyMindmapView moduleId={moduleId} projectId={projectId} />
+					</Suspense>
+				</ClientOnly>
+			</div>
 		</PageTransition>
 	);
 }

@@ -1,7 +1,5 @@
 export const DONUT_BOX = "mx-auto aspect-square h-40 w-40";
 
-export const OVERVIEW_BARS_BOX = "aspect-auto h-32 w-full";
-
 export const REPORT_BARS_BOX = "aspect-auto w-full";
 
 const REPORT_PRIORITY_ROW_PX = 32;
