@@ -42,7 +42,7 @@ function PopoverContent({
 			>
 				<PopoverPopup
 					className={cn(
-						"z-50 flex w-72 origin-(--transform-origin) flex-col gap-4 rounded-md bg-popover p-4 text-popover-foreground text-sm shadow-md outline-hidden ring-1 ring-foreground/10",
+						"z-50 flex w-72 origin-(--transform-origin) flex-col gap-4 rounded-md bg-popover p-4 text-popover-foreground text-sm shadow-popover outline-hidden ring-1 ring-foreground/10",
 						className
 					)}
 					data-slot="popover-content"

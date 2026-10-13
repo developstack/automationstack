@@ -1,4 +1,8 @@
-export function JiraFieldError({
+/**
+ * 字段旁边的错误提示。字段用 aria-describedby 指向 id，
+ * 并在有错误时设 aria-invalid。没有错误时不渲染。
+ */
+export function FieldError({
 	id,
 	message,
 }: {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	isAutoSubmitDaysDirty,
 	MAX_AUTO_SUBMIT_DAYS,
 	MIN_AUTO_SUBMIT_DAYS,
 	validateAutoSubmitDays,
@@ -28,6 +29,25 @@ function values(overrides: Partial<JiraFormValues> = {}): JiraFormValues {
 		...overrides,
 	};
 }
+
+describe("isAutoSubmitDaysDirty：有没有未保存的修改", () => {
+	it("输入等于已保存的天数时没有修改", () => {
+		expect(isAutoSubmitDaysDirty("7", 7)).toBe(false);
+	});
+
+	it("写法不同但天数相同时没有修改", () => {
+		expect(isAutoSubmitDaysDirty(" 07 ", 7)).toBe(false);
+	});
+
+	it("天数不同时有修改", () => {
+		expect(isAutoSubmitDaysDirty("8", 7)).toBe(true);
+	});
+
+	it("清空或输入无效的值时有修改", () => {
+		expect(isAutoSubmitDaysDirty("", 7)).toBe(true);
+		expect(isAutoSubmitDaysDirty("abc", 7)).toBe(true);
+	});
+});
 
 describe("validateAutoSubmitDays", () => {
 	it("接受区间两端", () => {

@@ -1,12 +1,8 @@
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
-import { Badge } from "@automationstack/ui/components/badge";
 import type { ReactNode } from "react";
 
-import {
-	CASE_TYPE_LABELS,
-	PRIORITY_BADGE_VARIANTS,
-} from "@/components/cases/case-meta";
-import { CaseStatusBadge } from "@/components/cases/case-status-badge";
+import { CASE_TYPE_LABELS } from "@/components/cases/case-meta";
+import { StatusBadge } from "@/components/status/status-badge";
 
 const EMPTY_VALUE = "—";
 
@@ -29,12 +25,10 @@ export function SnapshotFields({ snapshot }: { snapshot: CaseSnapshot }) {
 		<dl className="divide-y">
 			<SnapshotField label="名称">{snapshot.name}</SnapshotField>
 			<SnapshotField label="优先级">
-				<Badge variant={PRIORITY_BADGE_VARIANTS[snapshot.priority]}>
-					{snapshot.priority}
-				</Badge>
+				<StatusBadge kind="priority" value={snapshot.priority} />
 			</SnapshotField>
 			<SnapshotField label="状态">
-				<CaseStatusBadge status={snapshot.status} />
+				<StatusBadge kind="caseStatus" value={snapshot.status} />
 			</SnapshotField>
 			<SnapshotField label="类型">
 				{CASE_TYPE_LABELS[snapshot.caseType]}

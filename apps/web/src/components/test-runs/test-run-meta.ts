@@ -12,8 +12,6 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 
-import type { BadgeVariant } from "@/components/cases/case-meta";
-
 export const RUN_STATUS_LABELS: Record<TestRunStatus, string> = {
 	completed: "已完成",
 	in_progress: "测试中",
@@ -39,27 +37,11 @@ export const RESULT_ICONS: Record<TestRunCaseResult, LucideIcon> = {
 };
 
 export const RESULT_TEXT_CLASSES: Record<TestRunCaseResult, string> = {
-	blocked: "text-amber-600 dark:text-amber-400",
+	blocked: "text-warning",
 	failed: "text-destructive",
 	passed: "text-success",
 	skipped: "text-muted-foreground",
 	untested: "text-muted-foreground",
-};
-
-export const RESULT_BADGE_CLASSES: Record<TestRunCaseResult, string> = {
-	blocked: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-	failed: "bg-destructive/15 text-destructive",
-	passed: "bg-success/15 text-success",
-	skipped: "bg-muted text-muted-foreground",
-	untested: "bg-muted text-muted-foreground",
-};
-
-export const RUN_STATUS_BADGE_VARIANTS: Record<TestRunStatus, BadgeVariant> = {
-	completed: "secondary",
-	in_progress: "default",
-	pending_review: "outline",
-	ready: "outline",
-	submitted: "ghost",
 };
 
 export const RESULT_ORDER: readonly TestRunCaseResult[] = [

@@ -91,6 +91,7 @@ export function useRemoveCase(onRemoved: () => void) {
 
 	return useMutation(
 		orpc.cases.remove.mutationOptions({
+			meta: { failureAction: "删除用例" },
 			onSuccess: () => {
 				toast.success("用例已删除");
 				invalidateCases();

@@ -6,7 +6,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@automationstack/ui/components/card";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { type ChangeEvent, useCallback, useMemo } from "react";
 
 import { parseMarkdownDoc } from "@/components/cases/markdown-doc";
@@ -17,20 +16,14 @@ import {
 } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 import { TEXT_FLOW_CLASS } from "@/components/cases/markdown-text-flow";
-import { ICON_MOTION } from "@/components/test-runs/run-case-result-badge";
+import { RunCaseResultBadge } from "@/components/test-runs/run-case-result-badge";
 import { StepCardFooter } from "@/components/test-runs/step-card-footer";
-import {
-	RESULT_BADGE_CLASSES,
-	RESULT_ICONS,
-	RESULT_LABELS,
-} from "@/components/test-runs/test-run-meta";
 
 function StepResultBadge({
 	result,
 }: {
 	result: TestRunStepResult | undefined;
 }) {
-	const v = ICON_MOTION[useReducedMotion() ? "reduced" : "full"];
 	if (result === undefined) {
 		return (
 			<span className="rounded-md bg-muted px-1.5 py-0.5 font-normal text-muted-foreground text-xs">
@@ -38,19 +31,7 @@ function StepResultBadge({
 			</span>
 		);
 	}
-	const Icon = RESULT_ICONS[result];
-	return (
-		<span
-			className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-xs ${RESULT_BADGE_CLASSES[result]}`}
-		>
-			<AnimatePresence initial={false} mode="wait">
-				<motion.span key={result} {...v}>
-					<Icon aria-hidden="true" className="size-3" />
-				</motion.span>
-			</AnimatePresence>
-			{RESULT_LABELS[result]}
-		</span>
-	);
+	return <RunCaseResultBadge result={result} size="sm" />;
 }
 
 function soleParagraphNodes(text: string): MarkdownInline[] | null {

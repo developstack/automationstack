@@ -107,36 +107,25 @@ describe("case node topic and priority tag", () => {
 	it("keeps the case tag and topic untouched", () => {
 		const node = caseNodeOf(twoSteps);
 		expect(node.topic).toBe("登录成功");
-		expect(node.tags).toEqual([
-			{
-				style: {
-					background:
-						"color-mix(in oklch, var(--destructive) 15%, transparent)",
-					color: "var(--destructive)",
-				},
-				text: "P1",
-			},
-		]);
+		expect(node.tags).toEqual([buildPriorityTag("P1")]);
 	});
 });
 
-describe("priority tag emphasis order", () => {
-	it("gives P0 the solid destructive fill and P1 the tinted one", () => {
-		expect(buildPriorityTag("P0").style).toEqual({
-			background: "var(--destructive)",
-			color: "var(--destructive-foreground)",
-		});
-		expect(buildPriorityTag("P1").style).toEqual({
-			background: "color-mix(in oklch, var(--destructive) 15%, transparent)",
-			color: "var(--destructive)",
-		});
+describe("priority tag style", () => {
+	it("uses no color: monospace foreground text on a transparent background", () => {
+		for (const priority of ["P0", "P1", "P2", "P3"] as const) {
+			expect(buildPriorityTag(priority).style).toMatchObject({
+				background: "transparent",
+				color: "var(--foreground)",
+				fontFamily: "var(--font-mono)",
+			});
+		}
 	});
 
-	it("never hands a priority tag the primary token", () => {
-		for (const priority of ["P0", "P1", "P2", "P3"] as const) {
-			expect(JSON.stringify(buildPriorityTag(priority).style)).not.toContain(
-				"--primary"
-			);
+	it("makes only P0 bold", () => {
+		expect(buildPriorityTag("P0").style?.fontWeight).toBe("600");
+		for (const priority of ["P1", "P2", "P3"] as const) {
+			expect(buildPriorityTag(priority).style?.fontWeight).toBe("400");
 		}
 	});
 });

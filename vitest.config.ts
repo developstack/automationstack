@@ -57,6 +57,14 @@ export default defineConfig({
 				test: {
 					environment: "node",
 					include: ["src/**/*.test.ts"],
+					name: "ui",
+					root: resolveFromRoot("./packages/ui"),
+				},
+			},
+			{
+				test: {
+					environment: "node",
+					include: ["src/**/*.test.ts"],
 					name: "env",
 					root: resolveFromRoot("./packages/env"),
 				},

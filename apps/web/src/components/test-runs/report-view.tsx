@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ChevronLeftIcon } from "lucide-react";
 
 import { PageTransition } from "@/components/layout/page-transition";
+import { StatusBadge } from "@/components/status/status-badge";
 import { ReportAutomationCard } from "@/components/test-runs/report-automation-card";
 import { ReportFailedCasesCard } from "@/components/test-runs/report-failed-cases-card";
 import type { TestRunReportView } from "@/components/test-runs/report-meta";
@@ -13,7 +14,6 @@ import { ReportResultCard } from "@/components/test-runs/report-result-card";
 import { ReportSubmitBar } from "@/components/test-runs/report-submit-bar";
 import { ReportSummaryCard } from "@/components/test-runs/report-summary-card";
 import { runPermissions } from "@/components/test-runs/test-run-meta";
-import { TestRunStatusBadge } from "@/components/test-runs/test-run-status-badge";
 import { orpc } from "@/utils/orpc";
 
 export const REPORT_MAIN =
@@ -51,7 +51,7 @@ function ReportHeader({
 				测试任务列表
 			</Link>
 			<h1 className="font-semibold text-lg">{report.run.name}</h1>
-			<TestRunStatusBadge status={report.run.status} />
+			<StatusBadge kind="runStatus" value={report.run.status} />
 		</header>
 	);
 }

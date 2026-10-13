@@ -11,14 +11,10 @@ import {
 import { cn } from "@automationstack/ui/lib/utils";
 
 import { CaseCollaboratorsCell } from "@/components/cases/case-collaborators-cell";
-import {
-	CASE_TYPE_LABELS,
-	formatDateTime,
-	PRIORITY_BADGE_VARIANTS,
-} from "@/components/cases/case-meta";
+import { CASE_TYPE_LABELS, formatDateTime } from "@/components/cases/case-meta";
 import { CaseNameCell } from "@/components/cases/case-name-cell";
-import { CaseStatusBadge } from "@/components/cases/case-status-badge";
 import { CaseTableEmpty } from "@/components/cases/case-table-empty";
+import { StatusBadge } from "@/components/status/status-badge";
 import {
 	type CaseCollaborators,
 	useCollaboratorsByCaseId,
@@ -71,13 +67,11 @@ function CaseRow({ collaborators, selected, testCase }: CaseRowProps) {
 		>
 			<CaseNameCell testCase={testCase} />
 			<TableCell>
-				<Badge variant={PRIORITY_BADGE_VARIANTS[testCase.priority]}>
-					{testCase.priority}
-				</Badge>
+				<StatusBadge kind="priority" value={testCase.priority} />
 			</TableCell>
 			<TableCell>{CASE_TYPE_LABELS[testCase.caseType]}</TableCell>
 			<TableCell>
-				<CaseStatusBadge status={testCase.status} />
+				<StatusBadge kind="caseStatus" value={testCase.status} />
 			</TableCell>
 			<TableCell>
 				<CaseTags tags={testCase.tags} />

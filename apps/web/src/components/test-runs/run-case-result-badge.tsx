@@ -2,12 +2,12 @@ import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import {
-	RESULT_BADGE_CLASSES,
-	RESULT_ICONS,
-	RESULT_LABELS,
-} from "@/components/test-runs/test-run-meta";
+	StatusBadge,
+	type StatusBadgeProps,
+} from "@/components/status/status-badge";
+import { RESULT_ICONS } from "@/components/test-runs/test-run-meta";
 
-export const ICON_MOTION = {
+const ICON_MOTION = {
 	full: {
 		animate: { filter: "blur(0px)", opacity: 1, scale: 1 },
 		exit: { filter: "blur(4px)", opacity: 0, scale: 0.25 },
@@ -22,19 +22,28 @@ export const ICON_MOTION = {
 	},
 } as const;
 
-export function RunCaseResultBadge({ result }: { result: TestRunCaseResult }) {
+/** 执行结果标签。结果切换时图标交叉淡入 */
+export function RunCaseResultBadge({
+	result,
+	size = "md",
+}: {
+	result: TestRunCaseResult;
+	size?: StatusBadgeProps["size"];
+}) {
 	const Icon = RESULT_ICONS[result];
 	const v = ICON_MOTION[useReducedMotion() ? "reduced" : "full"];
 	return (
-		<span
-			className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 font-medium text-sm ${RESULT_BADGE_CLASSES[result]}`}
-		>
-			<AnimatePresence initial={false} mode="wait">
-				<motion.span key={result} {...v}>
-					<Icon aria-hidden="true" className="size-4" />
-				</motion.span>
-			</AnimatePresence>
-			{RESULT_LABELS[result]}
-		</span>
+		<StatusBadge
+			icon={
+				<AnimatePresence initial={false} mode="wait">
+					<motion.span className="inline-flex" key={result} {...v}>
+						<Icon aria-hidden="true" />
+					</motion.span>
+				</AnimatePresence>
+			}
+			kind="result"
+			size={size}
+			value={result}
+		/>
 	);
 }

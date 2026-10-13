@@ -2,7 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, type FormEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
 
+import { UnsavedChangesGuard } from "@/components/interaction/unsaved-changes-guard";
 import {
+	isAutoSubmitDaysDirty,
 	MAX_AUTO_SUBMIT_DAYS,
 	MIN_AUTO_SUBMIT_DAYS,
 	validateAutoSubmitDays,
@@ -36,11 +38,18 @@ interface ProjectSettingsData {
 	configured: boolean;
 }
 
-function useSaveSettings(projectId: string) {
+/**
+ * savedDays 在保存成功时立即更新，不等重新获取设置，
+ * 所以刚保存后离开页面不会被提醒未保存。
+ */
+function useSaveSettings(projectId: string, initialDays: number) {
 	const queryClient = useQueryClient();
-	return useMutation(
+	const [savedDays, setSavedDays] = useState(initialDays);
+	const mutation = useMutation(
 		orpc.projectSettings.update.mutationOptions({
+			meta: { failureAction: "保存设置" },
 			onSuccess: (settings: { autoSubmitAfterCompletedDays: number }) => {
+				setSavedDays(settings.autoSubmitAfterCompletedDays);
 				queryClient.invalidateQueries({
 					queryKey: orpc.projectSettings.get.key({ input: { projectId } }),
 				});
@@ -50,6 +59,7 @@ function useSaveSettings(projectId: string) {
 			},
 		})
 	);
+	return { mutation, savedDays };
 }
 
 function hintText(settings: ProjectSettingsData): string {
@@ -78,7 +88,10 @@ function TestRunSettingsForm({
 		String(settings.autoSubmitAfterCompletedDays)
 	);
 	const [submitted, setSubmitted] = useState(false);
-	const save = useSaveSettings(projectId);
+	const { mutation: save, savedDays } = useSaveSettings(
+		projectId,
+		settings.autoSubmitAfterCompletedDays
+	);
 
 	const handleChange = useCallback(
 		(event: ChangeEvent<HTMLInputElement>) => setRaw(event.target.value),
@@ -94,7 +107,7 @@ function TestRunSettingsForm({
 			event.preventDefault();
 			setSubmitted(true);
 			const payload = autoSubmitPayload(raw, projectId);
-			if (payload !== null) {
+			if (payload !== null && !save.isPending) {
 				save.mutate(payload);
 			}
 		},
@@ -114,6 +127,7 @@ function TestRunSettingsForm({
 				pending={save.isPending}
 				value={raw}
 			/>
+			<UnsavedChangesGuard dirty={isAutoSubmitDaysDirty(raw, savedDays)} />
 		</form>
 	);
 }

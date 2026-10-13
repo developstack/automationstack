@@ -11,12 +11,12 @@ import { cn } from "@automationstack/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 
 import { formatDateTime } from "@/components/cases/case-meta";
+import { StatusBadge } from "@/components/status/status-badge";
 import {
 	formatPassRate,
 	testRunProgress,
 } from "@/components/test-runs/test-run-rates";
 import { TestRunRowActions } from "@/components/test-runs/test-run-row-actions";
-import { TestRunStatusBadge } from "@/components/test-runs/test-run-status-badge";
 
 const COLUMNS = [
 	{ label: "测试任务", width: "" },
@@ -65,7 +65,7 @@ function TestRunRow({ item, onEdit }: TestRunRowProps) {
 				</Link>
 			</TableCell>
 			<TableCell>
-				<TestRunStatusBadge status={run.status} />
+				<StatusBadge kind="runStatus" value={run.status} />
 			</TableCell>
 			<ProgressCell item={item} />
 			<TableCell className={NUM_CLASS}>{formatPassRate(item.counts)}</TableCell>

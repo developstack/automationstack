@@ -10,6 +10,7 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 import { toast } from "sonner";
 
 import { getClientId } from "@/realtime/identity";
+import { failureMessage } from "@/utils/failure-message";
 import {
 	isPasswordChangeRequiredError,
 	notifyPasswordChangeRequired,
@@ -29,6 +30,8 @@ const QUERY_GC_TIME_MS =
 declare module "@tanstack/react-query" {
 	interface Register {
 		mutationMeta: {
+			/** 操作名，例如「删除项目」。失败提示写成「删除项目失败：原因」 */
+			failureAction?: string;
 			suppressErrorToast?: boolean;
 		};
 	}
@@ -55,7 +58,7 @@ export function createQueryClient() {
 				if (mutation.meta?.suppressErrorToast) {
 					return;
 				}
-				toast.error(error.message);
+				toast.error(failureMessage(mutation.meta?.failureAction, error));
 			},
 		}),
 		queryCache: new QueryCache({

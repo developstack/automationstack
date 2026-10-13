@@ -4,6 +4,7 @@ import type {
 	CaseStep,
 } from "@automationstack/db/schema/test-cases";
 import type { MindElixirData, NodeObj, TagObj } from "mind-elixir";
+import { isStrongPriority } from "@/components/status/status-badge-meta";
 import { type MindmapBudgetPlan, planMindmapRender } from "./mindmap-budget.ts";
 import { sortByOrder } from "./mindmap-cache-order.ts";
 import {
@@ -55,24 +56,23 @@ export interface MindmapEntityRef {
 	kind: "case" | "module";
 }
 
-const PRIORITY_TAG_STYLES: Record<
-	CasePriority,
-	Readonly<Record<string, string>>
-> = {
-	P0: {
-		background: "var(--destructive)",
-		color: "var(--destructive-foreground)",
-	},
-	P1: {
-		background: "color-mix(in oklch, var(--destructive) 15%, transparent)",
-		color: "var(--destructive)",
-	},
-	P2: { background: "var(--secondary)", color: "var(--secondary-foreground)" },
-	P3: { background: "transparent", color: "var(--muted-foreground)" },
-};
+// 和 StatusBadge 的 font-semibold、font-normal 一致
+const STRONG_PRIORITY_FONT_WEIGHT = "600";
+const REGULAR_PRIORITY_FONT_WEIGHT = "400";
 
+// 和 StatusBadge 的优先级样式一致：不用颜色，等宽字体，只有 P0 加粗
 export function buildPriorityTag(priority: CasePriority): TagObj {
-	return { style: PRIORITY_TAG_STYLES[priority], text: priority };
+	return {
+		style: {
+			background: "transparent",
+			color: "var(--foreground)",
+			fontFamily: "var(--font-mono)",
+			fontWeight: isStrongPriority(priority)
+				? STRONG_PRIORITY_FONT_WEIGHT
+				: REGULAR_PRIORITY_FONT_WEIGHT,
+		},
+		text: priority,
+	};
 }
 
 function groupCasesByModule(

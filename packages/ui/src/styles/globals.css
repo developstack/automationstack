@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist-mono";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "./theme.css";
@@ -7,6 +9,31 @@
 @source "../**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
+
+/*
+ * 网页字体加载前使用的回退字体。这些覆盖值让回退字体的字宽和行高接近网页字体，
+ * 所以字体替换时布局不跳动。size-adjust 让 Arial 的平均字宽接近 Inter。
+ * ascent 和 descent 取自字体文件的 hhea 表，再除以 size-adjust：
+ * Inter 是 1984 和 494（unitsPerEm 2048），Geist Mono 是 1005 和 295（unitsPerEm 1000）。
+ * Geist Mono 的字宽 600/1000 和 Courier New 的字宽 1229/2048 相同，所以不缩放。
+ */
+@font-face {
+	font-family: "Inter Fallback";
+	src: local("Arial");
+	size-adjust: 107.12%;
+	ascent-override: 90.44%;
+	descent-override: 22.52%;
+	line-gap-override: 0%;
+}
+
+@font-face {
+	font-family: "Geist Mono Fallback";
+	src: local("Courier New");
+	size-adjust: 100%;
+	ascent-override: 100.5%;
+	descent-override: 29.5%;
+	line-gap-override: 0%;
+}
 
 @layer base {
 	* {
@@ -18,6 +45,24 @@
 	html {
 		@apply font-sans;
 	}
+	table {
+		font-variant-numeric: tabular-nums;
+	}
+}
+
+/* 数字、编号、ID 和百分比：等宽字体，数字等宽对齐 */
+@utility numeric {
+	font-family: var(--font-mono);
+	font-variant-numeric: tabular-nums;
+}
+
+/* 小标签：中文小字、灰色、加大字间距 */
+@utility eyebrow {
+	font-size: var(--text-caption);
+	font-weight: 500;
+	line-height: var(--text-caption--line-height);
+	color: var(--muted-foreground);
+	letter-spacing: 0.08em;
 }
 
 @utility transition-control {

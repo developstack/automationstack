@@ -29,3 +29,11 @@ export function validateAutoSubmitDays(raw: string): AutoSubmitDaysResult {
 	}
 	return { days, kind: "ok" };
 }
+
+/**
+ * 输入和已保存的天数是否不同。无效的输入一定算作修改。
+ */
+export function isAutoSubmitDaysDirty(raw: string, savedDays: number): boolean {
+	const result = validateAutoSubmitDays(raw);
+	return result.kind === "invalid" || result.days !== savedDays;
+}
