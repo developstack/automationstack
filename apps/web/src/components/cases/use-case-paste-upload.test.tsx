@@ -67,7 +67,7 @@ function nthCall(calls: PendingUpload[], index: number): PendingUpload {
 async function settle(call: PendingUpload, result: CaseImageUploadResult) {
 	await act(async () => {
 		call.settle(result);
-		await Promise.resolve();
+		await new Promise((resolve) => setTimeout(resolve, 0));
 	});
 }
 
@@ -144,5 +144,42 @@ describe("useCasePasteUpload：粘贴图片后显示上传进度，失败时可�
 			retryable: false,
 			status: "failed",
 		});
+	});
+
+	it("新粘贴的图片和重试排在同一个队列中，一次只上传一张", async () => {
+		const { calls, hook } = setup();
+		const second = textTarget();
+		const file = new File(["png"], "第二张.png", { type: "image/png" });
+		act(() => hook.result.current.uploadPasted?.([file], second.target));
+		expect(calls).toHaveLength(1);
+		const tokens = [...hook.result.current.uploads.keys()];
+		expect(hook.result.current.uploads.get(tokens[1] ?? "")?.status).toBe(
+			"queued"
+		);
+
+		await settle(nthCall(calls, 0), { kind: "failed", reason: "网络中断" });
+		expect(calls).toHaveLength(2);
+	});
+
+	it("排队中的图片使用最新的上传函数（例如新建用例的范围刚准备好）", async () => {
+		const first = fakeUploader();
+		const latest = fakeUploader();
+		const hook = renderHook(
+			({ uploader }) => useCasePasteUpload(uploader, NO_SERVER_URLS),
+			{ initialProps: { uploader: first.uploader } }
+		);
+		const { target } = textTarget();
+		const files = ["a.png", "b.png"].map(
+			(name) => new File(["png"], name, { type: "image/png" })
+		);
+		act(() => hook.result.current.uploadPasted?.(files, target));
+		hook.rerender({ uploader: latest.uploader });
+
+		await settle(nthCall(first.calls, 0), {
+			attachmentId: ATTACHMENT_ID,
+			kind: "ok",
+		});
+		expect(first.calls).toHaveLength(1);
+		expect(latest.calls).toHaveLength(1);
 	});
 });

@@ -2,14 +2,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { CaseAttachmentContextValue } from "@/components/cases/case-attachment-context";
-import { precheckCaseImage } from "@/components/cases/case-attachment-policy";
 import type { CaseDraftAttachment } from "@/components/cases/case-draft-parse";
-import { putFileToStorage } from "@/components/cases/case-storage-put";
 import {
-	CASE_FALLBACK_FILE_NAME,
 	type CaseImageUpload,
 	type CaseImageUploadResult,
+	type CaseUploadProgress,
 	caseUploadFailure,
+	putCaseImage,
 	useStorageAvailability,
 } from "@/components/cases/use-case-attachment-upload";
 import { useCasePasteUpload } from "@/components/cases/use-case-paste-upload";
@@ -27,29 +26,25 @@ interface DraftScope {
 async function uploadDraftOne(
 	scope: DraftScope,
 	file: File,
-	onProgress: (fraction: number) => void
-): Promise<{ attachment: CaseDraftAttachment } | CaseImageUploadResult> {
-	const precheck = precheckCaseImage(file);
-	if (!precheck.ok) {
-		return { kind: "failed", reason: precheck.reason };
-	}
-	const fileName = file.name || CASE_FALLBACK_FILE_NAME;
+	onProgress: CaseUploadProgress,
+	onUploaded: (attachment: CaseDraftAttachment) => void
+): Promise<CaseImageUploadResult> {
 	try {
-		const { attachmentId, storageKey, uploadUrl } =
-			await client.caseAttachments.presignDraftUpload({
-				caseId: scope.caseId,
-				contentType: file.type,
-				fileName,
-				projectId: scope.projectId,
-				sizeBytes: file.size,
-			});
-		await putFileToStorage({
-			contentType: file.type,
+		const { fileName, presigned } = await putCaseImage(
 			file,
 			onProgress,
-			url: uploadUrl,
-		});
-		return { attachment: { fileName, id: attachmentId, storageKey } };
+			(name) =>
+				client.caseAttachments.presignDraftUpload({
+					caseId: scope.caseId,
+					contentType: file.type,
+					fileName: name,
+					projectId: scope.projectId,
+					sizeBytes: file.size,
+				})
+		);
+		const { attachmentId: id, storageKey } = presigned;
+		onUploaded({ fileName, id, storageKey });
+		return { attachmentId: id, kind: "ok" };
 	} catch (error) {
 		return caseUploadFailure(error);
 	}
@@ -69,20 +64,16 @@ function useDraftUploader(
 	const upload = useCallback(
 		async (
 			file: File,
-			onProgress: (fraction: number) => void
+			onProgress: CaseUploadProgress
 		): Promise<CaseImageUploadResult> => {
 			if (scope === null) {
 				return NO_SCOPE_RESULT;
 			}
-			const outcome = await uploadDraftOne(scope, file, onProgress);
-			if (!("attachment" in outcome)) {
-				if (outcome.kind === "storage-unavailable") {
-					markUnavailable();
-				}
-				return outcome;
+			const result = await uploadDraftOne(scope, file, onProgress, onUploaded);
+			if (result.kind === "storage-unavailable") {
+				markUnavailable();
 			}
-			onUploaded(outcome.attachment);
-			return { attachmentId: outcome.attachment.id, kind: "ok" };
+			return result;
 		},
 		[markUnavailable, onUploaded, scope]
 	);

@@ -15,8 +15,8 @@ export const STEP_GRID_CLASS =
 	"grid grid-cols-1 gap-3 px-3 sm:grid-cols-case-step";
 
 const DROP_EDGE_CLASS: Record<Exclude<StepDropEdge, null>, string> = {
-	after: "before:-bottom-px",
-	before: "before:-top-px",
+	after: "before:bottom-0",
+	before: "before:top-0",
 };
 
 export interface StepRowProps {

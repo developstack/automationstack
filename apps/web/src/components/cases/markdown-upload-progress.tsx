@@ -24,6 +24,7 @@ export function MarkdownUploadProgress({
 			aria-valuemax={PERCENT}
 			aria-valuemin={0}
 			aria-valuenow={percent}
+			aria-valuetext={queued ? "等待上传" : `${percent}%`}
 			className="flex min-w-0 flex-1 items-center gap-2"
 			role="progressbar"
 		>

@@ -21,13 +21,44 @@ export type CaseImageUploadResult =
 	| { kind: "failed"; reason: string }
 	| { kind: "storage-unavailable" };
 
+/** 报告已发送的比例，0 到 1。 */
+export type CaseUploadProgress = (fraction: number) => void;
+
 export interface CaseImageUpload {
 	storageUnavailable: boolean;
-	/** 上传一张图片。onProgress 报告已发送的比例，0 到 1。 */
 	upload: (
 		file: File,
-		onProgress: (fraction: number) => void
+		onProgress: CaseUploadProgress
 	) => Promise<CaseImageUploadResult>;
+}
+
+interface PresignedUpload {
+	storageKey: string;
+	uploadUrl: string;
+}
+
+/**
+ * 编辑和新建共用的上传步骤：检查图片、取预签名地址、PUT 到存储。
+ * 返回预签名的结果和显示用的文件名。任何一步失败都会抛出可以显示给用户的错误。
+ */
+export async function putCaseImage<T extends PresignedUpload>(
+	file: File,
+	onProgress: CaseUploadProgress,
+	presign: (fileName: string) => Promise<T>
+): Promise<{ fileName: string; presigned: T }> {
+	const precheck = precheckCaseImage(file);
+	if (!precheck.ok) {
+		throw new Error(precheck.reason);
+	}
+	const fileName = file.name || CASE_FALLBACK_FILE_NAME;
+	const presigned = await presign(fileName);
+	await putFileToStorage({
+		contentType: file.type,
+		file,
+		onProgress,
+		url: presigned.uploadUrl,
+	});
+	return { fileName, presigned };
 }
 
 /** 把上传中抛出的错误转换为结果：附件存储未配置时单独返回，其他错误给出原因。 */
@@ -58,31 +89,24 @@ export function useStorageAvailability() {
 async function uploadOne(
 	caseId: string,
 	file: File,
-	onProgress: (fraction: number) => void
+	onProgress: CaseUploadProgress
 ): Promise<CaseImageUploadResult> {
-	const precheck = precheckCaseImage(file);
-	if (!precheck.ok) {
-		return { kind: "failed", reason: precheck.reason };
-	}
-	const fileName = file.name || CASE_FALLBACK_FILE_NAME;
 	try {
-		const { storageKey, uploadUrl } =
-			await client.caseAttachments.presignUpload({
-				caseId,
-				contentType: file.type,
-				fileName,
-				sizeBytes: file.size,
-			});
-		await putFileToStorage({
-			contentType: file.type,
+		const { fileName, presigned } = await putCaseImage(
 			file,
 			onProgress,
-			url: uploadUrl,
-		});
+			(name) =>
+				client.caseAttachments.presignUpload({
+					caseId,
+					contentType: file.type,
+					fileName: name,
+					sizeBytes: file.size,
+				})
+		);
 		const attachment = await client.caseAttachments.register({
 			caseId,
 			fileName,
-			storageKey,
+			storageKey: presigned.storageKey,
 		});
 		return { attachmentId: attachment.id, kind: "ok" };
 	} catch (error) {
@@ -97,7 +121,7 @@ export function useCaseImageUpload(caseId: string): CaseImageUpload {
 	const upload = useCallback(
 		async (
 			file: File,
-			onProgress: (fraction: number) => void
+			onProgress: CaseUploadProgress
 		): Promise<CaseImageUploadResult> => {
 			const result = await uploadOne(caseId, file, onProgress);
 			if (result.kind === "storage-unavailable") {

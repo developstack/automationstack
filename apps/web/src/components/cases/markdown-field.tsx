@@ -153,7 +153,11 @@ function MarkdownFieldControl({
 					placeholder={placeholder}
 					value={value}
 				/>
-				<MarkdownFieldUploads onChange={onChange} text={value} />
+				<MarkdownFieldUploads
+					onRemoveRef={paste.removeUploadingRef}
+					onReturnFocus={paste.focusField}
+					text={value}
+				/>
 			</div>
 			{previewVisible ? <MarkdownPreviewPane text={value} /> : null}
 		</div>

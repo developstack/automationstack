@@ -37,7 +37,6 @@ export function putFileToStorage({
 			reject(new Error(`上传到存储失败（HTTP ${request.status}）`));
 		};
 		request.onerror = () => reject(new Error("网络中断，上传失败"));
-		request.onabort = () => reject(new Error("上传已取消"));
 		request.send(file);
 	});
 }

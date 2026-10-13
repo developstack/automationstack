@@ -1,4 +1,5 @@
 import { Button } from "@automationstack/ui/components/button";
+import { Separator } from "@automationstack/ui/components/separator";
 import type { EditorView } from "@codemirror/view";
 import {
 	BoldIcon,
@@ -198,7 +199,10 @@ export function MarkdownToolbar({ view }: { view: EditorView | null }) {
 			{COMMANDS.map((command, index) => (
 				<Fragment key={command.label}>
 					{startsGroup(index) ? (
-						<span aria-hidden="true" className="mx-1 h-4 w-px bg-border" />
+						<Separator
+							className="mx-1 h-4 data-vertical:self-center"
+							orientation="vertical"
+						/>
 					) : null}
 					<ToolbarButton
 						command={command}

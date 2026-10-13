@@ -5,6 +5,7 @@ import { DndContext } from "@dnd-kit/core";
 import { PlusIcon } from "lucide-react";
 import { useMemo } from "react";
 
+import { CASE_TABLE_HEAD_CLASS } from "@/components/cases/case-table-layout";
 import { useStepDrag } from "@/components/cases/step-drag";
 import { moveStep } from "@/components/cases/step-order";
 import { STEP_GRID_CLASS, StepRow } from "@/components/cases/step-row";
@@ -38,7 +39,8 @@ function StepsHeader() {
 			aria-hidden="true"
 			className={cn(
 				STEP_GRID_CLASS,
-				"eyebrow hidden h-10 items-center border-b font-medium sm:grid"
+				CASE_TABLE_HEAD_CLASS,
+				"hidden items-center border-b sm:grid"
 			)}
 		>
 			<span className="pl-1">#</span>
@@ -91,7 +93,7 @@ export function StepsEditor({ onChange, steps }: StepsEditorProps) {
 			<span className="select-none font-medium text-sm leading-none">
 				测试步骤
 			</span>
-			<div className="overflow-hidden rounded-lg border">
+			<div className="rounded-lg border">
 				{steps.length === 0 ? (
 					<p className="border-b px-3 py-4 text-muted-foreground text-sm">
 						还没有步骤。点击「新增步骤」添加操作步骤和预期结果。

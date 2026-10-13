@@ -27,10 +27,19 @@ const JOBS: CaseUploadJobs = new Map([
 	[OTHER_FIELD, { fileName: "别的字段.png", progress: 0, status: "queued" }],
 ]);
 
+interface FieldCallbacks {
+	onRemoveRef: (token: string) => void;
+	onReturnFocus: () => void;
+}
+
+function fieldCallbacks(): FieldCallbacks {
+	return { onRemoveRef: vi.fn(), onReturnFocus: vi.fn() };
+}
+
 function renderUploads(
 	text: string,
 	jobs: CaseUploadJobs = JOBS,
-	onChange = vi.fn<(value: string) => void>()
+	field: FieldCallbacks = fieldCallbacks()
 ) {
 	const value: CaseAttachmentContextValue = {
 		discardUpload: vi.fn(),
@@ -42,7 +51,11 @@ function renderUploads(
 	};
 	render(
 		<CaseAttachmentProvider value={value}>
-			<MarkdownFieldUploads onChange={onChange} text={text} />
+			<MarkdownFieldUploads
+				onRemoveRef={field.onRemoveRef}
+				onReturnFocus={field.onReturnFocus}
+				text={text}
+			/>
 		</CaseAttachmentProvider>
 	);
 	return value;
@@ -63,8 +76,9 @@ describe("MarkdownFieldUploads：字段下方显示本字段图片的上传进�
 		expect(screen.queryByText("别的字段.png")).toBeNull();
 	});
 
-	it("上传失败的图片显示原因，可以重试或移除", () => {
-		const value = renderUploads(FIELD_TEXT);
+	it("上传失败的图片显示原因，可以重试或移除，操作后焦点回到编辑区", () => {
+		const field = fieldCallbacks();
+		const value = renderUploads(FIELD_TEXT, JOBS, field);
 		expect(screen.getByText("上传到存储失败（HTTP 403）")).toBeTruthy();
 
 		fireEvent.click(
@@ -74,6 +88,7 @@ describe("MarkdownFieldUploads：字段下方显示本字段图片的上传进�
 
 		fireEvent.click(screen.getByRole("button", { name: "移除 支付页.png" }));
 		expect(value.discardUpload).toHaveBeenCalledWith(FAILED);
+		expect(field.onReturnFocus).toHaveBeenCalledTimes(2);
 	});
 
 	it("不能重试的失败只能移除", () => {
@@ -101,22 +116,20 @@ describe("MarkdownFieldUploads：字段下方显示本字段图片的上传进�
 
 	it("字段中没有上传中的图片时不显示任何内容", () => {
 		const { container } = render(
-			<MarkdownFieldUploads onChange={vi.fn()} text="纯文字" />
+			<MarkdownFieldUploads {...fieldCallbacks()} text="纯文字" />
 		);
 		expect(container.innerHTML).toBe("");
 	});
 
 	it("没有上传任务的占位（例如从草稿恢复）显示上传已中断，移除时删掉占位", () => {
-		const onChange = vi.fn<(value: string) => void>();
-		renderUploads(
-			`看图：${buildCaseUploadingRef(FAILED)}`,
-			new Map(),
-			onChange
-		);
+		const field = fieldCallbacks();
+		const ref = buildCaseUploadingRef(FAILED);
+		renderUploads(`看图：${ref}\n${ref}`, new Map(), field);
+		expect(screen.getAllByRole("listitem")).toHaveLength(1);
 		expect(screen.getByText("上传已中断，请移除后重新粘贴")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: RETRY_LABEL })).toBeNull();
 
 		fireEvent.click(screen.getByRole("button", { name: "移除 未完成的图片" }));
-		expect(onChange).toHaveBeenCalledWith("看图：");
+		expect(field.onRemoveRef).toHaveBeenCalledWith(FAILED);
 	});
 });
