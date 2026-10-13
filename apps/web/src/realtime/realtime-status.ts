@@ -33,7 +33,7 @@ const OFFLINE: RealtimeStatusSummary = {
 	tone: "offline",
 };
 
-/** 在线用户列表按用户去重：同一个用户的多个标签页只算一人。列表里总有自己，所以至少一人。 */
+/** 在线名单按用户去重：同一个用户的多个标签页只算一人。列表里总有自己，所以至少一人。 */
 function countOnlineUsers(presence: readonly Pick<PresenceEntry, "name">[]) {
 	return Math.max(1, new Set(presence.map(presenceUserKey)).size);
 }
