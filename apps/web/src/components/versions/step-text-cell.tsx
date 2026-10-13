@@ -1,22 +1,15 @@
-import { cn } from "@automationstack/ui/lib/utils";
+import { DiffMark } from "./diff-mark.tsx";
+import type { StepDiffEntry } from "./step-diff.ts";
+import { TextDiff } from "./text-diff.tsx";
 
-import type { StepDiffEntry, StepDiffKind } from "./step-diff.ts";
-import {
-	ADDED_TEXT_CLASS,
-	REMOVED_TEXT_CLASS,
-	TextDiff,
-} from "./text-diff.tsx";
-
-const PLAIN_TEXT_CLASS: Partial<Record<StepDiffKind, string>> = {
-	added: ADDED_TEXT_CLASS,
-	removed: REMOVED_TEXT_CLASS,
-};
+const TEXT_CLASS = "whitespace-pre-wrap break-words text-sm leading-relaxed";
 
 interface StepTextCellProps {
 	entry: StepDiffEntry;
 	field: "expected" | "step";
 }
 
+/** 步骤对比表格的一格：修改的步骤逐词对比，新增和删除的步骤整段标记。 */
 export function StepTextCell({ entry, field }: StepTextCellProps) {
 	if (entry.kind === "modified") {
 		const segments =
@@ -26,17 +19,14 @@ export function StepTextCell({ entry, field }: StepTextCellProps) {
 	const source = entry.newStep ?? entry.oldStep;
 	const text = source === null ? "" : source[field];
 	if (text.length === 0) {
-		return <span className="text-muted-foreground text-xs">（空）</span>;
+		return <span className="text-muted-foreground text-sm">（空）</span>;
 	}
-	const toneClass = PLAIN_TEXT_CLASS[entry.kind];
-	return (
-		<p
-			className={cn(
-				"whitespace-pre-wrap break-words text-xs leading-relaxed",
-				toneClass
-			)}
-		>
-			{text}
-		</p>
-	);
+	if (entry.kind === "added" || entry.kind === "removed") {
+		return (
+			<p className={TEXT_CLASS}>
+				<DiffMark kind={entry.kind}>{text}</DiffMark>
+			</p>
+		);
+	}
+	return <p className={TEXT_CLASS}>{text}</p>;
 }

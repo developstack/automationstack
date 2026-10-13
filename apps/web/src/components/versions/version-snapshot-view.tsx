@@ -1,100 +1,72 @@
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
 import { Badge } from "@automationstack/ui/components/badge";
-import { Separator } from "@automationstack/ui/components/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@automationstack/ui/components/table";
+
+import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
+import { CaseStepsTable } from "@/components/cases/case-steps-table";
+import { MarkdownRender } from "@/components/cases/markdown-render";
 
 import { SnapshotFields } from "./snapshot-fields.tsx";
+import { VersionSection } from "./version-section.tsx";
+import { VersionTag } from "./version-tag.tsx";
 
 function SnapshotTags({ tags }: { tags: readonly string[] }) {
 	const unique = [...new Set(tags)];
+	if (unique.length === 0) {
+		return <p className="text-muted-foreground text-sm">没有标签。</p>;
+	}
 	return (
-		<section className="flex flex-col gap-1.5">
-			<h4 className="font-medium text-muted-foreground text-xs">标签</h4>
-			{unique.length === 0 ? (
-				<span className="text-muted-foreground text-xs">无标签</span>
-			) : (
-				<div className="flex flex-wrap items-center gap-1.5">
-					{unique.map((tag) => (
-						<Badge key={tag} variant="secondary">
-							{tag}
-						</Badge>
-					))}
-				</div>
-			)}
-		</section>
-	);
-}
-
-function SnapshotSteps({ snapshot }: { snapshot: CaseSnapshot }) {
-	return (
-		<section className="flex flex-col gap-2">
-			<h4 className="font-medium text-muted-foreground text-xs">步骤</h4>
-			{snapshot.steps.length === 0 ? (
-				<p className="text-muted-foreground text-xs">该版本没有步骤。</p>
-			) : (
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>序号</TableHead>
-							<TableHead>步骤</TableHead>
-							<TableHead>预期结果</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{snapshot.steps.map((step, index) => (
-							<TableRow key={step.id}>
-								<TableCell className="align-top text-muted-foreground">
-									{index + 1}
-								</TableCell>
-								<TableCell className="w-1/2 whitespace-normal align-top">
-									{step.step}
-								</TableCell>
-								<TableCell className="w-1/2 whitespace-normal align-top">
-									{step.expected}
-								</TableCell>
-							</TableRow>
-						))}
-					</TableBody>
-				</Table>
-			)}
-		</section>
+		<div className="flex flex-wrap items-center gap-1.5">
+			{unique.map((tag) => (
+				<Badge className="font-normal" key={tag} variant="outline">
+					{tag}
+				</Badge>
+			))}
+		</div>
 	);
 }
 
 interface VersionSnapshotViewProps {
+	caseId: string;
 	snapshot: CaseSnapshot;
 	version: number;
 }
 
+/** 一个版本的完整内容。前置条件和步骤按 Markdown 显示，与用例详情一致。 */
 export function VersionSnapshotView({
+	caseId,
 	snapshot,
 	version,
 }: VersionSnapshotViewProps) {
+	const imageUrls = useCaseAttachmentUrls(caseId);
 	return (
-		<div className="flex flex-col gap-4">
-			<header className="flex flex-wrap items-center gap-2">
-				<Badge>v{version}</Badge>
-				<span className="text-muted-foreground text-xs">
-					再选择一个版本即可对比
-				</span>
+		<div className="flex flex-col gap-6">
+			<header className="flex flex-wrap items-center justify-between gap-2">
+				<div className="flex items-center gap-2">
+					<span className="eyebrow">查看</span>
+					<VersionTag version={version} />
+				</div>
+				<p className="text-muted-foreground text-xs">
+					在左侧再选择一个版本，可以对比两个版本。
+				</p>
 			</header>
 			<SnapshotFields snapshot={snapshot} />
-			<section className="flex flex-col gap-1.5">
-				<h4 className="font-medium text-muted-foreground text-xs">前置条件</h4>
-				<p className="whitespace-pre-wrap break-words text-xs leading-relaxed">
-					{snapshot.preconditions ?? "无前置条件"}
-				</p>
-			</section>
-			<SnapshotTags tags={snapshot.tags} />
-			<Separator />
-			<SnapshotSteps snapshot={snapshot} />
+			<VersionSection title="前置条件">
+				{snapshot.preconditions ? (
+					<MarkdownRender imageUrls={imageUrls} text={snapshot.preconditions} />
+				) : (
+					<p className="text-muted-foreground text-sm">没有前置条件。</p>
+				)}
+			</VersionSection>
+			<VersionSection title="标签">
+				<SnapshotTags tags={snapshot.tags} />
+			</VersionSection>
+			<VersionSection title="操作步骤">
+				<CaseStepsTable
+					emptyText="这个版本没有步骤。"
+					imageUrls={imageUrls}
+					steps={snapshot.steps}
+				/>
+			</VersionSection>
 		</div>
 	);
 }

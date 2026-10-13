@@ -1,4 +1,3 @@
-import { Badge } from "@automationstack/ui/components/badge";
 import {
 	Table,
 	TableBody,
@@ -7,38 +6,15 @@ import {
 	TableHeader,
 	TableRow,
 } from "@automationstack/ui/components/table";
+import { cn } from "@automationstack/ui/lib/utils";
 
+import { CASE_TABLE_HEAD_CLASS } from "@/components/cases/case-table-layout";
+import { StatusBadge } from "@/components/status/status-badge";
+
+import { CHANGE_KIND_LABELS } from "./change-kind.ts";
 import type { StepDiffEntry, StepDiffKind, StepsDiff } from "./step-diff.ts";
 import { StepTextCell } from "./step-text-cell.tsx";
-
-interface StepKindMeta {
-	badgeClass: string;
-	label: string;
-}
-
-const STEP_KIND_META: Record<StepDiffKind, StepKindMeta> = {
-	added: {
-		badgeClass:
-			"border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-		label: "新增",
-	},
-	modified: {
-		badgeClass:
-			"border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300",
-		label: "修改",
-	},
-	moved: {
-		badgeClass:
-			"border-sky-500/40 bg-sky-500/10 text-sky-700 dark:text-sky-300",
-		label: "移动",
-	},
-	removed: {
-		badgeClass:
-			"border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300",
-		label: "删除",
-	},
-	unchanged: { badgeClass: "text-muted-foreground", label: "未变" },
-};
+import { VersionSection } from "./version-section.tsx";
 
 const KIND_ORDER: readonly StepDiffKind[] = [
 	"added",
@@ -63,16 +39,13 @@ function orderLabel(entry: StepDiffEntry): string {
 }
 
 function StepDiffRow({ entry }: { entry: StepDiffEntry }) {
-	const meta = STEP_KIND_META[entry.kind];
 	return (
-		<TableRow>
-			<TableCell className="align-top">
-				<Badge className={meta.badgeClass} variant="outline">
-					{meta.label}
-				</Badge>
-			</TableCell>
-			<TableCell className="align-top text-muted-foreground">
+		<TableRow className="last:border-b-0">
+			<TableCell className="numeric pl-3 align-top text-muted-foreground text-xs">
 				{orderLabel(entry)}
+			</TableCell>
+			<TableCell className="align-top">
+				<StatusBadge kind="change" value={entry.kind} />
 			</TableCell>
 			<TableCell className="w-1/2 min-w-0 whitespace-normal align-top">
 				<StepTextCell entry={entry} field="step" />
@@ -84,54 +57,62 @@ function StepDiffRow({ entry }: { entry: StepDiffEntry }) {
 	);
 }
 
+/** 各种变化的步骤数，例如「新增 1 · 修改 2」。 */
 function StepCountsSummary({ steps }: { steps: StepsDiff }) {
-	const parts = KIND_ORDER.filter((kind) => steps.counts[kind] > 0).map(
-		(kind) => ({ count: steps.counts[kind], kind, meta: STEP_KIND_META[kind] })
-	);
+	const parts = KIND_ORDER.filter((kind) => steps.counts[kind] > 0);
 	if (parts.length === 0) {
-		return <span className="text-muted-foreground text-xs">无步骤</span>;
+		return null;
 	}
 	return (
-		<div className="flex flex-wrap items-center gap-1.5">
-			{parts.map((part) => (
-				<Badge
-					className={part.meta.badgeClass}
-					key={part.kind}
-					variant="outline"
-				>
-					{part.meta.label} {part.count}
-				</Badge>
+		<p className="text-muted-foreground text-xs">
+			{parts.map((kind, index) => (
+				<span key={kind}>
+					{index > 0 ? " · " : null}
+					{CHANGE_KIND_LABELS[kind]}{" "}
+					<span className="numeric">{steps.counts[kind]}</span>
+				</span>
 			))}
-		</div>
+		</p>
 	);
 }
 
 export function VersionDiffSteps({ steps }: { steps: StepsDiff }) {
 	return (
-		<section className="flex flex-col gap-2">
-			<div className="flex flex-wrap items-center justify-between gap-2">
-				<h4 className="font-medium text-muted-foreground text-xs">步骤</h4>
-				<StepCountsSummary steps={steps} />
-			</div>
+		<VersionSection
+			aside={<StepCountsSummary steps={steps} />}
+			title="操作步骤"
+		>
 			{steps.entries.length === 0 ? (
-				<p className="text-muted-foreground text-xs">两个版本都没有步骤。</p>
+				<p className="rounded-lg border border-dashed px-3 py-4 text-muted-foreground text-sm">
+					两个版本都没有步骤。
+				</p>
 			) : (
-				<Table>
-					<TableHeader>
-						<TableRow>
-							<TableHead>状态</TableHead>
-							<TableHead>序号</TableHead>
-							<TableHead>步骤</TableHead>
-							<TableHead>预期结果</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{steps.entries.map((entry) => (
-							<StepDiffRow entry={entry} key={entry.id} />
-						))}
-					</TableBody>
-				</Table>
+				<div className="overflow-hidden rounded-lg border">
+					<Table>
+						<TableHeader>
+							<TableRow className="hover:bg-transparent">
+								<TableHead className={cn(CASE_TABLE_HEAD_CLASS, "w-14 pl-3")}>
+									#
+								</TableHead>
+								<TableHead className={cn(CASE_TABLE_HEAD_CLASS, "w-16")}>
+									变化
+								</TableHead>
+								<TableHead className={CASE_TABLE_HEAD_CLASS}>
+									操作步骤
+								</TableHead>
+								<TableHead className={CASE_TABLE_HEAD_CLASS}>
+									预期结果
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{steps.entries.map((entry) => (
+								<StepDiffRow entry={entry} key={entry.id} />
+							))}
+						</TableBody>
+					</Table>
+				</div>
 			)}
-		</section>
+		</VersionSection>
 	);
 }

@@ -1,15 +1,12 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
+
+import type { ChangeKind } from "./change-kind.ts";
 import {
 	buildWordDiffSegments,
 	type TextDiffSegment,
 } from "./diff-segments.ts";
 
-export type StepDiffKind =
-	| "added"
-	| "modified"
-	| "moved"
-	| "removed"
-	| "unchanged";
+export type StepDiffKind = ChangeKind;
 
 export interface StepDiffEntry {
 	expectedSegments: TextDiffSegment[] | null;
