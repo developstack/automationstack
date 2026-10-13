@@ -34,3 +34,28 @@ describe("MINDMAP_THEME", () => {
 		}
 	});
 });
+
+const STATUS_COLOR_TOKEN = /--(success|destructive|warning|info)\b/;
+
+describe("MINDMAP_THEME：黑白主调，颜色只表示状态", () => {
+	it("连线和主节点边框用中性灰，不用主色，也不用状态色", () => {
+		for (const color of MINDMAP_THEME.palette) {
+			expect(color).not.toContain("--primary");
+			expect(color).not.toMatch(STATUS_COLOR_TOKEN);
+		}
+	});
+
+	it("所有颜色变量都不引用状态色", () => {
+		for (const value of Object.values(MINDMAP_THEME.cssVar ?? {})) {
+			expect(value).not.toMatch(STATUS_COLOR_TOKEN);
+		}
+	});
+
+	it("主节点是卡片：卡片底色、细边框和圆角令牌", () => {
+		expect(MINDMAP_THEME.cssVar).toMatchObject({
+			"--main-bgcolor": "var(--card)",
+			"--main-border": "1px solid var(--border)",
+			"--main-radius": "calc(var(--radius) - 2px)",
+		});
+	});
+});

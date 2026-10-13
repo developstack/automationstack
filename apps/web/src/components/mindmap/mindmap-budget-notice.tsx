@@ -1,3 +1,9 @@
+import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+} from "@automationstack/ui/components/alert";
+import { InfoIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { MINDMAP_NODE_BUDGET, planMindmapRender } from "./mindmap-budget.ts";
@@ -30,16 +36,19 @@ export function MindmapBudgetNotice({
 		return null;
 	}
 	return (
-		<p
-			className="border-b bg-muted px-4 py-2 text-muted-foreground text-sm"
-			data-testid="mindmap-budget-notice"
-		>
-			项目较大：全部展开需要 {plan.totalNodeCount} 个节点，超过了{" "}
-			{MINDMAP_NODE_BUDGET} 个节点的渲染预算（再多每次刷新都会明显卡顿）。
-			画布因此{describeDepth(plan.expandDepth)}，当前渲染{" "}
-			{plan.renderedNodeCount} 个节点，装不下的模块连同它们的用例已折叠。
-			数据一条都没少：点击节点上的加号即可展开查看。此外同时最多展开{" "}
-			{plan.expandedCaseAllowance} 条用例的步骤，超出的会被自动收起。
-		</p>
+		<Alert data-testid="mindmap-budget-notice" role="note" variant="muted">
+			<InfoIcon aria-hidden="true" />
+			<AlertTitle>项目较大，部分模块已折叠</AlertTitle>
+			<AlertDescription>
+				全部展开需要 <span className="numeric">{plan.totalNodeCount}</span>{" "}
+				个节点，超过了 <span className="numeric">{MINDMAP_NODE_BUDGET}</span>{" "}
+				个节点的渲染预算（再多每次刷新都会明显卡顿）。画布因此
+				{describeDepth(plan.expandDepth)}，当前渲染{" "}
+				<span className="numeric">{plan.renderedNodeCount}</span>{" "}
+				个节点，装不下的模块连同它们的用例已折叠。数据一条都没少：点击节点上的加号即可展开查看。此外同时最多展开{" "}
+				<span className="numeric">{plan.expandedCaseAllowance}</span>{" "}
+				条用例的步骤，超出的会被自动收起。
+			</AlertDescription>
+		</Alert>
 	);
 }

@@ -9,24 +9,28 @@ interface MindmapScopeBarProps {
 	projectId: string;
 }
 
+/** 只看一个模块时，画布面板顶部的说明和「返回全量脑图」。 */
 export function MindmapScopeBar({
 	moduleName,
 	projectId,
 }: MindmapScopeBarProps) {
 	return (
 		<div
-			className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-muted px-4 py-1.5 text-sm"
+			className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b bg-card px-3 py-2 text-sm"
 			data-testid="mindmap-scope-bar"
 		>
 			<p className="flex min-w-0 items-center gap-1.5">
-				<NetworkIcon className="icon-stroke-regular size-3.5 shrink-0 text-muted-foreground" />
+				<NetworkIcon
+					aria-hidden="true"
+					className="icon-stroke-regular size-3.5 shrink-0 text-muted-foreground"
+				/>
 				<span className="shrink-0 text-muted-foreground">当前只看模块</span>
 				<span className="truncate font-medium">{moduleName ?? "—"}</span>
 			</p>
 			<Link
 				className={buttonVariants({
 					className: "ml-auto",
-					size: "xs",
+					size: "sm",
 					variant: "outline",
 				})}
 				params={{ projectId }}
