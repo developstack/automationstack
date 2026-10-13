@@ -13,7 +13,6 @@ import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { ProjectNavGroup } from "@/components/layout/project-nav-group";
 import { ProjectSwitcher } from "@/components/layout/project-switcher";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
-import { SidebarRealtimeStatus } from "@/components/layout/sidebar-realtime-status";
 import { SidebarUser } from "@/components/layout/sidebar-user";
 
 interface ProjectSwitcherRowProps {
@@ -56,7 +55,7 @@ export function ProjectSidebar({
 				<ProjectSwitcherRow projectId={projectId} projectName={projectName} />
 				<ProjectNavGroup projectId={projectId} />
 			</SidebarContent>
-			<SidebarUser status={<SidebarRealtimeStatus />} />
+			<SidebarUser />
 			<SidebarRail />
 		</Sidebar>
 	);
