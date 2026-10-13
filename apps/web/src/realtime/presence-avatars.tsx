@@ -14,6 +14,7 @@ import {
 	PresenceAvatar,
 	type PresenceAvatarRenderProps,
 } from "./presence-avatar";
+import { uniquePresenceUsers } from "./presence-users";
 import { useRealtime } from "./realtime-context";
 import { usePresence } from "./use-presence";
 
@@ -71,8 +72,9 @@ function OverflowAvatar({ count }: { count: number }) {
 }
 
 export function PresenceAvatars({ className }: { className?: string }) {
-	const entries = usePresence();
 	const selfClientId = useRealtime()?.clientId ?? null;
+	// 按用户去重，头像和「+N」与顶栏的「N 人在线」一致。
+	const entries = uniquePresenceUsers(usePresence(), selfClientId);
 	const visible = entries.slice(0, MAX_VISIBLE_AVATARS);
 	const overflow = entries.length - visible.length;
 	return (

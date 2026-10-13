@@ -11,6 +11,7 @@ import {
 	HeaderPath,
 	type HeaderPathItem,
 } from "@/components/layout/header-path";
+import { HeaderRealtimeStatus } from "@/components/layout/header-realtime-status";
 import { ProjectShell } from "@/components/layout/project-shell";
 import { ProjectShellHeader } from "@/components/layout/project-shell-header";
 import { ProjectShellSkeleton } from "@/components/layout/project-shell-skeleton";
@@ -21,7 +22,6 @@ import {
 	type WorkspaceView,
 	workspaceViewFor,
 } from "@/components/layout/workspace-path";
-import { PresenceAvatars } from "@/realtime/presence-avatars";
 import { RealtimeProvider } from "@/realtime/realtime-provider";
 import type { RouterAppContext } from "@/routes/__root";
 import { orpc } from "@/utils/orpc";
@@ -106,9 +106,7 @@ function WorkspaceHeader({
 	return (
 		<ProjectShellHeader>
 			<HeaderPath items={items} />
-			<div className="ml-auto flex items-center">
-				<PresenceAvatars />
-			</div>
+			<HeaderRealtimeStatus />
 		</ProjectShellHeader>
 	);
 }
