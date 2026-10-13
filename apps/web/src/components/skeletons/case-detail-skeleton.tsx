@@ -1,4 +1,7 @@
 import { Skeleton } from "@automationstack/ui/components/skeleton";
+import { cn } from "@automationstack/ui/lib/utils";
+
+import { CASE_SHEET_HEADER_CLASS } from "@/components/cases/case-sheet-layout";
 
 const PROPERTY_KEYS = ["type", "maintainer", "tags"] as const;
 const STEP_KEYS = ["step-1", "step-2", "step-3"] as const;
@@ -10,7 +13,7 @@ const STEP_KEYS = ["step-1", "step-2", "step-3"] as const;
 export function CaseDetailSkeleton() {
 	return (
 		<div aria-hidden="true" className="flex min-h-0 flex-1 flex-col">
-			<div className="flex flex-col gap-2 px-4 pt-4 pb-3">
+			<div className={cn("flex flex-col", CASE_SHEET_HEADER_CLASS)}>
 				<div className="flex h-5 items-center gap-2">
 					<Skeleton className="h-3 w-12" />
 					<Skeleton className="h-3 w-16" />

@@ -5,21 +5,17 @@ import { CaseEditingNotice } from "@/realtime/editing-notice";
 interface CaseDetailNoticesProps {
 	caseId: string;
 	editor: CaseEditor;
-	/** 面板中已经载入的用例版本 */
-	latestVersion: number;
-	onDiscard: () => void;
 	onViewHistory: () => void;
 }
 
 /**
  * 头部和标签页之间的提示：其他人正在编辑、保存冲突。
- * 没有显示的提示时不占位置。
+ * 没有显示的提示时不占位置。冲突提示的「放弃我的修改」已经是明确的选择，
+ * 所以直接退出编辑，不再询问。
  */
 export function CaseDetailNotices({
 	caseId,
 	editor,
-	latestVersion,
-	onDiscard,
 	onViewHistory,
 }: CaseDetailNoticesProps) {
 	return (
@@ -27,8 +23,7 @@ export function CaseDetailNotices({
 			<CaseEditingNotice caseId={caseId} />
 			<CaseConflictAlert
 				conflict={editor.conflict}
-				latestVersion={latestVersion}
-				onDiscard={onDiscard}
+				onDiscard={editor.stopEditing}
 				onDismiss={editor.clearConflict}
 				onOverwrite={editor.handleSave}
 				onViewHistory={onViewHistory}

@@ -1,9 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
-import {
-	focusCaseNameField,
-	validateCaseName,
-} from "@/components/cases/case-form-validation";
 import type { CaseFormValues } from "@/components/cases/case-meta";
 import { formValuesToContent } from "@/components/cases/case-meta";
 import {
@@ -12,6 +8,7 @@ import {
 } from "@/components/cases/case-submit-checks";
 import type { CaseDraftAttachments } from "@/components/cases/use-case-draft-attachments";
 import { useCreateCase } from "@/components/cases/use-case-mutations";
+import { useCaseNameCheck } from "@/components/cases/use-case-name-check";
 
 const UPLOADING_MESSAGE = "还有图片正在上传，等它传完再创建。";
 
@@ -65,16 +62,13 @@ export function useCaseCreateSubmit(
 	input: CaseCreateSubmitInput
 ): CaseCreateSubmit {
 	const { attachments, caseId, create, moduleId, projectId, values } = input;
-	const [nameError, setNameError] = useState<string | null>(null);
+	const { check: checkName, errorFor: nameErrorFor } = useCaseNameCheck();
 
 	const submit = useCallback(() => {
 		if (caseId === null) {
 			return;
 		}
-		const error = validateCaseName(values);
-		setNameError(error);
-		if (error !== null) {
-			focusCaseNameField();
+		if (!checkName(values)) {
 			return;
 		}
 		if (hasUnfinishedCaseUploads(values)) {
@@ -88,9 +82,15 @@ export function useCaseCreateSubmit(
 			moduleId,
 			projectId,
 		});
-	}, [attachments.pending, caseId, create, moduleId, projectId, values]);
+	}, [
+		attachments.pending,
+		caseId,
+		checkName,
+		create,
+		moduleId,
+		projectId,
+		values,
+	]);
 
-	// 名称填好后错误立即消失，不用等到下次提交
-	const shownNameError = validateCaseName(values) === null ? null : nameError;
-	return { nameError: shownNameError, submit };
+	return { nameError: nameErrorFor(values), submit };
 }

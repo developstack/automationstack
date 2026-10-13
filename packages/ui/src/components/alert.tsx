@@ -1,4 +1,5 @@
-// 来源：shadcn registry 的 base-vega/alert。新增 warning 变体；
+// 来源：shadcn registry 的 base-vega/alert。本地修改：新增 warning 和 muted 变体，
+// 新增 AlertActions（标题和说明下面的操作按钮行），去掉 AlertAction（右上角的操作）；
 // destructive 和 warning 使用 *-soft 令牌，浅色和暗色模式的文字对比度都达到 WCAG AA
 import { cn } from "@automationstack/ui/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";

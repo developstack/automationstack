@@ -2,8 +2,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { CaseConflictAlert } from "@/components/cases/case-conflict-alert";
+import { caseSaveBaseVersion } from "@/components/cases/use-case-mutations";
 
-function renderAlert(overrides: { latestVersion?: number; saving?: boolean }) {
+function renderAlert(overrides: { saving?: boolean }) {
 	const handlers = {
 		onDiscard: vi.fn(),
 		onDismiss: vi.fn(),
@@ -13,7 +14,6 @@ function renderAlert(overrides: { latestVersion?: number; saving?: boolean }) {
 	render(
 		<CaseConflictAlert
 			conflict={{ currentVersion: 5, lastModifiedBy: "李四" }}
-			latestVersion={overrides.latestVersion ?? 5}
 			saving={overrides.saving ?? false}
 			{...handlers}
 		/>
@@ -40,17 +40,11 @@ describe("CaseConflictAlert：其他人先保存时，提示说明下一步", ()
 		expect(handlers.onOverwrite).toHaveBeenCalledOnce();
 	});
 
-	it("最新版本还没有载入时不能覆盖，否则会再次冲突", () => {
-		const handlers = renderAlert({ latestVersion: 4 });
+	it("保存中不能重复覆盖", () => {
+		const handlers = renderAlert({ saving: true });
 		const overwrite = screen.getByRole("button", { name: "用我的修改覆盖" });
 		expect(overwrite.getAttribute("aria-busy")).toBe("true");
 		fireEvent.click(overwrite);
-		expect(handlers.onOverwrite).not.toHaveBeenCalled();
-	});
-
-	it("保存中不能重复覆盖", () => {
-		const handlers = renderAlert({ saving: true });
-		fireEvent.click(screen.getByRole("button", { name: "用我的修改覆盖" }));
 		expect(handlers.onOverwrite).not.toHaveBeenCalled();
 	});
 
@@ -58,5 +52,17 @@ describe("CaseConflictAlert：其他人先保存时，提示说明下一步", ()
 		const handlers = renderAlert({});
 		fireEvent.click(screen.getByRole("button", { name: "关闭冲突提示" }));
 		expect(handlers.onDismiss).toHaveBeenCalledOnce();
+	});
+});
+
+describe("caseSaveBaseVersion：保存时用哪个版本校验", () => {
+	it("没有冲突时用面板中载入的版本", () => {
+		expect(caseSaveBaseVersion(3, null)).toBe(3);
+	});
+
+	it("冲突后用对方保存的版本，不等最新内容载入，覆盖不会再次冲突", () => {
+		expect(
+			caseSaveBaseVersion(3, { currentVersion: 5, lastModifiedBy: "李四" })
+		).toBe(5);
 	});
 });

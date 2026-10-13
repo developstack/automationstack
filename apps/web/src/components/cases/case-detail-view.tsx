@@ -7,7 +7,7 @@ import { CASE_TYPE_LABELS } from "@/components/cases/case-meta";
 import { CaseStepsTable } from "@/components/cases/case-steps-table";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 
-const PLACEHOLDER = <span className="text-muted-foreground">—</span>;
+const EMPTY_VALUE = <span className="text-muted-foreground">—</span>;
 
 function DetailRow({
 	children,
@@ -41,7 +41,7 @@ function DetailSection({
 
 function CaseTags({ tags }: { tags: string[] }) {
 	if (tags.length === 0) {
-		return PLACEHOLDER;
+		return EMPTY_VALUE;
 	}
 	return (
 		<div className="flex flex-wrap gap-1">
@@ -65,7 +65,7 @@ export function CaseDetailView({ testCase }: { testCase: TestCase }) {
 					{CASE_TYPE_LABELS[testCase.caseType]}
 				</DetailRow>
 				<DetailRow label="维护人">
-					{testCase.maintainer ?? PLACEHOLDER}
+					{testCase.maintainer ?? EMPTY_VALUE}
 				</DetailRow>
 				<DetailRow label="标签">
 					<CaseTags tags={testCase.tags} />

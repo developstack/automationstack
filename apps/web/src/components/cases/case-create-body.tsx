@@ -1,3 +1,7 @@
+import type {
+	CasePriority,
+	CaseStatus,
+} from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
 import { Separator } from "@automationstack/ui/components/separator";
 import {
@@ -8,19 +12,16 @@ import {
 import { useEffect, useMemo } from "react";
 
 import { CaseAttachmentProvider } from "@/components/cases/case-attachment-context";
-import {
-	CASE_SHEET_HEADER_CLASS,
-	CASE_SHEET_TITLE_CLASS,
-} from "@/components/cases/case-detail-header";
 import { CaseDraftNotice } from "@/components/cases/case-draft-notice";
 import { CaseDraftPicker } from "@/components/cases/case-draft-picker";
 import { CaseForm } from "@/components/cases/case-form";
 import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
 import { CaseHeaderMeta } from "@/components/cases/case-header-meta";
+import { emptyCaseFormValues } from "@/components/cases/case-meta";
 import {
-	type CaseFormValues,
-	emptyCaseFormValues,
-} from "@/components/cases/case-meta";
+	CASE_SHEET_HEADER_CLASS,
+	CASE_SHEET_TITLE_CLASS,
+} from "@/components/cases/case-sheet-layout";
 import {
 	type CaseCreateDraft,
 	useCaseCreateDraft,
@@ -36,24 +37,22 @@ interface CaseCreateHeaderProps {
 	caseId: string;
 	onCancel: () => void;
 	pending: boolean;
+	priority: CasePriority;
+	status: CaseStatus;
 	uploading: boolean;
-	values: CaseFormValues;
 }
 
 function CaseCreateHeader({
 	caseId,
 	onCancel,
 	pending,
+	priority,
+	status,
 	uploading,
-	values,
 }: CaseCreateHeaderProps) {
 	return (
 		<SheetHeader className={CASE_SHEET_HEADER_CLASS}>
-			<CaseHeaderMeta
-				caseId={caseId}
-				priority={values.priority}
-				status={values.status}
-			/>
+			<CaseHeaderMeta caseId={caseId} priority={priority} status={status} />
 			<SheetTitle className={CASE_SHEET_TITLE_CLASS}>新建用例</SheetTitle>
 			<SheetDescription className="text-xs">
 				用例创建在当前选中的模块下。编号、用例状态和优先级是创建后的值。
@@ -112,8 +111,9 @@ function CaseCreateContent({
 				caseId={caseId}
 				onCancel={onCancel}
 				pending={pending}
+				priority={values.priority}
+				status={values.status}
 				uploading={attachments.uploading}
-				values={values}
 			/>
 			<CaseDraftNotice
 				missing={draft.missing}

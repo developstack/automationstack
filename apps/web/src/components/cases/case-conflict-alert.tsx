@@ -11,8 +11,6 @@ import type { CaseSaveConflict } from "@/components/cases/use-case-mutations";
 
 interface CaseConflictAlertProps {
 	conflict: CaseSaveConflict | null;
-	/** 面板中已经载入的用例版本。低于冲突版本时，最新内容还在载入。 */
-	latestVersion: number;
 	onDiscard: () => void;
 	onDismiss: () => void;
 	onOverwrite: () => void;
@@ -24,15 +22,14 @@ interface CaseConflictActionsProps {
 	onDiscard: () => void;
 	onOverwrite: () => void;
 	onViewHistory: () => void;
-	/** 保存中，或者最新版本还在载入：这时不能覆盖 */
-	overwriteBlocked: boolean;
+	saving: boolean;
 }
 
 function CaseConflictActions({
 	onDiscard,
 	onOverwrite,
 	onViewHistory,
-	overwriteBlocked,
+	saving,
 }: CaseConflictActionsProps) {
 	return (
 		<AlertActions>
@@ -45,7 +42,7 @@ function CaseConflictActions({
 			</Button>
 			<Button
 				onClick={onOverwrite}
-				pending={overwriteBlocked}
+				pending={saving}
 				size="xs"
 				type="button"
 				variant="destructive"
@@ -60,13 +57,17 @@ function CaseConflictActions({
  * 其他人先保存时的冲突提示。说明表单中的修改没有丢失，并给出三个下一步：
  * 查看对方的修改、放弃自己的修改、用自己的修改覆盖。
  */
-export function CaseConflictAlert(props: CaseConflictAlertProps) {
-	const { conflict, latestVersion, saving } = props;
+export function CaseConflictAlert({
+	conflict,
+	onDiscard,
+	onDismiss,
+	onOverwrite,
+	onViewHistory,
+	saving,
+}: CaseConflictAlertProps) {
 	if (!conflict) {
 		return null;
 	}
-	// 保存时用面板中载入的版本做校验。最新版本载入前覆盖会再次冲突
-	const loadingLatest = latestVersion < conflict.currentVersion;
 
 	return (
 		<Alert className="pr-10" variant="destructive">
@@ -78,15 +79,15 @@ export function CaseConflictAlert(props: CaseConflictAlertProps) {
 				</p>
 			</AlertDescription>
 			<CaseConflictActions
-				onDiscard={props.onDiscard}
-				onOverwrite={props.onOverwrite}
-				onViewHistory={props.onViewHistory}
-				overwriteBlocked={saving || loadingLatest}
+				onDiscard={onDiscard}
+				onOverwrite={onOverwrite}
+				onViewHistory={onViewHistory}
+				saving={saving}
 			/>
 			<Button
 				aria-label="关闭冲突提示"
 				className="absolute top-2 right-2"
-				onClick={props.onDismiss}
+				onClick={onDismiss}
 				size="icon-xs"
 				type="button"
 				variant="ghost"

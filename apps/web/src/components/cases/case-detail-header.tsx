@@ -15,11 +15,10 @@ import {
 } from "@/components/cases/case-detail-body";
 import { CaseHeaderMeta } from "@/components/cases/case-header-meta";
 import { formatDateTime } from "@/components/cases/case-meta";
-
-/** 面板头部：右上角留出关闭按钮的位置。新建面板也使用。 */
-export const CASE_SHEET_HEADER_CLASS = "gap-2 px-4 pt-4 pb-3";
-export const CASE_SHEET_TITLE_CLASS =
-	"break-words pr-10 font-semibold text-lg leading-snug";
+import {
+	CASE_SHEET_HEADER_CLASS,
+	CASE_SHEET_TITLE_CLASS,
+} from "@/components/cases/case-sheet-layout";
 
 interface CaseDetailActionsProps {
 	editor: CaseEditor;

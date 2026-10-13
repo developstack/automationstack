@@ -17,6 +17,7 @@ import { CaseDetailPending } from "@/components/cases/case-detail-pending";
 import { CaseDetailTabs } from "@/components/cases/case-detail-tabs";
 import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
 import { caseToFormValues } from "@/components/cases/case-meta";
+import { useBeforeUnloadWarning } from "@/components/interaction/use-before-unload-warning";
 import {
 	UnsavedChangesDialog,
 	useUnsavedCloseGuard,
@@ -37,6 +38,7 @@ function useCaseDirtyGuard(
 		return () => onDirtyChange(false);
 	}, [dirty, onDirtyChange]);
 
+	useBeforeUnloadWarning(dirty);
 	const guard = useUnsavedCloseGuard(dirty, editor.stopEditing);
 	const requestStopEditing = useCallback(
 		() => guard.handleOpenChange(false),
@@ -99,8 +101,6 @@ export function CaseDetailContent(props: CaseDetailContentProps) {
 			<CaseDetailNotices
 				caseId={caseId}
 				editor={editor}
-				latestVersion={testCase.currentVersion}
-				onDiscard={requestStopEditing}
 				onViewHistory={viewHistory}
 			/>
 			<Separator />
