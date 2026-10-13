@@ -43,14 +43,28 @@ const avatarTriggers = (container: HTMLElement) =>
 	container.querySelectorAll<HTMLElement>("[data-presence-avatar]");
 
 describe("PresenceAvatars", () => {
-	it("7 个用户：显示 5 个头像和「+2」", () => {
+	it("7 个用户：显示 5 个头像和「+2」，「+2」的名称列出隐藏的用户", () => {
 		const entries = ["a", "b", "c", "d", "e", "f", "g"].map((name) =>
 			makeEntry(`tab-${name}`, name)
 		);
 		const { container } = renderAvatars(entries);
 		expect(avatarTriggers(container)).toHaveLength(5);
 		expect(screen.getByText("+2")).toBeDefined();
-		expect(screen.getByRole("button", { name: "还有 2 人在线" })).toBeDefined();
+		expect(
+			screen.getByRole("button", { name: "还有 2 人在线：f、g" })
+		).toBeDefined();
+	});
+
+	it("自己在隐藏的用户里时，「+N」的名称也标注「（我）」", () => {
+		const entries = ["a", "b", "c", "d", "e", "f"].map((name) =>
+			makeEntry(`tab-${name}`, name)
+		);
+		// 自己最后加入，排在名单末尾，落在隐藏的用户里。
+		const self = { ...makeEntry("self", "me"), joinedAt: 2000 };
+		renderAvatars([...entries, self]);
+		expect(
+			screen.getByRole("button", { name: "还有 2 人在线：f、me（我）" })
+		).toBeDefined();
 	});
 
 	it("同一个用户的多个标签页只显示一个头像", () => {

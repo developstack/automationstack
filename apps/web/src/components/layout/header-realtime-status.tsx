@@ -20,7 +20,10 @@ const STATUS_BY_TONE = {
 	online: "online",
 } as const satisfies Record<RealtimeTone, StatusProps["status"]>;
 
-/** 外框顶部右端的实时协作区域：状态圆点、短文字和折叠头像。 */
+/**
+ * 外框顶部右端的实时协作区域：状态圆点、短文字和折叠头像，任何宽度都显示。
+ * 顶栏是 flex-wrap，路径可以截断；放不下时整个区域换到下一行，ml-auto 让它靠右。
+ */
 export function HeaderRealtimeStatus() {
 	const connectionState = useRealtimeConnectionState();
 	const presence = usePresence();
@@ -49,7 +52,7 @@ export function HeaderRealtimeStatus() {
 				<span className="sr-only">{fullText}</span>
 			</Status>
 			{/* 头像放在 status 外：名称随别人切换页面而变，在实时区域里会被反复读出。 */}
-			<PresenceAvatars className="max-sm:hidden" />
+			<PresenceAvatars />
 		</div>
 	);
 }
