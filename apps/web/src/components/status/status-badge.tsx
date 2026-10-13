@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import { STATUS_LABELS } from "@/components/cases/case-meta";
 import {
 	CASE_STATUS_TONES,
+	CHANGE_TONES,
 	priorityTone,
 	RESULT_TONES,
 	RUN_STATUS_TONES,
@@ -24,9 +25,14 @@ import {
 	RESULT_LABELS,
 	RUN_STATUS_LABELS,
 } from "@/components/test-runs/test-run-meta";
+import {
+	CHANGE_KIND_LABELS,
+	type ChangeKind,
+} from "@/components/versions/change-kind";
 
 export type StatusBadgeValue =
 	| { kind: "caseStatus"; value: CaseStatus }
+	| { kind: "change"; value: ChangeKind }
 	| { kind: "priority"; value: CasePriority }
 	| { kind: "result"; value: TestRunCaseResult }
 	| { kind: "runStatus"; value: TestRunStatus };
@@ -65,6 +71,12 @@ function resolveStatus(status: StatusBadgeValue): ResolvedStatus {
 				label: RUN_STATUS_LABELS[status.value],
 				tone: RUN_STATUS_TONES[status.value],
 			};
+		case "change":
+			return {
+				defaultIcon: null,
+				label: CHANGE_KIND_LABELS[status.value],
+				tone: CHANGE_TONES[status.value],
+			};
 		case "caseStatus":
 			return {
 				defaultIcon: null,
@@ -80,7 +92,7 @@ function resolveStatus(status: StatusBadgeValue): ResolvedStatus {
 	}
 }
 
-/** 执行结果、测试任务状态、用例状态和优先级的统一标签。颜色只表示状态，每个标签都显示文字。 */
+/** 执行结果、测试任务状态、用例状态、优先级和版本对比中变化的统一标签。颜色只表示状态，每个标签都显示文字。 */
 export function StatusBadge({
 	icon,
 	size = "sm",

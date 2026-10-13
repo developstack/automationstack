@@ -1,4 +1,4 @@
-import type { TestCase } from "@automationstack/db/schema/test-cases";
+import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import {
 	Table,
 	TableBody,
@@ -13,18 +13,25 @@ import { CASE_TABLE_HEAD_CLASS } from "@/components/cases/case-table-layout";
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 
-/** 用例详情中只读的步骤表格。没有步骤时指引用户点击「编辑」添加。 */
-export function CaseStepsTable({
-	imageUrls,
-	testCase,
-}: {
+const DEFAULT_EMPTY_TEXT = "还没有步骤。点击「编辑」添加操作步骤和预期结果。";
+
+interface CaseStepsTableProps {
+	/** 没有步骤时显示的文字。默认指引用户点击「编辑」添加 */
+	emptyText?: string;
 	imageUrls: MarkdownImageUrls;
-	testCase: TestCase;
-}) {
-	if (testCase.steps.length === 0) {
+	steps: readonly CaseStep[];
+}
+
+/** 只读的步骤表格。用在用例详情和版本历史的快照查看中。 */
+export function CaseStepsTable({
+	emptyText = DEFAULT_EMPTY_TEXT,
+	imageUrls,
+	steps,
+}: CaseStepsTableProps) {
+	if (steps.length === 0) {
 		return (
 			<p className="rounded-lg border border-dashed px-3 py-4 text-muted-foreground text-sm">
-				还没有步骤。点击「编辑」添加操作步骤和预期结果。
+				{emptyText}
 			</p>
 		);
 	}
@@ -41,7 +48,7 @@ export function CaseStepsTable({
 					</TableRow>
 				</TableHeader>
 				<TableBody>
-					{testCase.steps.map((step, index) => (
+					{steps.map((step, index) => (
 						<TableRow className="last:border-b-0" key={step.id}>
 							<TableCell className="numeric pl-3 align-top text-muted-foreground text-xs">
 								{index + 1}

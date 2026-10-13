@@ -93,6 +93,31 @@ const CASES: readonly BadgeExample[] = [
 	{ label: "P1", status: { kind: "priority", value: "P1" }, tone: "priority" },
 	{ label: "P2", status: { kind: "priority", value: "P2" }, tone: "priority" },
 	{ label: "P3", status: { kind: "priority", value: "P3" }, tone: "priority" },
+	{
+		label: "新增",
+		status: { kind: "change", value: "added" },
+		tone: "success",
+	},
+	{
+		label: "删除",
+		status: { kind: "change", value: "removed" },
+		tone: "danger",
+	},
+	{
+		label: "修改",
+		status: { kind: "change", value: "modified" },
+		tone: "warning",
+	},
+	{
+		label: "移动",
+		status: { kind: "change", value: "moved" },
+		tone: "info-outline",
+	},
+	{
+		label: "未变",
+		status: { kind: "change", value: "unchanged" },
+		tone: "neutral",
+	},
 ];
 
 describe("StatusBadge", () => {

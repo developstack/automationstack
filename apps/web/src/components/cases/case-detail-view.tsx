@@ -79,7 +79,7 @@ export function CaseDetailView({ testCase }: { testCase: TestCase }) {
 				)}
 			</DetailSection>
 			<DetailSection title="操作步骤">
-				<CaseStepsTable imageUrls={imageUrls} testCase={testCase} />
+				<CaseStepsTable imageUrls={imageUrls} steps={testCase.steps} />
 			</DetailSection>
 		</div>
 	);
