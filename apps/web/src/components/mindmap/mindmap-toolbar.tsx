@@ -1,5 +1,8 @@
-import { Button } from "@automationstack/ui/components/button";
-import { Separator } from "@automationstack/ui/components/separator";
+import {
+	Toolbar,
+	ToolbarButton,
+	ToolbarSeparator,
+} from "@automationstack/ui/components/toolbar";
 import {
 	LocateFixedIcon,
 	MaximizeIcon,
@@ -7,20 +10,13 @@ import {
 	MinusIcon,
 	PlusIcon,
 } from "lucide-react";
-import {
-	Fragment,
-	type KeyboardEvent,
-	type ReactNode,
-	useCallback,
-	useEffect,
-	useState,
-} from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 
-import { useRovingIndex } from "@/components/use-roving-index";
+import type { MindmapFullscreen } from "./mindmap-fullscreen.ts";
 
 type ScaleListener = (scale: number) => void;
 
-/** 工具栏用到的 mind-elixir 实例的部分。 */
+/** 工具栏用到的 mind-elixir 实例的部分。测试用同样形状的假对象。 */
 export interface MindmapToolbarViewport {
 	bus: {
 		addListener: (event: "scale", listener: ScaleListener) => void;
@@ -32,12 +28,6 @@ export interface MindmapToolbarViewport {
 	scaleSensitivity: number;
 	scaleVal: number;
 	toCenter: () => void;
-}
-
-export interface MindmapFullscreen {
-	active: boolean;
-	supported: boolean;
-	toggle: () => void;
 }
 
 interface MindmapToolbarProps {
@@ -70,127 +60,77 @@ function useViewportScale(viewport: MindmapToolbarViewport): number {
 	return scale;
 }
 
-interface ToolbarCommand {
-	disabled: boolean;
-	icon: ReactNode;
+interface CommandButtonProps {
+	children: ReactNode;
+	disabled?: boolean;
 	label: string;
-	run: () => void;
+	onClick: () => void;
 }
 
-interface ToolbarButtonProps {
-	command: ToolbarCommand;
-	index: number;
-	isActive: boolean;
-	onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => void;
-	onRegister: (index: number, node: HTMLButtonElement | null) => void;
-}
-
-function ToolbarButton({
-	command,
-	index,
-	isActive,
-	onKeyDown,
-	onRegister,
-}: ToolbarButtonProps) {
-	const handleRef = useCallback(
-		(node: HTMLButtonElement | null) => onRegister(index, node),
-		[index, onRegister]
-	);
+function CommandButton({
+	children,
+	disabled = false,
+	label,
+	onClick,
+}: CommandButtonProps) {
 	return (
-		<Button
-			aria-label={command.label}
-			disabled={command.disabled}
-			focusableWhenDisabled
-			onClick={command.run}
-			onKeyDown={onKeyDown}
-			ref={handleRef}
-			size="icon-sm"
-			tabIndex={isActive ? 0 : -1}
-			title={command.label}
-			type="button"
-			variant="ghost"
+		<ToolbarButton
+			aria-label={label}
+			disabled={disabled}
+			onClick={onClick}
+			title={label}
 		>
-			{command.icon}
-		</Button>
+			{children}
+		</ToolbarButton>
 	);
 }
 
-function buildCommands(
-	viewport: MindmapToolbarViewport,
-	fullscreen: MindmapFullscreen
-): ToolbarCommand[] {
-	const commands: ToolbarCommand[] = [
-		{
-			disabled: !canStep(viewport, -1),
-			icon: <MinusIcon />,
-			label: "缩小",
-			run: () => viewport.scale(stepScale(viewport, -1)),
-		},
-		{
-			disabled: !canStep(viewport, 1),
-			icon: <PlusIcon />,
-			label: "放大",
-			run: () => viewport.scale(stepScale(viewport, 1)),
-		},
-		{
-			disabled: false,
-			icon: <LocateFixedIcon />,
-			label: "回到中心",
-			run: () => viewport.toCenter(),
-		},
-	];
-	if (fullscreen.supported) {
-		commands.push({
-			disabled: false,
-			icon: fullscreen.active ? <MinimizeIcon /> : <MaximizeIcon />,
-			label: fullscreen.active ? "退出全屏" : "全屏",
-			run: fullscreen.toggle,
-		});
-	}
-	return commands;
-}
-
-/** 缩放按钮之后显示比例，回到中心之前有分隔线。 */
-const SCALE_LABEL_AFTER = 0;
-const SEPARATOR_BEFORE = 2;
-
-/** 画布右下角的浮动工具栏：缩小、放大、回到中心和全屏。 */
+/** 画布右下角的浮动工具栏：缩放一组（缩小、比例、放大），视图一组（回到中心、全屏）。 */
 export function MindmapToolbar({ fullscreen, viewport }: MindmapToolbarProps) {
 	const scale = useViewportScale(viewport);
-	const commands = buildCommands(viewport, fullscreen);
-	const { activeIndex, handleKeyDown, register } = useRovingIndex(
-		commands.length
+	const zoomOut = useCallback(
+		() => viewport.scale(stepScale(viewport, -1)),
+		[viewport]
 	);
+	const zoomIn = useCallback(
+		() => viewport.scale(stepScale(viewport, 1)),
+		[viewport]
+	);
+	const center = useCallback(() => viewport.toCenter(), [viewport]);
 
 	return (
-		<div
+		<Toolbar
 			aria-label="脑图视图"
-			className="absolute right-3 bottom-3 z-20 flex items-center gap-0.5 rounded-lg border bg-popover p-1 text-popover-foreground shadow-popover"
+			className="absolute right-3 bottom-3 z-20 rounded-lg border bg-popover p-1 text-popover-foreground shadow-popover"
 			data-testid="mindmap-toolbar"
-			role="toolbar"
 		>
-			{commands.map((command, index) => (
-				<Fragment key={command.label}>
-					{index === SEPARATOR_BEFORE ? (
-						<Separator
-							className="mx-1 h-4 data-vertical:self-center"
-							orientation="vertical"
-						/>
-					) : null}
-					<ToolbarButton
-						command={command}
-						index={index}
-						isActive={index === activeIndex}
-						onKeyDown={handleKeyDown}
-						onRegister={register}
-					/>
-					{index === SCALE_LABEL_AFTER ? (
-						<span className="numeric w-11 select-none text-center text-muted-foreground text-xs">
-							{Math.round(scale * PERCENT)}%
-						</span>
-					) : null}
-				</Fragment>
-			))}
-		</div>
+			<CommandButton
+				disabled={!canStep(viewport, -1)}
+				label="缩小"
+				onClick={zoomOut}
+			>
+				<MinusIcon />
+			</CommandButton>
+			<span className="numeric w-11 select-none text-center text-muted-foreground text-xs">
+				{Math.round(scale * PERCENT)}%
+			</span>
+			<CommandButton
+				disabled={!canStep(viewport, 1)}
+				label="放大"
+				onClick={zoomIn}
+			>
+				<PlusIcon />
+			</CommandButton>
+			<ToolbarSeparator />
+			<CommandButton label="回到中心" onClick={center}>
+				<LocateFixedIcon />
+			</CommandButton>
+			<CommandButton
+				label={fullscreen.active ? "退出全屏" : "全屏"}
+				onClick={fullscreen.toggle}
+			>
+				{fullscreen.active ? <MinimizeIcon /> : <MaximizeIcon />}
+			</CommandButton>
+		</Toolbar>
 	);
 }

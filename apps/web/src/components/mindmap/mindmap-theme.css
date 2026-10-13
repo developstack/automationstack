@@ -35,7 +35,8 @@
 	line-height: 18px;
 	white-space: nowrap;
 	border: 1px solid transparent;
-	border-radius: calc(var(--radius) - 4px);
+	/* 与 StatusBadge 的 rounded-md 相同 */
+	border-radius: calc(var(--radius) - 2px);
 }
 
 .map-container .selection-area {

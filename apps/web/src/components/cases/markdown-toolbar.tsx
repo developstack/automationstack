@@ -13,11 +13,12 @@ import {
 	type KeyboardEvent,
 	type MouseEvent,
 	useCallback,
+	useRef,
+	useState,
 } from "react";
 
 import { useCaseAttachments } from "@/components/cases/case-attachment-context";
 import { MARKDOWN_TOOLBAR_CLASS } from "@/components/cases/markdown-editor-classes";
-import { useRovingIndex } from "@/components/use-roving-index";
 
 function wrapSelection(view: EditorView, marker: string) {
 	const range = view.state.selection.main;
@@ -92,6 +93,39 @@ function startsGroup(index: number): boolean {
 	return previous !== undefined && previous.group !== COMMANDS[index]?.group;
 }
 
+function useRovingIndex(count: number) {
+	const [activeIndex, setActiveIndex] = useState(0);
+	const activeRef = useRef(0);
+	const buttonsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+	const move = useCallback(
+		(delta: number) => {
+			const next = (activeRef.current + delta + count) % count;
+			activeRef.current = next;
+			setActiveIndex(next);
+			buttonsRef.current[next]?.focus();
+		},
+		[count]
+	);
+
+	const handleKeyDown = useCallback(
+		(event: KeyboardEvent<HTMLButtonElement>) => {
+			if (event.key === "ArrowRight") {
+				event.preventDefault();
+				move(1);
+				return;
+			}
+			if (event.key === "ArrowLeft") {
+				event.preventDefault();
+				move(-1);
+			}
+		},
+		[move]
+	);
+
+	return { activeIndex, buttonsRef, handleKeyDown };
+}
+
 interface ToolbarButtonProps {
 	command: ToolbarCommand;
 	index: number;
@@ -144,8 +178,14 @@ function ToolbarButton({
 }
 
 export function MarkdownToolbar({ view }: { view: EditorView | null }) {
-	const { activeIndex, handleKeyDown, register } = useRovingIndex(
+	const { activeIndex, buttonsRef, handleKeyDown } = useRovingIndex(
 		COMMANDS.length
+	);
+	const handleRegister = useCallback(
+		(index: number, node: HTMLButtonElement | null) => {
+			buttonsRef.current[index] = node;
+		},
+		[buttonsRef]
 	);
 
 	const { uploadPasted } = useCaseAttachments();
@@ -169,7 +209,7 @@ export function MarkdownToolbar({ view }: { view: EditorView | null }) {
 						index={index}
 						isActive={index === activeIndex}
 						onKeyDown={handleKeyDown}
-						onRegister={register}
+						onRegister={handleRegister}
 						view={view}
 					/>
 				</Fragment>

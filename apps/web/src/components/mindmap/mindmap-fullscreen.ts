@@ -1,16 +1,16 @@
 import type { MindElixirInstance } from "mind-elixir";
-import {
-	type RefObject,
-	useCallback,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import { useCallback, useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 
-import type { MindmapFullscreen } from "./mindmap-toolbar.tsx";
+export interface MindmapFullscreen {
+	active: boolean;
+	toggle: () => void;
+}
 
 const TRANSLATE_PATTERN = /translate3d\(([^,]+),\s*([^,]+)/;
+const HALF = 2;
 
+/** mind-elixir 把平移写在画布的 transform 中，自带工具栏的全屏按钮也这样读取。 */
 function readTranslate(mind: MindElixirInstance) {
 	const match = mind.map.style.transform.match(TRANSLATE_PATTERN);
 	return match
@@ -21,16 +21,11 @@ function readTranslate(mind: MindElixirInstance) {
 		: { x: 0, y: 0 };
 }
 
-const HALF = 2;
-
 function centerOf(rect: DOMRect) {
 	return { x: rect.width / HALF, y: rect.height / HALF };
 }
 
-/**
- * 记下画布中心对应的脑图位置，返回的函数在尺寸变化后把这个位置移回中心。
- * 与 mind-elixir 自带工具栏的全屏按钮做法相同。
- */
+/** 记下画布中心对应的脑图位置，返回的函数在尺寸变化后把这个位置移回中心。 */
 function keepViewportCenter(mind: MindElixirInstance): () => void {
 	const before = centerOf(mind.container.getBoundingClientRect());
 	const translate = readTranslate(mind);
@@ -46,43 +41,32 @@ function keepViewportCenter(mind: MindElixirInstance): () => void {
 	};
 }
 
-/** 全屏显示画布和工具栏所在的外框。退出全屏后画布中心的位置不变。 */
+/**
+ * 全屏：画布和工具栏铺满浏览器窗口，按 Esc 或「退出全屏」恢复，画布中心的位置不变。
+ * 不使用浏览器的全屏接口：全屏元素之外的对话框和提示不显示，删除确认会看不到。
+ */
 export function useMindmapFullscreen(
-	frameRef: RefObject<HTMLElement | null>,
 	mind: MindElixirInstance | null
 ): MindmapFullscreen {
 	const [active, setActive] = useState(false);
-	const restoreRef = useRef<(() => void) | null>(null);
-	const supported =
-		typeof document !== "undefined" && document.fullscreenEnabled === true;
-
-	useEffect(() => {
-		const handleChange = () => {
-			setActive(
-				frameRef.current !== null &&
-					document.fullscreenElement === frameRef.current
-			);
-			restoreRef.current?.();
-			restoreRef.current = null;
-		};
-		document.addEventListener("fullscreenchange", handleChange);
-		return () => document.removeEventListener("fullscreenchange", handleChange);
-	}, [frameRef]);
 
 	const toggle = useCallback(() => {
-		const frame = frameRef.current;
-		if (frame === null || mind === null) {
-			return;
-		}
-		restoreRef.current = keepViewportCenter(mind);
-		const request =
-			document.fullscreenElement === frame
-				? document.exitFullscreen()
-				: frame.requestFullscreen();
-		request.catch(() => {
-			restoreRef.current = null;
-		});
-	}, [frameRef, mind]);
+		const restore = mind === null ? null : keepViewportCenter(mind);
+		// 先同步提交新的布局，再按新的画布尺寸把中心移回原位
+		flushSync(() => setActive((current) => !current));
+		restore?.();
+	}, [mind]);
 
-	return { active, supported, toggle };
+	useEffect(() => {
+		// 编辑节点时的 Esc 由 mind-elixir 处理并 preventDefault，不退出全屏
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (active && event.key === "Escape" && !event.defaultPrevented) {
+				toggle();
+			}
+		};
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [active, toggle]);
+
+	return { active, toggle };
 }

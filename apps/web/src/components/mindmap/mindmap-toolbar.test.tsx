@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -42,7 +48,7 @@ function isInert(button: HTMLElement): boolean {
 	);
 }
 
-const NOT_FULLSCREEN = { active: false, supported: true, toggle: vi.fn() };
+const NOT_FULLSCREEN = { active: false, toggle: vi.fn() };
 
 describe("MindmapToolbar：缩放、回到中心和全屏", () => {
 	it("显示当前缩放比例，点击放大和缩小按步长缩放", () => {
@@ -91,7 +97,7 @@ describe("MindmapToolbar：缩放、回到中心和全屏", () => {
 		const toggle = vi.fn();
 		const { rerender } = render(
 			<MindmapToolbar
-				fullscreen={{ active: false, supported: true, toggle }}
+				fullscreen={{ active: false, toggle }}
 				viewport={viewport}
 			/>
 		);
@@ -102,24 +108,14 @@ describe("MindmapToolbar：缩放、回到中心和全屏", () => {
 
 		rerender(
 			<MindmapToolbar
-				fullscreen={{ active: true, supported: true, toggle }}
+				fullscreen={{ active: true, toggle }}
 				viewport={viewport}
 			/>
 		);
 		expect(screen.getByRole("button", { name: "退出全屏" })).toBeTruthy();
 	});
 
-	it("浏览器不支持全屏时不显示全屏按钮", () => {
-		render(
-			<MindmapToolbar
-				fullscreen={{ active: false, supported: false, toggle: vi.fn() }}
-				viewport={fakeViewport()}
-			/>
-		);
-		expect(screen.queryByRole("button", { name: "全屏" })).toBeNull();
-	});
-
-	it("只有一个按钮在 Tab 顺序中，左右方向键在按钮之间移动焦点", () => {
+	it("只有一个按钮在 Tab 顺序中，左右方向键在按钮之间循环移动焦点", async () => {
 		render(
 			<MindmapToolbar fullscreen={NOT_FULLSCREEN} viewport={fakeViewport()} />
 		);
@@ -127,9 +123,9 @@ describe("MindmapToolbar：缩放、回到中心和全屏", () => {
 		expect(buttons.map((button) => button.tabIndex)).toEqual([0, -1, -1, -1]);
 		buttons[0]?.focus();
 		fireEvent.keyDown(buttons[0] as HTMLElement, { key: "ArrowLeft" });
-		expect(document.activeElement).toBe(buttons[3]);
+		await waitFor(() => expect(document.activeElement).toBe(buttons[3]));
 		fireEvent.keyDown(buttons[3] as HTMLElement, { key: "ArrowRight" });
-		expect(document.activeElement).toBe(buttons[0]);
+		await waitFor(() => expect(document.activeElement).toBe(buttons[0]));
 	});
 
 	it("每个按钮都有悬停提示", () => {

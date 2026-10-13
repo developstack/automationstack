@@ -1,3 +1,4 @@
+import { cn } from "@automationstack/ui/lib/utils";
 import type { MindElixirInstance } from "mind-elixir";
 import MindElixir from "mind-elixir";
 import "mind-elixir/style.css";
@@ -92,21 +93,26 @@ function useMindElixirInstance(
 }
 
 export function MindmapCanvas({ data, project, scope }: MindmapCanvasProps) {
-	const frameRef = useRef<HTMLDivElement>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
 	const snapshotRef = useRef<MindmapSnapshotInput>({ data, project });
 	const sync = useMindmapSync(scope);
 	const { syncExternal } = sync;
 
 	const mind = useMindElixirInstance(containerRef, snapshotRef, sync);
-	const fullscreen = useMindmapFullscreen(frameRef, mind);
+	const fullscreen = useMindmapFullscreen(mind);
 
 	useEffect(() => {
 		syncExternal({ data, project });
 	}, [data, project, syncExternal]);
 
 	return (
-		<div className="relative h-full w-full bg-background" ref={frameRef}>
+		<div
+			className={cn(
+				"bg-background",
+				fullscreen.active ? "fixed inset-0 z-40" : "relative h-full w-full"
+			)}
+			data-fullscreen={fullscreen.active ? "" : undefined}
+		>
 			<div className="h-full w-full" ref={containerRef} />
 			{mind === null ? null : (
 				<MindmapToolbar fullscreen={fullscreen} viewport={mind} />

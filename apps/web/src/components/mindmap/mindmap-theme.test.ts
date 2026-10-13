@@ -51,10 +51,10 @@ describe("MINDMAP_THEME：黑白主调，颜色只表示状态", () => {
 		}
 	});
 
-	it("主节点是卡片：卡片底色、细边框和圆角令牌", () => {
+	it("主节点是卡片：卡片底色、与连线同色的细边框和圆角令牌", () => {
 		expect(MINDMAP_THEME.cssVar).toMatchObject({
 			"--main-bgcolor": "var(--card)",
-			"--main-border": "1px solid var(--border)",
+			"--main-border": "1px solid var(--muted-foreground)",
 			"--main-radius": "calc(var(--radius) - 2px)",
 		});
 	});

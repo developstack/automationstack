@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 
+import {
+	STATUS_TONE_CLASSES,
+	type StatusTone,
+} from "@/components/status/status-badge-meta";
+
 import { buildNewCaseNode } from "./mindmap-node-utils.ts";
-import { buildCaseStatusTag, buildPriorityTag } from "./mindmap-tags.ts";
+import {
+	buildCaseStatusTag,
+	buildPriorityTag,
+	buildToneTag,
+} from "./mindmap-tags.ts";
 
 const TOKEN_REFERENCE = /var\(--[a-z-]+\)/;
 const HEX_OR_RGB = /#[0-9a-f]{3,8}\b|rgb\(/i;
@@ -74,4 +83,34 @@ describe("在脑图中新建的用例节点", () => {
 			buildPriorityTag("P2"),
 		]);
 	});
+});
+
+const BG_CLASS = /(?:^|\s)bg-([a-z-]+)(?:\s|$)/;
+const TEXT_COLOR_CLASS = /(?:^|\s)text-([a-z-]+)(?:\s|$)/;
+const BORDER_CLASS = /(?:^|\s)border-([a-z-]+)\/(\d+)(?:\s|$)/;
+
+describe("每种样式与 StatusBadge 的 STATUS_TONE_CLASSES 一致", () => {
+	for (const [tone, classes] of Object.entries(STATUS_TONE_CLASSES)) {
+		it(`${tone}：底色、文字色、边框色、删除线和字体相同`, () => {
+			const style = buildToneTag("x", tone as StatusTone).style ?? {};
+			const bg = classes.match(BG_CLASS)?.[1];
+			expect(style.background).toBe(bg ? `var(--${bg})` : "transparent");
+			expect(style.color).toBe(
+				`var(--${classes.match(TEXT_COLOR_CLASS)?.[1]})`
+			);
+			const border = classes.match(BORDER_CLASS);
+			if (border) {
+				expect(style.borderColor).toContain(`var(--${border[1]})`);
+				expect(style.borderColor).toContain(`${border[2]}%`);
+			} else {
+				expect(style.borderColor).toBe("transparent");
+			}
+			expect(style.textDecoration === "line-through").toBe(
+				classes.includes("line-through")
+			);
+			expect(style.fontFamily === "var(--font-mono)").toBe(
+				classes.includes("numeric")
+			);
+		});
+	}
 });

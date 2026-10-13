@@ -91,18 +91,19 @@ const TONE_STYLES: Record<StatusTone, TagStyle> = {
 	},
 };
 
-function toneTag(text: string, tone: StatusTone): TagObj {
+/** 按 StatusBadge 的一种样式生成标签。 */
+export function buildToneTag(text: string, tone: StatusTone): TagObj {
 	return { style: { ...TONE_STYLES[tone] }, text };
 }
 
 /** 用例状态标签，与 StatusBadge kind="caseStatus" 的文字和样式相同。 */
 export function buildCaseStatusTag(status: CaseStatus): TagObj {
-	return toneTag(STATUS_LABELS[status], CASE_STATUS_TONES[status]);
+	return buildToneTag(STATUS_LABELS[status], CASE_STATUS_TONES[status]);
 }
 
 /** 优先级标签，与 StatusBadge kind="priority" 相同：不用颜色，等宽字体，只有 P0 加粗。 */
 export function buildPriorityTag(priority: CasePriority): TagObj {
-	return toneTag(priority, priorityTone(priority));
+	return buildToneTag(priority, priorityTone(priority));
 }
 
 /** 用例节点的标签：先用例状态，后优先级，顺序与用例详情的头部相同。 */

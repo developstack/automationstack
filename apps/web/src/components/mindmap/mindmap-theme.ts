@@ -14,7 +14,8 @@ export const MINDMAP_THEME: Theme = {
 		"--main-bgcolor": "var(--card)",
 		"--main-bgcolor-transparent":
 			"color-mix(in oklab, var(--card) 80%, transparent)",
-		"--main-border": "1px solid var(--border)",
+		// mind-elixir 用 palette 的颜色覆盖主节点的边框色，这里写同一个颜色
+		"--main-border": "1px solid var(--muted-foreground)",
 		"--main-color": "var(--card-foreground)",
 		"--main-radius": "calc(var(--radius) - 2px)",
 		"--panel-bgcolor": "var(--popover)",

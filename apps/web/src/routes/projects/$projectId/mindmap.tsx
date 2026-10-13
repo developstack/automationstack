@@ -19,18 +19,17 @@ const LazyMindmapView = lazy(async () => {
 	return { default: module.MindmapView };
 });
 
-const FALLBACK = <MindmapSkeleton />;
-
 function MindmapPage() {
 	const { projectId } = Route.useParams();
 	const { moduleId } = Route.useSearch();
+	const fallback = <MindmapSkeleton scoped={moduleId !== undefined} />;
 
 	return (
 		<PageTransition className={MINDMAP_PAGE_CLASS}>
 			<PageHeader title={WORKSPACE_VIEW_LABELS.mindmap} />
 			<div className="min-h-0 flex-1">
-				<ClientOnly fallback={FALLBACK}>
-					<Suspense fallback={FALLBACK}>
+				<ClientOnly fallback={fallback}>
+					<Suspense fallback={fallback}>
 						<LazyMindmapView moduleId={moduleId} projectId={projectId} />
 					</Suspense>
 				</ClientOnly>

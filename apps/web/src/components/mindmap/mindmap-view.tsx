@@ -122,7 +122,7 @@ export function MindmapView({ moduleId, projectId }: MindmapViewProps) {
 	const project = projectQuery.data;
 	const tree = treeQuery.data;
 	if (project === undefined || tree === undefined) {
-		return <MindmapSkeleton />;
+		return <MindmapSkeleton scoped={isScopedMindmap(scope)} />;
 	}
 	return (
 		<MindmapContent

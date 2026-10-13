@@ -53,6 +53,14 @@ describe("describeMindmapSyncFailure：不显示内部细节", () => {
 		expect(result).toEqual({ description: NO_REASON, title: TITLE });
 	});
 
+	it("参数校验失败等未声明的 4xx 错误不显示英文原文", () => {
+		const error = new ORPCError("BAD_REQUEST", {
+			message: "Input validation failed",
+		});
+
+		expect(describeMindmapSyncFailure(error).description).toBe(NO_REASON);
+	});
+
 	it("其他 Error（序列化失败等）不显示 message", () => {
 		expect(
 			describeMindmapSyncFailure(new Error("Unexpected token <")).description
