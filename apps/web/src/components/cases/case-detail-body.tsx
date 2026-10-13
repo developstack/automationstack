@@ -61,7 +61,9 @@ export function useCaseEditor(caseId: string, testCase: TestCase | undefined) {
 		conflict,
 		form,
 		handleSave,
-		nameError,
+		// 名称填好后错误立即消失，不用等到下次保存
+		nameError:
+			form !== null && validateCaseName(form) !== null ? nameError : null,
 		saving: mutation.isPending,
 		setForm,
 		startEditing,

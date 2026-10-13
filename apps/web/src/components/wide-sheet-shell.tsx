@@ -43,7 +43,7 @@ export function useUnsavedCloseGuard(
 }
 
 const DEFAULT_CONFIRM_LABEL = "放弃并关闭";
-const DEFAULT_DESCRIPTION = "这个抽屉里还有没保存的内容，关掉就找不回来了。";
+const DEFAULT_DESCRIPTION = "这个面板中还有未保存的修改，关闭后就找不回来了。";
 const DEFAULT_TITLE = "放弃未保存的修改？";
 
 interface UnsavedChangesDialogProps {

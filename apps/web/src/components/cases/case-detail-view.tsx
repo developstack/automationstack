@@ -1,20 +1,13 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import { Badge } from "@automationstack/ui/components/badge";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@automationstack/ui/components/table";
 import type { ReactNode } from "react";
 
 import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
-import { CASE_TYPE_LABELS, formatDateTime } from "@/components/cases/case-meta";
-import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
+import { CASE_TYPE_LABELS } from "@/components/cases/case-meta";
+import { CaseStepsTable } from "@/components/cases/case-steps-table";
 import { MarkdownRender } from "@/components/cases/markdown-render";
-import { StatusBadge } from "@/components/status/status-badge";
+
+const PLACEHOLDER = <span className="text-muted-foreground">—</span>;
 
 function DetailRow({
 	children,
@@ -24,79 +17,70 @@ function DetailRow({
 	label: string;
 }) {
 	return (
-		<div className="flex flex-col gap-1">
-			<span className="text-muted-foreground text-xs">{label}</span>
-			<div className="text-sm">{children}</div>
+		<div className="flex min-w-0 flex-col gap-1">
+			<dt className="eyebrow">{label}</dt>
+			<dd className="text-sm">{children}</dd>
 		</div>
 	);
 }
 
-function CaseStepsTable({
-	imageUrls,
-	testCase,
+function DetailSection({
+	children,
+	title,
 }: {
-	imageUrls: MarkdownImageUrls;
-	testCase: TestCase;
+	children: ReactNode;
+	title: string;
 }) {
-	if (testCase.steps.length === 0) {
-		return <p className="text-muted-foreground text-sm">暂无步骤。</p>;
-	}
 	return (
-		<Table>
-			<TableHeader>
-				<TableRow>
-					<TableHead>#</TableHead>
-					<TableHead>操作步骤</TableHead>
-					<TableHead>预期结果</TableHead>
-				</TableRow>
-			</TableHeader>
-			<TableBody>
-				{testCase.steps.map((step, index) => (
-					<TableRow key={step.id}>
-						<TableCell className="text-muted-foreground">{index + 1}</TableCell>
-						<TableCell>
-							<MarkdownRender imageUrls={imageUrls} text={step.step} />
-						</TableCell>
-						<TableCell>
-							<MarkdownRender imageUrls={imageUrls} text={step.expected} />
-						</TableCell>
-					</TableRow>
-				))}
-			</TableBody>
-		</Table>
+		<section className="flex flex-col gap-2">
+			<h3 className="eyebrow">{title}</h3>
+			{children}
+		</section>
 	);
 }
 
+function CaseTags({ tags }: { tags: string[] }) {
+	if (tags.length === 0) {
+		return PLACEHOLDER;
+	}
+	return (
+		<div className="flex flex-wrap gap-1">
+			{tags.map((tag) => (
+				<Badge className="font-normal" key={tag} variant="outline">
+					{tag}
+				</Badge>
+			))}
+		</div>
+	);
+}
+
+/** 用例详情的只读内容。用例编号、用例状态、优先级、版本和更新时间显示在面板头部。 */
 export function CaseDetailView({ testCase }: { testCase: TestCase }) {
 	const imageUrls = useCaseAttachmentUrls(testCase.id);
 
 	return (
-		<div className="flex flex-col gap-4">
-			<div className="flex flex-wrap items-center gap-2">
-				<StatusBadge kind="priority" value={testCase.priority} />
-				<StatusBadge kind="caseStatus" value={testCase.status} />
-				<Badge variant="outline">{CASE_TYPE_LABELS[testCase.caseType]}</Badge>
-				{testCase.tags.map((tag) => (
-					<Badge key={tag} variant="secondary">
-						{tag}
-					</Badge>
-				))}
-			</div>
-			<div className="grid grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-3">
-				<DetailRow label="维护人">{testCase.maintainer ?? "—"}</DetailRow>
-				<DetailRow label="当前版本">{`v${testCase.currentVersion}`}</DetailRow>
-				<DetailRow label="更新时间">
-					{formatDateTime(testCase.updatedAt)}
+		<div className="flex flex-col gap-6">
+			<dl className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
+				<DetailRow label="用例类型">
+					{CASE_TYPE_LABELS[testCase.caseType]}
 				</DetailRow>
-			</div>
-			<DetailRow label="前置条件">
+				<DetailRow label="维护人">
+					{testCase.maintainer ?? PLACEHOLDER}
+				</DetailRow>
+				<DetailRow label="标签">
+					<CaseTags tags={testCase.tags} />
+				</DetailRow>
+			</dl>
+			<DetailSection title="前置条件">
 				{testCase.preconditions ? (
 					<MarkdownRender imageUrls={imageUrls} text={testCase.preconditions} />
 				) : (
-					"—"
+					<p className="text-muted-foreground text-sm">没有前置条件。</p>
 				)}
-			</DetailRow>
-			<CaseStepsTable imageUrls={imageUrls} testCase={testCase} />
+			</DetailSection>
+			<DetailSection title="操作步骤">
+				<CaseStepsTable imageUrls={imageUrls} testCase={testCase} />
+			</DetailSection>
 		</div>
 	);
 }

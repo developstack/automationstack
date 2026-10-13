@@ -1,5 +1,9 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import {
+	focusCaseNameField,
+	validateCaseName,
+} from "@/components/cases/case-form-validation";
 import type { CaseFormValues } from "@/components/cases/case-meta";
 import { formValuesToContent } from "@/components/cases/case-meta";
 import {
@@ -51,11 +55,26 @@ export interface CaseCreateSubmitInput {
 	values: CaseFormValues;
 }
 
-export function useCaseCreateSubmit(input: CaseCreateSubmitInput): () => void {
-	const { attachments, caseId, create, moduleId, projectId, values } = input;
+export interface CaseCreateSubmit {
+	/** 名称字段旁边显示的错误。没有错误时为 null。 */
+	nameError: string | null;
+	submit: () => void;
+}
 
-	return useCallback(() => {
-		if (caseId === null || values.name.trim() === "") {
+export function useCaseCreateSubmit(
+	input: CaseCreateSubmitInput
+): CaseCreateSubmit {
+	const { attachments, caseId, create, moduleId, projectId, values } = input;
+	const [nameError, setNameError] = useState<string | null>(null);
+
+	const submit = useCallback(() => {
+		if (caseId === null) {
+			return;
+		}
+		const error = validateCaseName(values);
+		setNameError(error);
+		if (error !== null) {
+			focusCaseNameField();
 			return;
 		}
 		if (hasUnfinishedCaseUploads(values)) {
@@ -70,4 +89,8 @@ export function useCaseCreateSubmit(input: CaseCreateSubmitInput): () => void {
 			projectId,
 		});
 	}, [attachments.pending, caseId, create, moduleId, projectId, values]);
+
+	// 名称填好后错误立即消失，不用等到下次提交
+	const shownNameError = validateCaseName(values) === null ? null : nameError;
+	return { nameError: shownNameError, submit };
 }

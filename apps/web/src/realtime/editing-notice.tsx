@@ -1,3 +1,4 @@
+import { Alert, AlertTitle } from "@automationstack/ui/components/alert";
 import { PencilLineIcon } from "lucide-react";
 
 import { useCaseEditors } from "./use-editing";
@@ -8,19 +9,20 @@ interface CaseEditingNoticeProps {
 	caseId: string | undefined;
 }
 
-const NOTICE_CLASS =
-	"flex items-center gap-2 border-amber-500/40 border-b bg-amber-500/10 px-4 py-2 text-amber-600 text-xs dark:text-amber-400";
-
+/**
+ * 其他人正在编辑这条用例时的提示。status 区域一直存在，只替换其中的内容，
+ * 读屏软件才会读出变化。
+ */
 export function CaseEditingNotice({ caseId }: CaseEditingNoticeProps) {
 	const editors = useCaseEditors(caseId);
 	const active = editors.length > 0;
 	return (
-		<div className={active ? NOTICE_CLASS : "sr-only"} role="status">
+		<div className={active ? undefined : "sr-only"} role="status">
 			{active ? (
-				<>
-					<PencilLineIcon className="icon-stroke-regular size-3.5 shrink-0" />
-					<span>{`${editors.join(NAME_SEPARATOR)} 正在编辑此用例，保存时可能发生冲突。`}</span>
-				</>
+				<Alert role="none" variant="warning">
+					<PencilLineIcon aria-hidden="true" />
+					<AlertTitle className="font-normal">{`${editors.join(NAME_SEPARATOR)} 正在编辑此用例，保存时可能发生冲突。`}</AlertTitle>
+				</Alert>
 			) : null}
 		</div>
 	);

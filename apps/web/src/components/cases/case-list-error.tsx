@@ -13,6 +13,7 @@ import { useCallback } from "react";
 import { getServerMessage } from "@/components/layout/route-error";
 
 const ERROR_FALLBACK = "服务端没有给出原因。";
+const DEFAULT_TITLE = "用例列表加载失败";
 
 interface CaseListErrorProps {
 	query: {
@@ -20,10 +21,17 @@ interface CaseListErrorProps {
 		isFetching: boolean;
 		refetch: () => Promise<unknown>;
 	};
+	title?: string;
 }
 
-/** 用例列表加载失败时显示在表格的位置：原因和重试按钮。筛选栏仍然可以使用。 */
-export function CaseListError({ query }: CaseListErrorProps) {
+/**
+ * 加载失败时显示原因和重试按钮。用例列表把它放在表格的位置，筛选栏仍然可以使用；
+ * 用例详情面板把它放在内容区，标题由 title 指定。
+ */
+export function CaseListError({
+	query,
+	title = DEFAULT_TITLE,
+}: CaseListErrorProps) {
 	const { refetch } = query;
 	const handleRetry = useCallback(() => {
 		refetch().catch(() => undefined);
@@ -35,7 +43,7 @@ export function CaseListError({ query }: CaseListErrorProps) {
 				<EmptyMedia variant="icon">
 					<TriangleAlertIcon aria-hidden="true" className="text-destructive" />
 				</EmptyMedia>
-				<EmptyTitle>用例列表加载失败</EmptyTitle>
+				<EmptyTitle>{title}</EmptyTitle>
 				<EmptyDescription>
 					{getServerMessage(query.error) ?? ERROR_FALLBACK}
 				</EmptyDescription>

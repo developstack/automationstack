@@ -13,6 +13,13 @@ import {
 	CASE_EDITOR_FORM_ID,
 	type CaseEditor,
 } from "@/components/cases/case-detail-body";
+import { CaseHeaderMeta } from "@/components/cases/case-header-meta";
+import { formatDateTime } from "@/components/cases/case-meta";
+
+/** 面板头部：右上角留出关闭按钮的位置。新建面板也使用。 */
+export const CASE_SHEET_HEADER_CLASS = "gap-2 px-4 pt-4 pb-3";
+export const CASE_SHEET_TITLE_CLASS =
+	"break-words pr-10 font-semibold text-lg leading-snug";
 
 interface CaseDetailActionsProps {
 	editor: CaseEditor;
@@ -26,30 +33,36 @@ function CaseDetailActions({ editor, onStopEditing }: CaseDetailActionsProps) {
 		return (
 			<div className="flex items-center gap-2">
 				{uploading ? (
-					<span className="text-muted-foreground text-xs">图片上传中…</span>
+					<span className="text-muted-foreground text-xs" role="status">
+						图片上传中…
+					</span>
 				) : null}
-				<Button onClick={onStopEditing} size="sm" variant="ghost">
+				<Button onClick={onStopEditing} size="sm" type="button" variant="ghost">
 					取消
 				</Button>
 				<Button
-					disabled={editor.saving || uploading}
+					disabled={uploading}
 					form={CASE_EDITOR_FORM_ID}
+					pending={editor.saving}
 					size="sm"
 					type="submit"
 				>
-					{editor.saving ? "保存中…" : "保存"}
+					保存
 				</Button>
 			</div>
 		);
 	}
 
 	return (
-		<div className="flex items-center gap-2">
-			<Button onClick={editor.startEditing} size="sm" variant="outline">
-				<PencilIcon data-icon="inline-start" />
-				编辑
-			</Button>
-		</div>
+		<Button
+			onClick={editor.startEditing}
+			size="sm"
+			type="button"
+			variant="outline"
+		>
+			<PencilIcon data-icon="inline-start" />
+			编辑
+		</Button>
 	);
 }
 
@@ -67,12 +80,21 @@ export function CaseDetailHeader({
 	testCase,
 }: CaseDetailHeaderProps) {
 	return (
-		<SheetHeader>
-			<SheetTitle>{testCase.name}</SheetTitle>
-			<SheetDescription>
-				保存时会基于 v{testCase.currentVersion} 做乐观锁校验。
+		<SheetHeader className={CASE_SHEET_HEADER_CLASS}>
+			<CaseHeaderMeta
+				caseId={testCase.id}
+				priority={testCase.priority}
+				status={testCase.status}
+			/>
+			<SheetTitle className={CASE_SHEET_TITLE_CLASS}>
+				{testCase.name}
+			</SheetTitle>
+			<SheetDescription className="text-xs">
+				<span className="numeric">{`v${testCase.currentVersion}`}</span>
+				{" · 更新于 "}
+				<span className="numeric">{formatDateTime(testCase.updatedAt)}</span>
 			</SheetDescription>
-			<div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+			<div className="flex flex-wrap items-center justify-between gap-2 pt-1">
 				<CaseDeleteButton caseId={testCase.id} onDeleted={onClose} />
 				<CaseDetailActions editor={editor} onStopEditing={onStopEditing} />
 			</div>

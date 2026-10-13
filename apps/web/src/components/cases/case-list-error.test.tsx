@@ -32,4 +32,20 @@ describe("CaseListError：用例列表加载失败时可以重试", () => {
 		fireEvent.click(retry);
 		expect(refetch).not.toHaveBeenCalled();
 	});
+
+	it("其他位置可以换标题，例如用例详情加载失败", () => {
+		render(
+			<CaseListError
+				query={{
+					error: new Error("用例不存在"),
+					isFetching: false,
+					refetch: vi.fn(() => Promise.resolve()),
+				}}
+				title="用例详情加载失败"
+			/>
+		);
+		const alert = screen.getByRole("alert");
+		expect(alert.textContent).toContain("用例详情加载失败");
+		expect(alert.textContent).not.toContain("用例列表加载失败");
+	});
 });
