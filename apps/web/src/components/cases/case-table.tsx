@@ -98,15 +98,25 @@ function CaseRow({
 }
 
 interface CaseTableProps {
+	/** 表格在空状态、出错或骨架屏之后才出现时为 true：第一次显示的行也淡入。 */
+	animateFirst: boolean;
 	cases: TestCase[];
 	selectedCaseId: string | undefined;
 	/** 正在加载新的筛选结果或新的一页。表格留在原位，只标记为忙碌。 */
 	stale: boolean;
 }
 
-export function CaseTable({ cases, selectedCaseId, stale }: CaseTableProps) {
+export function CaseTable({
+	animateFirst,
+	cases,
+	selectedCaseId,
+	stale,
+}: CaseTableProps) {
 	const collaboratorsByCaseId = useCollaboratorsByCaseId();
-	const enteringIds = useEnteringRowIds(cases.map((testCase) => testCase.id));
+	const enteringIds = useEnteringRowIds(
+		cases.map((testCase) => testCase.id),
+		{ animateFirst }
+	);
 
 	return (
 		<Table aria-busy={stale} aria-label="用例列表">

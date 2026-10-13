@@ -23,14 +23,22 @@ interface TrackedRows {
 	key: string;
 }
 
+interface EnteringRowOptions {
+	/** 表格在空状态、出错或骨架屏之后才出现时为 true：第一次显示的行也淡入。 */
+	animateFirst: boolean;
+}
+
 /**
  * 只在行的集合变化时重新计算。实时协作等原因引起的重新渲染不改变结果，
  * 所以正在淡入的行不会中途失去动效。
  */
-export function useEnteringRowIds(ids: readonly string[]): ReadonlySet<string> {
+export function useEnteringRowIds(
+	ids: readonly string[],
+	{ animateFirst }: EnteringRowOptions
+): ReadonlySet<string> {
 	const key = ids.join("\n");
 	const [tracked, setTracked] = useState<TrackedRows>(() => ({
-		entering: enteringRowIds(null, ids),
+		entering: enteringRowIds(animateFirst ? [] : null, ids),
 		ids,
 		key,
 	}));

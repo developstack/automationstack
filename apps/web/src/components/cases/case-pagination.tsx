@@ -51,7 +51,7 @@ export function CasePagination({
 				<ChevronLeftIcon data-icon="inline-start" />
 				上一页
 			</Button>
-			<span className="px-1 text-muted-foreground text-xs">
+			<span aria-live="polite" className="px-1 text-muted-foreground text-xs">
 				第 <span className="numeric text-foreground">{page}</span> /{" "}
 				<span className="numeric">{pageCount}</span> 页
 			</span>

@@ -33,6 +33,10 @@ function TagOptions({
 	options,
 	selected,
 }: TagOptionsProps) {
+	const handleValueChange = useCallback(
+		(groupValue: string[]) => onChange(groupValue),
+		[onChange]
+	);
 	if (loading) {
 		return <p className="text-muted-foreground">正在加载标签……</p>;
 	}
@@ -56,7 +60,7 @@ function TagOptions({
 			aria-label="按标签筛选"
 			className="w-full flex-wrap"
 			multiple={true}
-			onValueChange={onChange}
+			onValueChange={handleValueChange}
 			size="sm"
 			value={selected}
 			variant="outline"
@@ -74,7 +78,8 @@ function tagTriggerLabel(count: number): string {
 	return count === 0 ? "按标签筛选" : `按标签筛选，已选 ${count} 个`;
 }
 
-function TagFilterTriggerButton({ count }: { count: number }) {
+/** 弹出层的触发按钮。PopoverTrigger 的 render 需要一个直接接收触发属性的元素，所以返回元素而不是组件。 */
+function tagTriggerButton(count: number) {
 	return (
 		<Button aria-label={tagTriggerLabel(count)} type="button" variant="outline">
 			<TagIcon data-icon="inline-start" />
@@ -120,7 +125,7 @@ export function CaseTagFilter({
 
 	return (
 		<Popover>
-			<PopoverTrigger render={<TagFilterTriggerButton count={tags.length} />} />
+			<PopoverTrigger render={tagTriggerButton(tags.length)} />
 			<PopoverContent align="start">
 				<TagOptions
 					failed={projectTags.failed}

@@ -46,14 +46,24 @@ interface HarnessControls {
 	setStale: (stale: boolean) => void;
 }
 
-async function renderTable(initial: TestCase[]): Promise<HarnessControls> {
+async function renderTable(
+	initial: TestCase[],
+	animateFirst = false
+): Promise<HarnessControls> {
 	const controls: Partial<HarnessControls> = {};
 	function Harness() {
 		const [cases, setCases] = useState(initial);
 		const [stale, setStale] = useState(false);
 		controls.setCases = setCases;
 		controls.setStale = setStale;
-		return <CaseTable cases={cases} selectedCaseId={undefined} stale={stale} />;
+		return (
+			<CaseTable
+				animateFirst={animateFirst}
+				cases={cases}
+				selectedCaseId={undefined}
+				stale={stale}
+			/>
+		);
 	}
 	const rootRoute = createRootRoute();
 	const pageRoute = createRoute({
@@ -79,6 +89,12 @@ describe("CaseTable：改筛选条件和翻页时，表格保留在原位", () =
 		await renderTable([LOGIN, LOGOUT]);
 		expect(rowOf("登录成功")?.dataset.entering).toBeUndefined();
 		expect(rowOf("退出登录")?.dataset.entering).toBeUndefined();
+	});
+
+	it("从空状态或骨架屏换成表格时，每一行都淡入", async () => {
+		await renderTable([LOGIN, LOGOUT], true);
+		expect(rowOf("登录成功")?.dataset.entering).toBe("true");
+		expect(rowOf("退出登录")?.dataset.entering).toBe("true");
 	});
 
 	it("加载新结果时，表格和原来的行留在原位，并标记为忙碌", async () => {

@@ -5,21 +5,18 @@ import {
 } from "@automationstack/ui/components/toggle-group";
 import { useCallback } from "react";
 
-import { STATUS_LABELS } from "@/components/cases/case-meta";
+import { STATUS_LABELS, STATUS_LIFECYCLE } from "@/components/cases/case-meta";
 
 const ALL_STATUS = "all";
 
 type StatusFilterValue = CaseStatus | typeof ALL_STATUS;
 
-// 按用例状态的生命周期排列：草稿、生效、废弃
 const STATUS_FILTER_OPTIONS: readonly {
 	label: string;
 	value: StatusFilterValue;
 }[] = [
 	{ label: "全部", value: ALL_STATUS },
-	{ label: STATUS_LABELS.draft, value: "draft" },
-	{ label: STATUS_LABELS.active, value: "active" },
-	{ label: STATUS_LABELS.deprecated, value: "deprecated" },
+	...STATUS_LIFECYCLE.map((value) => ({ label: STATUS_LABELS[value], value })),
 ];
 
 function statusFromGroupValue(

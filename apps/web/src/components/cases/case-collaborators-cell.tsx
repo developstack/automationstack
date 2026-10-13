@@ -72,8 +72,8 @@ function clausesFor({ editors, viewers }: CaseCollaborators): string[] {
 }
 
 interface StackedCollaborator {
+	activity: CollaboratorActivity;
 	collaborator: CaseCollaborator;
-	editing: boolean;
 }
 
 function stackFor({
@@ -81,8 +81,14 @@ function stackFor({
 	viewers,
 }: CaseCollaborators): StackedCollaborator[] {
 	return [
-		...editors.map((collaborator) => ({ collaborator, editing: true })),
-		...viewers.map((collaborator) => ({ collaborator, editing: false })),
+		...editors.map((collaborator) => ({
+			activity: "editing" as const,
+			collaborator,
+		})),
+		...viewers.map((collaborator) => ({
+			activity: "viewing" as const,
+			collaborator,
+		})),
 	];
 }
 
@@ -102,16 +108,16 @@ function CaseCollaboratorsBadge({
 		<Tooltip>
 			<TooltipTrigger aria-label={label} className={TRIGGER_CLASS}>
 				<AvatarGroup className={STACK_CLASS} lift={false}>
-					{visible.map(({ collaborator, editing }) => (
+					{visible.map(({ activity, collaborator }) => (
 						<PresenceAvatar
 							className={cn(
 								AVATAR_SIZE,
 								AVATAR_ENTER,
-								editing ? EDITING_RING : undefined
+								activity === "editing" ? EDITING_RING : undefined
 							)}
 							key={collaborator.clientId}
 							name={collaborator.name}
-							render={AVATAR_RENDERERS[editing ? "editing" : "viewing"]}
+							render={AVATAR_RENDERERS[activity]}
 						/>
 					))}
 					{overflow > 0 ? (
