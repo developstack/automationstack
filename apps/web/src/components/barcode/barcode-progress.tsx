@@ -44,7 +44,7 @@ function buildMarks(
 
 interface BarcodeProgressProps {
 	className?: string;
-	/** 竖线条数的上限。并排的多条进度条使用同一个上限，比例才能比较。 */
+	/** 竖线条数的上限。并排的多条进度条用 sharedBarcodeScale 取各行的上限，比例才能比较。 */
 	maxMarks?: number;
 	segments: readonly BarcodeSegment[];
 	size?: BarcodeSize;

@@ -1,3 +1,4 @@
+import { CONCLUDED_RESULTS } from "@automationstack/db/repositories/project-stats-definitions";
 import type { ActiveRunSummary } from "@automationstack/db/repositories/project-stats-runs-core";
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 import { Link } from "@tanstack/react-router";
@@ -15,15 +16,9 @@ import { RESULT_LABELS } from "@/components/test-runs/test-run-meta";
 
 /** 进度条的分段顺序：有结论的执行结果在前，未测在最后。 */
 const RESULT_ORDER: readonly TestRunCaseResult[] = [
-	"passed",
-	"failed",
-	"blocked",
-	"skipped",
+	...CONCLUDED_RESULTS,
 	"untested",
 ];
-
-/** 一行的竖线上限。各行的用例条数不同，准确的条数在右侧的文字中。 */
-const RUN_MAX_MARKS = 60;
 
 function countsText(run: ActiveRunSummary): string {
 	return RESULT_ORDER.map(
@@ -32,12 +27,14 @@ function countsText(run: ActiveRunSummary): string {
 }
 
 interface ActiveRunRowProps {
+	/** 这一行的竖线上限，来自所有行共用的比例。 */
+	maxMarks: number;
 	projectId: string;
 	run: ActiveRunSummary;
 }
 
 /** M3 的一行：名称、测试任务状态、按执行结果分段的条形码式进度条、有结论的条数和距上次执行的天数。 */
-export function ActiveRunRow({ projectId, run }: ActiveRunRowProps) {
+export function ActiveRunRow({ maxMarks, projectId, run }: ActiveRunRowProps) {
 	return (
 		<li className={RUN_ROW_GRID}>
 			<div className="flex min-w-0 items-center gap-2">
@@ -51,7 +48,7 @@ export function ActiveRunRow({ projectId, run }: ActiveRunRowProps) {
 				<StatusBadge kind="runStatus" size="sm" value={run.status} />
 			</div>
 			<BarcodeProgress
-				maxMarks={RUN_MAX_MARKS}
+				maxMarks={maxMarks}
 				segments={RESULT_ORDER.map((result) => ({
 					fillClassName: RESULT_CHART_COLORS[result].swatch,
 					key: result,

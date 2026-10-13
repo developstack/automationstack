@@ -17,3 +17,11 @@ export function reportModuleHeightPx(moduleCount: number): number {
 	const fitted = moduleCount * MODULE_PLOT_HEIGHT_PX + X_AXIS_LABEL_BAND_PX;
 	return Math.min(MAX_CHART_HEIGHT_PX, Math.max(MIN_CHART_HEIGHT_PX, fitted));
 }
+
+const UNEXECUTED_ROW_HEIGHT_PX = 28;
+const UNEXECUTED_AXIS_BAND_PX = 8;
+
+/** M4 模块条形图的高度：每个模块一行。图表和加载时的空盒子都使用这个高度。 */
+export function unexecutedChartHeightPx(moduleCount: number): number {
+	return moduleCount * UNEXECUTED_ROW_HEIGHT_PX + UNEXECUTED_AXIS_BAND_PX;
+}

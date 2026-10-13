@@ -15,7 +15,11 @@ import {
 	TREND_CARD_CONTENT,
 } from "@/components/overview/overview-layout";
 import { LazyRunTrendChart } from "@/components/overview/overview-lazy-charts";
-import { formatCount } from "@/components/overview/overview-metrics";
+import {
+	formatCount,
+	TREND_BUCKET_TEXT,
+	TREND_SPAN_TEXT,
+} from "@/components/overview/overview-metrics";
 import { OverviewQuery } from "@/components/overview/overview-query";
 import { OverviewSection } from "@/components/overview/overview-section";
 import { TrendCardSkeleton } from "@/components/overview/trend-card-skeleton";
@@ -44,8 +48,7 @@ function RunTrendContent({ data, projectId }: RunTrendContentProps) {
 	if (empty) {
 		return (
 			<OverviewEmpty projectId={projectId} target="testRuns">
-				过去 12 个 7
-				天区间没有新建或完成的测试任务。新建测试任务后，这里比较新建和完成的速度。
+				{`${TREND_SPAN_TEXT}没有新建或完成的测试任务。新建测试任务后，这里比较新建和完成的速度。`}
 			</OverviewEmpty>
 		);
 	}
@@ -60,7 +63,7 @@ function RunTrendContent({ data, projectId }: RunTrendContentProps) {
 				<LazyRunTrendChart points={data.points} />
 			</ChartSuspense>
 			<TrendSrTable
-				caption="每个 7 天区间新建和完成的测试任务"
+				caption={`每个${TREND_BUCKET_TEXT}新建和完成的测试任务`}
 				columns={SR_COLUMNS}
 				rows={toTrendRows(data.points)}
 			/>
@@ -88,7 +91,7 @@ export function OverviewRunTrendCard({ projectId }: OverviewRunTrendCardProps) {
 			{(data) => (
 				<OverviewSection
 					className={NARROW_CARD}
-					description="每个 7 天区间新建和完成的测试任务数。完成按进入已完成的时间统计"
+					description={`每个${TREND_BUCKET_TEXT}新建和完成的测试任务数。完成按进入已完成的时间统计`}
 					title={RUN_TREND_CARD_TITLE}
 				>
 					<RunTrendContent data={data} projectId={projectId} />

@@ -3,16 +3,11 @@ import { count, eq, lt, type SQL, sql } from "drizzle-orm";
 import { db } from "../index";
 import { type CasePriority, testCases } from "../schema/test-cases";
 import { daysBefore, STALE_DRAFT_DAYS } from "./project-stats-definitions";
-
-export function countWhere(condition: SQL): SQL<number> {
-	return sql<number>`count(*) filter (where ${condition})`.mapWith(Number);
-}
+import { countWhere } from "./project-stats-sql";
 
 export interface ProjectOverviewStats {
 	/** 生效用例按优先级的条数（M9）。 */
 	activePriorityCounts: Record<CasePriority, number>;
-	/** 全部用例状态按优先级的条数。 */
-	priorityCounts: Record<CasePriority, number>;
 	/** 创建超过 14 天、仍是草稿的用例条数（M1）。 */
 	staleDraftCount: number;
 	statusCounts: { active: number; deprecated: number; draft: number };
@@ -27,10 +22,6 @@ interface OverviewCountRow {
 	activeP3Count: number;
 	deprecatedCount: number;
 	draftCount: number;
-	p0Count: number;
-	p1Count: number;
-	p2Count: number;
-	p3Count: number;
 	staleDraftCount: number;
 	totalCount: number;
 }
@@ -43,10 +34,6 @@ const EMPTY_OVERVIEW_ROW: OverviewCountRow = {
 	activeP3Count: 0,
 	deprecatedCount: 0,
 	draftCount: 0,
-	p0Count: 0,
-	p1Count: 0,
-	p2Count: 0,
-	p3Count: 0,
 	staleDraftCount: 0,
 	totalCount: 0,
 };
@@ -58,12 +45,6 @@ function toOverviewStats(row: OverviewCountRow): ProjectOverviewStats {
 			P1: row.activeP1Count,
 			P2: row.activeP2Count,
 			P3: row.activeP3Count,
-		},
-		priorityCounts: {
-			P0: row.p0Count,
-			P1: row.p1Count,
-			P2: row.p2Count,
-			P3: row.p3Count,
 		},
 		staleDraftCount: row.staleDraftCount,
 		statusCounts: {
@@ -95,10 +76,6 @@ export async function getProjectOverviewStats(
 			activeP3Count: activeWithPriority("P3"),
 			deprecatedCount: countWhere(eq(testCases.status, "deprecated")),
 			draftCount: countWhere(eq(testCases.status, "draft")),
-			p0Count: countWhere(eq(testCases.priority, "P0")),
-			p1Count: countWhere(eq(testCases.priority, "P1")),
-			p2Count: countWhere(eq(testCases.priority, "P2")),
-			p3Count: countWhere(eq(testCases.priority, "P3")),
 			staleDraftCount: countWhere(
 				sql`${eq(testCases.status, "draft")} and ${lt(testCases.createdAt, staleDraftBefore)}`
 			),

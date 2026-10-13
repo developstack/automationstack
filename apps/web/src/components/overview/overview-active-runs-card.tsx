@@ -4,6 +4,7 @@ import { buttonVariants } from "@automationstack/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { sharedBarcodeScale } from "@/components/barcode/barcode-marks";
 import { ActiveRunRow } from "@/components/overview/active-run-row";
 import { ActiveRunsSkeleton } from "@/components/overview/active-runs-skeleton";
 import { OverviewEmpty } from "@/components/overview/overview-empty";
@@ -37,6 +38,36 @@ function AllRunsLink({ projectId, totalCount }: AllRunsLinkProps) {
 		>
 			{`全部 ${formatCount(totalCount)} 个`}
 		</Link>
+	);
+}
+
+/** 各行共用一个比例：用例多的测试任务竖线更长。 */
+const RUN_MAX_MARKS = 60;
+
+interface ActiveRunListProps {
+	projectId: string;
+	runs: ActiveRunsStats["runs"];
+}
+
+function ActiveRunList({ projectId, runs }: ActiveRunListProps) {
+	const scale = sharedBarcodeScale(
+		runs.map((run) => run.caseCount),
+		RUN_MAX_MARKS
+	);
+	return (
+		<div className="flex flex-col gap-2">
+			<ul className="divide-y">
+				{runs.map((run) => (
+					<ActiveRunRow
+						key={run.id}
+						maxMarks={scale.maxMarksFor(run.caseCount)}
+						projectId={projectId}
+						run={run}
+					/>
+				))}
+			</ul>
+			<p className="text-muted-foreground text-xs">{scale.note}</p>
+		</div>
 	);
 }
 
@@ -77,11 +108,7 @@ export function OverviewActiveRunsCard({
 							没有进行中的测试任务。新建测试任务，从用例库选择要执行的用例。
 						</OverviewEmpty>
 					) : (
-						<ul className="divide-y">
-							{data.runs.map((run) => (
-								<ActiveRunRow key={run.id} projectId={projectId} run={run} />
-							))}
-						</ul>
+						<ActiveRunList projectId={projectId} runs={data.runs} />
 					)}
 				</OverviewSection>
 			)}

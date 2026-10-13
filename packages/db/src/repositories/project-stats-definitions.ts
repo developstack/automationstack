@@ -42,8 +42,10 @@ export const HIGH_PRIORITIES = [
 	"P1",
 ] as const satisfies readonly CasePriority[];
 
+const HIGH_PRIORITY_SET: ReadonlySet<CasePriority> = new Set(HIGH_PRIORITIES);
+
 export function isHighPriority(priority: CasePriority): boolean {
-	return priority === "P0" || priority === "P1";
+	return HIGH_PRIORITY_SET.has(priority);
 }
 
 /** 可以停滞的测试任务状态：待测试、测试中。 */

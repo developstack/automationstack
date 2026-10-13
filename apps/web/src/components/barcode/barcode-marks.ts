@@ -71,3 +71,27 @@ export function barcodeScaleNote(
 		? `每条竖线表示 ${casesPerMark} 条用例`
 		: `每条竖线约表示 ${casesPerMark} 条用例`;
 }
+
+export interface SharedBarcodeScale {
+	casesPerMark: number;
+	/** 一行进度条的竖线上限。用例少的行竖线也少，各行的竖线长度可以直接比较。 */
+	maxMarksFor: (total: number) => number;
+	note: string;
+}
+
+/** 并排的多条进度条使用同一个比例：由最大的一行决定一条竖线表示几条用例。 */
+export function sharedBarcodeScale(
+	totals: readonly number[],
+	maxMarks: number = DEFAULT_MAX_MARKS
+): SharedBarcodeScale {
+	const largest = Math.max(0, ...totals);
+	const casesPerMark = Math.max(1, Math.ceil(largest / maxMarks));
+	return {
+		casesPerMark,
+		maxMarksFor: (total) => Math.max(1, Math.ceil(total / casesPerMark)),
+		note:
+			casesPerMark === 1
+				? "每条竖线表示 1 条用例"
+				: `每条竖线约表示 ${casesPerMark} 条用例`,
+	};
+}

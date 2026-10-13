@@ -14,15 +14,18 @@ export function ActiveRunsSkeleton() {
 			descriptionWidth="w-72 max-w-full"
 			titleWidth="w-36"
 		>
-			<div className="divide-y">
-				{ROW_KEYS.map((key) => (
-					<div className={RUN_ROW_GRID} key={key}>
-						<Skeleton className="h-5 w-3/4" />
-						<Skeleton className={BARCODE_BOX_CLASSES.sm} />
-						<Skeleton className="h-4 w-20" />
-						<Skeleton className="h-4 w-32" />
-					</div>
-				))}
+			<div className="flex flex-col gap-2">
+				<div className="divide-y">
+					{ROW_KEYS.map((key) => (
+						<div className={RUN_ROW_GRID} key={key}>
+							<Skeleton className="h-5 w-3/4" />
+							<Skeleton className={BARCODE_BOX_CLASSES.sm} />
+							<Skeleton className="h-4 w-20" />
+							<Skeleton className="h-4 w-32" />
+						</div>
+					))}
+				</div>
+				<Skeleton className="h-4 w-40" />
 			</div>
 		</CardSkeleton>
 	);

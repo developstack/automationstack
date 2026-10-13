@@ -5,6 +5,7 @@ import {
 import type { ExecutionCoverageStats } from "@automationstack/db/repositories/project-stats-execution";
 import { useQuery } from "@tanstack/react-query";
 
+import { unexecutedChartHeightPx } from "@/components/overview/chart-box";
 import { ChartSuspense } from "@/components/overview/chart-suspense";
 import { OverviewEmpty } from "@/components/overview/overview-empty";
 import { WIDE_CARD } from "@/components/overview/overview-layout";
@@ -33,7 +34,10 @@ function ModuleBars({ data }: ModuleBarsProps) {
 	}
 	return (
 		<>
-			<ChartSuspense boxClassName="h-24 w-full">
+			<ChartSuspense
+				boxClassName="w-full"
+				heightPx={unexecutedChartHeightPx(modules.length)}
+			>
 				<LazyUnexecutedModulesChart modules={modules} />
 			</ChartSuspense>
 			<ul className="sr-only">

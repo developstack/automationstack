@@ -3,7 +3,15 @@ import {
 	EXECUTION_WINDOW_DAYS,
 	RECENT_WINDOW_DAYS,
 	STALLED_RUN_DAYS,
+	TREND_BUCKET_COUNT,
+	TREND_BUCKET_DAYS,
 } from "@automationstack/db/repositories/project-stats-definitions";
+
+/** 趋势图的一个区间，例如「7 天区间」。 */
+export const TREND_BUCKET_TEXT = `${TREND_BUCKET_DAYS} 天区间`;
+
+/** 趋势图的全部区间，例如「过去 12 个 7 天区间」。 */
+export const TREND_SPAN_TEXT = `过去 ${TREND_BUCKET_COUNT} 个 ${TREND_BUCKET_TEXT}`;
 
 const COUNT_FORMAT = new Intl.NumberFormat("en-US");
 

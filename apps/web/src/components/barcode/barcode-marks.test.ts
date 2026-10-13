@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	allocateMarks,
 	barcodeScaleNote,
+	sharedBarcodeScale,
 } from "@/components/barcode/barcode-marks";
 
 describe("allocateMarks", () => {
@@ -51,5 +52,28 @@ describe("barcodeScaleNote", () => {
 		expect(barcodeScaleNote([1000, 84, 200], 120)).toBe(
 			"每条竖线约表示 11 条用例"
 		);
+	});
+});
+
+describe("sharedBarcodeScale", () => {
+	it("并排的进度条都不超过上限时，一条竖线表示一条用例，每行的上限就是它的条数", () => {
+		const scale = sharedBarcodeScale([40, 12], 60);
+
+		expect(scale.casesPerMark).toBe(1);
+		expect(scale.maxMarksFor(40)).toBe(40);
+		expect(scale.note).toBe("每条竖线表示 1 条用例");
+	});
+
+	it("最大的一行超过上限时，所有行使用同一个比例，用例少的行竖线也少", () => {
+		const scale = sharedBarcodeScale([600, 40], 60);
+
+		expect(scale.casesPerMark).toBe(10);
+		expect(allocateMarks([600], scale.maxMarksFor(600)).casesPerMark).toBe(10);
+		expect(allocateMarks([40], scale.maxMarksFor(40)).casesPerMark).toBe(10);
+		expect(scale.note).toBe("每条竖线约表示 10 条用例");
+	});
+
+	it("没有用例的行上限至少是 1", () => {
+		expect(sharedBarcodeScale([0], 60).maxMarksFor(0)).toBe(1);
 	});
 });

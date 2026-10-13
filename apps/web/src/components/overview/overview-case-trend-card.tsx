@@ -18,6 +18,8 @@ import { LazyCaseTrendChart } from "@/components/overview/overview-lazy-charts";
 import {
 	compareWithPrevious,
 	formatCount,
+	TREND_BUCKET_TEXT,
+	TREND_SPAN_TEXT,
 } from "@/components/overview/overview-metrics";
 import { OverviewQuery } from "@/components/overview/overview-query";
 import { OverviewSection } from "@/components/overview/overview-section";
@@ -46,8 +48,7 @@ function CaseTrendContent({ data, projectId }: CaseTrendContentProps) {
 	if (quiet) {
 		return (
 			<OverviewEmpty projectId={projectId}>
-				过去 12 个 7 天区间没有新增用例，过去 {RECENT_WINDOW_DAYS}{" "}
-				天也没有修改用例。在用例管理新建或导入用例后，这里显示趋势。
+				{`${TREND_SPAN_TEXT}没有新增用例，过去 ${RECENT_WINDOW_DAYS} 天也没有修改用例。在用例管理新建或导入用例后，这里显示趋势。`}
 			</OverviewEmpty>
 		);
 	}
@@ -72,7 +73,7 @@ function CaseTrendContent({ data, projectId }: CaseTrendContentProps) {
 				<LazyCaseTrendChart points={data.points} />
 			</ChartSuspense>
 			<TrendSrTable
-				caption="每个 7 天区间的新增用例"
+				caption={`每个${TREND_BUCKET_TEXT}的新增用例`}
 				columns={SR_COLUMNS}
 				rows={toTrendRows(data.points)}
 			/>
@@ -84,7 +85,7 @@ interface OverviewCaseTrendCardProps {
 	projectId: string;
 }
 
-/** M2 新增用例：大数字和 12 个 7 天区间的面积图。 */
+/** M2 新增用例：大数字和趋势图全部 7 天区间的面积图。 */
 export function OverviewCaseTrendCard({
 	projectId,
 }: OverviewCaseTrendCardProps) {

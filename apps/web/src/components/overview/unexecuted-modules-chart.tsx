@@ -7,6 +7,7 @@ import {
 } from "@automationstack/ui/components/chart";
 import { Bar, BarChart, XAxis, YAxis } from "recharts";
 
+import { unexecutedChartHeightPx } from "@/components/overview/chart-box";
 import {
 	CHART_ANIMATION,
 	useChartAnimation,
@@ -16,8 +17,6 @@ const CHART_CONFIG = {
 	unexecutedCount: { color: "var(--chart-4)", label: "没有执行" },
 } satisfies ChartConfig;
 
-const ROW_HEIGHT_PX = 28;
-const AXIS_BAND_PX = 8;
 const BAR_SIZE = 12;
 const BAR_RADIUS = 4;
 const NAME_AXIS_WIDTH = 96;
@@ -28,10 +27,6 @@ function truncateName(value: string): string {
 	return value.length <= MAX_TICK_CHARS
 		? value
 		: `${value.slice(0, MAX_TICK_CHARS)}…`;
-}
-
-export function unexecutedChartHeightPx(moduleCount: number): number {
-	return moduleCount * ROW_HEIGHT_PX + AXIS_BAND_PX;
 }
 
 interface UnexecutedModulesChartProps {

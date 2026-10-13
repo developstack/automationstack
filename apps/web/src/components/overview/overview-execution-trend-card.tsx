@@ -14,6 +14,10 @@ import {
 	TREND_CARD_CONTENT,
 } from "@/components/overview/overview-layout";
 import { LazyExecutionTrendChart } from "@/components/overview/overview-lazy-charts";
+import {
+	TREND_BUCKET_TEXT,
+	TREND_SPAN_TEXT,
+} from "@/components/overview/overview-metrics";
 import { OverviewQuery } from "@/components/overview/overview-query";
 import { OverviewSection } from "@/components/overview/overview-section";
 import { TrendCardSkeleton } from "@/components/overview/trend-card-skeleton";
@@ -49,8 +53,7 @@ function ExecutionTrendContent({
 	if (empty) {
 		return (
 			<OverviewEmpty projectId={projectId} target="testRuns">
-				过去 12 个 7
-				天区间没有执行结果。在测试任务中执行用例后，这里显示每周的执行结果。
+				{`${TREND_SPAN_TEXT}没有执行结果。在测试任务中执行用例后，这里显示每周的执行结果。`}
 			</OverviewEmpty>
 		);
 	}
@@ -60,7 +63,7 @@ function ExecutionTrendContent({
 				<LazyExecutionTrendChart points={data.points} />
 			</ChartSuspense>
 			<TrendSrTable
-				caption="每个 7 天区间的执行结果"
+				caption={`每个${TREND_BUCKET_TEXT}的执行结果`}
 				columns={SR_COLUMNS}
 				rows={rows}
 			/>
@@ -92,7 +95,7 @@ export function OverviewExecutionTrendCard({
 			{(data) => (
 				<OverviewSection
 					className={NARROW_CARD}
-					description="每个 7 天区间内有结论的执行结果。一条用例在一个测试任务中只计算最后一次"
+					description={`每个${TREND_BUCKET_TEXT}内有结论的执行结果。一条用例在一个测试任务中只计算最后一次`}
 					title={EXECUTION_TREND_CARD_TITLE}
 				>
 					<ExecutionTrendContent data={data} projectId={projectId} />

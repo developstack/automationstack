@@ -1,6 +1,5 @@
 import type { ModuleCoverageGap } from "@automationstack/db/repositories/project-stats-coverage";
 import { Button } from "@automationstack/ui/components/button";
-import { cn } from "@automationstack/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useId, useState } from "react";
 
@@ -12,11 +11,6 @@ import {
 export const GAP_LABELS: Record<ModuleCoverageGap, string> = {
 	empty: "零用例",
 	"no-active": "无生效用例",
-};
-
-const GAP_CLASSES: Record<ModuleCoverageGap, string> = {
-	empty: "text-destructive-soft-foreground",
-	"no-active": "text-warning-soft-foreground",
 };
 
 /** 超过这个行数时先收起，用按钮展开全部。 */
@@ -52,7 +46,7 @@ export function CoverageGapList({ projectId, rows }: CoverageGapListProps) {
 						>
 							{row.path}
 						</Link>
-						<span className={cn("shrink-0 text-xs", GAP_CLASSES[row.gap])}>
+						<span className="shrink-0 text-muted-foreground text-xs">
 							{GAP_LABELS[row.gap]}
 						</span>
 						<span className="numeric w-16 shrink-0 text-right text-muted-foreground text-xs">

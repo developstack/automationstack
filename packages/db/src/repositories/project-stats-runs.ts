@@ -2,11 +2,11 @@ import { and, eq, isNull, max } from "drizzle-orm";
 
 import { db } from "../index";
 import { testRunCases, testRuns } from "../schema/test-runs";
-import { countWhere } from "./project-stats-repository";
 import {
 	type ActiveRunsStats,
 	buildActiveRuns,
 } from "./project-stats-runs-core";
+import { countWhere } from "./project-stats-sql";
 
 /** M3：还没有提交的测试任务，每个测试任务按执行结果计数，并取最后的执行时间。 */
 export async function getActiveRuns(
