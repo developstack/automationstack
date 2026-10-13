@@ -73,11 +73,7 @@ export function CaseDetailHeader({
 				保存时会基于 v{testCase.currentVersion} 做乐观锁校验。
 			</SheetDescription>
 			<div className="flex flex-wrap items-center justify-between gap-2 pt-2">
-				<CaseDeleteButton
-					caseId={testCase.id}
-					caseName={testCase.name}
-					onDeleted={onClose}
-				/>
+				<CaseDeleteButton caseId={testCase.id} onDeleted={onClose} />
 				<CaseDetailActions editor={editor} onStopEditing={onStopEditing} />
 			</div>
 		</SheetHeader>

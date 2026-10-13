@@ -3,7 +3,7 @@ import { Input } from "@automationstack/ui/components/input";
 import { Label } from "@automationstack/ui/components/label";
 import { type ChangeEvent, useCallback } from "react";
 
-import { JiraFieldError } from "@/components/settings/jira-field-error";
+import { FieldError } from "@/components/interaction/field-error";
 
 export interface JiraSecretFieldProps {
 	clearRequested?: boolean;
@@ -102,7 +102,7 @@ export function JiraSecretField(props: JiraSecretFieldProps) {
 					/>
 				)}
 			</div>
-			<JiraFieldError id={`${props.id}-error`} message={props.error} />
+			<FieldError id={`${props.id}-error`} message={props.error} />
 			<JiraSecretHint
 				hint={props.hint}
 				hintId={hintId}

@@ -1,6 +1,7 @@
 import { cn } from "@automationstack/ui/lib/utils";
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
+import { Loader2Icon } from "lucide-react";
 
 const buttonVariants = cva(
 	"group/button inline-flex shrink-0 select-none items-center justify-center whitespace-nowrap rounded-md border border-transparent bg-clip-padding font-medium text-sm outline-none transition-control focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
@@ -46,18 +47,48 @@ const buttonVariants = cva(
 	}
 );
 
+type ButtonProps = ButtonPrimitive.Props &
+	VariantProps<typeof buttonVariants> & {
+		/**
+		 * 提交中：显示加载图标，按钮不能再次点击。
+		 * 按钮仍可聚焦，焦点不会在提交时丢失。
+		 */
+		pending?: boolean;
+	};
+
 function Button({
 	className,
 	variant = "default",
 	size = "default",
+	pending = false,
+	disabled,
+	children,
 	...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
 	return (
 		<ButtonPrimitive
-			className={cn(buttonVariants({ className, size, variant }))}
+			aria-busy={pending ? true : undefined}
+			className={cn(
+				buttonVariants({ className, size, variant }),
+				pending &&
+					"aria-disabled:cursor-progress [&_[data-icon=inline-start]:not([data-slot=button-spinner])]:hidden"
+			)}
+			data-pending={pending ? "" : undefined}
 			data-slot="button"
+			disabled={pending || disabled}
+			focusableWhenDisabled={pending ? true : undefined}
 			{...props}
-		/>
+		>
+			{pending ? (
+				<Loader2Icon
+					aria-hidden="true"
+					className="animate-spin motion-reduce:animate-none"
+					data-icon="inline-start"
+					data-slot="button-spinner"
+				/>
+			) : null}
+			{children}
+		</ButtonPrimitive>
 	);
 }
 

@@ -3,6 +3,7 @@ import { Input } from "@automationstack/ui/components/input";
 import { Label } from "@automationstack/ui/components/label";
 import type { ChangeEvent } from "react";
 
+import { FieldError } from "@/components/interaction/field-error";
 import {
 	MAX_AUTO_SUBMIT_DAYS,
 	MIN_AUTO_SUBMIT_DAYS,
@@ -32,12 +33,12 @@ export function TestRunSettingsFields(props: TestRunSettingsFieldsProps) {
 						}
 						aria-invalid={props.error !== null}
 						className="w-28"
-						disabled={props.pending}
 						id={FIELD_ID}
 						inputMode="numeric"
 						max={MAX_AUTO_SUBMIT_DAYS}
 						min={MIN_AUTO_SUBMIT_DAYS}
 						onChange={props.onChange}
+						readOnly={props.pending}
 						step={1}
 						type="number"
 						value={props.value}
@@ -46,17 +47,13 @@ export function TestRunSettingsFields(props: TestRunSettingsFieldsProps) {
 						天
 					</span>
 				</div>
-				{props.error === null ? null : (
-					<p className="text-destructive text-xs" id={ERROR_ID}>
-						{props.error}
-					</p>
-				)}
+				<FieldError id={ERROR_ID} message={props.error} />
 				<p className="text-muted-foreground text-xs" id={HINT_ID}>
 					{props.hint}
 				</p>
 			</div>
 			<div className="flex justify-end">
-				<Button disabled={props.pending} type="submit">
+				<Button pending={props.pending} type="submit">
 					{props.pending ? "保存中…" : "保存"}
 				</Button>
 			</div>

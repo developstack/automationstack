@@ -2,7 +2,7 @@ import { Input } from "@automationstack/ui/components/input";
 import { Label } from "@automationstack/ui/components/label";
 import { type ChangeEvent, useCallback } from "react";
 
-import { JiraFieldError } from "@/components/settings/jira-field-error";
+import { FieldError } from "@/components/interaction/field-error";
 
 export interface JiraTextFieldProps {
 	error: string | null;
@@ -41,7 +41,7 @@ export function JiraTextField(props: JiraTextFieldProps) {
 				type={props.type}
 				value={props.value}
 			/>
-			<JiraFieldError id={`${props.id}-error`} message={props.error} />
+			<FieldError id={`${props.id}-error`} message={props.error} />
 		</div>
 	);
 }

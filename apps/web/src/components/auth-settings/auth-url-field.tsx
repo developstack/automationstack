@@ -3,7 +3,7 @@ import { Label } from "@automationstack/ui/components/label";
 import { type ChangeEvent, useCallback } from "react";
 
 import { CopyButton } from "@/components/auth-settings/copy-button";
-import { JiraFieldError } from "@/components/settings/jira-field-error";
+import { FieldError } from "@/components/interaction/field-error";
 
 export interface AuthUrlFieldProps {
 	copyLabel: string;
@@ -50,7 +50,7 @@ export function AuthUrlField(props: AuthUrlFieldProps) {
 				/>
 				<CopyButton label={props.copyLabel} value={props.value} />
 			</div>
-			<JiraFieldError id={`${props.id}-error`} message={error} />
+			<FieldError id={`${props.id}-error`} message={error} />
 			<p className="text-muted-foreground text-xs" id={hintId}>
 				{props.hint}
 			</p>

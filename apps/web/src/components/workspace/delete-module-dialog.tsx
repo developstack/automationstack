@@ -1,19 +1,10 @@
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@automationstack/ui/components/alert-dialog";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
-import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
+import { TypeToConfirmDialog } from "@/components/interaction/type-to-confirm-dialog";
+import { useLastNonNull } from "@/components/interaction/use-last-non-null";
 import { orpc } from "@/utils/orpc";
 
 interface DeleteModuleDialogProps {
@@ -28,8 +19,11 @@ export function DeleteModuleDialog({
 	onDeleted,
 }: DeleteModuleDialogProps) {
 	const queryClient = useQueryClient();
+	// 关闭动画期间 module 已经是 null，继续显示上一个模块的名称
+	const shown = useLastNonNull(module);
 	const remove = useMutation(
 		orpc.modules.remove.mutationOptions({
+			meta: { failureAction: "删除模块" },
 			onSuccess: (result) => {
 				queryClient.invalidateQueries({ queryKey: orpc.modules.key() });
 				queryClient.invalidateQueries({ queryKey: orpc.cases.key() });
@@ -39,7 +33,6 @@ export function DeleteModuleDialog({
 			},
 		})
 	);
-	const handleOpenChange = useCloseOnDismiss(onClose);
 	const handleConfirm = useCallback(() => {
 		if (module) {
 			remove.mutate({ id: module.id });
@@ -47,25 +40,16 @@ export function DeleteModuleDialog({
 	}, [module, remove]);
 
 	return (
-		<AlertDialog onOpenChange={handleOpenChange} open={module !== null}>
-			<AlertDialogContent>
-				<AlertDialogHeader>
-					<AlertDialogTitle>删除模块「{module?.name}」？</AlertDialogTitle>
-					<AlertDialogDescription>
-						其全部子模块与用例将一并删除，且不可恢复。
-					</AlertDialogDescription>
-				</AlertDialogHeader>
-				<AlertDialogFooter>
-					<AlertDialogCancel>取消</AlertDialogCancel>
-					<AlertDialogAction
-						disabled={remove.isPending}
-						onClick={handleConfirm}
-						variant="destructive"
-					>
-						删除
-					</AlertDialogAction>
-				</AlertDialogFooter>
-			</AlertDialogContent>
-		</AlertDialog>
+		<TypeToConfirmDialog
+			confirmLabel="删除模块"
+			description="模块的全部子模块与用例将一并删除，且不可恢复。"
+			name={shown?.name ?? ""}
+			nameLabel="模块名称"
+			onClose={onClose}
+			onConfirm={handleConfirm}
+			open={module !== null}
+			pending={remove.isPending}
+			title={`删除模块「${shown?.name ?? ""}」？`}
+		/>
 	);
 }
