@@ -60,7 +60,7 @@ function StatusCardBody({
 								</div>
 							))}
 						</dl>
-						<StatusBarcode counts={statusCounts} total={totalCases} />
+						<StatusBarcode counts={statusCounts} />
 					</div>
 				)}
 			</CardContent>

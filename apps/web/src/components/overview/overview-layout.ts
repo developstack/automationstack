@@ -18,8 +18,6 @@ export const STATUS_DETAIL_COLUMN = "flex min-w-0 flex-1 flex-col gap-4";
 
 export const STATUS_COUNT_GRID = "grid grid-cols-3 gap-4";
 
-export const BARCODE_BOX = "flex h-10 gap-px sm:gap-0.5";
-
 export const COVERAGE_CARD_CLASS = "min-w-0 lg:col-span-2";
 
 export const CHANGES_CARD_CLASS = "col-span-full";

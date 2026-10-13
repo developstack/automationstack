@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import {
-	allocateMarks,
 	formatCount,
 	matrixCells,
 	orderModuleTree,
@@ -31,43 +30,6 @@ describe("overviewSummary", () => {
 		expect(
 			overviewSummary({ staleTotal: 0, thresholdDays: 90, totalCases: 0 })
 		).toBe("本项目还没有用例");
-	});
-});
-
-describe("allocateMarks", () => {
-	it("用例少于竖线上限时，一条竖线表示一条用例", () => {
-		expect(allocateMarks([3, 2, 0], 120)).toEqual({
-			casesPerMark: 1,
-			marks: [3, 2, 0],
-		});
-	});
-
-	it("用例多于上限时，竖线总数等于上限，按比例分配", () => {
-		const result = allocateMarks([600, 300, 300], 120);
-
-		expect(result.marks).toEqual([60, 30, 30]);
-		expect(result.casesPerMark).toBe(10);
-	});
-
-	it("比例取整后的余数分给小数部分最大的状态，总数不变", () => {
-		const result = allocateMarks([1, 1, 1], 2);
-
-		expect(result.marks.reduce((sum, value) => sum + value, 0)).toBe(2);
-	});
-
-	it("数量不为 0 的状态至少有一条竖线", () => {
-		const result = allocateMarks([1000, 1, 0], 100);
-
-		expect(result.marks[1]).toBe(1);
-		expect(result.marks[2]).toBe(0);
-		expect(result.marks[0]).toBe(99);
-	});
-
-	it("没有用例时没有竖线", () => {
-		expect(allocateMarks([0, 0, 0], 120)).toEqual({
-			casesPerMark: 1,
-			marks: [0, 0, 0],
-		});
 	});
 });
 

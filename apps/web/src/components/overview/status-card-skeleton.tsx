@@ -1,8 +1,7 @@
 import { Card, CardContent } from "@automationstack/ui/components/card";
 import { Skeleton } from "@automationstack/ui/components/skeleton";
-
+import { BARCODE_BOX_CLASSES } from "@/components/barcode/barcode-box";
 import {
-	BARCODE_BOX,
 	STATUS_CARD_CLASS,
 	STATUS_CARD_CONTENT,
 	STATUS_COUNT_GRID,
@@ -29,7 +28,7 @@ export function StatusCardSkeleton() {
 						))}
 					</div>
 					<div className="flex flex-col gap-3">
-						<Skeleton className={BARCODE_BOX} />
+						<Skeleton className={BARCODE_BOX_CLASSES.md} />
 						<Skeleton className="h-5 w-48" />
 					</div>
 				</div>
