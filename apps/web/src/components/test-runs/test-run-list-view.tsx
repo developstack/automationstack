@@ -7,6 +7,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 import { TestRunCreateSheet } from "@/components/test-runs/test-run-create-sheet";
 import { TestRunEditDialog } from "@/components/test-runs/test-run-edit-dialog";
 import { useTestRunListFilters } from "@/components/test-runs/test-run-list-controls";
+import { TestRunListHeader } from "@/components/test-runs/test-run-list-header";
 import { TestRunListResults } from "@/components/test-runs/test-run-list-results";
 import { TestRunListToolbar } from "@/components/test-runs/test-run-list-toolbar";
 import { testRunListInput } from "@/components/test-runs/test-runs-search";
@@ -89,10 +90,10 @@ export function TestRunListView({ projectId }: { projectId: string }) {
 
 	return (
 		<PageTransition className={TEST_RUN_LIST_MAIN} phase="ready">
+			<TestRunListHeader onCreate={openCreate} />
 			<TestRunListToolbar
 				count={items.length}
 				loaded={listQuery.data !== undefined}
-				onCreate={openCreate}
 				onKeywordChange={setKeyword}
 				onStatusChange={setStatus}
 				search={search}

@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
+import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import { ProjectMembersTableSkeleton } from "@/components/project-members/project-members-table-skeleton";
 import {
 	PROJECT_MEMBERS_MAIN,
@@ -48,6 +50,7 @@ export const Route = createFileRoute("/projects/$projectId/users")({
 function ProjectUsersPending() {
 	return (
 		<PageTransition className={PROJECT_MEMBERS_MAIN} phase="pending">
+			<PageHeader title={WORKSPACE_VIEW_LABELS.users} />
 			<ProjectMembersTableSkeleton />
 		</PageTransition>
 	);

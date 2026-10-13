@@ -1,6 +1,8 @@
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { useEffect } from "react";
 
+import { PageHeader } from "@/components/layout/page-header";
+import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import { CardSkeleton } from "@/components/overview/card-skeleton";
 import { CoverageCardSkeleton } from "@/components/overview/coverage-card-skeleton";
 import { PriorityCardSkeleton } from "@/components/overview/priority-card-skeleton";
@@ -59,6 +61,10 @@ export function OverviewSkeleton() {
 			<output aria-busy="true" className="sr-only">
 				项目概览加载中
 			</output>
+			<PageHeader
+				className="col-span-full"
+				title={WORKSPACE_VIEW_LABELS.overview}
+			/>
 			<TotalsCardSkeleton />
 			<PriorityCardSkeleton />
 			<CoverageCardSkeleton />

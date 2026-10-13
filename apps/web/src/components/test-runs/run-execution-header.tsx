@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { FileTextIcon } from "lucide-react";
 import { useCallback } from "react";
 
+import { PageHeader } from "@/components/layout/page-header";
 import { StatusBadge } from "@/components/status/status-badge";
 import {
 	formatPassRate,
@@ -14,6 +15,8 @@ import {
 	useMarkRunReviewed,
 	useUnmarkRunReviewed,
 } from "@/components/test-runs/use-test-run-mutations";
+
+export const RUN_EXECUTION_HEADER_CLASS = "px-4 pt-4 pb-3";
 
 export interface RunExecutionHeaderProps {
 	counts: RunCounts;
@@ -67,27 +70,33 @@ export function RunExecutionHeader({
 	const progress = testRunProgress(counts);
 
 	return (
-		<div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
-			<h2 className="min-w-0 truncate font-medium">{run.name}</h2>
-			<StatusBadge kind="runStatus" value={run.status} />
-			<span className="text-muted-foreground text-sm tabular-nums">
-				完成 {progress.done}/{progress.total} · 通过率 {formatPassRate(counts)}
-			</span>
-			<div className="ml-auto flex items-center gap-2">
-				<ReviewActions run={run} />
-				<Button
-					render={
-						<Link
-							params={{ projectId, runId: run.id }}
-							to="/projects/$projectId/test-runs/$runId/report"
-						/>
-					}
-					variant="outline"
-				>
-					<FileTextIcon aria-hidden="true" data-icon="inline-start" />
-					查看报告
-				</Button>
-			</div>
-		</div>
+		<PageHeader
+			actions={
+				<>
+					<ReviewActions run={run} />
+					<Button
+						render={
+							<Link
+								params={{ projectId, runId: run.id }}
+								to="/projects/$projectId/test-runs/$runId/report"
+							/>
+						}
+						variant="outline"
+					>
+						<FileTextIcon aria-hidden="true" data-icon="inline-start" />
+						查看报告
+					</Button>
+				</>
+			}
+			badge={<StatusBadge kind="runStatus" value={run.status} />}
+			className={RUN_EXECUTION_HEADER_CLASS}
+			summary={
+				<span className="tabular-nums">
+					完成 {progress.done}/{progress.total} · 通过率{" "}
+					{formatPassRate(counts)}
+				</span>
+			}
+			title={run.name}
+		/>
 	);
 }

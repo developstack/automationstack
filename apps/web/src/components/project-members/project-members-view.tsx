@@ -4,7 +4,9 @@ import { UserPlusIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { useSession } from "@/components/auth/use-session";
+import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
+import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import { AddProjectMemberDialog } from "@/components/project-members/add-project-member-dialog";
 import {
 	canManageProjectMembers,
@@ -53,15 +55,18 @@ export function ProjectMembersView({ projectId }: ProjectMembersViewProps) {
 
 	return (
 		<PageTransition className={PROJECT_MEMBERS_MAIN} phase="ready">
-			<div className="flex items-center justify-between gap-2">
-				<ProjectMembersHint canManage={canManage} suspended={suspended} />
-				{canManage ? (
-					<Button onClick={openAdd}>
-						<UserPlusIcon aria-hidden="true" data-icon="inline-start" />
-						添加成员
-					</Button>
-				) : null}
-			</div>
+			<PageHeader
+				actions={
+					canManage ? (
+						<Button onClick={openAdd}>
+							<UserPlusIcon aria-hidden="true" data-icon="inline-start" />
+							添加成员
+						</Button>
+					) : undefined
+				}
+				title={WORKSPACE_VIEW_LABELS.users}
+			/>
+			<ProjectMembersHint canManage={canManage} suspended={suspended} />
 			<ProjectMembersTable
 				canManage={canManage}
 				members={membersQuery.data}
