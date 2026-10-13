@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, lt, type SQL, sql } from "drizzle-orm";
+import { count, eq, lt, type SQL, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import { type CasePriority, testCases } from "../schema/test-cases";
@@ -107,66 +107,4 @@ export async function getProjectOverviewStats(
 		.from(testCases)
 		.where(eq(testCases.projectId, projectId));
 	return toOverviewStats(row ?? EMPTY_OVERVIEW_ROW);
-}
-
-export const STALE_HIGH_PRIORITY_DAYS = 90;
-
-const STALE_SAMPLE_SIZE = 10;
-
-const MS_PER_DAY = 86_400_000;
-
-const HIGH_PRIORITIES: CasePriority[] = ["P0", "P1"];
-
-export interface StaleCaseRow {
-	id: string;
-	moduleId: string;
-	name: string;
-	priority: CasePriority;
-	updatedAt: Date;
-}
-
-export interface StaleHighPriorityStats {
-	items: StaleCaseRow[];
-	staleBefore: Date;
-	thresholdDays: number;
-	total: number;
-}
-
-export async function getStaleHighPriorityStats(
-	projectId: string
-): Promise<StaleHighPriorityStats> {
-	const staleBefore = new Date(
-		Date.now() - STALE_HIGH_PRIORITY_DAYS * MS_PER_DAY
-	);
-	const rows = await db
-		.select({
-			id: testCases.id,
-			moduleId: testCases.moduleId,
-			name: testCases.name,
-			priority: testCases.priority,
-			total: sql<number>`count(*) over ()`.mapWith(Number),
-			updatedAt: testCases.updatedAt,
-		})
-		.from(testCases)
-		.where(
-			and(
-				eq(testCases.projectId, projectId),
-				inArray(testCases.priority, HIGH_PRIORITIES),
-				lt(testCases.updatedAt, staleBefore)
-			)
-		)
-		.orderBy(asc(testCases.updatedAt))
-		.limit(STALE_SAMPLE_SIZE);
-	return {
-		items: rows.map((row) => ({
-			id: row.id,
-			moduleId: row.moduleId,
-			name: row.name,
-			priority: row.priority,
-			updatedAt: row.updatedAt,
-		})),
-		staleBefore,
-		thresholdDays: STALE_HIGH_PRIORITY_DAYS,
-		total: rows[0]?.total ?? 0,
-	};
 }

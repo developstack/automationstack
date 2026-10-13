@@ -22,10 +22,6 @@ vi.mock("@automationstack/db/repositories/project-stats-coverage", () => ({
 }));
 vi.mock("@automationstack/db/repositories/project-stats-repository", () => ({
 	getProjectOverviewStats: vi.fn(),
-	getStaleHighPriorityStats: vi.fn(),
-}));
-vi.mock("@automationstack/db/repositories/project-stats-activity", () => ({
-	getRecentChanges: vi.fn(),
 }));
 vi.mock("@automationstack/db/repositories/project-stats-trend", () => ({
 	getCaseTrend: mocks.getCaseTrend,
@@ -138,4 +134,17 @@ describe("projectStats 的新只读查询", () => {
 			expect(repo).not.toHaveBeenCalled();
 		}
 	);
+
+	it("删除了 staleHighPriority 和 recentChanges", () => {
+		expect(Object.keys(projectStatsRouter).sort()).toEqual([
+			"activeRuns",
+			"caseTrend",
+			"coverage",
+			"executionCoverage",
+			"executionTrend",
+			"latestResults",
+			"overview",
+			"runTrend",
+		]);
+	});
 });

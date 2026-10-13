@@ -1,31 +1,36 @@
-// 项目概览的布局类名。卡片和骨架屏都从这里取，保证骨架屏与最终布局一致。
+// 项目概览的布局类名（调研报告第 9.2 节）。卡片和骨架屏都从这里取，保证骨架屏与最终布局一致。
+// 窄屏时所有卡片排成一列，顺序不变。
 
 export const OVERVIEW_MAIN =
 	"grid min-h-0 auto-rows-min grid-cols-1 gap-4 overflow-y-auto p-4 lg:grid-cols-3";
 
-/** 优先级分布和高优先级陈旧用例在宽屏下叠放在覆盖矩阵的右侧。 */
-export const OVERVIEW_SIDE_COLUMN = "flex min-w-0 flex-col gap-4";
+/** 占一列的卡片：第一屏第 1 行的 M1、M2、M4，以及 M5、M9。同一行的卡片同高。 */
+export const NARROW_CARD = "min-w-0";
 
-export const STATUS_CARD_CLASS = "col-span-full";
+/** 占两列的卡片：M4 的模块条形图和 P0/P1 列表、M8 模块覆盖缺口。 */
+export const WIDE_CARD = "min-w-0 lg:col-span-2";
 
-export const STATUS_CARD_CONTENT = "flex flex-col gap-6 md:flex-row";
+/** 占整行的卡片：M3 进行中的测试任务。 */
+export const FULL_CARD = "col-span-full min-w-0";
 
-/** 用例状态卡片左侧的用例总数。 */
-export const STATUS_TOTAL_COLUMN =
-	"flex shrink-0 flex-col gap-2 md:w-44 md:border-r md:pr-6";
+/** M6 和 M7 两个趋势图并排，使用同一组 7 天区间。 */
+export const TREND_PAIR =
+	"col-span-full grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2";
 
-export const STATUS_DETAIL_COLUMN = "flex min-w-0 flex-1 flex-col gap-4";
+/** 圆环图和环形进度图的卡片内容：图在上，图例在下。 */
+export const RING_CARD_CONTENT = "flex flex-col items-center gap-4";
 
-export const STATUS_COUNT_GRID = "grid grid-cols-3 gap-4";
+/** 大数字和趋势图的卡片内容。 */
+export const TREND_CARD_CONTENT = "flex flex-col gap-4";
 
-export const COVERAGE_CARD_CLASS = "min-w-0 lg:col-span-2";
+export const TREND_CHART_BOX = "aspect-auto h-32 w-full";
 
-export const CHANGES_CARD_CLASS = "col-span-full";
+export const STACKED_CHART_BOX = "aspect-auto h-56 w-full";
 
-/** 优先级的行：标签、横条、条数和占比。 */
+/** 进行中的测试任务的一行。窄屏下换成多行。 */
+export const RUN_ROW_GRID =
+	"grid grid-cols-1 items-center gap-x-4 gap-y-1.5 py-3 md:grid-cols-overview-run";
+
+/** 优先级的行：标签、条形码式进度条、条数和占比。 */
 export const PRIORITY_GRID =
 	"grid grid-cols-overview-priority items-center gap-x-3 gap-y-3";
-
-/** 最近改动的一行：用例名、版本、备注、保存人、时间。窄屏下换成多行。 */
-export const CHANGE_ROW_GRID =
-	"grid grid-cols-overview-change items-center gap-x-3 gap-y-0.5 py-2 text-sm md:grid-cols-overview-change-wide";

@@ -1,13 +1,9 @@
-import { getRecentChanges } from "@automationstack/db/repositories/project-stats-activity";
 import { getProjectCoverageStats } from "@automationstack/db/repositories/project-stats-coverage";
 import {
 	getExecutionCoverage,
 	getLatestResults,
 } from "@automationstack/db/repositories/project-stats-execution";
-import {
-	getProjectOverviewStats,
-	getStaleHighPriorityStats,
-} from "@automationstack/db/repositories/project-stats-repository";
+import { getProjectOverviewStats } from "@automationstack/db/repositories/project-stats-repository";
 import { getActiveRuns } from "@automationstack/db/repositories/project-stats-runs";
 import {
 	getCaseTrend,
@@ -47,13 +43,7 @@ export const projectStatsRouter = {
 	overview: projectStatsProcedure.handler(({ input }) =>
 		getProjectOverviewStats(input.projectId)
 	),
-	recentChanges: projectStatsProcedure.handler(({ input }) =>
-		getRecentChanges(input.projectId)
-	),
 	runTrend: projectStatsProcedure.handler(({ input }) =>
 		getRunTrend(input.projectId)
-	),
-	staleHighPriority: projectStatsProcedure.handler(({ input }) =>
-		getStaleHighPriorityStats(input.projectId)
 	),
 };

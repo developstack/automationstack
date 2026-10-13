@@ -27,6 +27,8 @@ export interface ActiveRunSummary {
 	createdAt: Date;
 	daysSinceLastExecution: number;
 	id: string;
+	/** 最后的执行时间。没有执行结果时为 null。 */
+	lastExecutedAt: Date | null;
 	name: string;
 	stalled: boolean;
 	status: TestRunStatus;
@@ -61,6 +63,7 @@ function summarize(row: ActiveRunRow, now: Date): ActiveRunSummary {
 		createdAt: row.createdAt,
 		daysSinceLastExecution: Math.floor(idleMs / MS_PER_DAY),
 		id: row.id,
+		lastExecutedAt: row.lastExecutedAt,
 		name: row.name,
 		stalled: canStall(row.status) && idleMs > STALLED_RUN_DAYS * MS_PER_DAY,
 		status: row.status,

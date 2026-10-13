@@ -65,6 +65,10 @@ describe("buildActiveRuns", () => {
 			3
 		);
 		expect(runs.find((r) => r.id === "fresh")?.daysSinceLastExecution).toBe(5);
+		expect(runs.find((r) => r.id === "fresh")?.lastExecutedAt).toBeNull();
+		expect(runs.find((r) => r.id === "executed")?.lastExecutedAt).toEqual(
+			daysAgo(3, 1)
+		);
 	});
 
 	it("待测试或测试中的测试任务，超过 7 天没有新的执行结果时停滞；正好 7 天不算", () => {
