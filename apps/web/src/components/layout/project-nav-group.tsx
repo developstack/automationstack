@@ -1,7 +1,4 @@
-import {
-	SidebarGroup,
-	SidebarGroupLabel,
-} from "@automationstack/ui/components/sidebar";
+import { SidebarGroup } from "@automationstack/ui/components/sidebar";
 import {
 	SidebarMenu,
 	SidebarMenuButton,
@@ -63,9 +60,6 @@ function CasesNavItem({ pathname, projectId }: NavItemProps) {
 	);
 }
 
-const WORK_GROUP_LABEL_ID = "project-nav-work";
-const PROJECT_GROUP_LABEL_ID = "project-nav-project";
-
 interface ProjectNavGroupProps {
 	projectId: string;
 }
@@ -73,22 +67,14 @@ interface ProjectNavGroupProps {
 export function ProjectNavGroup({ projectId }: ProjectNavGroupProps) {
 	const pathname = useRouterState({ select: selectPathname });
 	return (
-		<>
-			<SidebarGroup>
-				<SidebarGroupLabel id={WORK_GROUP_LABEL_ID}>工作</SidebarGroupLabel>
-				<SidebarMenu aria-labelledby={WORK_GROUP_LABEL_ID}>
-					<CasesNavItem pathname={pathname} projectId={projectId} />
-					<TestRunsNavItem pathname={pathname} projectId={projectId} />
-				</SidebarMenu>
-			</SidebarGroup>
-			<SidebarGroup>
-				<SidebarGroupLabel id={PROJECT_GROUP_LABEL_ID}>项目</SidebarGroupLabel>
-				<SidebarMenu aria-labelledby={PROJECT_GROUP_LABEL_ID}>
-					<OverviewNavItem pathname={pathname} projectId={projectId} />
-					<ProjectUsersNavItem pathname={pathname} projectId={projectId} />
-					<ProjectSettingsNavItem pathname={pathname} projectId={projectId} />
-				</SidebarMenu>
-			</SidebarGroup>
-		</>
+		<SidebarGroup>
+			<SidebarMenu>
+				<OverviewNavItem pathname={pathname} projectId={projectId} />
+				<CasesNavItem pathname={pathname} projectId={projectId} />
+				<TestRunsNavItem pathname={pathname} projectId={projectId} />
+				<ProjectUsersNavItem pathname={pathname} projectId={projectId} />
+				<ProjectSettingsNavItem pathname={pathname} projectId={projectId} />
+			</SidebarMenu>
+		</SidebarGroup>
 	);
 }
