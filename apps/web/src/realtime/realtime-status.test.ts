@@ -7,23 +7,30 @@ const presenceOf = (...names: string[]) => names.map((name) => ({ name }));
 const CONNECTING = {
 	detail: null,
 	label: "正在连接实时协作",
+	shortLabel: "连接中",
 	tone: "connecting",
 };
 
 const OFFLINE = {
 	detail: "其他人的修改暂时不会同步，正在自动重连",
 	label: "实时协作已断开",
+	shortLabel: "已断开",
 	tone: "offline",
 };
 
-describe("summarizeRealtimeStatus：侧栏底部的实时协作状态", () => {
+describe("summarizeRealtimeStatus：实时协作的连接状态和在线人数", () => {
 	it("已连接：显示在线人数", () => {
 		expect(
 			summarizeRealtimeStatus(
 				{ hasConnected: true, status: "open" },
 				presenceOf("alice", "bob")
 			)
-		).toEqual({ detail: "2 人在线", label: "实时协作已连接", tone: "online" });
+		).toEqual({
+			detail: "2 人在线",
+			label: "实时协作已连接",
+			shortLabel: "2 人在线",
+			tone: "online",
+		});
 	});
 
 	it("同一个用户打开多个标签页时只算一人", () => {
@@ -31,14 +38,14 @@ describe("summarizeRealtimeStatus：侧栏底部的实时协作状态", () => {
 			summarizeRealtimeStatus(
 				{ hasConnected: true, status: "open" },
 				presenceOf("alice", "alice", "bob")
-			).detail
-		).toBe("2 人在线");
+			)
+		).toMatchObject({ detail: "2 人在线", shortLabel: "2 人在线" });
 	});
 
 	it("已连接但在线用户列表还没到：至少算上自己", () => {
 		expect(
-			summarizeRealtimeStatus({ hasConnected: true, status: "open" }, []).detail
-		).toBe("1 人在线");
+			summarizeRealtimeStatus({ hasConnected: true, status: "open" }, [])
+		).toMatchObject({ detail: "1 人在线", shortLabel: "1 人在线" });
 	});
 
 	it.each(["closed", "connecting"] as const)(
