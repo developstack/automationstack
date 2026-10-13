@@ -58,6 +58,13 @@ export const CASE_STATUS_TONES: Record<CaseStatus, StatusTone> = {
 	draft: "outline",
 };
 
+/** 条形码竖线、覆盖方格等放不下标签的图形，用这组填充色表示用例状态。 */
+export const CASE_STATUS_FILL_CLASSES: Record<CaseStatus, string> = {
+	active: "bg-success",
+	deprecated: "bg-result-skipped",
+	draft: "bg-muted-foreground",
+};
+
 export function isStrongPriority(priority: CasePriority): boolean {
 	return priority === "P0";
 }

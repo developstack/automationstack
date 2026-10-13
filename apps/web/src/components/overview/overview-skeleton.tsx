@@ -1,61 +1,20 @@
-import { Skeleton } from "@automationstack/ui/components/skeleton";
-import { useEffect } from "react";
-
 import { PageHeader } from "@/components/layout/page-header";
 import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
-import { CardSkeleton } from "@/components/overview/card-skeleton";
+import { ChangesCardSkeleton } from "@/components/overview/changes-card-skeleton";
 import { CoverageCardSkeleton } from "@/components/overview/coverage-card-skeleton";
+import { OVERVIEW_SIDE_COLUMN } from "@/components/overview/overview-layout";
 import { PriorityCardSkeleton } from "@/components/overview/priority-card-skeleton";
-import { TotalsCardSkeleton } from "@/components/overview/totals-card-skeleton";
+import { StaleCardSkeleton } from "@/components/overview/stale-card-skeleton";
+import { StatusCardSkeleton } from "@/components/overview/status-card-skeleton";
 
-let chartChunkRequested = false;
-
-function preloadChartChunks() {
-	if (chartChunkRequested) {
-		return;
-	}
-	chartChunkRequested = true;
-	Promise.all([
-		import("@/components/overview/overview-donut-chart"),
-		import("@/components/overview/overview-priority-bars-chart"),
-	]).catch(() => {
-		chartChunkRequested = false;
-	});
-}
-
-const LIST_ROW_KEYS = ["r1", "r2", "r3", "r4"] as const;
-
-function StaleCardSkeleton() {
-	return (
-		<CardSkeleton descriptionWidth="w-64" titleWidth="w-32">
-			<Skeleton className="h-9 w-12" />
-			<div className="flex flex-col gap-1.5">
-				{LIST_ROW_KEYS.map((key) => (
-					<Skeleton className="h-5 w-full" key={key} />
-				))}
-			</div>
-		</CardSkeleton>
-	);
-}
-
-function ChangesCardSkeleton() {
-	return (
-		<CardSkeleton descriptionWidth="w-56" titleWidth="w-20">
-			<div className="flex flex-col gap-2">
-				{LIST_ROW_KEYS.map((key) => (
-					<div className="flex flex-col gap-0.5" key={key}>
-						<Skeleton className="h-5 w-full" />
-						<Skeleton className="h-4 w-3/4" />
-					</div>
-				))}
-			</div>
-		</CardSkeleton>
-	);
-}
+const SUMMARY_PLACEHOLDER = (
+	<span
+		aria-hidden="true"
+		className="inline-block h-4 w-80 max-w-full rounded-md bg-accent-foreground/10 align-middle motion-safe:animate-pulse"
+	/>
+);
 
 export function OverviewSkeleton() {
-	useEffect(() => preloadChartChunks(), []);
-
 	return (
 		<>
 			<output aria-busy="true" className="sr-only">
@@ -63,12 +22,15 @@ export function OverviewSkeleton() {
 			</output>
 			<PageHeader
 				className="col-span-full"
+				summary={SUMMARY_PLACEHOLDER}
 				title={WORKSPACE_VIEW_LABELS.overview}
 			/>
-			<TotalsCardSkeleton />
-			<PriorityCardSkeleton />
+			<StatusCardSkeleton />
 			<CoverageCardSkeleton />
-			<StaleCardSkeleton />
+			<div aria-hidden="true" className={OVERVIEW_SIDE_COLUMN}>
+				<PriorityCardSkeleton />
+				<StaleCardSkeleton />
+			</div>
 			<ChangesCardSkeleton />
 		</>
 	);

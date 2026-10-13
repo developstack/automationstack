@@ -17,7 +17,7 @@ import { PageTransition } from "@/components/layout/page-transition";
 const FALLBACK_DESCRIPTION =
 	"服务端没有给出原因。可以重试一次，若一直失败请联系管理员。";
 
-function getServerMessage(error: unknown): string | undefined {
+export function getServerMessage(error: unknown): string | undefined {
 	if (typeof error !== "object" || error === null || !("message" in error)) {
 		return undefined;
 	}
