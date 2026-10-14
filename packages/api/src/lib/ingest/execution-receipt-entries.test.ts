@@ -9,7 +9,7 @@ import {
 	CASE_A,
 	CASE_B,
 	RUN_ONE,
-	targetRow,
+	regressionRow,
 } from "./execution-reconcile-fixtures";
 import type { AutomationWriteGroup } from "./execution-write-plan";
 
@@ -32,36 +32,15 @@ test("skippedManual 必须带 runName，否则对账单自相矛盾", () => {
 
 test("整组被拒时逐条落进 outOfScope，caseId 从解析行回填", () => {
 	const caseIdBySourceRef = buildCaseIdBySourceRef([
-		targetRow({
-			caseId: CASE_A,
-			runCaseId: "rc-a",
-			runId: RUN_ONE,
-			runName: "v2.3 回归",
-			sourceRef: "A",
-		}),
-		targetRow({
-			caseId: CASE_B,
-			runCaseId: "rc-b",
-			runId: RUN_ONE,
-			runName: "v2.3 回归",
-			sourceRef: "B",
-		}),
+		regressionRow({ runCaseId: "rc-a", sourceRef: "A" }),
+		regressionRow({ caseId: CASE_B, runCaseId: "rc-b", sourceRef: "B" }),
 	]);
+	const entry = { reason: "任务刚被提交", runName: "v2.3 回归" };
 	expect(
 		buildGroupOutOfScopeEntries(GROUP, caseIdBySourceRef, "任务刚被提交")
 	).toEqual([
-		{
-			caseId: CASE_A,
-			reason: "任务刚被提交",
-			runName: "v2.3 回归",
-			sourceRef: "A",
-		},
-		{
-			caseId: CASE_B,
-			reason: "任务刚被提交",
-			runName: "v2.3 回归",
-			sourceRef: "B",
-		},
+		{ ...entry, caseId: CASE_A, sourceRef: "A" },
+		{ ...entry, caseId: CASE_B, sourceRef: "B" },
 	]);
 });
 
