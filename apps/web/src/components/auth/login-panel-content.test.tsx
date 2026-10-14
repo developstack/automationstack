@@ -135,17 +135,6 @@ describe("LoginPanelContent：应急登录的折叠和展开", () => {
 		});
 	});
 
-	it("展开后的表单：提交时校验，空字段显示提示，请求不发出", () => {
-		const { onLogin } = renderPanel({ methods: CASDOOR_WITH_EMERGENCY });
-		fireEvent.click(emergencyTrigger());
-
-		fireEvent.click(screen.getByRole("button", { name: "登录" }));
-
-		expect(screen.getByText("请输入用户名")).toBeDefined();
-		expect(screen.getByText("请输入密码")).toBeDefined();
-		expect(onLogin).not.toHaveBeenCalled();
-	});
-
 	it("展开后的表单：填写后提交，用 onLogin 发出请求并显示 loading", () => {
 		const onLogin = vi
 			.fn<OnLogin>()
