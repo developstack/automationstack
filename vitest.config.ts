@@ -8,6 +8,12 @@ const webAlias = { "@": resolveFromRoot("./apps/web/src") };
 
 export default defineConfig({
 	test: {
+		coverage: {
+			exclude: ["**/*.test.{ts,tsx}", "**/*.d.ts"],
+			include: ["apps/*/src/**/*.{ts,tsx}", "packages/*/src/**/*.{ts,tsx}"],
+			provider: "v8",
+			reporter: ["text-summary", "json-summary"],
+		},
 		projects: [
 			{
 				resolve: { alias: webAlias },
