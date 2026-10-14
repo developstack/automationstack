@@ -10,18 +10,11 @@ import {
 
 const ID = "5f2c1a8e-1b4d-4c9a-8e2f-7a6b5c4d3e2f";
 
-describe("buildCaseAttachmentRef", () => {
-	test("产生的正是约定格式", () => {
-		expect(buildCaseAttachmentRef(ID)).toBe(`![](attachment:${ID})`);
-	});
-
-	test("产生的结果能被自己解析回来（往返）", () => {
-		expect(extractCaseAttachmentIds(buildCaseAttachmentRef(ID))).toEqual([ID]);
-	});
-
-	test("scheme 常量与实际产生的字符串一致", () => {
-		expect(buildCaseAttachmentRef(ID)).toContain(CASE_ATTACHMENT_REF_SCHEME);
-	});
+test("buildCaseAttachmentRef 产生约定格式，含 scheme 常量，且能被自己解析回来（往返）", () => {
+	const ref = buildCaseAttachmentRef(ID);
+	expect(ref).toBe(`![](attachment:${ID})`);
+	expect(ref).toContain(CASE_ATTACHMENT_REF_SCHEME);
+	expect(extractCaseAttachmentIds(ref)).toEqual([ID]);
 });
 
 describe("extractCaseAttachmentIds", () => {
@@ -33,39 +26,31 @@ describe("extractCaseAttachmentIds", () => {
 			"确认弹窗如下",
 			buildCaseAttachmentRef(other),
 		].join("\n");
-
 		expect(extractCaseAttachmentIds(body)).toEqual([ID, other]);
 	});
 
 	test("保留重复的引用：同一张图贴两次要渲染两次", () => {
 		const body = `${buildCaseAttachmentRef(ID)}${buildCaseAttachmentRef(ID)}`;
-
 		expect(extractCaseAttachmentIds(body)).toEqual([ID, ID]);
 	});
 
-	test("纯文本正文取不出任何 id", () => {
-		expect(extractCaseAttachmentIds("普通前置条件，没有图")).toEqual([]);
-	});
-
-	test("不认 id 不是 uuid 的引用", () => {
-		expect(
-			extractCaseAttachmentIds("![](attachment:../../etc/passwd)")
-		).toEqual([]);
-	});
-
-	test("不认带 alt 文字的写法：格式只有一种合法形态", () => {
-		expect(extractCaseAttachmentIds(`![截图](attachment:${ID})`)).toEqual([]);
-	});
-
-	test("不认存 storage key 而非 id 的写法", () => {
-		const key = "test-cases/p/c/abc.png";
-
-		expect(extractCaseAttachmentIds(`![](attachment:${key})`)).toEqual([]);
+	test.each([
+		["纯文本正文取不出任何 id", "普通前置条件，没有图"],
+		["不认 id 不是 uuid 的引用", "![](attachment:../../etc/passwd)"],
+		[
+			"不认带 alt 文字的写法：格式只有一种合法形态",
+			`![截图](attachment:${ID})`,
+		],
+		[
+			"不认存 storage key 而非 id 的写法",
+			"![](attachment:test-cases/p/c/abc.png)",
+		],
+	])("%s", (_name, body) => {
+		expect(extractCaseAttachmentIds(body)).toEqual([]);
 	});
 
 	test("连续调用两次结果相同（正则的 lastIndex 没被污染）", () => {
 		const body = buildCaseAttachmentRef(ID);
-
 		expect(extractCaseAttachmentIds(body)).toEqual(
 			extractCaseAttachmentIds(body)
 		);
@@ -74,19 +59,15 @@ describe("extractCaseAttachmentIds", () => {
 });
 
 describe("isCaseAttachmentRef", () => {
-	test("整串恰好是一处引用时为真", () => {
-		expect(isCaseAttachmentRef(buildCaseAttachmentRef(ID))).toBe(true);
+	test("整串恰好是一处引用时为真，连问两次答案一致", () => {
+		const ref = buildCaseAttachmentRef(ID);
+		expect(isCaseAttachmentRef(ref)).toBe(true);
+		expect(isCaseAttachmentRef(ref)).toBe(true);
 	});
 
 	test("前后带别的字符时为假（它判的是「整串」，不是「包含」）", () => {
 		expect(isCaseAttachmentRef(`看图：${buildCaseAttachmentRef(ID)}`)).toBe(
 			false
 		);
-	});
-
-	test("同一个输入连问两次答案一致", () => {
-		const ref = buildCaseAttachmentRef(ID);
-
-		expect(isCaseAttachmentRef(ref)).toBe(isCaseAttachmentRef(ref));
 	});
 });

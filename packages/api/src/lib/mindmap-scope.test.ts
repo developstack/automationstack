@@ -61,13 +61,17 @@ function makeInput(overrides: Partial<MindmapScopeInput>): MindmapScopeInput {
 const idsOf = (nodes: readonly { id: string }[]): string[] =>
 	nodes.map((node) => node.id);
 
-test("缺省参数（moduleId null + includeSteps true）等价于改动前的全项目树", () => {
-	const result = scopeMindmapTree(makeInput({}));
-	expect(result.kind).toBe("ok");
+/** 裁剪并断言结果为 ok，返回载荷。 */
+function scopedPayload(overrides: Partial<MindmapScopeInput>) {
+	const result = scopeMindmapTree(makeInput(overrides));
 	if (result.kind !== "ok") {
-		return;
+		throw new Error(`期望 ok，实际是 ${result.kind}`);
 	}
-	expect(result.payload).toEqual({
+	return result.payload;
+}
+
+test("缺省参数（moduleId null + includeSteps true）等价于改动前的全项目树", () => {
+	expect(scopedPayload({})).toEqual({
 		cases: makeCases(),
 		modules: buildModuleTree(makeRows()),
 	});
@@ -75,31 +79,18 @@ test("缺省参数（moduleId null + includeSteps true）等价于改动前的�
 
 test("缺省参数下 cases 原样透传（不复制、不改序）", () => {
 	const cases = makeCases();
-	const result = scopeMindmapTree(makeInput({ cases }));
-	expect(result.kind === "ok" && result.payload.cases).toBe(cases);
+	expect(scopedPayload({ cases }).cases).toBe(cases);
 });
 
-test("moduleId 返回的 modules 只有该子树这一个根", () => {
-	const result = scopeMindmapTree(makeInput({ moduleId: "m1a" }));
-	expect(result.kind).toBe("ok");
-	if (result.kind !== "ok") {
-		return;
-	}
-	expect(idsOf(result.payload.modules)).toEqual(["m1a"]);
-	expect(idsOf(result.payload.modules[0]?.children ?? [])).toEqual(["m1a1"]);
-});
-
-test("moduleId 只保留该模块及其子孙下的用例", () => {
-	const result = scopeMindmapTree(makeInput({ moduleId: "m1a" }));
-	expect(result.kind === "ok" && idsOf(result.payload.cases)).toEqual([
-		"c-m1a",
-		"c-m1a1",
-	]);
+test("moduleId 返回的 modules 只有该子树这一个根，且只保留该模块及其子孙下的用例", () => {
+	const payload = scopedPayload({ moduleId: "m1a" });
+	expect(idsOf(payload.modules)).toEqual(["m1a"]);
+	expect(idsOf(payload.modules[0]?.children ?? [])).toEqual(["m1a1"]);
+	expect(idsOf(payload.cases)).toEqual(["c-m1a", "c-m1a1"]);
 });
 
 test("moduleId 取根模块时含整棵子树的用例，但排除兄弟根", () => {
-	const result = scopeMindmapTree(makeInput({ moduleId: "m1" }));
-	expect(result.kind === "ok" && idsOf(result.payload.cases)).toEqual([
+	expect(idsOf(scopedPayload({ moduleId: "m1" }).cases)).toEqual([
 		"c-m1",
 		"c-m1a",
 		"c-m1a1",
@@ -108,13 +99,9 @@ test("moduleId 取根模块时含整棵子树的用例，但排除兄弟根", ()
 });
 
 test("moduleId 取叶子模块时只剩它自己的用例", () => {
-	const result = scopeMindmapTree(makeInput({ moduleId: "m1a1" }));
-	expect(result.kind).toBe("ok");
-	if (result.kind !== "ok") {
-		return;
-	}
-	expect(idsOf(result.payload.modules)).toEqual(["m1a1"]);
-	expect(idsOf(result.payload.cases)).toEqual(["c-m1a1"]);
+	const payload = scopedPayload({ moduleId: "m1a1" });
+	expect(idsOf(payload.modules)).toEqual(["m1a1"]);
+	expect(idsOf(payload.cases)).toEqual(["c-m1a1"]);
 });
 
 test("moduleId 不在这批行里（如属于别的项目）返回 module-not-found 而非空树", () => {
@@ -127,29 +114,19 @@ test("moduleId 不在这批行里（如属于别的项目）返回 module-not-fo
 });
 
 test("includeSteps false 保留 steps 字段但置空数组，其余字段不变", () => {
-	const result = scopeMindmapTree(makeInput({ includeSteps: false }));
-	expect(result.kind).toBe("ok");
-	if (result.kind !== "ok") {
-		return;
-	}
-	for (const node of result.payload.cases) {
+	const { cases } = scopedPayload({ includeSteps: false });
+	for (const node of cases) {
 		expect(Object.hasOwn(node, "steps")).toBe(true);
 		expect(node.steps).toEqual([]);
 	}
-	expect(idsOf(result.payload.cases)).toEqual(idsOf(makeCases()));
-	expect(result.payload.cases[0]?.priority).toBe("P1");
+	expect(idsOf(cases)).toEqual(idsOf(makeCases()));
+	expect(cases[0]?.priority).toBe("P1");
 });
 
 test("includeSteps false 与 moduleId 可叠加", () => {
-	const result = scopeMindmapTree(
-		makeInput({ includeSteps: false, moduleId: "m1a" })
-	);
-	expect(result.kind).toBe("ok");
-	if (result.kind !== "ok") {
-		return;
-	}
-	expect(idsOf(result.payload.cases)).toEqual(["c-m1a", "c-m1a1"]);
-	expect(result.payload.cases.map((node) => node.steps)).toEqual([[], []]);
+	const { cases } = scopedPayload({ includeSteps: false, moduleId: "m1a" });
+	expect(idsOf(cases)).toEqual(["c-m1a", "c-m1a1"]);
+	expect(cases.map((node) => node.steps)).toEqual([[], []]);
 });
 
 test("裁剪不修改传入的行与用例", () => {
@@ -193,11 +170,8 @@ test("filterCasesByModules 保留输入顺序且不匹配时返回空数组", ()
 });
 
 test("空项目：无模块无用例时返回空树而不是报错", () => {
-	const result = scopeMindmapTree({
+	expect(scopedPayload({ cases: [], moduleRows: [] })).toEqual({
 		cases: [],
-		includeSteps: true,
-		moduleId: null,
-		moduleRows: [],
+		modules: [],
 	});
-	expect(result).toEqual({ kind: "ok", payload: { cases: [], modules: [] } });
 });
