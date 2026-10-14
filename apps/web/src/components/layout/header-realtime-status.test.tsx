@@ -56,14 +56,21 @@ describe("HeaderRealtimeStatus", () => {
 		expect(statusRegion().textContent).toContain("2 人在线");
 	});
 
-	it("鼠标悬停显示完整文字，但 title 不放在状态区域上，避免屏幕阅读器读两遍", () => {
+	it("鼠标悬停显示完整文字，但 title 不放在状态区域上，避免屏幕阅读器读两遍；头像不在状态区域里", () => {
 		render(wrap(contextValue("open")));
 		expect(screen.getByTitle("实时协作已连接，2 人在线")).toBeDefined();
 		expect(statusRegion().hasAttribute("title")).toBe(false);
+		const avatar = screen.getByRole("button", { name: "alice（我） · 列表" });
+		expect(statusRegion().contains(avatar)).toBe(false);
 	});
 
-	it("第一次连接成功之前的 closed：显示连接中", () => {
-		render(wrap(contextValue("closed")));
+	it.each([
+		["第一次连接成功之前的 closed：显示连接中", "closed"],
+		["没有实时协作连接（项目还在加载）：显示连接中", null],
+	] as const)("%s", (_name, status) => {
+		render(
+			status === null ? <HeaderRealtimeStatus /> : wrap(contextValue(status))
+		);
 		expect(screen.getByText("连接中")).toBeDefined();
 		expect(statusRegion().dataset.tone).toBe("connecting");
 		expect(statusRegion().textContent).toContain("正在连接实时协作");
@@ -78,12 +85,6 @@ describe("HeaderRealtimeStatus", () => {
 		expect(statusRegion().textContent).toContain(
 			"实时协作已断开，其他人的修改暂时不会同步，正在自动重连"
 		);
-	});
-
-	it("没有实时协作连接（项目还在加载）：显示连接中", () => {
-		render(<HeaderRealtimeStatus />);
-		expect(screen.getByText("连接中")).toBeDefined();
-		expect(statusRegion().dataset.tone).toBe("connecting");
 	});
 
 	it("只有已连接时显示扩散的呼吸圈，并且只在允许动效时显示", () => {
@@ -114,11 +115,5 @@ describe("HeaderRealtimeStatus", () => {
 			)
 		);
 		expect(screen.getByText("2 人在线")).toBeDefined();
-	});
-
-	it("头像不在 role=status 的区域里", () => {
-		render(wrap(contextValue("open")));
-		const avatar = screen.getByRole("button", { name: "alice（我） · 列表" });
-		expect(statusRegion().contains(avatar)).toBe(false);
 	});
 });

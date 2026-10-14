@@ -4,8 +4,9 @@ import { describe, expect, it } from "vitest";
 import { useMindmapFullscreen } from "./mindmap-fullscreen.ts";
 
 describe("useMindmapFullscreen：画布铺满窗口，可以用 Esc 退出", () => {
-	it("切换后进入全屏，按 Esc 退出", () => {
+	it("不在全屏时 Esc 不改变状态；切换后进入全屏，按 Esc 退出", () => {
 		const { result } = renderHook(() => useMindmapFullscreen(null));
+		fireEvent.keyDown(document, { key: "Escape" });
 		expect(result.current.active).toBe(false);
 
 		act(() => result.current.toggle());
@@ -29,11 +30,5 @@ describe("useMindmapFullscreen：画布铺满窗口，可以用 Esc 退出", () 
 			document.dispatchEvent(event);
 		});
 		expect(result.current.active).toBe(true);
-	});
-
-	it("不在全屏时 Esc 不改变状态", () => {
-		const { result } = renderHook(() => useMindmapFullscreen(null));
-		fireEvent.keyDown(document, { key: "Escape" });
-		expect(result.current.active).toBe(false);
 	});
 });

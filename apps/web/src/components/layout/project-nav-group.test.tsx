@@ -1,7 +1,7 @@
 import { SidebarProvider } from "@automationstack/ui/components/sidebar-context";
 import { Outlet } from "@tanstack/react-router";
 import { screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ProjectNavGroup } from "@/components/layout/project-nav-group";
 import { renderRoutes } from "@/test-dom-fixtures";
@@ -9,14 +9,12 @@ import { renderRoutes } from "@/test-dom-fixtures";
 const PROJECT_ID = "p1";
 
 // jsdom 没有 matchMedia；SidebarProvider 用它判断窄屏
-function stubMatchMedia() {
-	vi.stubGlobal("matchMedia", (query: string) => ({
-		addEventListener: () => undefined,
-		matches: false,
-		media: query,
-		removeEventListener: () => undefined,
-	}));
-}
+vi.stubGlobal("matchMedia", (query: string) => ({
+	addEventListener: () => undefined,
+	matches: false,
+	media: query,
+	removeEventListener: () => undefined,
+}));
 
 async function renderNav() {
 	renderRoutes({
@@ -33,19 +31,12 @@ async function renderNav() {
 }
 
 describe("ProjectNavGroup：项目侧栏导航", () => {
-	beforeEach(stubMatchMedia);
-	afterEach(() => vi.unstubAllGlobals());
-
-	it("只有一个列表，顺序是项目概览、用例管理、测试任务、成员、设置", async () => {
+	it("只有一个列表，顺序是项目概览、用例管理、测试任务、成员、设置；没有「工作」「项目」小标题", async () => {
 		await renderNav();
 		const names = within(screen.getByRole("list"))
 			.getAllByRole("link")
 			.map((link) => link.getAttribute("aria-label"));
 		expect(names).toEqual(["项目概览", "用例管理", "测试任务", "成员", "设置"]);
-	});
-
-	it("没有「工作」「项目」小标题", async () => {
-		await renderNav();
 		expect(screen.queryByText("工作")).toBeNull();
 		expect(screen.queryByText("项目")).toBeNull();
 	});

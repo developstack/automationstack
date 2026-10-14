@@ -82,13 +82,14 @@ describe("ModuleNameInput：在模块树中就地输入模块名称", () => {
 		expect(handlers.onEdit).toHaveBeenCalled();
 	});
 
-	it("保存中：输入框只读并标记忙碌，Enter 和失去焦点都不再提交", () => {
+	it("保存中：输入框只读并标记忙碌，显示加载图标，Enter 和失去焦点都不再提交", () => {
 		const { handlers, input } = renderInput({
 			defaultValue: "支付",
 			pending: true,
 		});
 		expect(input.hasAttribute("readonly")).toBe(true);
 		expect(input.getAttribute("aria-busy")).toBe("true");
+		expect(screen.getByTestId("module-name-saving")).toBeDefined();
 		fireEvent.keyDown(input, { key: "Enter" });
 		fireEvent.blur(input);
 		expect(handlers.onSubmit).not.toHaveBeenCalled();
@@ -114,10 +115,5 @@ describe("ModuleNameInput：在模块树中就地输入模块名称", () => {
 		fireEvent.blur(input);
 		expect(handlers.onSubmit).not.toHaveBeenCalled();
 		expect(handlers.onCancel).not.toHaveBeenCalled();
-	});
-
-	it("保存中显示加载图标，看得出正在保存", () => {
-		renderInput({ defaultValue: "支付", pending: true });
-		expect(screen.getByTestId("module-name-saving")).toBeDefined();
 	});
 });

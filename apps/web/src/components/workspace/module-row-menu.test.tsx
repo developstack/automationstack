@@ -32,21 +32,13 @@ describe("ModuleRowMenu：模块行的「更多操作」菜单", () => {
 		]);
 	});
 
-	it("选择「重命名」开始重命名", async () => {
+	it.each([
+		["重命名", "onRename"],
+		["新建子模块", "onCreateChild"],
+		["删除", "onDelete"],
+	] as const)("选择「%s」开始对应的操作（%s）", async (item, action) => {
 		const { actions, trigger } = renderMenu();
-		await choose(trigger, "重命名");
-		expect(actions.onRename).toHaveBeenCalledOnce();
-	});
-
-	it("选择「新建子模块」开始新建子模块", async () => {
-		const { actions, trigger } = renderMenu();
-		await choose(trigger, "新建子模块");
-		expect(actions.onCreateChild).toHaveBeenCalledOnce();
-	});
-
-	it("选择「删除」开始删除", async () => {
-		const { actions, trigger } = renderMenu();
-		await choose(trigger, "删除");
-		expect(actions.onDelete).toHaveBeenCalledOnce();
+		await choose(trigger, item);
+		expect(actions[action]).toHaveBeenCalledOnce();
 	});
 });
