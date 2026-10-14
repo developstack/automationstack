@@ -7,27 +7,17 @@ import {
 } from "@/components/test-runs/rate-format";
 
 describe("formatRate", () => {
-	it("把 null 显示成破折号而不是 0%", () => {
-		expect(formatRate(null)).toBe(RATE_UNKNOWN);
-		expect(formatRate(0)).toBe("0%");
-	});
-
-	it("未满 100% 不会被四舍五入成 100%", () => {
-		expect(formatRate(119 / 120)).toBe("99%");
-		expect(formatRate(0.999)).toBe("99%");
-	});
-
-	it("真的满分才显示 100%", () => {
-		expect(formatRate(1)).toBe("100%");
-	});
-
-	it("有一点点通过时不会被抹成 0%", () => {
-		expect(formatRate(1 / 400)).toBe("1%");
-	});
-
-	it("中间值照常四舍五入", () => {
-		expect(formatRate(0.5)).toBe("50%");
-		expect(formatRate(0.876)).toBe("88%");
+	it.each([
+		["把 null 显示成破折号而不是 0%", null, RATE_UNKNOWN],
+		["真的是 0 时显示 0%", 0, "0%"],
+		["未满 100% 不会被四舍五入成 100%", 119 / 120, "99%"],
+		["未满 100% 不会被四舍五入成 100%", 0.999, "99%"],
+		["真的满分才显示 100%", 1, "100%"],
+		["有一点点通过时不会被抹成 0%", 1 / 400, "1%"],
+		["中间值照常四舍五入", 0.5, "50%"],
+		["中间值照常四舍五入", 0.876, "88%"],
+	])("%s：%s 显示成 %s", (_name, rate, text) => {
+		expect(formatRate(rate)).toBe(text);
 	});
 });
 

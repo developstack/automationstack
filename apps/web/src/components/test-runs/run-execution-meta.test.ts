@@ -6,6 +6,7 @@ import {
 	moduleOptionsOf,
 	nextRunCaseId,
 	type RunCaseDetail,
+	type RunCaseFilter,
 	shouldAutoAdvance,
 } from "@/components/test-runs/run-execution-meta";
 
@@ -54,63 +55,42 @@ function idsOf(cases: readonly RunCaseDetail[]): string[] {
 	return cases.map((item) => item.runCase.id);
 }
 
+const ANY_MODULE_OR_RESULT = { moduleId: undefined, result: undefined };
+
 describe("filterRunCases", () => {
-	it("三个条件是与关系", () => {
-		expect(
-			idsOf(
-				filterRunCases(
-					ALL,
-					{ assignee: "mine", moduleId: "m1", result: "passed" },
-					"u1"
-				)
-			)
-		).toEqual(["d"]);
-	});
-
-	it("「我的」按指派人判定", () => {
-		expect(
-			idsOf(
-				filterRunCases(
-					ALL,
-					{ assignee: "mine", moduleId: undefined, result: undefined },
-					"u1"
-				)
-			)
-		).toEqual(["a", "d"]);
-	});
-
-	it("会话未就绪时「我的」是空列表，不是全部", () => {
-		expect(
-			filterRunCases(
-				ALL,
-				{ assignee: "mine", moduleId: undefined, result: undefined },
-				null
-			)
-		).toEqual([]);
-	});
-
-	it("「未指派」只看 assigneeId 为空的行", () => {
-		expect(
-			idsOf(
-				filterRunCases(
-					ALL,
-					{ assignee: "unassigned", moduleId: undefined, result: undefined },
-					"u1"
-				)
-			)
-		).toEqual(["b"]);
-	});
-
-	it("默认筛选原样返回全部", () => {
-		expect(
-			idsOf(
-				filterRunCases(
-					ALL,
-					{ assignee: "all", moduleId: undefined, result: undefined },
-					"u1"
-				)
-			)
-		).toEqual(["a", "b", "c", "d"]);
+	it.each<[string, RunCaseFilter, string | null, string[]]>([
+		[
+			"三个条件是与关系",
+			{ assignee: "mine", moduleId: "m1", result: "passed" },
+			"u1",
+			["d"],
+		],
+		[
+			"「我的」按指派人判定",
+			{ ...ANY_MODULE_OR_RESULT, assignee: "mine" },
+			"u1",
+			["a", "d"],
+		],
+		[
+			"会话未就绪时「我的」是空列表，不是全部",
+			{ ...ANY_MODULE_OR_RESULT, assignee: "mine" },
+			null,
+			[],
+		],
+		[
+			"「未指派」只看 assigneeId 为空的行",
+			{ ...ANY_MODULE_OR_RESULT, assignee: "unassigned" },
+			"u1",
+			["b"],
+		],
+		[
+			"默认筛选原样返回全部",
+			{ ...ANY_MODULE_OR_RESULT, assignee: "all" },
+			"u1",
+			["a", "b", "c", "d"],
+		],
+	])("%s", (_name, filter, currentUserId, ids) => {
+		expect(idsOf(filterRunCases(ALL, filter, currentUserId))).toEqual(ids);
 	});
 });
 
@@ -124,16 +104,12 @@ describe("moduleOptionsOf", () => {
 });
 
 describe("nextRunCaseId", () => {
-	it("给出筛选后列表里的下一条", () => {
-		expect(nextRunCaseId(ALL, "b")).toBe("c");
-	});
-
-	it("末尾停在原地，不回卷到开头", () => {
-		expect(nextRunCaseId(ALL, "d")).toBeNull();
-	});
-
-	it("当前条被筛掉时不乱跳", () => {
-		expect(nextRunCaseId(ALL, "不存在")).toBeNull();
+	it.each([
+		["给出筛选后列表里的下一条", "b", "c"],
+		["末尾停在原地，不回卷到开头", "d", null],
+		["当前条被筛掉时不乱跳", "不存在", null],
+	])("%s", (_name, currentId, nextId) => {
+		expect(nextRunCaseId(ALL, currentId)).toBe(nextId);
 	});
 });
 
