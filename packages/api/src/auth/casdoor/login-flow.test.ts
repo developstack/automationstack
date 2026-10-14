@@ -65,14 +65,27 @@ function cookieValue(setCookie: string): string {
 	return setCookie.slice(0, setCookie.indexOf(";"));
 }
 
-async function begin() {
+/** 先走一遍 startCasdoorLogin，再用它的 state cookie 回调。 */
+async function callback(
+	flowDeps: LoginFlowDeps,
+	ctx = context(),
+	query = (state: string): Record<string, string> => ({ code: "c", state })
+) {
 	const started = await startCasdoorLogin(context(), "/projects", deps());
-	const location = new URL(started.location);
-	return {
-		cookie: cookieValue(started.cookies[0] ?? ""),
-		state: location.searchParams.get("state") ?? "",
-	};
+	const state = new URL(started.location).searchParams.get("state") ?? "";
+	const result = await completeCasdoorLogin(
+		ctx,
+		{
+			cookieHeader: cookieValue(started.cookies[0] ?? ""),
+			query: new URLSearchParams(query(state)),
+		},
+		flowDeps
+	);
+	return { result, state };
 }
+
+const hasSession = (cookies: string[]) =>
+	cookies.some((value) => value.startsWith(`${SESSION_COOKIE}=`));
 
 const validClaims = {
 	name: "alice",
@@ -107,22 +120,17 @@ describe("startCasdoorLogin", () => {
 		expect(result.cookies[0]).toContain("HttpOnly; SameSite=Lax");
 	});
 
-	it("不是 casdoor 模式：跳转到登录页，错误码 not-enabled", async () => {
+	it.each([
+		["不是 casdoor 模式", { provider: "local" }, "not-enabled"],
+		["连接参数不完整", { internalUrl: null }, "not-configured"],
+	] as const)("%s：跳转到登录页，错误码 %s", async (_name, changes, code) => {
 		const result = await startCasdoorLogin(
-			context({ settings: { ...settings, provider: "local" } }),
+			context({ settings: { ...settings, ...changes } }),
 			null,
 			deps()
 		);
-		expect(result.location).toBe(`${FRONTEND}/login?authError=not-enabled`);
-	});
-
-	it("连接参数不完整：not-configured", async () => {
-		const result = await startCasdoorLogin(
-			context({ settings: { ...settings, internalUrl: null } }),
-			null,
-			deps()
-		);
-		expect(result.errorCode).toBe("not-configured");
+		expect(result.errorCode).toBe(code);
+		expect(result.location).toBe(`${FRONTEND}/login?authError=${code}`);
 	});
 
 	it("读取发现文档失败：unavailable，日志中没有 secret", async () => {
@@ -139,21 +147,11 @@ describe("startCasdoorLogin", () => {
 
 describe("completeCasdoorLogin", () => {
 	it("成功：签发会话 cookie，清除 state cookie，跳转到登录前的同源地址", async () => {
-		const { cookie, state } = await begin();
 		const flowDeps = deps(validClaims);
-		const result = await completeCasdoorLogin(
-			context(),
-			{
-				cookieHeader: cookie,
-				query: new URLSearchParams({ code: "c", state }),
-			},
-			flowDeps
-		);
+		const { result, state } = await callback(flowDeps);
 		expect(result.errorCode).toBeNull();
 		expect(result.location).toBe(`${FRONTEND}/projects`);
-		expect(
-			result.cookies.some((value) => value.startsWith(`${SESSION_COOKIE}=`))
-		).toBe(true);
+		expect(hasSession(result.cookies)).toBe(true);
 		expect(result.cookies[0]).toContain("Max-Age=0");
 		const [, currentUrl, checks] =
 			vi.mocked(flowDeps.grant).mock.calls[0] ?? [];
@@ -177,54 +175,35 @@ describe("completeCasdoorLogin", () => {
 	});
 
 	it("查询中的 state 与 cookie 不同：state-invalid，不换取 token", async () => {
-		const { cookie } = await begin();
 		const flowDeps = deps(validClaims);
-		const result = await completeCasdoorLogin(
-			context(),
-			{
-				cookieHeader: cookie,
-				query: new URLSearchParams({ code: "c", state: "other" }),
-			},
-			flowDeps
-		);
+		const { result } = await callback(flowDeps, context(), () => ({
+			code: "c",
+			state: "other",
+		}));
 		expect(result.errorCode).toBe("state-invalid");
 		expect(flowDeps.grant).not.toHaveBeenCalled();
 	});
 
 	it("登录期间连接参数变化：settings-changed", async () => {
-		const { cookie, state } = await begin();
 		const changed = context({
 			settings: {
 				...settings,
 				clientSecret: { present: true, value: "rotated-secret" },
 			},
 		});
-		const result = await completeCasdoorLogin(
-			changed,
-			{
-				cookieHeader: cookie,
-				query: new URLSearchParams({ code: "c", state }),
-			},
-			deps(validClaims)
-		);
+		const { result } = await callback(deps(validClaims), changed);
 		expect(result.errorCode).toBe("settings-changed");
 	});
 
 	it("Casdoor 返回 error 参数：access-denied", async () => {
-		const { cookie, state } = await begin();
-		const result = await completeCasdoorLogin(
-			context(),
-			{
-				cookieHeader: cookie,
-				query: new URLSearchParams({ error: "access_denied", state }),
-			},
-			deps()
-		);
+		const { result } = await callback(deps(), context(), (state) => ({
+			error: "access_denied",
+			state,
+		}));
 		expect(result.errorCode).toBe("access-denied");
 	});
 
 	it("换取 token 失败：token-failed，日志中没有 secret", async () => {
-		const { cookie, state } = await begin();
 		const warn = vi.fn();
 		const failing: LoginFlowDeps = {
 			...deps(),
@@ -232,52 +211,26 @@ describe("completeCasdoorLogin", () => {
 				Promise.reject(new Error(`invalid client ${SECRET}`))
 			) as never,
 		};
-		const result = await completeCasdoorLogin(
-			context({ warn }),
-			{
-				cookieHeader: cookie,
-				query: new URLSearchParams({ code: "c", state }),
-			},
-			failing
-		);
+		const { result } = await callback(failing, context({ warn }));
 		expect(result.errorCode).toBe("token-failed");
 		expect(JSON.stringify(warn.mock.calls)).not.toContain(SECRET);
 	});
 
 	it("ID token 的组织不同：identity-rejected，不写用户", async () => {
-		const { cookie, state } = await begin();
-		const result = await completeCasdoorLogin(
-			context(),
-			{
-				cookieHeader: cookie,
-				query: new URLSearchParams({ code: "c", state }),
-			},
+		const { result } = await callback(
 			deps({ ...validClaims, owner: "built-in" })
 		);
 		expect(result.errorCode).toBe("identity-rejected");
 		expect(mocks.upsert).not.toHaveBeenCalled();
 	});
 
-	it("本地账号已停用或用户名冲突：对应的错误码，不签发会话", async () => {
-		for (const [kind, code] of [
-			["disabled", "account-disabled"],
-			["username-conflict", "username-conflict"],
-		] as const) {
-			// biome-ignore lint/performance/noAwaitInLoops: 两种情况依次检查
-			const { cookie, state } = await begin();
-			mocks.upsert.mockResolvedValueOnce({ kind });
-			const result = await completeCasdoorLogin(
-				context(),
-				{
-					cookieHeader: cookie,
-					query: new URLSearchParams({ code: "c", state }),
-				},
-				deps(validClaims)
-			);
-			expect(result.errorCode).toBe(code);
-			expect(
-				result.cookies.some((value) => value.startsWith(`${SESSION_COOKIE}=`))
-			).toBe(false);
-		}
+	it.each([
+		["disabled", "account-disabled"],
+		["username-conflict", "username-conflict"],
+	] as const)("本地账号 %s：错误码 %s，不签发会话", async (kind, code) => {
+		mocks.upsert.mockResolvedValueOnce({ kind });
+		const { result } = await callback(deps(validClaims));
+		expect(result.errorCode).toBe(code);
+		expect(hasSession(result.cookies)).toBe(false);
 	});
 });

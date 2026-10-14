@@ -36,49 +36,49 @@ function call(
 }
 
 describe("handleCasdoorWebhook（T11）", () => {
-	it("缺少或错误的密钥：unauthorized，不触发对账", async () => {
-		for (const header of [null, "", "wrong", `${WEBHOOK_SECRET}x`]) {
-			const { outcome, triggerReconcile } = call(header);
-			// biome-ignore lint/performance/noAwaitInLoops: 逐个检查
-			await expect(outcome).resolves.toBe("unauthorized");
-			expect(triggerReconcile).not.toHaveBeenCalled();
-		}
-	});
-
-	it("没有配置 webhook 密钥：一律拒绝", async () => {
-		const { outcome } = call(WEBHOOK_SECRET, {
-			webhookSecret: { present: false, value: null },
-		});
+	it.each([
+		["缺少密钥", null, {}],
+		["空密钥", "", {}],
+		["错误的密钥", "wrong", {}],
+		["密钥多一个字符", `${WEBHOOK_SECRET}x`, {}],
+		[
+			"没有配置 webhook 密钥（一律拒绝）",
+			WEBHOOK_SECRET,
+			{ webhookSecret: { present: false, value: null } },
+		],
+	])("%s：unauthorized，不触发对账", async (_name, header, overrides) => {
+		const { outcome, triggerReconcile } = call(header, overrides);
 		await expect(outcome).resolves.toBe("unauthorized");
-	});
-
-	it("密钥正确：accepted，触发一次对账", async () => {
-		const { outcome, triggerReconcile } = call(WEBHOOK_SECRET);
-		await expect(outcome).resolves.toBe("accepted");
-		expect(triggerReconcile).toHaveBeenCalledTimes(1);
-	});
-
-	it("local 模式：ignored，不对账", async () => {
-		const { outcome, triggerReconcile } = call(WEBHOOK_SECRET, {
-			provider: "local",
-		});
-		await expect(outcome).resolves.toBe("ignored");
 		expect(triggerReconcile).not.toHaveBeenCalled();
 	});
 
-	it("其他组织的对象：ignored（按对象的组织，不按操作人的组织）", async () => {
-		const body = JSON.stringify({
-			organization: "automationstack",
-			requestUri: "/api/update-user?id=built-in/admin",
-		});
-		const { outcome, triggerReconcile } = call(WEBHOOK_SECRET, {}, body);
-		await expect(outcome).resolves.toBe("ignored");
-		expect(triggerReconcile).not.toHaveBeenCalled();
-	});
-
-	it("请求体不能解析：仍然触发对账（只少授权，所以多对账一次没有风险）", async () => {
-		const { outcome } = call(WEBHOOK_SECRET, {}, "not json");
-		await expect(outcome).resolves.toBe("accepted");
+	it.each([
+		["密钥正确：accepted，触发一次对账", {}, roleEvent, ["accepted", 1]],
+		[
+			"local 模式：ignored，不对账",
+			{ provider: "local" },
+			roleEvent,
+			["ignored", 0],
+		],
+		[
+			"其他组织的对象：ignored（按对象的组织，不按操作人的组织）",
+			{},
+			JSON.stringify({
+				organization: "automationstack",
+				requestUri: "/api/update-user?id=built-in/admin",
+			}),
+			["ignored", 0],
+		],
+		[
+			"请求体不能解析：仍然触发对账（只少授权，所以多对账一次没有风险）",
+			{},
+			"not json",
+			["accepted", 1],
+		],
+	] as const)("%s", async (_name, overrides, body, [expected, reconciles]) => {
+		const { outcome, triggerReconcile } = call(WEBHOOK_SECRET, overrides, body);
+		await expect(outcome).resolves.toBe(expected);
+		expect(triggerReconcile).toHaveBeenCalledTimes(reconciles);
 	});
 });
 
@@ -96,6 +96,19 @@ describe("eventOrganization", () => {
 		expect(eventOrganization("{}")).toBeNull();
 	});
 });
+
+/** 对账一直进行中，直到调用 finish。 */
+function pendingScheduler() {
+	let resolveRun: () => void = () => undefined;
+	const run = vi.fn(
+		() =>
+			new Promise<void>((resolve) => {
+				resolveRun = resolve;
+			})
+	);
+	const scheduler = createReconcileScheduler({ debounceMs: DEBOUNCE_MS, run });
+	return { finish: () => resolveRun(), run, scheduler };
+}
 
 describe("webhook + 调度器：连续事件合并为一次对账", () => {
 	beforeEach(() => {
@@ -126,17 +139,7 @@ describe("webhook + 调度器：连续事件合并为一次对账", () => {
 	});
 
 	it("对账进行中又到达事件：结束后再对账一次", async () => {
-		let finish: () => void = () => undefined;
-		const run = vi.fn(
-			() =>
-				new Promise<void>((resolve) => {
-					finish = resolve;
-				})
-		);
-		const scheduler = createReconcileScheduler({
-			debounceMs: DEBOUNCE_MS,
-			run,
-		});
+		const { finish, run, scheduler } = pendingScheduler();
 		scheduler.trigger();
 		await vi.advanceTimersByTimeAsync(DEBOUNCE_MS);
 		scheduler.trigger();
@@ -148,17 +151,7 @@ describe("webhook + 调度器：连续事件合并为一次对账", () => {
 	});
 
 	it("runNow：已经在对账时不重复执行", async () => {
-		let finish: () => void = () => undefined;
-		const run = vi.fn(
-			() =>
-				new Promise<void>((resolve) => {
-					finish = resolve;
-				})
-		);
-		const scheduler = createReconcileScheduler({
-			debounceMs: DEBOUNCE_MS,
-			run,
-		});
+		const { finish, run, scheduler } = pendingScheduler();
 		const first = scheduler.runNow();
 		await scheduler.runNow();
 		finish();

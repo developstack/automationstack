@@ -86,15 +86,11 @@ describe("discoverCasdoor（§11.4）", () => {
 		});
 	});
 
-	it("issuer 与公网地址不同：CasdoorIssuerMismatchError", async () => {
-		const { doFetch } = fakeFetch("https://other.example.com");
-		await expect(
-			discoverCasdoor(connection, { fetch: doFetch })
-		).rejects.toBeInstanceOf(CasdoorIssuerMismatchError);
-	});
-
-	it("issuer 只差结尾的斜杠也拒绝：iss 必须与公网地址完全相同", async () => {
-		const { doFetch } = fakeFetch(`${ISSUER}/`);
+	it.each([
+		["issuer 与公网地址不同", "https://other.example.com"],
+		["issuer 只差结尾的斜杠也拒绝：iss 必须与公网地址完全相同", `${ISSUER}/`],
+	])("%s：CasdoorIssuerMismatchError", async (_name, issuer) => {
+		const { doFetch } = fakeFetch(issuer);
 		await expect(
 			discoverCasdoor(connection, { fetch: doFetch })
 		).rejects.toBeInstanceOf(CasdoorIssuerMismatchError);
