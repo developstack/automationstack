@@ -26,16 +26,19 @@ function renderRegion(query: UseQueryResult<string>) {
 }
 
 describe("OverviewQuery", () => {
-	it("有数据时显示数据", () => {
-		renderRegion(fakeQuery({ data: "1,284 条用例" }));
+	it.each([
+		["有数据时显示数据", fakeQuery({ data: "1,284 条用例" }), "1,284 条用例"],
+		["没有数据也没有出错时显示骨架屏", fakeQuery({}), "骨架屏"],
+		[
+			"重新请求的数据失败但已有旧数据时，继续显示旧数据",
+			fakeQuery({ data: "旧数据", error: new Error("失败"), isError: true }),
+			"旧数据",
+		],
+	])("%s", (_name, query, text) => {
+		renderRegion(query);
 
-		expect(screen.getByText("1,284 条用例")).toBeTruthy();
-	});
-
-	it("没有数据也没有出错时显示骨架屏", () => {
-		renderRegion(fakeQuery({}));
-
-		expect(screen.getByText("骨架屏")).toBeTruthy();
+		expect(screen.getByText(text)).toBeTruthy();
+		expect(screen.queryByRole("alert")).toBeNull();
 	});
 
 	it("加载失败时在区域内显示原因和重试按钮，点击重试重新请求", () => {
@@ -49,14 +52,5 @@ describe("OverviewQuery", () => {
 		expect(screen.getByRole("alert").textContent).toContain("数据库连接超时");
 		fireEvent.click(screen.getByRole("button", { name: "重试" }));
 		expect(query.refetch).toHaveBeenCalledTimes(1);
-	});
-
-	it("重新请求的数据失败但已有旧数据时，继续显示旧数据", () => {
-		renderRegion(
-			fakeQuery({ data: "旧数据", error: new Error("失败"), isError: true })
-		);
-
-		expect(screen.getByText("旧数据")).toBeTruthy();
-		expect(screen.queryByRole("alert")).toBeNull();
 	});
 });

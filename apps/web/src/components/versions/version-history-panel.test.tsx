@@ -1,10 +1,10 @@
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { formatDateTime } from "@/components/cases/case-meta";
 import { VersionHistoryPanel } from "@/components/versions/version-history-panel";
+import { renderWithQuery } from "@/test-dom-fixtures";
 
 const CASE_ID = "c1";
 const NEW_VERSION_PATTERN = /回滚会用 v1 的内容产生一个新版本/;
@@ -95,14 +95,7 @@ vi.mock("@/utils/orpc", async () => {
 });
 
 function renderPanel() {
-	const queryClient = new QueryClient({
-		defaultOptions: { queries: { retry: false } },
-	});
-	render(
-		<QueryClientProvider client={queryClient}>
-			<VersionHistoryPanel caseId={CASE_ID} currentVersion={3} />
-		</QueryClientProvider>
-	);
+	renderWithQuery(<VersionHistoryPanel caseId={CASE_ID} currentVersion={3} />);
 }
 
 beforeEach(() => {
@@ -117,7 +110,7 @@ async function findVersionList(): Promise<HTMLElement> {
 }
 
 describe("VersionHistoryPanel：版本列表", () => {
-	it("每个版本显示等宽字体的版本号、修改人和时间", async () => {
+	it("每个版本显示等宽字体的版本号、修改人和时间；没有记录修改人时显示「未知」", async () => {
 		renderPanel();
 		const items = within(await findVersionList()).getAllByRole("listitem");
 		expect(items).toHaveLength(3);
@@ -126,6 +119,7 @@ describe("VersionHistoryPanel：版本列表", () => {
 		expect(second.getByText("张三")).toBeDefined();
 		expect(second.getByText(formatDateTime(SAVED_AT))).toBeDefined();
 		expect(second.getByText("补充步骤")).toBeDefined();
+		expect(within(items[2]).getByText("未知")).toBeDefined();
 	});
 
 	it("当前版本有标记，没有回滚按钮", async () => {
@@ -146,12 +140,6 @@ describe("VersionHistoryPanel：版本列表", () => {
 		expect(within(items[0]).getByText("对比")).toBeDefined();
 		expect(within(items[1]).getByText("基准")).toBeDefined();
 		expect(await screen.findByText("两个版本的内容相同。")).toBeDefined();
-	});
-
-	it("没有记录修改人时显示「未知」", async () => {
-		renderPanel();
-		const items = within(await findVersionList()).getAllByRole("listitem");
-		expect(within(items[2]).getByText("未知")).toBeDefined();
 	});
 
 	it("可以用键盘选择版本，选中的版本有 aria-pressed", async () => {

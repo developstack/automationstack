@@ -49,23 +49,21 @@ function renderDiff() {
 }
 
 describe("VersionDiff：新增和删除的内容不只用颜色区分", () => {
-	it("新增的内容带下划线，读屏软件读出「新增」", () => {
+	it.each([
+		["新增的内容带下划线，读屏软件读出「新增」", "ins", "underline", "新增："],
+		[
+			"删除的内容带删除线，读屏软件读出「删除」",
+			"del",
+			"line-through",
+			"删除：",
+		],
+	])("%s", (_name, tag, className, spoken) => {
 		const { container } = renderDiff();
-		const insertions = [...container.querySelectorAll("ins")];
-		expect(insertions.length).toBeGreaterThan(0);
-		for (const insertion of insertions) {
-			expect(insertion.className).toContain("underline");
-			expect(insertion.querySelector(".sr-only")?.textContent).toBe("新增：");
-		}
-	});
-
-	it("删除的内容带删除线，读屏软件读出「删除」", () => {
-		const { container } = renderDiff();
-		const deletions = [...container.querySelectorAll("del")];
-		expect(deletions.length).toBeGreaterThan(0);
-		for (const deletion of deletions) {
-			expect(deletion.className).toContain("line-through");
-			expect(deletion.querySelector(".sr-only")?.textContent).toBe("删除：");
+		const changes = [...container.querySelectorAll(tag)];
+		expect(changes.length).toBeGreaterThan(0);
+		for (const change of changes) {
+			expect(change.className).toContain(className);
+			expect(change.querySelector(".sr-only")?.textContent).toBe(spoken);
 		}
 	});
 

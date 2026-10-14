@@ -19,139 +19,70 @@ interface BadgeExample {
 	tone: StatusTone;
 }
 
+const badge = (
+	label: string,
+	status: StatusBadgeValue,
+	tone: StatusTone
+): BadgeExample => ({ label, status, tone });
+
 const CASES: readonly BadgeExample[] = [
-	{
-		label: "通过",
-		status: { kind: "result", value: "passed" },
-		tone: "success",
-	},
-	{
-		label: "失败",
-		status: { kind: "result", value: "failed" },
-		tone: "danger",
-	},
-	{
-		label: "阻塞",
-		status: { kind: "result", value: "blocked" },
-		tone: "warning",
-	},
-	{
-		label: "跳过",
-		status: { kind: "result", value: "skipped" },
-		tone: "neutral",
-	},
-	{
-		label: "未测",
-		status: { kind: "result", value: "untested" },
-		tone: "neutral",
-	},
-	{
-		label: "待评审",
-		status: { kind: "runStatus", value: "pending_review" },
-		tone: "outline",
-	},
-	{
-		label: "待测试",
-		status: { kind: "runStatus", value: "ready" },
-		tone: "info-outline",
-	},
-	{
-		label: "测试中",
-		status: { kind: "runStatus", value: "in_progress" },
-		tone: "info",
-	},
-	{
-		label: "已完成",
-		status: { kind: "runStatus", value: "completed" },
-		tone: "solid",
-	},
-	{
-		label: "已提交",
-		status: { kind: "runStatus", value: "submitted" },
-		tone: "solid",
-	},
-	{
-		label: "草稿",
-		status: { kind: "caseStatus", value: "draft" },
-		tone: "outline",
-	},
-	{
-		label: "生效",
-		status: { kind: "caseStatus", value: "active" },
-		tone: "success",
-	},
-	{
-		label: "废弃",
-		status: { kind: "caseStatus", value: "deprecated" },
-		tone: "struck",
-	},
-	{
-		label: "P0",
-		status: { kind: "priority", value: "P0" },
-		tone: "priority-strong",
-	},
-	{ label: "P1", status: { kind: "priority", value: "P1" }, tone: "priority" },
-	{ label: "P2", status: { kind: "priority", value: "P2" }, tone: "priority" },
-	{ label: "P3", status: { kind: "priority", value: "P3" }, tone: "priority" },
-	{
-		label: "新增",
-		status: { kind: "change", value: "added" },
-		tone: "success",
-	},
-	{
-		label: "删除",
-		status: { kind: "change", value: "removed" },
-		tone: "danger",
-	},
-	{
-		label: "修改",
-		status: { kind: "change", value: "modified" },
-		tone: "warning",
-	},
-	{
-		label: "移动",
-		status: { kind: "change", value: "moved" },
-		tone: "info-outline",
-	},
-	{
-		label: "未变",
-		status: { kind: "change", value: "unchanged" },
-		tone: "neutral",
-	},
+	badge("通过", { kind: "result", value: "passed" }, "success"),
+	badge("失败", { kind: "result", value: "failed" }, "danger"),
+	badge("阻塞", { kind: "result", value: "blocked" }, "warning"),
+	badge("跳过", { kind: "result", value: "skipped" }, "neutral"),
+	badge("未测", { kind: "result", value: "untested" }, "neutral"),
+	badge("待评审", { kind: "runStatus", value: "pending_review" }, "outline"),
+	badge("待测试", { kind: "runStatus", value: "ready" }, "info-outline"),
+	badge("测试中", { kind: "runStatus", value: "in_progress" }, "info"),
+	badge("已完成", { kind: "runStatus", value: "completed" }, "solid"),
+	badge("已提交", { kind: "runStatus", value: "submitted" }, "solid"),
+	badge("草稿", { kind: "caseStatus", value: "draft" }, "outline"),
+	badge("生效", { kind: "caseStatus", value: "active" }, "success"),
+	badge("废弃", { kind: "caseStatus", value: "deprecated" }, "struck"),
+	badge("P0", { kind: "priority", value: "P0" }, "priority-strong"),
+	badge("P1", { kind: "priority", value: "P1" }, "priority"),
+	badge("P2", { kind: "priority", value: "P2" }, "priority"),
+	badge("P3", { kind: "priority", value: "P3" }, "priority"),
+	badge("新增", { kind: "change", value: "added" }, "success"),
+	badge("删除", { kind: "change", value: "removed" }, "danger"),
+	badge("修改", { kind: "change", value: "modified" }, "warning"),
+	badge("移动", { kind: "change", value: "moved" }, "info-outline"),
+	badge("未变", { kind: "change", value: "unchanged" }, "neutral"),
 ];
+
+const TONE_KEY_CLASSES: Record<StatusTone, readonly string[]> = {
+	danger: ["bg-destructive-soft", "text-destructive-soft-foreground"],
+	info: ["bg-info-soft", "text-info-soft-foreground"],
+	"info-outline": ["border-info/40", "text-info"],
+	neutral: ["bg-muted", "text-muted-foreground"],
+	outline: ["border-muted-foreground/40", "text-muted-foreground"],
+	priority: ["numeric", "font-normal", "text-foreground"],
+	"priority-strong": ["numeric", "font-semibold", "text-foreground"],
+	solid: ["bg-neutral-solid", "text-neutral-solid-foreground"],
+	struck: ["bg-muted", "text-muted-foreground", "line-through"],
+	success: ["bg-success-soft", "text-success-soft-foreground"],
+	warning: ["bg-warning-soft", "text-warning-soft-foreground"],
+};
 
 describe("StatusBadge", () => {
 	it.each(CASES)(
-		"$status.kind $status.value 显示「$label」，样式是 $tone",
+		"$status.kind $status.value 显示「$label」，样式是 $tone，带这个样式的颜色类",
 		({ label, status, tone }) => {
 			render(<StatusBadge {...status} />);
-			const badge = screen.getByText(label);
-			expect(badge.closest("[data-tone]")?.getAttribute("data-tone")).toBe(
-				tone
-			);
+			const badgeElement = screen.getByText(label).closest("[data-tone]");
+			expect(badgeElement?.getAttribute("data-tone")).toBe(tone);
+			const classes = (badgeElement?.className ?? "").split(" ");
+			for (const keyClass of TONE_KEY_CLASSES[tone]) {
+				expect(classes).toContain(keyClass);
+			}
 		}
 	);
 
-	it("废弃的文字带删除线", () => {
-		render(<StatusBadge kind="caseStatus" value="deprecated" />);
+	it("优先级只有 P0 加粗", () => {
+		render(<StatusBadge kind="priority" value="P1" />);
 		expect(
-			screen.getByText("废弃").closest("[data-tone]")?.className
-		).toContain("line-through");
-	});
-
-	it("优先级用等宽字体，只有 P0 加粗", () => {
-		render(
-			<>
-				<StatusBadge kind="priority" value="P0" />
-				<StatusBadge kind="priority" value="P1" />
-			</>
-		);
-		const p0 = screen.getByText("P0").closest("[data-tone]")?.className ?? "";
-		const p1 = screen.getByText("P1").closest("[data-tone]")?.className ?? "";
-		expect(p0).toContain("numeric");
-		expect(p0).toContain("font-semibold");
-		expect(p1).toContain("numeric");
-		expect(p1).not.toContain("font-semibold");
+			screen.getByText("P1").closest("[data-tone]")?.className
+		).not.toContain("font-semibold");
 	});
 
 	it("执行结果带图标，图标对读屏软件隐藏", () => {
@@ -173,34 +104,7 @@ describe("StatusBadge", () => {
 	});
 });
 
-const TONE_KEY_CLASSES: Record<StatusTone, readonly string[]> = {
-	danger: ["bg-destructive-soft", "text-destructive-soft-foreground"],
-	info: ["bg-info-soft", "text-info-soft-foreground"],
-	"info-outline": ["border-info/40", "text-info"],
-	neutral: ["bg-muted", "text-muted-foreground"],
-	outline: ["border-muted-foreground/40", "text-muted-foreground"],
-	priority: ["numeric", "font-normal", "text-foreground"],
-	"priority-strong": ["numeric", "font-semibold", "text-foreground"],
-	solid: ["bg-neutral-solid", "text-neutral-solid-foreground"],
-	struck: ["bg-muted", "text-muted-foreground", "line-through"],
-	success: ["bg-success-soft", "text-success-soft-foreground"],
-	warning: ["bg-warning-soft", "text-warning-soft-foreground"],
-};
-
 describe("STATUS_TONE_CLASSES", () => {
-	it.each(CASES)(
-		"「$label」的标签带 $tone 样式的颜色类",
-		({ label, status, tone }) => {
-			render(<StatusBadge {...status} />);
-			const classes = (
-				screen.getByText(label).closest("[data-tone]")?.className ?? ""
-			).split(" ");
-			for (const keyClass of TONE_KEY_CLASSES[tone]) {
-				expect(classes).toContain(keyClass);
-			}
-		}
-	);
-
 	it.each(Object.entries(STATUS_TONE_CLASSES))(
 		"样式 %s 只用主题令牌，不写死颜色",
 		(_tone, classes) => {
