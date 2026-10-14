@@ -40,6 +40,12 @@ function flattenInline(blocks: readonly MarkdownBlock[]): MarkdownInline[] {
 	return out;
 }
 
+function nodesOf(text: string, kind: MarkdownInline["kind"]): MarkdownInline[] {
+	return flattenInline(parseMarkdownDoc(text)).filter(
+		(node) => node.kind === kind
+	);
+}
+
 function plainText(blocks: readonly MarkdownBlock[]): string {
 	return flattenInline(blocks)
 		.filter((node) => node.kind === "text" || node.kind === "code")
@@ -67,104 +73,52 @@ describe("parseMarkdownDoc 不吃字符", () => {
 	});
 });
 
-describe("parseMarkdownDoc 图片", () => {
-	it("attachment 引用被识别为图片且 id 正确", () => {
-		const blocks = parseMarkdownDoc(buildCaseAttachmentRef(ATTACHMENT_ID));
-		const images = flattenInline(blocks).filter(
-			(node) => node.kind === "image"
-		);
-		expect(images).toHaveLength(1);
-		expect(images[0]).toMatchObject({
-			attachmentId: ATTACHMENT_ID,
-			kind: "image",
-		});
+describe("parseMarkdownDoc 图片与链接", () => {
+	it.each([
+		[
+			"attachment 引用被识别为图片，id 正确，已登记的 pending 为 false",
+			buildCaseAttachmentRef(ATTACHMENT_ID),
+			{ attachmentId: ATTACHMENT_ID, pending: false },
+		],
+		[
+			"uploading 占位是 pending 图片，token 当作查表的键",
+			buildCaseUploadingRef(UPLOAD_TOKEN),
+			{ attachmentId: UPLOAD_TOKEN, pending: true },
+		],
+	])("%s", (_name, text, image) => {
+		expect(nodesOf(text, "image")).toMatchObject([{ kind: "image", ...image }]);
 	});
 
 	it("同一张图重复引用会各自产出一个图片节点", () => {
 		const ref = buildCaseAttachmentRef(ATTACHMENT_ID);
-		const blocks = parseMarkdownDoc(`${ref}\n${ref}`);
-		expect(
-			flattenInline(blocks).filter((node) => node.kind === "image")
-		).toHaveLength(2);
+		expect(nodesOf(`${ref}\n${ref}`, "image")).toHaveLength(2);
 	});
 
-	it("外链图片不产出图片节点，只当纯文本", () => {
-		const text = "![](https://evil.example/x.png)";
-		const blocks = parseMarkdownDoc(text);
-		expect(
-			flattenInline(blocks).filter((node) => node.kind === "image")
-		).toHaveLength(0);
-		expect(plainText(blocks)).toBe(text);
-	});
-
-	it("带 alt 的 attachment 引用也不算数（格式锁死为空 alt）", () => {
-		const text = `![截图](attachment:${ATTACHMENT_ID})`;
-		expect(
-			flattenInline(parseMarkdownDoc(text)).filter(
-				(node) => node.kind === "image"
-			)
-		).toHaveLength(0);
-	});
-
-	it("已登记的引用 pending 为 false", () => {
-		const blocks = parseMarkdownDoc(buildCaseAttachmentRef(ATTACHMENT_ID));
-		expect(
-			flattenInline(blocks).find((node) => node.kind === "image")
-		).toMatchObject({ pending: false });
-	});
-
-	it("uploading 占位是 pending 图片，token 当作查表的键", () => {
-		const blocks = parseMarkdownDoc(buildCaseUploadingRef(UPLOAD_TOKEN));
-		const images = flattenInline(blocks).filter(
-			(node) => node.kind === "image"
-		);
-		expect(images).toHaveLength(1);
-		expect(images[0]).toMatchObject({
-			attachmentId: UPLOAD_TOKEN,
-			kind: "image",
-			pending: true,
-		});
-	});
-
-	it("uploading 后面不是 uuid 就只是纯文本", () => {
-		const text = "![](uploading:foo)";
-		const blocks = parseMarkdownDoc(text);
-		expect(
-			flattenInline(blocks).filter((node) => node.kind === "image")
-		).toHaveLength(0);
-		expect(plainText(blocks)).toBe(text);
-	});
-});
-
-describe("parseMarkdownDoc 链接", () => {
-	it("javascript: 链接不产出链接节点", () => {
-		const text = "[x](javascript:alert(1))";
-		const blocks = parseMarkdownDoc(text);
-		expect(
-			flattenInline(blocks).filter((node) => node.kind === "link")
-		).toHaveLength(0);
-		expect(plainText(blocks)).toBe(text);
-	});
-
-	it("大小写混写的 jAvAsCrIpT: 同样挡住", () => {
-		expect(
-			flattenInline(parseMarkdownDoc("[x](jAvAsCrIpT:alert(1))")).filter(
-				(node) => node.kind === "link"
-			)
-		).toHaveLength(0);
+	it.each([
+		[
+			"外链图片不产出图片节点，只当纯文本",
+			"![](https://evil.example/x.png)",
+			"image",
+		],
+		[
+			"带 alt 的 attachment 引用也不算数（格式锁死为空 alt）",
+			`![截图](attachment:${ATTACHMENT_ID})`,
+			"image",
+		],
+		["uploading 后面不是 uuid 就只是纯文本", "![](uploading:foo)", "image"],
+		["javascript: 链接不产出链接节点", "[x](javascript:alert(1))", "link"],
+		["大小写混写的 jAvAsCrIpT: 同样挡住", "[x](jAvAsCrIpT:alert(1))", "link"],
+	] as const)("%s", (_name, text, kind) => {
+		expect(nodesOf(text, kind)).toHaveLength(0);
+		expect(plainText(parseMarkdownDoc(text))).toBe(text);
 	});
 
 	it("http/https 链接产出链接节点并保留 href 与文字", () => {
-		const blocks = parseMarkdownDoc(
-			"见 [文档](https://good.example/a?b=1&c=2)"
-		);
-		const links = flattenInline(blocks).filter((node) => node.kind === "link");
-		expect(links).toHaveLength(1);
-		expect(links[0]).toMatchObject({
-			kind: "link",
-			url: "https://good.example/a?b=1&c=2",
-		});
-		expect(plainText(blocks)).toContain("文档");
+		const text = "见 [文档](https://good.example/a?b=1&c=2)";
+		expect(nodesOf(text, "link")).toMatchObject([
+			{ kind: "link", url: "https://good.example/a?b=1&c=2" },
+		]);
+		expect(plainText(parseMarkdownDoc(text))).toContain("文档");
 	});
 });
 

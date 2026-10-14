@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
+	caseDraftKey,
 	FakeStorage,
 	HostileStorage,
 	installStorage,
@@ -23,7 +24,7 @@ const MODULE_A = "module-a";
 const MODULE_B = "module-b";
 
 function keyFor(caseId: string): string {
-	return `automationstack.case-draft.${PROJECT}.${caseId}`;
+	return caseDraftKey(PROJECT, caseId);
 }
 
 function draftOf(patch: Partial<CaseDraft>): CaseDraft {
@@ -37,8 +38,8 @@ function draftOf(patch: Partial<CaseDraft>): CaseDraft {
 	};
 }
 
-function byText(a: string, b: string): number {
-	return a.localeCompare(b);
+function listedIds(): string[] {
+	return listCaseDrafts(PROJECT).map((item) => item.caseId);
 }
 
 afterEach(uninstallStorage);
@@ -49,46 +50,34 @@ describe("listCaseDrafts", () => {
 		writeCaseDraft(PROJECT, draftOf({ caseId: "a1" }));
 		writeCaseDraft(PROJECT, draftOf({ caseId: "a2" }));
 
-		const drafts = listCaseDrafts(PROJECT);
-
-		expect(drafts).toHaveLength(2);
-		expect(drafts.map((item) => item.caseId).sort(byText)).toEqual([
-			"a1",
-			"a2",
-		]);
+		expect(new Set(listedIds())).toEqual(new Set(["a1", "a2"]));
+		expect(listedIds()).toHaveLength(2);
 		expect(store.getItem(keyFor("a1"))).not.toBeNull();
 		expect(store.getItem(keyFor("a2"))).not.toBeNull();
 	});
 
 	it("按写入时刻从新到旧排序", () => {
 		const store = installStorage();
-		store.setItem(
-			keyFor("old"),
-			JSON.stringify(draftOf({ caseId: "old", savedAt: 10 }))
-		);
-		store.setItem(
-			keyFor("new"),
-			JSON.stringify(draftOf({ caseId: "new", savedAt: 99 }))
-		);
+		for (const draft of [
+			draftOf({ caseId: "old", savedAt: 10 }),
+			draftOf({ caseId: "new", savedAt: 99 }),
+		]) {
+			store.setItem(keyFor(draft.caseId), JSON.stringify(draft));
+		}
 
-		expect(listCaseDrafts(PROJECT).map((item) => item.caseId)).toEqual([
-			"new",
-			"old",
-		]);
+		expect(listedIds()).toEqual(["new", "old"]);
 	});
 
 	it("只认本项目的前缀，别的项目/别的应用的键一概不碰", () => {
 		const store = installStorage();
 		writeCaseDraft(PROJECT, draftOf({ caseId: "mine" }));
 		store.setItem(
-			"automationstack.case-draft.other-project.x",
+			caseDraftKey("other-project", "x"),
 			JSON.stringify(draftOf({ caseId: "x" }))
 		);
 		store.setItem("unrelated-app-key", "whatever");
 
-		expect(listCaseDrafts(PROJECT).map((item) => item.caseId)).toEqual([
-			"mine",
-		]);
+		expect(listedIds()).toEqual(["mine"]);
 	});
 
 	it("坏 JSON、缺 caseId、空后缀的键都跳过，不影响其它草稿", () => {
@@ -96,11 +85,9 @@ describe("listCaseDrafts", () => {
 		writeCaseDraft(PROJECT, draftOf({ caseId: "good" }));
 		store.setItem(keyFor("broken"), "{not json");
 		store.setItem(keyFor("no-id"), JSON.stringify({ values: {} }));
-		store.setItem(`automationstack.case-draft.${PROJECT}.`, "{}");
+		store.setItem(keyFor(""), "{}");
 
-		expect(listCaseDrafts(PROJECT).map((item) => item.caseId)).toEqual([
-			"good",
-		]);
+		expect(listedIds()).toEqual(["good"]);
 	});
 
 	it("localStorage 一碰就抛（Safari 隐私模式）时全线降级，不崩也不抛", () => {
@@ -129,7 +116,7 @@ describe("readCaseDraft / writeCaseDraft / clearCaseDraft", () => {
 		expect(readCaseDraft(PROJECT, "a1")?.values.name).toBe("");
 	});
 
-	it("删掉一份不会连累同模块的另一份", () => {
+	it("删掉一份不会连累同模块的另一份，删掉的那份读回 null", () => {
 		installStorage();
 		writeCaseDraft(PROJECT, draftOf({ caseId: "a1" }));
 		writeCaseDraft(PROJECT, draftOf({ caseId: "a2" }));
@@ -137,14 +124,8 @@ describe("readCaseDraft / writeCaseDraft / clearCaseDraft", () => {
 		clearCaseDraft(PROJECT, "a1");
 
 		expect(readCaseDraft(PROJECT, "a1")).toBeNull();
-		expect(listCaseDrafts(PROJECT).map((item) => item.caseId)).toEqual(["a2"]);
-	});
-
-	it("从来没写过的 caseId 读回 null（用户看到的就是「草稿不在了」）", () => {
-		installStorage();
-		writeCaseDraft(PROJECT, draftOf({ caseId: "a1" }));
-
 		expect(readCaseDraft(PROJECT, "never-existed")).toBeNull();
+		expect(listedIds()).toEqual(["a2"]);
 	});
 
 	it("写入时盖上 savedAt，moduleId 落在 value 里而不是键里", () => {
