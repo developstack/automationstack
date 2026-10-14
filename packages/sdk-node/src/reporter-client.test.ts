@@ -19,10 +19,11 @@ interface Recorded {
 	url: string;
 }
 
-function recorder(responses: unknown[]): {
-	calls: Recorded[];
-	fetchImpl: FetchLike;
-} {
+/** 按顺序回放 responses 的 reporter，并记下每一次请求。 */
+function reporterWith(
+	responses: unknown[],
+	sink: (line: string) => void = () => undefined
+) {
 	const calls: Recorded[] = [];
 	const queue = [...responses];
 	const fetchImpl: FetchLike = (url, init) => {
@@ -36,8 +37,16 @@ function recorder(responses: unknown[]): {
 		}
 		return Promise.resolve(Response.json(next ?? {}));
 	};
-	return { calls, fetchImpl };
+	const reporter = new AutomationStackReporter({
+		...BASE_OPTIONS,
+		fetchImpl,
+		sink,
+	});
+	return { calls, reporter };
 }
+
+const keysOf = (calls: Recorded[]) =>
+	calls.map((call) => (call.body as { idempotencyKey: string }).idempotencyKey);
 
 const receiptWith = (writtenTo: unknown[]) => ({
 	executionId: "22222222-3333-4444-8555-666666666666",
@@ -46,6 +55,9 @@ const receiptWith = (writtenTo: unknown[]) => ({
 	unmatchedCases: [],
 	writtenTo,
 });
+
+const wroteRunA = (updated: number) =>
+	receiptWith([{ runId: "run-a", runName: "v2.3 回归", updated }]);
 
 let previousExitCode: typeof process.exitCode;
 
@@ -58,81 +70,48 @@ afterEach(() => {
 });
 
 describe("编程式入口（框架无关）", () => {
-	it("addResult 只入缓冲，finish 之前一个网络请求都没有（D29）", async () => {
-		const { calls, fetchImpl } = recorder([
-			receiptWith([{ runId: "run-a", runName: "v2.3 回归", updated: 2 }]),
-		]);
-		const reporter = new AutomationStackReporter({
-			...BASE_OPTIONS,
-			fetchImpl,
-			sink: () => undefined,
-		});
+	it("addResult 只入缓冲，finish 之前一个网络请求都没有（D29）；正常路径不调任何预检接口（§7.2 第 5 条）", async () => {
+		const { calls, reporter } = reporterWith([wroteRunA(2)]);
 		reporter.addResult({ result: "passed", sourceRef: "A-1" });
 		reporter.addResult({ result: "failed", sourceRef: "A-2" });
 		expect(calls).toHaveLength(0);
 		expect(reporter.pendingResultCount).toBe(2);
 
 		await reporter.finish();
-		expect(calls).toHaveLength(1);
-		expect(calls[0]?.url).toBe("https://qa.example.com/ingest/executions");
-	});
-
-	it("正常路径不调任何预检接口（§7.2 第 5 条）", async () => {
-		const { calls, fetchImpl } = recorder([
-			receiptWith([{ runId: "run-a", runName: "v2.3 回归", updated: 1 }]),
+		expect(calls.map((call) => call.url)).toEqual([
+			"https://qa.example.com/ingest/executions",
 		]);
-		const reporter = new AutomationStackReporter({
-			...BASE_OPTIONS,
-			fetchImpl,
-			sink: () => undefined,
-		});
-		reporter.addResult({ result: "passed", sourceRef: "A-1" });
-		await reporter.finish();
 		expect(calls.some((call) => call.url.includes(INGEST_RUNS_ROUTE))).toBe(
 			false
 		);
 	});
 
 	it("重试复用同一个幂等键（§7.2 第 2 条）", async () => {
-		const { calls, fetchImpl } = recorder([
+		const { calls, reporter } = reporterWith([
 			new Response("boom", { status: 503 }),
-			Response.json(
-				receiptWith([{ runId: "run-a", runName: "v2.3 回归", updated: 1 }])
-			),
+			Response.json(wroteRunA(1)),
 		]);
-		const reporter = new AutomationStackReporter({
-			...BASE_OPTIONS,
-			fetchImpl,
-			sink: () => undefined,
-		});
 		reporter.addResult({ result: "passed", sourceRef: "A-1" });
 		await reporter.finish();
-		expect(calls).toHaveLength(2);
-		const keys = calls.map(
-			(call) => (call.body as { idempotencyKey: string }).idempotencyKey
-		);
-		expect(keys[0]).toBe(RUN_KEY);
-		expect(keys[1]).toBe(RUN_KEY);
+		expect(keysOf(calls)).toEqual([RUN_KEY, RUN_KEY]);
 	});
 
 	it("writtenTo 为空时抛错、置非零退出码，并原样透传服务端理由", async () => {
-		const { fetchImpl } = recorder([
-			{
-				...receiptWith([]),
-				unmatchedCases: [
-					{
-						reason: "项目里没有这个 sourceRef 的用例",
-						sourceRef: "PAY-NEW-099",
-					},
-				],
-			},
-		]);
 		const lines: string[] = [];
-		const reporter = new AutomationStackReporter({
-			...BASE_OPTIONS,
-			fetchImpl,
-			sink: (line) => lines.push(line),
-		});
+		const { reporter } = reporterWith(
+			[
+				{
+					...receiptWith([]),
+					unmatchedCases: [
+						{
+							reason: "项目里没有这个 sourceRef 的用例",
+							sourceRef: "PAY-NEW-099",
+						},
+					],
+				},
+			],
+			(line) => lines.push(line)
+		);
 		reporter.addResult({ result: "passed", sourceRef: "PAY-NEW-099" });
 
 		const error = await reporter.finish().catch((thrown: unknown) => thrown);
@@ -145,14 +124,7 @@ describe("编程式入口（框架无关）", () => {
 	});
 
 	it("写进去了就不动退出码", async () => {
-		const { fetchImpl } = recorder([
-			receiptWith([{ runId: "run-a", runName: "v2.3 回归", updated: 1 }]),
-		]);
-		const reporter = new AutomationStackReporter({
-			...BASE_OPTIONS,
-			fetchImpl,
-			sink: () => undefined,
-		});
+		const { reporter } = reporterWith([wroteRunA(1)]);
 		reporter.addResult({ result: "passed", sourceRef: "A-1" });
 		const outcome = await reporter.finish();
 		expect(process.exitCode).toBe(previousExitCode);
@@ -161,15 +133,7 @@ describe("编程式入口（框架无关）", () => {
 	});
 
 	it("超过 200 条时分多次 POST，键各不相同但都落在同一条端点上", async () => {
-		const { calls, fetchImpl } = recorder([
-			receiptWith([{ runId: "run-a", runName: "v2.3 回归", updated: 200 }]),
-			receiptWith([{ runId: "run-a", runName: "v2.3 回归", updated: 50 }]),
-		]);
-		const reporter = new AutomationStackReporter({
-			...BASE_OPTIONS,
-			fetchImpl,
-			sink: () => undefined,
-		});
+		const { calls, reporter } = reporterWith([wroteRunA(200), wroteRunA(50)]);
 		reporter.addResults(
 			Array.from({ length: 250 }, (_, index) => ({
 				result: "passed" as const,
@@ -179,10 +143,7 @@ describe("编程式入口（框架无关）", () => {
 		const outcome = await reporter.finish();
 		expect(calls).toHaveLength(2);
 		expect(new Set(calls.map((call) => call.url)).size).toBe(1);
-		const keys = calls.map(
-			(call) => (call.body as { idempotencyKey: string }).idempotencyKey
-		);
-		expect(new Set(keys).size).toBe(2);
+		expect(new Set(keysOf(calls)).size).toBe(2);
 		expect(outcome.receipt.writtenTo).toEqual([
 			{ runId: "run-a", runName: "v2.3 回归", updated: 250 },
 		]);
