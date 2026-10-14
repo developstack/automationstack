@@ -1,6 +1,7 @@
 import type { User } from "@automationstack/db/schema/users";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { testUser } from "../../test-fixtures";
 import type { CasdoorIdentity } from "./claims";
 import { upsertCasdoorLoginUser } from "./login-user";
 
@@ -28,18 +29,14 @@ const identity: CasdoorIdentity = {
 	username: "alice",
 };
 
-const shadow: User = {
+const shadow = testUser({
 	authSource: "casdoor",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
 	externalId: EXTERNAL_ID,
 	id: "33333333-3333-4333-8333-333333333333",
-	mustChangePassword: false,
 	passwordHash: null,
 	role: "member",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
 	username: "alice",
-};
+});
 
 const localAlice: User = {
 	...shadow,

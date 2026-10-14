@@ -1,7 +1,7 @@
-import type { User } from "@automationstack/db/schema/users";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { resetLoginRateLimitState } from "../../lib/login-rate-limit";
+import { testUser } from "../../test-fixtures";
 import { effectiveSettings } from "../settings-fixtures";
 import { loginWithLocalPassword } from "./local-password-login";
 import { authConfigOf, authProviderFor, isLocalLoginEnabled } from "./resolve";
@@ -25,20 +25,8 @@ const PASSWORD = "correct-password";
 const STORED_PBKDF2_HASH = /^pbkdf2_sha256\$/;
 const BACKOFF_AFTER_FAILURES = 5;
 
-const admin: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "22222222-2222-4222-8222-222222222222",
-	mustChangePassword: false,
-	passwordHash: `hash:${PASSWORD}`,
-	role: "admin",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "admin",
-};
-
-const member: User = { ...admin, id: "member-id", role: "member" };
+const admin = testUser({ passwordHash: `hash:${PASSWORD}` });
+const member = testUser({ ...admin, id: "member-id", role: "member" });
 
 function login(
 	policy: LocalLoginPolicy,
@@ -69,48 +57,35 @@ describe("loginWithLocalPassword：local 模式（行为与阶段 1 相同）", 
 		expect(auditLog).not.toHaveBeenCalled();
 	});
 
-	it("密码错误：rejected", async () => {
-		mocks.getUserByUsername.mockResolvedValue(member);
+	it.each([
+		["密码错误", member, "wrong-password"],
+		[
+			"外部账号即使有哈希也不能登录",
+			testUser({ ...admin, authSource: "casdoor" }),
+			PASSWORD,
+		],
+		[
+			"已停用的账号：密码正确也登录失败",
+			testUser({ ...admin, disabledAt: new Date() }),
+			PASSWORD,
+		],
+	])("%s：rejected", async (_name, user, password) => {
+		mocks.getUserByUsername.mockResolvedValue(user);
 		await expect(
-			login("all-local-accounts", "wrong-password").outcome
+			login("all-local-accounts", password).outcome
 		).resolves.toEqual({ kind: "rejected" });
 	});
 
-	it("用户不存在：用诱饵哈希校验一次，结果与密码错误相同", async () => {
-		mocks.getUserByUsername.mockResolvedValue(null);
+	it.each([
+		["用户不存在", null],
+		["password_hash 为 null", testUser({ ...admin, passwordHash: null })],
+	])("%s：用诱饵哈希校验一次，结果与密码错误相同", async (_name, user) => {
+		mocks.getUserByUsername.mockResolvedValue(user);
 		await expect(login("all-local-accounts").outcome).resolves.toEqual({
 			kind: "rejected",
 		});
 		expect(mocks.verifyPassword).toHaveBeenCalledTimes(1);
 		expect(mocks.verifyPassword.mock.calls[0]?.[1]).toMatch(STORED_PBKDF2_HASH);
-	});
-
-	it("password_hash 为 null：用诱饵哈希校验，登录失败", async () => {
-		mocks.getUserByUsername.mockResolvedValue({ ...admin, passwordHash: null });
-		await expect(login("all-local-accounts").outcome).resolves.toEqual({
-			kind: "rejected",
-		});
-		expect(mocks.verifyPassword.mock.calls[0]?.[1]).toMatch(STORED_PBKDF2_HASH);
-	});
-
-	it("外部账号即使有哈希也不能登录", async () => {
-		mocks.getUserByUsername.mockResolvedValue({
-			...admin,
-			authSource: "casdoor",
-		});
-		await expect(login("all-local-accounts").outcome).resolves.toEqual({
-			kind: "rejected",
-		});
-	});
-
-	it("已停用的账号：密码正确也登录失败", async () => {
-		mocks.getUserByUsername.mockResolvedValue({
-			...admin,
-			disabledAt: new Date(),
-		});
-		await expect(login("all-local-accounts").outcome).resolves.toEqual({
-			kind: "rejected",
-		});
 	});
 
 	it("连续失败后限流：rate-limited，不再查询账号", async () => {
