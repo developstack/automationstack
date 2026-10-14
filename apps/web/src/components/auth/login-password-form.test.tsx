@@ -6,6 +6,7 @@ import {
 	type LoginCredentials,
 	LoginPasswordForm,
 } from "@/components/auth/login-password-form";
+import { isBefore } from "@/test-dom-fixtures";
 
 const USERNAME = "用户名";
 const PASSWORD = "密码";
@@ -50,54 +51,36 @@ function messageOf(input: HTMLInputElement): string {
 	return id === null ? "" : (document.getElementById(id)?.textContent ?? "");
 }
 
-/** a 在文档顺序中位于 b 之前。 */
-function isBefore(a: Element, b: Element): boolean {
-	const ordered = [...document.querySelectorAll("*")];
-	return ordered.indexOf(a) < ordered.indexOf(b);
-}
-
 function rejectWith(error: unknown) {
 	return vi.fn<OnLogin>().mockRejectedValue(error);
 }
 
 describe("LoginPasswordForm：提交时校验", () => {
-	it("用户名和密码都为空：两个输入框下方各显示提示，请求不发出", () => {
+	it.each([
+		[
+			"用户名和密码都为空：两个输入框下方各显示提示，请求不发出",
+			"",
+			"",
+			[true, true],
+		],
+		["只有密码为空：只有密码框下方显示提示", "alice", "", [false, true]],
+		["用户名只有空格时视为空", "   ", "s3cret", [true, false]],
+	])("%s", (_name, username, password, [usernameEmpty, passwordEmpty]) => {
 		const { onLogin } = renderForm();
 
-		fireEvent.click(submitButton());
+		fillAndSubmit(username, password);
 
-		expect(messageOf(usernameInput())).toBe("请输入用户名");
-		expect(messageOf(passwordInput())).toBe("请输入密码");
-		expect(usernameInput().getAttribute("aria-invalid")).toBe("true");
-		expect(passwordInput().getAttribute("aria-invalid")).toBe("true");
+		expect(messageOf(usernameInput())).toBe(
+			usernameEmpty ? "请输入用户名" : ""
+		);
+		expect(messageOf(passwordInput())).toBe(passwordEmpty ? "请输入密码" : "");
+		expect(usernameInput().getAttribute("aria-invalid")).toBe(
+			String(usernameEmpty)
+		);
+		expect(passwordInput().getAttribute("aria-invalid")).toBe(
+			String(passwordEmpty)
+		);
 		expect(onLogin).not.toHaveBeenCalled();
-	});
-
-	it("只有密码为空：只有密码框下方显示提示", () => {
-		const { onLogin } = renderForm();
-
-		type(usernameInput(), "alice");
-		fireEvent.click(submitButton());
-
-		expect(messageOf(usernameInput())).toBe("");
-		expect(usernameInput().getAttribute("aria-invalid")).toBe("false");
-		expect(messageOf(passwordInput())).toBe("请输入密码");
-		expect(onLogin).not.toHaveBeenCalled();
-	});
-
-	it("用户名只有空格时视为空", () => {
-		const { onLogin } = renderForm();
-
-		fillAndSubmit("   ", "s3cret");
-
-		expect(messageOf(usernameInput())).toBe("请输入用户名");
-		expect(onLogin).not.toHaveBeenCalled();
-	});
-
-	it("不使用浏览器的原生校验", () => {
-		renderForm();
-
-		expect(submitButton().form?.noValidate).toBe(true);
 	});
 
 	it("修改输入框后，字段错误消失", () => {
@@ -127,9 +110,10 @@ describe("LoginPasswordForm：发送请求", () => {
 		});
 	});
 
-	it("在密码框按回车提交：密码框和登录按钮在同一个表单中，按钮是提交按钮", () => {
+	it("在密码框按回车提交：密码框和登录按钮在同一个表单中，按钮是提交按钮，不使用浏览器的原生校验", () => {
 		renderForm();
 
+		expect(submitButton().form?.noValidate).toBe(true);
 		expect(submitButton().type).toBe("submit");
 		expect(passwordInput().form).toBe(submitButton().form);
 	});
@@ -148,15 +132,6 @@ describe("LoginPasswordForm：发送请求", () => {
 		fireEvent.click(pending);
 		fireEvent.submit(pending);
 		expect(onLogin).toHaveBeenCalledTimes(1);
-	});
-
-	it("请求失败后：按钮恢复为可点击", async () => {
-		renderForm(rejectWith(new TypeError("Failed to fetch")));
-
-		fillAndSubmit();
-
-		const button = await screen.findByRole("button", { name: SUBMIT });
-		expect(button.hasAttribute("disabled")).toBe(false);
 	});
 });
 
@@ -186,41 +161,34 @@ describe("LoginPasswordForm：服务器返回的错误", () => {
 		expect(passwordInput().getAttribute("aria-invalid")).toBe("false");
 	});
 
-	it("网络错误：登录按钮上方的提示区显示无法连接服务器，不标红输入框", async () => {
-		renderForm(rejectWith(new TypeError("Failed to fetch")));
+	it.each([
+		[
+			"网络错误：登录按钮上方的提示区显示无法连接服务器，不标红输入框，按钮恢复为可点击",
+			new TypeError("Failed to fetch"),
+			NETWORK_ERROR,
+		],
+		[
+			"5xx 错误：提示区显示无法连接服务器",
+			new ORPCError("INTERNAL_SERVER_ERROR"),
+			NETWORK_ERROR,
+		],
+		[
+			"限流：提示区显示服务器的限流提示，不标红输入框",
+			new ORPCError("TOO_MANY_REQUESTS", { message: RATE_LIMIT_MESSAGE }),
+			RATE_LIMIT_MESSAGE,
+		],
+	])("%s", async (_name, error, message) => {
+		renderForm(rejectWith(error));
 
 		fillAndSubmit();
 
 		const alert = await screen.findByRole("alert");
-		expect(alert.textContent).toBe(NETWORK_ERROR);
+		expect(alert.textContent).toBe(message);
 		expect(isBefore(alert, submitButton())).toBe(true);
+		expect(submitButton().hasAttribute("disabled")).toBe(false);
 		expect(usernameInput().getAttribute("aria-invalid")).toBe("false");
 		expect(passwordInput().getAttribute("aria-invalid")).toBe("false");
 		expect(messageOf(passwordInput())).toBe("");
-	});
-
-	it("5xx 错误：提示区显示无法连接服务器", async () => {
-		renderForm(rejectWith(new ORPCError("INTERNAL_SERVER_ERROR")));
-
-		fillAndSubmit();
-
-		const alert = await screen.findByRole("alert");
-		expect(alert.textContent).toBe(NETWORK_ERROR);
-		expect(passwordInput().getAttribute("aria-invalid")).toBe("false");
-	});
-
-	it("限流：提示区显示服务器的限流提示，不标红输入框", async () => {
-		renderForm(
-			rejectWith(
-				new ORPCError("TOO_MANY_REQUESTS", { message: RATE_LIMIT_MESSAGE })
-			)
-		);
-
-		fillAndSubmit();
-
-		const alert = await screen.findByRole("alert");
-		expect(alert.textContent).toBe(RATE_LIMIT_MESSAGE);
-		expect(passwordInput().getAttribute("aria-invalid")).toBe("false");
 	});
 
 	it("再次提交时：清除上一次的提示区", async () => {

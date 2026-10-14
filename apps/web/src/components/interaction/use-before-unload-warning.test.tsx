@@ -1,15 +1,8 @@
-import {
-	createBrowserHistory,
-	createRootRoute,
-	createRoute,
-	createRouter,
-	Outlet,
-	RouterProvider,
-} from "@tanstack/react-router";
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { useBeforeUnloadWarning } from "@/components/interaction/use-before-unload-warning";
+import { renderRoutes } from "@/test-dom-fixtures";
 
 function FormPage({ dirty }: { dirty: boolean }) {
 	useBeforeUnloadWarning(dirty);
@@ -17,25 +10,14 @@ function FormPage({ dirty }: { dirty: boolean }) {
 }
 
 async function renderPage(dirty: boolean) {
-	const rootRoute = createRootRoute({ component: Outlet });
-	const formRoute = createRoute({
-		component: () => <FormPage dirty={dirty} />,
-		getParentRoute: () => rootRoute,
-		path: "/",
+	const view = renderRoutes({
+		routes: {
+			"/": () => <FormPage dirty={dirty} />,
+			"/other": () => <p>别的页面</p>,
+		},
 	});
-	const otherRoute = createRoute({
-		component: () => <p>别的页面</p>,
-		getParentRoute: () => rootRoute,
-		path: "/other",
-	});
-	const history = createBrowserHistory();
-	const router = createRouter({
-		history,
-		routeTree: rootRoute.addChildren([formRoute, otherRoute]),
-	});
-	render(<RouterProvider router={router} />);
 	await screen.findByText("表单页面");
-	return { history, router };
+	return view;
 }
 
 function unloadIsBlocked(): boolean {
@@ -49,14 +31,12 @@ afterEach(() => {
 });
 
 describe("useBeforeUnloadWarning：有未保存的修改时，关闭或刷新标签页由浏览器提醒", () => {
-	it("有修改时，浏览器关闭标签页前会提醒", async () => {
-		await renderPage(true);
-		expect(unloadIsBlocked()).toBe(true);
-	});
-
-	it("没有修改时不提醒", async () => {
-		await renderPage(false);
-		expect(unloadIsBlocked()).toBe(false);
+	it.each([
+		["有修改时，浏览器关闭标签页前会提醒", true],
+		["没有修改时不提醒", false],
+	])("%s", async (_name, dirty) => {
+		await renderPage(dirty);
+		expect(unloadIsBlocked()).toBe(dirty);
 	});
 
 	it("站内跳转不拦截，由面板自己的关闭提醒处理", async () => {

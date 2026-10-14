@@ -1,16 +1,10 @@
 import { SidebarProvider } from "@automationstack/ui/components/sidebar-context";
-import {
-	createMemoryHistory,
-	createRootRoute,
-	createRoute,
-	createRouter,
-	Outlet,
-	RouterProvider,
-} from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
+import { Outlet } from "@tanstack/react-router";
+import { screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ProjectNavGroup } from "@/components/layout/project-nav-group";
+import { renderRoutes } from "@/test-dom-fixtures";
 
 const PROJECT_ID = "p1";
 
@@ -25,26 +19,16 @@ function stubMatchMedia() {
 }
 
 async function renderNav() {
-	const rootRoute = createRootRoute({
-		component: () => (
+	renderRoutes({
+		initialPath: `/projects/${PROJECT_ID}/test-runs`,
+		layout: () => (
 			<SidebarProvider>
 				<ProjectNavGroup projectId={PROJECT_ID} />
 				<Outlet />
 			</SidebarProvider>
 		),
+		routes: { "/projects/$projectId/test-runs": () => <p>页面</p> },
 	});
-	const pageRoute = createRoute({
-		component: () => <p>页面</p>,
-		getParentRoute: () => rootRoute,
-		path: "/projects/$projectId/test-runs",
-	});
-	const router = createRouter({
-		history: createMemoryHistory({
-			initialEntries: [`/projects/${PROJECT_ID}/test-runs`],
-		}),
-		routeTree: rootRoute.addChildren([pageRoute]),
-	});
-	render(<RouterProvider router={router} />);
 	await screen.findByText("页面");
 }
 

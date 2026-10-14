@@ -1,16 +1,10 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
-import {
-	createMemoryHistory,
-	createRootRoute,
-	createRoute,
-	createRouter,
-	RouterProvider,
-} from "@tanstack/react-router";
-import { act, render, screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 
 import { CaseTable } from "@/components/cases/case-table";
+import { renderRoutes } from "@/test-dom-fixtures";
 
 const PROJECT_ID = "00000000-0000-4000-8000-000000000001";
 const UPDATED_AT = new Date("2026-10-01T08:00:00Z");
@@ -65,19 +59,10 @@ async function renderTable(
 			/>
 		);
 	}
-	const rootRoute = createRootRoute();
-	const pageRoute = createRoute({
-		component: Harness,
-		getParentRoute: () => rootRoute,
-		path: "/projects/$projectId",
+	renderRoutes({
+		initialPath: `/projects/${PROJECT_ID}`,
+		routes: { "/projects/$projectId": Harness },
 	});
-	const router = createRouter({
-		history: createMemoryHistory({
-			initialEntries: [`/projects/${PROJECT_ID}`],
-		}),
-		routeTree: rootRoute.addChildren([pageRoute]),
-	});
-	render(<RouterProvider router={router} />);
 	await screen.findByRole("table");
 	return controls as HarnessControls;
 }

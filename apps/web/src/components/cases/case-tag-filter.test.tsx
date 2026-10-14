@@ -1,8 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { CaseTagFilter } from "@/components/cases/case-tag-filter";
+import { renderWithQuery } from "@/test-dom-fixtures";
 
 const TAGS_KEY = ["cases", "listTags"];
 
@@ -21,12 +21,9 @@ vi.mock("@/utils/orpc", () => ({
 
 function renderFilter(tags: string[]) {
 	const onChange = vi.fn();
-	const queryClient = new QueryClient();
-	queryClient.setQueryData(TAGS_KEY, ["登录", "支付"]);
-	render(
-		<QueryClientProvider client={queryClient}>
-			<CaseTagFilter onChange={onChange} projectId="p1" tags={tags} />
-		</QueryClientProvider>
+	renderWithQuery(
+		<CaseTagFilter onChange={onChange} projectId="p1" tags={tags} />,
+		[TAGS_KEY, ["登录", "支付"]]
 	);
 	return { onChange };
 }

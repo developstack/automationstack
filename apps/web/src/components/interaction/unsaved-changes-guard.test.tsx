@@ -1,51 +1,29 @@
-import {
-	createMemoryHistory,
-	createRootRoute,
-	createRoute,
-	createRouter,
-	Outlet,
-	RouterProvider,
-} from "@tanstack/react-router";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { UnsavedChangesGuard } from "@/components/interaction/unsaved-changes-guard";
+import { renderRoutes } from "@/test-dom-fixtures";
 
 const LEAVE_TITLE = "放弃未保存的修改？";
 
 function renderAt(dirty: boolean) {
-	const rootRoute = createRootRoute({ component: Outlet });
-	const formRoute = createRoute({
-		component: () => (
-			<>
-				<UnsavedChangesGuard dirty={dirty} />
-				<p>表单页面</p>
-			</>
-		),
-		getParentRoute: () => rootRoute,
-		path: "/",
+	return renderRoutes({
+		initialPath: "/",
+		routes: {
+			"/": () => (
+				<>
+					<UnsavedChangesGuard dirty={dirty} />
+					<p>表单页面</p>
+				</>
+			),
+			"/login": () => <p>登录页面</p>,
+			"/other": () => <p>别的页面</p>,
+		},
 	});
-	const otherRoute = createRoute({
-		component: () => <p>别的页面</p>,
-		getParentRoute: () => rootRoute,
-		path: "/other",
-	});
-	const loginRoute = createRoute({
-		component: () => <p>登录页面</p>,
-		getParentRoute: () => rootRoute,
-		path: "/login",
-	});
-	const history = createMemoryHistory({ initialEntries: ["/"] });
-	const router = createRouter({
-		history,
-		routeTree: rootRoute.addChildren([formRoute, otherRoute, loginRoute]),
-	});
-	render(<RouterProvider router={router} />);
-	return { history, router };
 }
 
 async function leave(
-	history: ReturnType<typeof createMemoryHistory>,
+	history: ReturnType<typeof renderRoutes>["history"],
 	to = "/other"
 ) {
 	await screen.findByText("表单页面");
