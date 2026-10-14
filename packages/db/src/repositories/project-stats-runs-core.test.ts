@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { daysAgo, NOW } from "./project-stats-fixtures";
 import { type ActiveRunRow, buildActiveRuns } from "./project-stats-runs-core";
-
-const NOW = new Date("2026-10-13T12:00:00.000Z");
-const DAY = 86_400_000;
-
-function daysAgo(days: number, extraMs = 0): Date {
-	return new Date(NOW.getTime() - days * DAY - extraMs);
-}
 
 const NO_RESULTS = {
 	blocked: 0,

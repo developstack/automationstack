@@ -5,13 +5,7 @@ import {
 	type CoverageCaseRow,
 	type CoverageExecutionRow,
 } from "./project-stats-execution-core";
-
-const NOW = new Date("2026-10-13T12:00:00.000Z");
-const DAY = 86_400_000;
-
-function daysAgo(days: number, extraMs = 0): Date {
-	return new Date(NOW.getTime() - days * DAY - extraMs);
-}
+import { daysAgo, NOW } from "./project-stats-fixtures";
 
 const ROOT_A = "root-a";
 const CHILD_A = "child-a";
@@ -31,26 +25,15 @@ function activeCase(
 
 function coverage(
 	cases: CoverageCaseRow[],
-	executions: CoverageExecutionRow[] = []
+	executions: CoverageExecutionRow[] = [],
+	modules = MODULES
 ) {
-	return buildExecutionCoverage({
-		cases,
-		executions,
-		modules: MODULES,
-		now: NOW,
-	});
+	return buildExecutionCoverage({ cases, executions, modules, now: NOW });
 }
 
 describe("buildExecutionCoverage", () => {
 	it("空项目：没有生效用例，没有模块条形，也没有待执行的 P0/P1 用例", () => {
-		expect(
-			buildExecutionCoverage({
-				cases: [],
-				executions: [],
-				modules: [],
-				now: NOW,
-			})
-		).toEqual({
+		expect(coverage([], [], [])).toEqual({
 			activeCount: 0,
 			executedCount: 0,
 			highPriorityActiveCount: 0,
@@ -132,14 +115,11 @@ describe("buildExecutionCoverage", () => {
 			name: `模块 ${index}`,
 			parentId: null,
 		}));
-		const result = buildExecutionCoverage({
-			cases: modules.map((module) =>
-				activeCase(module.id, { moduleId: module.id })
-			),
-			executions: [],
-			modules,
-			now: NOW,
-		});
+		const result = coverage(
+			modules.map((module) => activeCase(module.id, { moduleId: module.id })),
+			[],
+			modules
+		);
 
 		expect(result.modules).toHaveLength(8);
 		expect(result.unexecutedModuleCount).toBe(10);
