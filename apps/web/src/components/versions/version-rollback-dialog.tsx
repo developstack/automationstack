@@ -12,36 +12,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { toast } from "sonner";
 
+import { useLastNonNull } from "@/components/interaction/use-last-non-null";
 import { orpc } from "@/utils/orpc";
-
-interface RollbackConfirmBodyProps {
-	isPending: boolean;
-	onConfirm: () => void;
-	targetVersion: number | null;
-}
-
-function RollbackConfirmBody({
-	isPending,
-	onConfirm,
-	targetVersion,
-}: RollbackConfirmBodyProps) {
-	return (
-		<AlertDialogContent>
-			<AlertDialogHeader>
-				<AlertDialogTitle>回滚到 v{targetVersion}？</AlertDialogTitle>
-				<AlertDialogDescription>
-					回滚将以该版本内容创建一个新版本，历史不可变——现有版本不会被删除或覆盖。
-				</AlertDialogDescription>
-			</AlertDialogHeader>
-			<AlertDialogFooter>
-				<AlertDialogCancel disabled={isPending}>取消</AlertDialogCancel>
-				<AlertDialogAction disabled={isPending} onClick={onConfirm}>
-					确认回滚
-				</AlertDialogAction>
-			</AlertDialogFooter>
-		</AlertDialogContent>
-	);
-}
 
 interface VersionRollbackDialogProps {
 	caseId: string;
@@ -49,14 +21,11 @@ interface VersionRollbackDialogProps {
 	targetVersion: number | null;
 }
 
-export function VersionRollbackDialog({
-	caseId,
-	onClose,
-	targetVersion,
-}: VersionRollbackDialogProps) {
+function useRollback(caseId: string, onClose: () => void) {
 	const queryClient = useQueryClient();
-	const rollback = useMutation(
+	return useMutation(
 		orpc.cases.rollback.mutationOptions({
+			meta: { failureAction: "回滚" },
 			onSuccess: (result) => {
 				queryClient.invalidateQueries({
 					queryKey: orpc.cases.get.key({ input: { id: caseId } }),
@@ -66,14 +35,28 @@ export function VersionRollbackDialog({
 				});
 				queryClient.invalidateQueries({ queryKey: orpc.cases.list.key() });
 				if (result.version === null) {
-					toast.info("该版本与当前内容一致，未生成新版本");
+					toast.info("这个版本与当前内容相同，没有产生新版本");
 				} else {
-					toast.success(`已回滚，生成新版本 v${result.version.version}`);
+					toast.success(`已回滚，产生了新版本 v${result.version.version}`);
 				}
 				onClose();
 			},
 		})
 	);
+}
+
+/**
+ * 回滚确认。说明回滚会产生一个新版本，现有的版本都保留。
+ * 回滚中不能关闭对话框，也不能再次确认。失败时对话框保持打开，可以再次确认。
+ */
+export function VersionRollbackDialog({
+	caseId,
+	onClose,
+	targetVersion,
+}: VersionRollbackDialogProps) {
+	const rollback = useRollback(caseId, onClose);
+	// 关闭动画中 targetVersion 已经是 null，继续显示上一次的版本号
+	const shownVersion = useLastNonNull(targetVersion);
 
 	const handleConfirm = useCallback(() => {
 		if (targetVersion !== null) {
@@ -83,20 +66,40 @@ export function VersionRollbackDialog({
 
 	const handleOpenChange = useCallback(
 		(open: boolean) => {
-			if (!open) {
+			if (!(open || rollback.isPending)) {
 				onClose();
 			}
 		},
-		[onClose]
+		[onClose, rollback.isPending]
 	);
 
 	return (
 		<AlertDialog onOpenChange={handleOpenChange} open={targetVersion !== null}>
-			<RollbackConfirmBody
-				isPending={rollback.isPending}
-				onConfirm={handleConfirm}
-				targetVersion={targetVersion}
-			/>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>
+						回滚到 <span className="numeric">{`v${shownVersion}`}</span>？
+					</AlertDialogTitle>
+					<AlertDialogDescription>
+						{"回滚会用 "}
+						<span className="numeric">{`v${shownVersion}`}</span>
+						{
+							" 的内容产生一个新版本，成为最新版本。现有的版本都会保留，不会被修改或删除。如果这个版本与当前内容相同，不会产生新版本。"
+						}
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel disabled={rollback.isPending}>
+						取消
+					</AlertDialogCancel>
+					<AlertDialogAction
+						onClick={handleConfirm}
+						pending={rollback.isPending}
+					>
+						确认回滚
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
 		</AlertDialog>
 	);
 }

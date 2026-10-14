@@ -4,6 +4,10 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@automationstack/ui/components/popover";
+import {
+	ToggleGroup,
+	ToggleGroupItem,
+} from "@automationstack/ui/components/toggle-group";
 import { useQuery } from "@tanstack/react-query";
 import { TagIcon } from "lucide-react";
 import { useCallback } from "react";
@@ -12,37 +16,39 @@ import { orpc } from "@/utils/orpc";
 
 const NO_TAGS: string[] = [];
 
-interface TagToggleProps {
-	active: boolean;
-	onToggle: (tag: string) => void;
-	value: string;
-}
-
-function TagToggle({ active, onToggle, value }: TagToggleProps) {
-	const handleClick = useCallback(() => onToggle(value), [onToggle, value]);
-	return (
-		<Button
-			aria-pressed={active}
-			onClick={handleClick}
-			size="sm"
-			type="button"
-			variant={active ? "default" : "outline"}
-		>
-			{value}
-		</Button>
-	);
-}
-
 interface TagOptionsProps {
+	failed: boolean;
 	loading: boolean;
-	onToggle: (tag: string) => void;
+	onChange: (tags: string[]) => void;
+	onRetry: () => void;
 	options: string[];
 	selected: string[];
 }
 
-function TagOptions({ loading, onToggle, options, selected }: TagOptionsProps) {
+function TagOptions({
+	failed,
+	loading,
+	onChange,
+	onRetry,
+	options,
+	selected,
+}: TagOptionsProps) {
+	const handleValueChange = useCallback(
+		(groupValue: string[]) => onChange(groupValue),
+		[onChange]
+	);
 	if (loading) {
-		return null;
+		return <p className="text-muted-foreground">正在加载标签……</p>;
+	}
+	if (failed) {
+		return (
+			<div className="flex flex-col items-start gap-2" role="alert">
+				<p className="text-muted-foreground">标签加载失败。</p>
+				<Button onClick={onRetry} size="sm" type="button" variant="outline">
+					重试
+				</Button>
+			</div>
+		);
 	}
 	if (options.length === 0) {
 		return (
@@ -50,17 +56,57 @@ function TagOptions({ loading, onToggle, options, selected }: TagOptionsProps) {
 		);
 	}
 	return (
-		<fieldset aria-label="按标签筛选" className="flex flex-wrap gap-1">
+		<ToggleGroup
+			aria-label="按标签筛选"
+			className="w-full flex-wrap"
+			multiple={true}
+			onValueChange={handleValueChange}
+			size="sm"
+			value={selected}
+			variant="outline"
+		>
 			{options.map((tag) => (
-				<TagToggle
-					active={selected.includes(tag)}
-					key={tag}
-					onToggle={onToggle}
-					value={tag}
-				/>
+				<ToggleGroupItem key={tag} value={tag}>
+					{tag}
+				</ToggleGroupItem>
 			))}
-		</fieldset>
+		</ToggleGroup>
 	);
+}
+
+function tagTriggerLabel(count: number): string {
+	return count === 0 ? "按标签筛选" : `按标签筛选，已选 ${count} 个`;
+}
+
+/** 弹出层的触发按钮。PopoverTrigger 的 render 需要一个直接接收触发属性的元素，所以返回元素而不是组件。 */
+function tagTriggerButton(count: number) {
+	return (
+		<Button aria-label={tagTriggerLabel(count)} type="button" variant="outline">
+			<TagIcon data-icon="inline-start" />
+			标签
+			{count === 0 ? null : (
+				<span className="numeric rounded-sm bg-muted px-1 text-muted-foreground text-xs">
+					{count}
+				</span>
+			)}
+		</Button>
+	);
+}
+
+function useProjectTags(projectId: string) {
+	const tagsQuery = useQuery(
+		orpc.cases.listTags.queryOptions({ input: { projectId } })
+	);
+	const { refetch } = tagsQuery;
+	const retry = useCallback(() => {
+		refetch().catch(() => undefined);
+	}, [refetch]);
+	return {
+		failed: tagsQuery.isError,
+		loading: tagsQuery.isPending,
+		options: tagsQuery.data ?? NO_TAGS,
+		retry,
+	};
 }
 
 interface CaseTagFilterProps {
@@ -69,45 +115,24 @@ interface CaseTagFilterProps {
 	tags: string[];
 }
 
-function useTagSelection(tags: string[], onChange: (tags: string[]) => void) {
-	const toggle = useCallback(
-		(value: string) =>
-			onChange(
-				tags.includes(value)
-					? tags.filter((tag) => tag !== value)
-					: [...tags, value]
-			),
-		[onChange, tags]
-	);
-	const clear = useCallback(() => onChange(NO_TAGS), [onChange]);
-	return { clear, toggle };
-}
-
 export function CaseTagFilter({
 	onChange,
 	projectId,
 	tags,
 }: CaseTagFilterProps) {
-	const tagsQuery = useQuery(
-		orpc.cases.listTags.queryOptions({ input: { projectId } })
-	);
-	const { clear, toggle } = useTagSelection(tags, onChange);
+	const projectTags = useProjectTags(projectId);
+	const clear = useCallback(() => onChange(NO_TAGS), [onChange]);
 
 	return (
 		<Popover>
-			<PopoverTrigger
-				render={
-					<Button type="button" variant="outline">
-						<TagIcon data-icon="inline-start" />
-						{tags.length === 0 ? "标签" : `标签 · ${tags.length}`}
-					</Button>
-				}
-			/>
+			<PopoverTrigger render={tagTriggerButton(tags.length)} />
 			<PopoverContent align="start">
 				<TagOptions
-					loading={tagsQuery.isPending}
-					onToggle={toggle}
-					options={tagsQuery.data ?? NO_TAGS}
+					failed={projectTags.failed}
+					loading={projectTags.loading}
+					onChange={onChange}
+					onRetry={projectTags.retry}
+					options={projectTags.options}
 					selected={tags}
 				/>
 				{tags.length > 0 ? (

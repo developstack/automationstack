@@ -1,70 +1,57 @@
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
-import { Input } from "@automationstack/ui/components/input";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-	type ChangeEvent,
-	type KeyboardEvent,
-	useCallback,
-	useState,
-} from "react";
-import { toast } from "sonner";
+import { useMutation } from "@tanstack/react-query";
+import { useCallback } from "react";
 
+import {
+	type ModuleNameEndTrigger,
+	ModuleNameInput,
+} from "@/components/workspace/module-name-input";
+import {
+	focusModuleLink,
+	restoreFocusAfterEdit,
+} from "@/components/workspace/module-tree-focus";
+import {
+	inlineMutationError,
+	useInlineModuleMutationOptions,
+} from "@/components/workspace/use-inline-module-mutation";
 import { orpc } from "@/utils/orpc";
+
+const RENAME_TEXT = { action: "重命名模块", success: "模块已重命名" };
 
 interface ModuleRenameInputProps {
 	node: ModuleTreeNode;
 	onDone: () => void;
 }
 
+/** 在模块行中就地重命名。保存失败时，原因显示在输入框下方。 */
 export function ModuleRenameInput({ node, onDone }: ModuleRenameInputProps) {
-	const [name, setName] = useState(node.name);
-	const queryClient = useQueryClient();
-	const rename = useMutation(
-		orpc.modules.rename.mutationOptions({
-			onSuccess: () => {
-				queryClient.invalidateQueries({ queryKey: orpc.modules.key() });
-				toast.success("模块已重命名");
-				onDone();
-			},
-		})
-	);
+	const options = useInlineModuleMutationOptions(RENAME_TEXT);
+	const rename = useMutation(orpc.modules.rename.mutationOptions(options));
+	const { mutate } = rename;
 
-	const submit = useCallback(() => {
-		const trimmed = name.trim();
-		if (trimmed === "" || trimmed === node.name) {
+	const finish = useCallback(
+		(trigger: ModuleNameEndTrigger) => {
 			onDone();
-			return;
-		}
-		rename.mutate({ id: node.id, name: trimmed });
-	}, [name, node.id, node.name, onDone, rename]);
-
-	const handleChange = useCallback(
-		(event: ChangeEvent<HTMLInputElement>) => setName(event.target.value),
-		[]
+			restoreFocusAfterEdit(trigger, () => focusModuleLink(node.id));
+		},
+		[node.id, onDone]
 	);
 
-	const handleKeyDown = useCallback(
-		(event: KeyboardEvent<HTMLInputElement>) => {
-			if (event.key === "Enter") {
-				event.preventDefault();
-				submit();
-			}
-			if (event.key === "Escape") {
-				onDone();
-			}
-		},
-		[onDone, submit]
+	const handleSubmit = useCallback(
+		(name: string, trigger: ModuleNameEndTrigger) =>
+			mutate({ id: node.id, name }, { onSuccess: () => finish(trigger) }),
+		[finish, mutate, node.id]
 	);
 
 	return (
-		<Input
-			aria-label="模块名称"
-			className="h-6 flex-1 pr-1 pl-5 text-sm"
-			disabled={rename.isPending}
-			onBlur={submit}
-			onChange={handleChange}
-			onKeyDown={handleKeyDown}
-			value={name}
+		<ModuleNameInput
+			defaultValue={node.name}
+			error={inlineMutationError(rename)}
+			label={`重命名模块「${node.name}」`}
+			onCancel={finish}
+			onEdit={rename.reset}
+			onSubmit={handleSubmit}
+			pending={rename.isPending}
 		/>
 	);
 }

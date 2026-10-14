@@ -2,7 +2,13 @@ import { Label } from "@automationstack/ui/components/label";
 import { Textarea } from "@automationstack/ui/components/textarea";
 import { ClientOnly } from "@tanstack/react-router";
 import { type ChangeEvent, lazy, Suspense, useCallback, useState } from "react";
+import {
+	MARKDOWN_EDITOR_BODY_CLASS,
+	MARKDOWN_EDITOR_FRAME_CLASS,
+	MARKDOWN_TOOLBAR_CLASS,
+} from "@/components/cases/markdown-editor-classes";
 import { useFocusOut } from "@/components/cases/markdown-field-focus";
+import { MarkdownFieldUploads } from "@/components/cases/markdown-field-uploads";
 import { MarkdownPreviewPane } from "@/components/cases/markdown-preview-pane";
 import {
 	type FieldActivation,
@@ -19,12 +25,17 @@ const LazyMarkdownCodeEditor = lazy(async () => {
 });
 
 const EDITOR_FALLBACK = (
-	<div className="min-h-16 w-full rounded-md border border-input" />
+	<div aria-hidden="true" className={MARKDOWN_EDITOR_FRAME_CLASS}>
+		<div className={MARKDOWN_EDITOR_BODY_CLASS} />
+		<div className={MARKDOWN_TOOLBAR_CLASS} />
+	</div>
 );
 
 const TEXTAREA_CLASS = "text-sm leading-relaxed";
 
 const PLAIN_CLASS = "flex w-full min-w-0 flex-col";
+
+const INPUT_COLUMN_CLASS = "flex min-w-0 flex-col gap-1.5";
 
 const SPLIT_CLASS = "grid grid-cols-1 items-start gap-3 sm:grid-cols-2";
 
@@ -131,16 +142,23 @@ function MarkdownFieldControl({
 
 	return (
 		<div className={layoutClass(preview, previewVisible)} ref={setContainer}>
-			<MarkdownFieldInput
-				activation={activation}
-				ariaLabel={ariaLabel}
-				id={id}
-				onChange={onChange}
-				onTextareaChange={handleTextareaChange}
-				paste={paste}
-				placeholder={placeholder}
-				value={value}
-			/>
+			<div className={INPUT_COLUMN_CLASS}>
+				<MarkdownFieldInput
+					activation={activation}
+					ariaLabel={ariaLabel}
+					id={id}
+					onChange={onChange}
+					onTextareaChange={handleTextareaChange}
+					paste={paste}
+					placeholder={placeholder}
+					value={value}
+				/>
+				<MarkdownFieldUploads
+					onRemoveRef={paste.removeUploadingRef}
+					onReturnFocus={paste.focusField}
+					text={value}
+				/>
+			</div>
 			{previewVisible ? <MarkdownPreviewPane text={value} /> : null}
 		</div>
 	);

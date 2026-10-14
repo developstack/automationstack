@@ -62,25 +62,22 @@ describe("countModules", () => {
 });
 
 describe("findModuleAncestorIds", () => {
-	it("returns the root-to-parent chain without the module itself", () => {
-		expect(findModuleAncestorIds(tree, "great")).toEqual([
-			"root",
-			"child",
-			"grand",
-		]);
-	});
-
-	it("returns an empty chain for a root module", () => {
-		expect(findModuleAncestorIds(tree, "root")).toEqual([]);
-	});
-
-	it("does not leak the failed branch when the module sits in a later subtree", () => {
-		expect(findModuleAncestorIds(tree, "other-child")).toEqual(["other"]);
-	});
-
-	it("returns an empty chain for unknown or missing ids", () => {
-		expect(findModuleAncestorIds(tree, "nope")).toEqual([]);
-		expect(findModuleAncestorIds(tree, undefined)).toEqual([]);
+	it.each([
+		[
+			"returns the root-to-parent chain without the module itself",
+			"great",
+			["root", "child", "grand"],
+		],
+		["returns an empty chain for a root module", "root", []],
+		[
+			"does not leak the failed branch when the module sits in a later subtree",
+			"other-child",
+			["other"],
+		],
+		["returns an empty chain for unknown ids", "nope", []],
+		["returns an empty chain for missing ids", undefined, []],
+	])("%s", (_name, moduleId, chain) => {
+		expect(findModuleAncestorIds(tree, moduleId)).toEqual(chain);
 	});
 });
 

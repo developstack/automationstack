@@ -7,6 +7,8 @@ import type {
 	TestRunStatus,
 } from "@automationstack/db/schema/test-runs";
 
+import type { ChangeKind } from "@/components/versions/change-kind";
+
 export type StatusTone =
 	| "danger"
 	| "info"
@@ -58,11 +60,20 @@ export const CASE_STATUS_TONES: Record<CaseStatus, StatusTone> = {
 	draft: "outline",
 };
 
-/** 条形码竖线、覆盖方格等放不下标签的图形，用这组填充色表示用例状态。 */
-export const CASE_STATUS_FILL_CLASSES: Record<CaseStatus, string> = {
-	active: "bg-success",
-	deprecated: "bg-result-skipped",
-	draft: "bg-muted-foreground",
+/** 版本对比中一处内容的变化：新增绿、删除红、修改琥珀色、移动浅蓝描边、未变灰。 */
+export const CHANGE_TONES: Record<ChangeKind, StatusTone> = {
+	added: "success",
+	modified: "warning",
+	moved: "info-outline",
+	removed: "danger",
+	unchanged: "neutral",
+};
+
+/** 圆环图等放不下标签的图形，用这组状态色表示用例状态。旁边的图例使用统一状态标签。 */
+export const CASE_STATUS_CHART_COLORS: Record<CaseStatus, string> = {
+	active: "var(--success)",
+	deprecated: "var(--result-skipped)",
+	draft: "var(--muted-foreground)",
 };
 
 export function isStrongPriority(priority: CasePriority): boolean {

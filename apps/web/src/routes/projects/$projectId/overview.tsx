@@ -16,19 +16,16 @@ const overviewLoader = async ({
 }): Promise<void> => {
 	const input = { projectId: params.projectId };
 	const { orpc, queryClient } = context;
+	const stats = orpc.projectStats;
 	await Promise.all([
-		queryClient.prefetchQuery(
-			orpc.projectStats.overview.queryOptions({ input })
-		),
-		queryClient.prefetchQuery(
-			orpc.projectStats.coverage.queryOptions({ input })
-		),
-		queryClient.prefetchQuery(
-			orpc.projectStats.staleHighPriority.queryOptions({ input })
-		),
-		queryClient.prefetchQuery(
-			orpc.projectStats.recentChanges.queryOptions({ input })
-		),
+		queryClient.prefetchQuery(stats.overview.queryOptions({ input })),
+		queryClient.prefetchQuery(stats.caseTrend.queryOptions({ input })),
+		queryClient.prefetchQuery(stats.executionCoverage.queryOptions({ input })),
+		queryClient.prefetchQuery(stats.activeRuns.queryOptions({ input })),
+		queryClient.prefetchQuery(stats.latestResults.queryOptions({ input })),
+		queryClient.prefetchQuery(stats.executionTrend.queryOptions({ input })),
+		queryClient.prefetchQuery(stats.runTrend.queryOptions({ input })),
+		queryClient.prefetchQuery(stats.coverage.queryOptions({ input })),
 	]);
 };
 

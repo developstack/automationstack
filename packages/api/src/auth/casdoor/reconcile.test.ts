@@ -145,19 +145,17 @@ describe("reconcileCasdoorUsers", () => {
 		);
 	});
 
-	it("管理员角色不存在：写 WARN，只同步禁用状态", async () => {
-		const run = deps({
-			clientFor: vi.fn(() =>
-				Promise.resolve({
-					getRole: vi.fn(() => Promise.resolve(null)),
-					listUsers: vi.fn(() => Promise.resolve([])),
-				})
-			),
-		});
+	it.each([
+		["管理员角色不存在", {}, "不修改任何角色"],
+		[
+			"项目管理员角色不存在",
+			{ [ADMIN_ROLE]: [`${ORG}/alice`] },
+			`没有角色 ${PROJECT_ADMIN_ROLE}，不修改任何角色`,
+		],
+	])("%s：写 WARN，不修改任何角色", async (_name, roles, warning) => {
+		const run = deps({}, roles);
 		await reconcileCasdoorUsers(run);
-		expect(run.log.warn).toHaveBeenCalledWith(
-			expect.stringContaining("不修改任何角色")
-		);
+		expect(run.log.warn).toHaveBeenCalledWith(expect.stringContaining(warning));
 		for (const [, changes] of vi.mocked(run.applyChange).mock.calls) {
 			expect(changes.role).toBeUndefined();
 		}
@@ -172,16 +170,5 @@ describe("reconcileCasdoorUsers", () => {
 		expect(run.applyChange).toHaveBeenCalledWith("local-alice", {
 			role: "project_admin",
 		});
-	});
-
-	it("项目管理员角色不存在：写 WARN，不修改任何角色", async () => {
-		const run = deps({}, { [ADMIN_ROLE]: [`${ORG}/alice`] });
-		await reconcileCasdoorUsers(run);
-		expect(run.log.warn).toHaveBeenCalledWith(
-			expect.stringContaining(`没有角色 ${PROJECT_ADMIN_ROLE}，不修改任何角色`)
-		);
-		for (const [, changes] of vi.mocked(run.applyChange).mock.calls) {
-			expect(changes.role).toBeUndefined();
-		}
 	});
 });

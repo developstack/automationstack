@@ -42,31 +42,23 @@ const TRANSLATIONS: [string, string][] = [
 	["not-found", "目标节点已不存在，可能已被他人删除"],
 ];
 
-describe("describeMindmapBatchReason：枚举码翻成人话", () => {
-	it.each(TRANSLATIONS)("%s", (code, expected) => {
-		expect(describeMindmapBatchReason(code)).toBe(expected);
-	});
-
-	it("翻出来的每一句都不含原始枚举码", () => {
-		for (const [code, expected] of TRANSLATIONS) {
+describe("describeMindmapBatchReason", () => {
+	it.each(TRANSLATIONS)(
+		"枚举码 %s 翻成人话，且不含原始枚举码",
+		(code, expected) => {
+			expect(describeMindmapBatchReason(code)).toBe(expected);
 			expect(expected).not.toContain(code);
 		}
-	});
-});
+	);
 
-describe("describeMindmapBatchReason：已经是人话的原因原样透出", () => {
-	it("删模块被引用挡住那句（describeModuleDeleteBlock 拼好的）不再翻一次", () => {
+	it("已经是人话的原因原样透出：删模块被引用挡住那句（describeModuleDeleteBlock 拼好的）不再翻一次", () => {
 		const blocked =
 			"模块「登录」下有 2 条用例被 1 个测试任务引用，无法删除（登录成功、登录失败）；可先把这些用例改为「废弃」状态";
-
 		expect(describeMindmapBatchReason(blocked)).toBe(blocked);
 	});
-});
 
-describe("describeMindmapBatchReason：认不出来的码不甩给用户", () => {
-	it("新增了失败分支却忘了补表时，给通用文案而不是英文枚举", () => {
+	it("认不出来的码不甩给用户：新增了失败分支却忘了补表时，给通用文案而不是英文枚举", () => {
 		const message = describeMindmapBatchReason("some-new-branch");
-
 		expect(message).not.toContain("some-new-branch");
 		expect(message).toBe("该操作被服务端拒绝");
 	});

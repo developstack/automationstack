@@ -1,142 +1,53 @@
-import { buildCaseAttachmentRef } from "@automationstack/api/lib/case-attachment-ref";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
-
-import { precheckCaseImage } from "@/components/cases/case-attachment-policy";
-import { buildCaseUploadingRef } from "@/components/cases/case-upload-placeholder";
+import { useEffect, useMemo } from "react";
+import type { CaseImageUpload } from "@/components/cases/use-case-attachment-upload";
 import {
-	CASE_IMAGE_BATCH_LIMIT,
-	type CaseImageUpload,
-} from "@/components/cases/use-case-attachment-upload";
+	type CasePasteTarget,
+	useCaseUploadCommands,
+} from "@/components/cases/use-case-upload-commands";
+import {
+	type CaseUploadJobs,
+	hasActiveCaseUploads,
+	useCaseUploadJobs,
+} from "@/components/cases/use-case-upload-jobs";
+import {
+	type LocalUrlActions,
+	useLocalImageUrls,
+} from "@/components/cases/use-local-image-urls";
 
-export interface CasePasteTarget {
-	insert: (text: string) => void;
-	replace: (from: string, to: string) => void;
-}
-
-const FALLBACK_FILE_NAME = "粘贴的图片";
-
-interface PasteJob {
-	file: File;
-	token: string;
-}
-
-interface LocalUrlActions {
-	register: (key: string, url: string) => void;
-	release: (key: string) => void;
-	rename: (from: string, to: string) => void;
-}
-
-function useLocalImageUrls() {
-	const [urls, setUrls] = useState<ReadonlyMap<string, string>>(
-		() => new Map()
-	);
-	const latest = useRef(urls);
-	latest.current = urls;
-
-	useEffect(
-		() => () => {
-			for (const url of latest.current.values()) {
-				URL.revokeObjectURL(url);
+function useMergedImageUrls(
+	serverUrls: ReadonlyMap<string, string | null>,
+	localUrls: ReadonlyMap<string, string>,
+	actions: LocalUrlActions
+): ReadonlyMap<string, string | null> {
+	useEffect(() => {
+		for (const key of localUrls.keys()) {
+			if ((serverUrls.get(key) ?? null) !== null) {
+				actions.release(key);
 			}
-		},
-		[]
-	);
-
-	const actions = useMemo<LocalUrlActions>(
-		() => ({
-			register: (key, url) => setUrls((prev) => new Map(prev).set(key, url)),
-			release: (key) => {
-				const url = latest.current.get(key);
-				if (url !== undefined) {
-					URL.revokeObjectURL(url);
-				}
-				setUrls((prev) => {
-					if (!prev.has(key)) {
-						return prev;
-					}
-					const next = new Map(prev);
-					next.delete(key);
-					return next;
-				});
-			},
-			rename: (from, to) =>
-				setUrls((prev) => {
-					const url = prev.get(from);
-					if (url === undefined) {
-						return prev;
-					}
-					const next = new Map(prev);
-					next.delete(from);
-					next.set(to, url);
-					return next;
-				}),
-		}),
-		[]
-	);
-
-	return { actions, urls };
-}
-
-function takePasteJobs(files: File[], actions: LocalUrlActions): PasteJob[] {
-	const jobs: PasteJob[] = [];
-	for (const file of files.slice(0, CASE_IMAGE_BATCH_LIMIT)) {
-		const precheck = precheckCaseImage(file);
-		if (precheck.ok) {
-			const token = crypto.randomUUID();
-			actions.register(token, URL.createObjectURL(file));
-			jobs.push({ file, token });
-		} else {
-			toast.error(`${file.name || FALLBACK_FILE_NAME}：${precheck.reason}`);
 		}
-	}
-	return jobs;
-}
+	}, [actions, serverUrls, localUrls]);
 
-async function runOneUpload(
-	job: PasteJob,
-	target: CasePasteTarget,
-	actions: LocalUrlActions,
-	upload: (files: readonly File[]) => Promise<string[]>
-) {
-	let attachmentId: string | undefined;
-	try {
-		[attachmentId] = await upload([job.file]);
-	} catch {
-		toast.error(`${job.file.name || FALLBACK_FILE_NAME}：上传失败，请重试`);
-	}
-	{
-		const placeholder = buildCaseUploadingRef(job.token);
-		if (attachmentId === undefined) {
-			actions.release(job.token);
-			target.replace(placeholder, "");
-			return;
+	return useMemo<ReadonlyMap<string, string | null>>(() => {
+		if (localUrls.size === 0) {
+			return serverUrls;
 		}
-		actions.rename(job.token, attachmentId);
-		target.replace(placeholder, buildCaseAttachmentRef(attachmentId));
-	}
-}
-
-async function runUploads(
-	jobs: readonly PasteJob[],
-	target: CasePasteTarget,
-	actions: LocalUrlActions,
-	upload: (files: readonly File[]) => Promise<string[]>
-) {
-	for (const job of jobs) {
-		// biome-ignore lint/performance/noAwaitInLoops: 串行是刻意的，理由与 use-case-attachment-upload.ts 里那条相同——预签名只有 5 分钟有效期，并发抢上行带宽会把每一个都拖到过期
-		await runOneUpload(job, target, actions, upload);
-	}
-}
-
-function reportPasteCrash() {
-	toast.error("图片上传中断，请重试");
+		const merged = new Map(serverUrls);
+		for (const [key, url] of localUrls) {
+			if ((merged.get(key) ?? null) === null) {
+				merged.set(key, url);
+			}
+		}
+		return merged;
+	}, [serverUrls, localUrls]);
 }
 
 export interface CasePasteUpload {
+	discardUpload: (token: string) => void;
 	imageUrls: ReadonlyMap<string, string | null>;
+	retryUpload: (token: string) => void;
 	uploading: boolean;
 	uploadPasted: ((files: File[], target: CasePasteTarget) => void) | null;
+	uploads: CaseUploadJobs;
 }
 
 export function useCasePasteUpload(
@@ -144,50 +55,33 @@ export function useCasePasteUpload(
 	serverUrls: ReadonlyMap<string, string | null>
 ): CasePasteUpload {
 	const { actions, urls } = useLocalImageUrls();
+	const { actions: jobActions, jobs } = useCaseUploadJobs();
 	const { storageUnavailable, upload } = uploader;
-	const [running, setRunning] = useState(0);
-
-	useEffect(() => {
-		for (const key of urls.keys()) {
-			if ((serverUrls.get(key) ?? null) !== null) {
-				actions.release(key);
-			}
-		}
-	}, [actions, serverUrls, urls]);
-
-	const imageUrls = useMemo<ReadonlyMap<string, string | null>>(() => {
-		if (urls.size === 0) {
-			return serverUrls;
-		}
-		const merged = new Map(serverUrls);
-		for (const [key, url] of urls) {
-			if ((merged.get(key) ?? null) === null) {
-				merged.set(key, url);
-			}
-		}
-		return merged;
-	}, [serverUrls, urls]);
-
-	const uploadPasted = useCallback(
-		(files: File[], target: CasePasteTarget) => {
-			const jobs = takePasteJobs(files, actions);
-			if (jobs.length === 0) {
-				return;
-			}
-			target.insert(
-				jobs.map((job) => buildCaseUploadingRef(job.token)).join("\n")
-			);
-			setRunning((count) => count + 1);
-			runUploads(jobs, target, actions, upload)
-				.catch(reportPasteCrash)
-				.finally(() => setRunning((count) => count - 1));
-		},
-		[actions, upload]
+	const imageUrls = useMergedImageUrls(serverUrls, urls, actions);
+	const { discardUpload, retryUpload, uploadPasted } = useCaseUploadCommands(
+		upload,
+		actions,
+		jobActions
 	);
+	const uploading = hasActiveCaseUploads(jobs);
 
-	return {
-		imageUrls,
-		uploading: running > 0,
-		uploadPasted: storageUnavailable ? null : uploadPasted,
-	};
+	return useMemo(
+		() => ({
+			discardUpload,
+			imageUrls,
+			retryUpload,
+			uploading,
+			uploadPasted: storageUnavailable ? null : uploadPasted,
+			uploads: jobs,
+		}),
+		[
+			discardUpload,
+			imageUrls,
+			jobs,
+			retryUpload,
+			storageUnavailable,
+			uploading,
+			uploadPasted,
+		]
+	);
 }

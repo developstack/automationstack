@@ -1,3 +1,7 @@
+import type {
+	CasePriority,
+	CaseStatus,
+} from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
 import { Separator } from "@automationstack/ui/components/separator";
 import {
@@ -12,7 +16,12 @@ import { CaseDraftNotice } from "@/components/cases/case-draft-notice";
 import { CaseDraftPicker } from "@/components/cases/case-draft-picker";
 import { CaseForm } from "@/components/cases/case-form";
 import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
+import { CaseHeaderMeta } from "@/components/cases/case-header-meta";
 import { emptyCaseFormValues } from "@/components/cases/case-meta";
+import {
+	CASE_SHEET_HEADER_CLASS,
+	CASE_SHEET_TITLE_CLASS,
+} from "@/components/cases/case-sheet-layout";
 import {
 	type CaseCreateDraft,
 	useCaseCreateDraft,
@@ -25,36 +34,46 @@ import {
 const CASE_CREATE_FORM_ID = "case-create-form";
 
 interface CaseCreateHeaderProps {
-	disabled: boolean;
+	caseId: string;
 	onCancel: () => void;
 	pending: boolean;
+	priority: CasePriority;
+	status: CaseStatus;
 	uploading: boolean;
 }
 
 function CaseCreateHeader({
-	disabled,
+	caseId,
 	onCancel,
 	pending,
+	priority,
+	status,
 	uploading,
 }: CaseCreateHeaderProps) {
 	return (
-		<SheetHeader>
-			<SheetTitle>新建用例</SheetTitle>
-			<SheetDescription>用例会创建在当前选中的模块下。</SheetDescription>
-			<div className="flex flex-wrap items-center justify-end gap-2 pt-2">
+		<SheetHeader className={CASE_SHEET_HEADER_CLASS}>
+			<CaseHeaderMeta caseId={caseId} priority={priority} status={status} />
+			<SheetTitle className={CASE_SHEET_TITLE_CLASS}>新建用例</SheetTitle>
+			<SheetDescription className="text-xs">
+				用例创建在当前选中的模块下。编号、用例状态和优先级是创建后的值。
+			</SheetDescription>
+			<div className="flex flex-wrap items-center justify-end gap-2 pt-1">
 				{uploading ? (
-					<span className="text-muted-foreground text-xs">图片上传中…</span>
+					<span className="text-muted-foreground text-xs" role="status">
+						图片上传中…
+					</span>
 				) : null}
 				<Button onClick={onCancel} size="sm" type="button" variant="ghost">
 					取消
 				</Button>
 				<Button
-					disabled={disabled}
+					disabled={uploading}
 					form={CASE_CREATE_FORM_ID}
+					pending={pending}
 					size="sm"
 					type="submit"
 				>
-					{pending ? "创建中…" : "创建"}
+					创建
 				</Button>
 			</div>
 		</SheetHeader>
@@ -64,6 +83,7 @@ function CaseCreateHeader({
 interface CaseCreateContentProps {
 	draft: CaseCreateDraft;
 	moduleId: string;
+	nameError: string | null;
 	onCancel: () => void;
 	onSubmit: () => void;
 	pending: boolean;
@@ -73,6 +93,7 @@ interface CaseCreateContentProps {
 function CaseCreateContent({
 	draft,
 	moduleId,
+	nameError,
 	onCancel,
 	onSubmit,
 	pending,
@@ -84,15 +105,14 @@ function CaseCreateContent({
 		return null;
 	}
 
-	const disabled =
-		pending || attachments.uploading || values.name.trim() === "";
-
 	return (
 		<CaseAttachmentProvider value={attachments}>
 			<CaseCreateHeader
-				disabled={disabled}
+				caseId={caseId}
 				onCancel={onCancel}
 				pending={pending}
+				priority={values.priority}
+				status={values.status}
 				uploading={attachments.uploading}
 			/>
 			<CaseDraftNotice
@@ -109,6 +129,7 @@ function CaseCreateContent({
 			<div className="min-h-0 flex-1 overflow-y-auto p-4">
 				<CaseForm
 					formId={CASE_CREATE_FORM_ID}
+					nameError={nameError ?? undefined}
 					onChange={setValues}
 					onSubmit={onSubmit}
 					values={values}
@@ -150,7 +171,7 @@ export function CaseCreateBody(props: CaseCreateBodyProps) {
 		return () => onDirtyChange(false);
 	}, [dirty, onDirtyChange]);
 
-	const handleSubmit = useCaseCreateSubmit({
+	const submit = useCaseCreateSubmit({
 		attachments,
 		caseId,
 		create,
@@ -163,8 +184,9 @@ export function CaseCreateBody(props: CaseCreateBodyProps) {
 		<CaseCreateContent
 			draft={draft}
 			moduleId={moduleId}
+			nameError={submit.nameError}
 			onCancel={onCancel}
-			onSubmit={handleSubmit}
+			onSubmit={submit.submit}
 			pending={create.isPending}
 			projectId={projectId}
 		/>

@@ -1,7 +1,8 @@
-import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { skipToken, useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
+import { CaseListError } from "@/components/cases/case-list-error";
+import { VersionViewerSkeleton } from "@/components/skeletons/version-viewer-skeleton";
 import { orpc } from "@/utils/orpc";
 
 import { diffCaseSnapshots } from "./field-diff.ts";
@@ -14,17 +15,7 @@ interface VersionViewerProps {
 	targetVersion: number;
 }
 
-function ViewerSkeleton() {
-	return (
-		<div className="flex flex-col gap-2">
-			<Skeleton className="h-5 w-32" />
-			<Skeleton className="h-24 w-full" />
-			<Skeleton className="h-32 w-full" />
-		</div>
-	);
-}
-
-export function VersionViewer({
+function useVersionSnapshots({
 	baseVersion,
 	caseId,
 	targetVersion,
@@ -40,26 +31,59 @@ export function VersionViewer({
 				baseVersion === null ? skipToken : { caseId, version: baseVersion },
 		})
 	);
+	const failedQuery = [targetQuery, baseQuery].find((query) => query.isError);
+	const refetchTarget = targetQuery.refetch;
+	const refetchBase = baseQuery.refetch;
+	// 只重新加载失败的版本
+	const retry = useCallback(
+		() =>
+			Promise.all([
+				targetQuery.isError ? refetchTarget() : null,
+				baseQuery.isError ? refetchBase() : null,
+			]),
+		[baseQuery.isError, refetchBase, refetchTarget, targetQuery.isError]
+	);
+	return {
+		base: baseQuery.data,
+		error: failedQuery?.error ?? null,
+		isFetching: targetQuery.isFetching || baseQuery.isFetching,
+		retry,
+		target: targetQuery.data,
+	};
+}
 
-	const target = targetQuery.data;
-	const base = baseQuery.data;
-	const diff = useMemo(() => {
-		if (!(base && target)) {
-			return null;
-		}
-		return diffCaseSnapshots(base.snapshot, target.snapshot);
-	}, [base, target]);
+/** 只选择一个版本时查看它的内容，选择两个版本时对比字段。 */
+export function VersionViewer(props: VersionViewerProps) {
+	const { baseVersion, caseId, targetVersion } = props;
+	const { base, error, isFetching, retry, target } = useVersionSnapshots(props);
+	const diff = useMemo(
+		() =>
+			base && target ? diffCaseSnapshots(base.snapshot, target.snapshot) : null,
+		[base, target]
+	);
 
+	if (error !== null) {
+		return (
+			<CaseListError
+				query={{ error, isFetching, refetch: retry }}
+				title="版本内容加载失败"
+			/>
+		);
+	}
 	if (!target) {
-		return <ViewerSkeleton />;
+		return <VersionViewerSkeleton />;
 	}
 	if (baseVersion === null) {
 		return (
-			<VersionSnapshotView snapshot={target.snapshot} version={targetVersion} />
+			<VersionSnapshotView
+				caseId={caseId}
+				snapshot={target.snapshot}
+				version={targetVersion}
+			/>
 		);
 	}
 	if (diff === null) {
-		return <ViewerSkeleton />;
+		return <VersionViewerSkeleton />;
 	}
 	return (
 		<VersionDiff

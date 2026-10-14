@@ -1,12 +1,12 @@
 import type { ProjectMemberView } from "@automationstack/db/repositories/project-members-repository";
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { UserRole } from "@automationstack/db/schema/users";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ProjectMembersView } from "@/components/project-members/project-members-view";
+import { renderWithQuery } from "@/test-dom-fixtures";
 
 const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
 const MEMBERS_KEY = ["projectMembers", "list", PROJECT_ID];
@@ -83,13 +83,10 @@ function renderAs(role: UserRole) {
 	const members = MEMBERS.map((row) =>
 		row.userId === SELF_ID ? { ...row, platformRole: role } : row
 	);
-	const queryClient = new QueryClient();
-	queryClient.setQueryData(MEMBERS_KEY, members);
-	render(
-		<QueryClientProvider client={queryClient}>
-			<ProjectMembersView projectId={PROJECT_ID} />
-		</QueryClientProvider>
-	);
+	renderWithQuery(<ProjectMembersView projectId={PROJECT_ID} />, [
+		MEMBERS_KEY,
+		members,
+	]);
 }
 
 function openMenuFor(username: string) {
@@ -97,10 +94,6 @@ function openMenuFor(username: string) {
 		screen.getByRole("button", { name: `成员「${username}」操作` })
 	);
 }
-
-beforeEach(() => {
-	session.role = "member";
-});
 
 describe("ProjectMembersView：管理项目必须是项目 owner，并且平台角色至少是项目管理员", () => {
 	it("项目管理员 + 项目 owner：可以添加成员", () => {
@@ -121,17 +114,18 @@ describe("ProjectMembersView：管理项目必须是项目 owner，并且平台�
 });
 
 describe("ProjectMembersView：不能把普通用户设为项目拥有者", () => {
-	it("普通用户的「设为拥有者」被禁用，并说明原因", async () => {
+	it.each([
+		[
+			"普通用户的「设为拥有者」被禁用，并说明原因",
+			"bob",
+			PROMOTE_BLOCKED,
+			true,
+		],
+		["项目管理员的「设为拥有者」可以选择", "carol", "设为拥有者", false],
+	])("%s", async (_name, username, itemName, disabled) => {
 		renderAs("project_admin");
-		openMenuFor("bob");
-		const item = await screen.findByRole("menuitem", { name: PROMOTE_BLOCKED });
-		expect(item.getAttribute("aria-disabled")).toBe("true");
-	});
-
-	it("项目管理员的「设为拥有者」可以选择", async () => {
-		renderAs("project_admin");
-		openMenuFor("carol");
-		const item = await screen.findByRole("menuitem", { name: "设为拥有者" });
-		expect(item.getAttribute("aria-disabled")).not.toBe("true");
+		openMenuFor(username);
+		const item = await screen.findByRole("menuitem", { name: itemName });
+		expect(item.getAttribute("aria-disabled") === "true").toBe(disabled);
 	});
 });

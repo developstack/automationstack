@@ -1,67 +1,36 @@
 import { SidebarProvider } from "@automationstack/ui/components/sidebar-context";
-import {
-	createMemoryHistory,
-	createRootRoute,
-	createRoute,
-	createRouter,
-	Outlet,
-	RouterProvider,
-} from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Outlet } from "@tanstack/react-router";
+import { screen, within } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 
 import { ProjectNavGroup } from "@/components/layout/project-nav-group";
+import { renderRoutes, stubMatchMedia } from "@/test-dom-fixtures";
 
 const PROJECT_ID = "p1";
 
-// jsdom 没有 matchMedia；SidebarProvider 用它判断窄屏
-function stubMatchMedia() {
-	vi.stubGlobal("matchMedia", (query: string) => ({
-		addEventListener: () => undefined,
-		matches: false,
-		media: query,
-		removeEventListener: () => undefined,
-	}));
-}
+stubMatchMedia();
 
 async function renderNav() {
-	const rootRoute = createRootRoute({
-		component: () => (
+	renderRoutes({
+		initialPath: `/projects/${PROJECT_ID}/test-runs`,
+		layout: () => (
 			<SidebarProvider>
 				<ProjectNavGroup projectId={PROJECT_ID} />
 				<Outlet />
 			</SidebarProvider>
 		),
+		routes: { "/projects/$projectId/test-runs": () => <p>页面</p> },
 	});
-	const pageRoute = createRoute({
-		component: () => <p>页面</p>,
-		getParentRoute: () => rootRoute,
-		path: "/projects/$projectId/test-runs",
-	});
-	const router = createRouter({
-		history: createMemoryHistory({
-			initialEntries: [`/projects/${PROJECT_ID}/test-runs`],
-		}),
-		routeTree: rootRoute.addChildren([pageRoute]),
-	});
-	render(<RouterProvider router={router} />);
 	await screen.findByText("页面");
 }
 
 describe("ProjectNavGroup：项目侧栏导航", () => {
-	beforeEach(stubMatchMedia);
-	afterEach(() => vi.unstubAllGlobals());
-
-	it("只有一个列表，顺序是项目概览、用例管理、测试任务、成员、设置", async () => {
+	it("只有一个列表，顺序是项目概览、用例管理、测试任务、成员、设置；没有「工作」「项目」小标题", async () => {
 		await renderNav();
 		const names = within(screen.getByRole("list"))
 			.getAllByRole("link")
 			.map((link) => link.getAttribute("aria-label"));
 		expect(names).toEqual(["项目概览", "用例管理", "测试任务", "成员", "设置"]);
-	});
-
-	it("没有「工作」「项目」小标题", async () => {
-		await renderNav();
 		expect(screen.queryByText("工作")).toBeNull();
 		expect(screen.queryByText("项目")).toBeNull();
 	});

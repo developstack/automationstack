@@ -154,20 +154,19 @@ function without(excluded: string): Set<string> {
 	return new Set(ids.filter((id) => !dropped.includes(id)));
 }
 
-test("向下每按一次恰好推进一个落点，不重复也不跳过", () => {
-	const visited = expectPath(
+test.each([
+	[
+		"向下每按一次恰好推进一个落点，不重复也不跳过",
 		"ArrowDown",
-		"before:d inside:d before:e inside:e before:f inside:f before:g inside:g before:h inside:h root-end"
-	);
-	expect(consecutiveRepeats(visited)).toEqual([]);
-});
-
-test("向上是向下的镜像，同样不重复不跳过", () => {
-	const visited = expectPath(
+		"before:d inside:d before:e inside:e before:f inside:f before:g inside:g before:h inside:h root-end",
+	],
+	[
+		"向上是向下的镜像，同样不重复不跳过",
 		"ArrowUp",
-		"before:d inside:b before:b inside:a before:a"
-	);
-	expect(consecutiveRepeats(visited)).toEqual([]);
+		"before:d inside:b before:b inside:a before:a",
+	],
+])("%s", (_name, code, path) => {
+	expect(consecutiveRepeats(expectPath(code, path))).toEqual([]);
 });
 
 test("走到序列尾部后停住，不回绕也不越界", () => {

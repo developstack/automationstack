@@ -1,30 +1,49 @@
-import { getRecentChanges } from "@automationstack/db/repositories/project-stats-activity";
 import { getProjectCoverageStats } from "@automationstack/db/repositories/project-stats-coverage";
 import {
-	getProjectOverviewStats,
-	getStaleHighPriorityStats,
-} from "@automationstack/db/repositories/project-stats-repository";
+	getExecutionCoverage,
+	getLatestResults,
+} from "@automationstack/db/repositories/project-stats-execution";
+import { getProjectOverviewStats } from "@automationstack/db/repositories/project-stats-repository";
+import { getActiveRuns } from "@automationstack/db/repositories/project-stats-runs";
+import {
+	getCaseTrend,
+	getExecutionTrend,
+	getRunTrend,
+} from "@automationstack/db/repositories/project-stats-trend";
 import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
 
 const projectStatsInputSchema = z.object({ projectId: z.uuid() });
 
+/** 项目统计都是只读查询，输入只有 projectId，只有项目成员可以查询。 */
+const projectStatsProcedure = protectedProcedure
+	.input(projectStatsInputSchema)
+	.use(requireProjectMember);
+
 export const projectStatsRouter = {
-	coverage: protectedProcedure
-		.input(projectStatsInputSchema)
-		.use(requireProjectMember)
-		.handler(({ input }) => getProjectCoverageStats(input.projectId)),
-	overview: protectedProcedure
-		.input(projectStatsInputSchema)
-		.use(requireProjectMember)
-		.handler(({ input }) => getProjectOverviewStats(input.projectId)),
-	recentChanges: protectedProcedure
-		.input(projectStatsInputSchema)
-		.use(requireProjectMember)
-		.handler(({ input }) => getRecentChanges(input.projectId)),
-	staleHighPriority: protectedProcedure
-		.input(projectStatsInputSchema)
-		.use(requireProjectMember)
-		.handler(({ input }) => getStaleHighPriorityStats(input.projectId)),
+	activeRuns: projectStatsProcedure.handler(({ input }) =>
+		getActiveRuns(input.projectId)
+	),
+	caseTrend: projectStatsProcedure.handler(({ input }) =>
+		getCaseTrend(input.projectId)
+	),
+	coverage: projectStatsProcedure.handler(({ input }) =>
+		getProjectCoverageStats(input.projectId)
+	),
+	executionCoverage: projectStatsProcedure.handler(({ input }) =>
+		getExecutionCoverage(input.projectId)
+	),
+	executionTrend: projectStatsProcedure.handler(({ input }) =>
+		getExecutionTrend(input.projectId)
+	),
+	latestResults: projectStatsProcedure.handler(({ input }) =>
+		getLatestResults(input.projectId)
+	),
+	overview: projectStatsProcedure.handler(({ input }) =>
+		getProjectOverviewStats(input.projectId)
+	),
+	runTrend: projectStatsProcedure.handler(({ input }) =>
+		getRunTrend(input.projectId)
+	),
 };

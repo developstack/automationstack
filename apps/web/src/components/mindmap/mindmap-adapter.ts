@@ -3,8 +3,7 @@ import type {
 	CaseStatus,
 	CaseStep,
 } from "@automationstack/db/schema/test-cases";
-import type { MindElixirData, NodeObj, TagObj } from "mind-elixir";
-import { isStrongPriority } from "@/components/status/status-badge-meta";
+import type { MindElixirData, NodeObj } from "mind-elixir";
 import { type MindmapBudgetPlan, planMindmapRender } from "./mindmap-budget.ts";
 import { sortByOrder } from "./mindmap-cache-order.ts";
 import {
@@ -19,6 +18,7 @@ import {
 	type MindmapNodeKind,
 	type MindmapNodeRef,
 } from "./mindmap-node-id.ts";
+import { buildCaseTags } from "./mindmap-tags.ts";
 
 export interface MindmapCaseInput {
 	id: string;
@@ -54,25 +54,6 @@ export type MindmapNode = NodeObj<MindmapNodeMeta>;
 export interface MindmapEntityRef {
 	id: string;
 	kind: "case" | "module";
-}
-
-// 和 StatusBadge 的 font-semibold、font-normal 一致
-const STRONG_PRIORITY_FONT_WEIGHT = "600";
-const REGULAR_PRIORITY_FONT_WEIGHT = "400";
-
-// 和 StatusBadge 的优先级样式一致：不用颜色，等宽字体，只有 P0 加粗
-export function buildPriorityTag(priority: CasePriority): TagObj {
-	return {
-		style: {
-			background: "transparent",
-			color: "var(--foreground)",
-			fontFamily: "var(--font-mono)",
-			fontWeight: isStrongPriority(priority)
-				? STRONG_PRIORITY_FONT_WEIGHT
-				: REGULAR_PRIORITY_FONT_WEIGHT,
-		},
-		text: priority,
-	};
 }
 
 function groupCasesByModule(
@@ -122,7 +103,7 @@ function toCaseNode(caseInput: MindmapCaseInput): MindmapNode {
 	const node: MindmapNode = {
 		id: encodeCaseNodeId(caseInput.id),
 		metadata: { allowChildren: false, kind: "case" },
-		tags: [buildPriorityTag(caseInput.priority)],
+		tags: buildCaseTags(caseInput.status, caseInput.priority),
 		topic: caseInput.name,
 	};
 	const steps = caseInput.steps.map((step, index) =>

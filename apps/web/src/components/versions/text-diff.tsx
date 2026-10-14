@@ -1,11 +1,7 @@
 import { cn } from "@automationstack/ui/lib/utils";
 
+import { DiffMark } from "./diff-mark.tsx";
 import type { TextDiffSegment, TextDiffSegmentKind } from "./diff-segments.ts";
-
-export const ADDED_TEXT_CLASS =
-	"bg-emerald-500/15 text-emerald-700 no-underline dark:text-emerald-300";
-export const REMOVED_TEXT_CLASS =
-	"bg-rose-500/15 text-rose-700 line-through dark:text-rose-300";
 
 interface KeyedSegment {
 	key: string;
@@ -28,13 +24,10 @@ function keySegments(segments: readonly TextDiffSegment[]): KeyedSegment[] {
 }
 
 function DiffSegment({ segment }: { segment: KeyedSegment }) {
-	if (segment.kind === "added") {
-		return <ins className={ADDED_TEXT_CLASS}>{segment.text}</ins>;
+	if (segment.kind === "unchanged") {
+		return <span>{segment.text}</span>;
 	}
-	if (segment.kind === "removed") {
-		return <del className={REMOVED_TEXT_CLASS}>{segment.text}</del>;
-	}
-	return <span>{segment.text}</span>;
+	return <DiffMark kind={segment.kind}>{segment.text}</DiffMark>;
 }
 
 interface TextDiffProps {
@@ -49,7 +42,7 @@ export function TextDiff({ className, emptyText, segments }: TextDiffProps) {
 	);
 	if (keyed.length === 0) {
 		return (
-			<span className="text-muted-foreground text-xs">
+			<span className="text-muted-foreground text-sm">
 				{emptyText ?? "（空）"}
 			</span>
 		);
@@ -57,7 +50,7 @@ export function TextDiff({ className, emptyText, segments }: TextDiffProps) {
 	return (
 		<p
 			className={cn(
-				"whitespace-pre-wrap break-words text-xs leading-relaxed",
+				"whitespace-pre-wrap break-words text-sm leading-relaxed",
 				className
 			)}
 		>

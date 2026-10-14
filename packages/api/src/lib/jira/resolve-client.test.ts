@@ -27,38 +27,35 @@ async function makeConfig(): Promise<JiraConfig> {
 	};
 }
 
-test("没有配置行时返回 unconfigured，不抛异常", async () => {
-	await expect(resolveJiraClientFromConfig(null, MASTER_KEY)).resolves.toEqual({
-		kind: "unconfigured",
-	});
-});
+test.each([
+	["主密钥已配", MASTER_KEY],
+	["主密钥缺失也照样是", undefined],
+])(
+	"没有配置行时（%s）返回 unconfigured，不抛异常",
+	async (_name, masterKey) => {
+		await expect(resolveJiraClientFromConfig(null, masterKey)).resolves.toEqual(
+			{
+				kind: "unconfigured",
+			}
+		);
+	}
+);
 
-test("没有配置行时，主密钥缺失也照样是 unconfigured", async () => {
-	await expect(resolveJiraClientFromConfig(null, undefined)).resolves.toEqual({
-		kind: "unconfigured",
-	});
-});
-
-test("配过但主密钥没配：credentials-unavailable，且与未配置区分得开", async () => {
-	const resolution = await resolveJiraClientFromConfig(
-		await makeConfig(),
-		undefined
-	);
-	expect(resolution).toEqual({
-		kind: "credentials-unavailable",
-		reason: "master-key-missing",
-	});
-});
-
-test("主密钥被换过：undecryptable，提示管理员重填而不是当成没配", async () => {
-	const resolution = await resolveJiraClientFromConfig(
-		await makeConfig(),
-		OTHER_KEY
-	);
-	expect(resolution).toEqual({
-		kind: "credentials-unavailable",
-		reason: "undecryptable",
-	});
+test.each([
+	[
+		"配过但主密钥没配：credentials-unavailable，且与未配置区分得开",
+		undefined,
+		"master-key-missing",
+	],
+	[
+		"主密钥被换过：undecryptable，提示管理员重填而不是当成没配",
+		OTHER_KEY,
+		"undecryptable",
+	],
+])("%s", async (_name, masterKey, reason) => {
+	await expect(
+		resolveJiraClientFromConfig(await makeConfig(), masterKey)
+	).resolves.toEqual({ kind: "credentials-unavailable", reason });
 });
 
 test("密钥对得上时构造出客户端，并带上配置里的 project key 与 issue type", async () => {

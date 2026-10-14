@@ -1,48 +1,55 @@
 import { Badge } from "@automationstack/ui/components/badge";
 
+import { DiffMark, type DiffMarkKind } from "./diff-mark.tsx";
 import type { TagsDiff } from "./field-diff.ts";
+import { VersionSection } from "./version-section.tsx";
 
-function TagBadges({
+const TAG_SIGN: Record<DiffMarkKind, string> = { added: "+", removed: "−" };
+
+const TAG_MARK_CLASS =
+	"inline-flex h-5 items-center gap-0.5 rounded-md border border-current/20 px-1.5 text-xs";
+
+function TagMarks({
+	kind,
 	tags,
-	tone,
 }: {
+	kind: DiffMarkKind;
 	tags: readonly string[];
-	tone: "add" | "del";
 }) {
-	const unique = [...new Set(tags)];
-	const className =
-		tone === "add"
-			? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-			: "border-rose-500/40 bg-rose-500/10 text-rose-700 line-through dark:text-rose-300";
 	return (
 		<>
-			{unique.map((tag) => (
-				<Badge className={className} key={`${tone}:${tag}`} variant="outline">
-					{tone === "add" ? "+" : "−"} {tag}
-				</Badge>
+			{[...new Set(tags)].map((tag) => (
+				<DiffMark className={TAG_MARK_CLASS} key={`${kind}:${tag}`} kind={kind}>
+					<span aria-hidden="true">{TAG_SIGN[kind]}</span>
+					<span>{tag}</span>
+				</DiffMark>
 			))}
 		</>
 	);
 }
 
+/** 标签的对比：删除的标签带「−」和删除线，新增的标签带「+」和下划线，其余标签不变。 */
 export function TagsSection({ tags }: { tags: TagsDiff }) {
 	const hasAny = tags.added.length + tags.removed.length + tags.kept.length > 0;
 	return (
-		<section className="flex flex-col gap-1.5">
-			<h4 className="font-medium text-muted-foreground text-xs">标签</h4>
+		<VersionSection title="标签">
 			{hasAny ? (
 				<div className="flex flex-wrap items-center gap-1.5">
-					<TagBadges tags={tags.removed} tone="del" />
-					<TagBadges tags={tags.added} tone="add" />
-					{tags.kept.map((tag) => (
-						<Badge key={`kept:${tag}`} variant="secondary">
+					<TagMarks kind="removed" tags={tags.removed} />
+					<TagMarks kind="added" tags={tags.added} />
+					{[...new Set(tags.kept)].map((tag) => (
+						<Badge
+							className="font-normal"
+							key={`kept:${tag}`}
+							variant="outline"
+						>
 							{tag}
 						</Badge>
 					))}
 				</div>
 			) : (
-				<span className="text-muted-foreground text-xs">无标签</span>
+				<p className="text-muted-foreground text-sm">没有标签。</p>
 			)}
-		</section>
+		</VersionSection>
 	);
 }

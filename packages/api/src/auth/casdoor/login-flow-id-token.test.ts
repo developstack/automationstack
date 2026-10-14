@@ -202,62 +202,53 @@ describe("completeCasdoorLogin：ID token 校验（真实 openid-client）", () 
 		expect(urls).toContain(`${INTERNAL}/.well-known/jwks`);
 	});
 
-	it("payload 被篡改（签名不变）：token-failed，不写用户", async () => {
-		const { result, warning } = await runCallback((nonce) =>
-			tamperPayload(signJwt(claimsFor(nonce), casdoorKey.privateKey), {
-				roles: [
-					{
-						isEnabled: true,
-						name: "automationstack-admin",
-						owner: "automationstack",
-					},
-				],
-			})
-		);
+	it.each([
+		[
+			"payload 被篡改（签名不变）",
+			(nonce: string) =>
+				tamperPayload(signJwt(claimsFor(nonce), casdoorKey.privateKey), {
+					roles: [
+						{
+							isEnabled: true,
+							name: "automationstack-admin",
+							owner: "automationstack",
+						},
+					],
+				}),
+			SIGNATURE_FAILED,
+		],
+		[
+			"用其他密钥签名",
+			(nonce: string) => signJwt(claimsFor(nonce), attackerKey.privateKey),
+			SIGNATURE_FAILED,
+		],
+		[
+			"iss 不是公网地址",
+			(nonce: string) =>
+				signJwt(
+					{ ...claimsFor(nonce), iss: "https://other.example.com" },
+					casdoorKey.privateKey
+				),
+			ISS_REJECTED,
+		],
+		[
+			"aud 不是本系统的 client id",
+			(nonce: string) =>
+				signJwt(
+					{ ...claimsFor(nonce), aud: "another-client" },
+					casdoorKey.privateKey
+				),
+			AUD_REJECTED,
+		],
+		[
+			"nonce 不对",
+			() => signJwt(claimsFor("another-nonce"), casdoorKey.privateKey),
+			NONCE_REJECTED,
+		],
+	])("%s：token-failed，不写用户", async (_name, idTokenFor, rejection) => {
+		const { result, warning } = await runCallback(idTokenFor);
 		expect(result.errorCode).toBe("token-failed");
-		expect(warning).toMatch(SIGNATURE_FAILED);
-		expect(mocks.upsert).not.toHaveBeenCalled();
-	});
-
-	it("用其他密钥签名：token-failed，不写用户", async () => {
-		const { result, warning } = await runCallback((nonce) =>
-			signJwt(claimsFor(nonce), attackerKey.privateKey)
-		);
-		expect(result.errorCode).toBe("token-failed");
-		expect(warning).toMatch(SIGNATURE_FAILED);
-		expect(mocks.upsert).not.toHaveBeenCalled();
-	});
-
-	it("iss 不是公网地址：token-failed，不写用户", async () => {
-		const { result, warning } = await runCallback((nonce) =>
-			signJwt(
-				{ ...claimsFor(nonce), iss: "https://other.example.com" },
-				casdoorKey.privateKey
-			)
-		);
-		expect(result.errorCode).toBe("token-failed");
-		expect(warning).toMatch(ISS_REJECTED);
-		expect(mocks.upsert).not.toHaveBeenCalled();
-	});
-
-	it("aud 不是本系统的 client id：token-failed，不写用户", async () => {
-		const { result, warning } = await runCallback((nonce) =>
-			signJwt(
-				{ ...claimsFor(nonce), aud: "another-client" },
-				casdoorKey.privateKey
-			)
-		);
-		expect(result.errorCode).toBe("token-failed");
-		expect(warning).toMatch(AUD_REJECTED);
-		expect(mocks.upsert).not.toHaveBeenCalled();
-	});
-
-	it("nonce 不对：token-failed，不写用户", async () => {
-		const { result, warning } = await runCallback(() =>
-			signJwt(claimsFor("another-nonce"), casdoorKey.privateKey)
-		);
-		expect(result.errorCode).toBe("token-failed");
-		expect(warning).toMatch(NONCE_REJECTED);
+		expect(warning).toMatch(rejection);
 		expect(mocks.upsert).not.toHaveBeenCalled();
 	});
 });

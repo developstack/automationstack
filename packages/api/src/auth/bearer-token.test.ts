@@ -6,73 +6,52 @@ import { parseBearerToken } from "./bearer-token";
 const VALID_TOKEN = "as_9xK3mQ7vLp2ZtR8yBn4WcF6dH1jS5aG0eU-uI_oPzQw";
 
 describe("parseBearerToken", () => {
-	it("认标准的 Bearer 头", () => {
-		expect(parseBearerToken(`Bearer ${VALID_TOKEN}`)).toBe(VALID_TOKEN);
+	it.each([
+		["认标准的 Bearer 头", `Bearer ${VALID_TOKEN}`],
+		[
+			"scheme 小写照样认：RFC 7235 规定 scheme 大小写不敏感",
+			`bearer ${VALID_TOKEN}`,
+		],
+		["scheme 全大写照样认", `BEARER ${VALID_TOKEN}`],
+		["scheme 与 token 之间多个空格不影响", `Bearer    ${VALID_TOKEN}`],
+		[
+			"尾随换行要被吃掉：从文件里复制 token 时带上它是常态",
+			`Bearer ${VALID_TOKEN}\n`,
+		],
+		["整个头两端的空白不影响", `  Bearer ${VALID_TOKEN}  `],
+	])("%s", (_name, header) => {
+		expect(parseBearerToken(header)).toBe(VALID_TOKEN);
 	});
 
-	it("scheme 小写照样认：RFC 7235 规定 scheme 大小写不敏感", () => {
-		expect(parseBearerToken(`bearer ${VALID_TOKEN}`)).toBe(VALID_TOKEN);
-	});
-
-	it("scheme 全大写照样认", () => {
-		expect(parseBearerToken(`BEARER ${VALID_TOKEN}`)).toBe(VALID_TOKEN);
-	});
-
-	it("scheme 与 token 之间多个空格不影响", () => {
-		expect(parseBearerToken(`Bearer    ${VALID_TOKEN}`)).toBe(VALID_TOKEN);
-	});
-
-	it("尾随换行要被吃掉：从文件里复制 token 时带上它是常态", () => {
-		expect(parseBearerToken(`Bearer ${VALID_TOKEN}\n`)).toBe(VALID_TOKEN);
-	});
-
-	it("整个头两端的空白不影响", () => {
-		expect(parseBearerToken(`  Bearer ${VALID_TOKEN}  `)).toBe(VALID_TOKEN);
-	});
-
-	it("没带头时返回 null，而不是抛异常", () => {
-		expect(parseBearerToken(null)).toBeNull();
-		expect(parseBearerToken(undefined)).toBeNull();
-		expect(parseBearerToken("")).toBeNull();
-	});
-
-	it("只有空白的头返回 null", () => {
-		expect(parseBearerToken("   ")).toBeNull();
-	});
-
-	it("别的认证 scheme 一律不认", () => {
-		expect(parseBearerToken("Basic dXNlcjpwYXNz")).toBeNull();
-	});
-
-	it("scheme 只是前缀相同也不认：Bearerish 不是 Bearer", () => {
-		expect(parseBearerToken(`Bearerish ${VALID_TOKEN}`)).toBeNull();
-	});
-
-	it("只有 Bearer 没有 token 返回 null", () => {
-		expect(parseBearerToken("Bearer")).toBeNull();
-		expect(parseBearerToken("Bearer   ")).toBeNull();
-	});
-
-	it("不以 as_ 开头的串不认：形状不对就不值得查一次库", () => {
-		expect(parseBearerToken("Bearer sk-1234567890abcdefghij")).toBeNull();
-	});
-
-	it("字符集越界的串不认", () => {
-		expect(
-			parseBearerToken("Bearer as_短短短短短短短短短短短短短短短短短")
-		).toBeNull();
-		expect(
-			parseBearerToken(`Bearer ${VALID_TOKEN.replace("9", "$")}`)
-		).toBeNull();
-	});
-
-	it("token 里夹了空格不认：那多半是把两个值粘一起了", () => {
-		expect(parseBearerToken(`Bearer ${VALID_TOKEN} extra`)).toBeNull();
-	});
-
-	it("主体太短不认：as_ 后面得真有东西", () => {
-		expect(parseBearerToken("Bearer as_")).toBeNull();
-		expect(parseBearerToken("Bearer as_abc")).toBeNull();
+	it.each([
+		["没带头（null）时返回 null，而不是抛异常", null],
+		["没带头（undefined）时返回 null", undefined],
+		["空头返回 null", ""],
+		["只有空白的头返回 null", "   "],
+		["别的认证 scheme 一律不认", "Basic dXNlcjpwYXNz"],
+		[
+			"scheme 只是前缀相同也不认：Bearerish 不是 Bearer",
+			`Bearerish ${VALID_TOKEN}`,
+		],
+		["只有 Bearer 没有 token 返回 null", "Bearer"],
+		["Bearer 后面只有空白返回 null", "Bearer   "],
+		[
+			"不以 as_ 开头的串不认：形状不对就不值得查一次库",
+			"Bearer sk-1234567890abcdefghij",
+		],
+		[
+			"字符集越界的串不认：非 ASCII",
+			"Bearer as_短短短短短短短短短短短短短短短短短",
+		],
+		["字符集越界的串不认：$", `Bearer ${VALID_TOKEN.replace("9", "$")}`],
+		[
+			"token 里夹了空格不认：那多半是把两个值粘一起了",
+			`Bearer ${VALID_TOKEN} extra`,
+		],
+		["主体太短不认：as_ 后面得真有东西", "Bearer as_"],
+		["主体太短不认：as_abc", "Bearer as_abc"],
+	])("%s", (_name, header) => {
+		expect(parseBearerToken(header)).toBeNull();
 	});
 
 	it("真正 generateApiToken() 生成的明文能被原样取出", async () => {

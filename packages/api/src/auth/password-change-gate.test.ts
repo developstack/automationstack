@@ -3,6 +3,7 @@ import { call, ORPCError } from "@orpc/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { protectedProcedure } from "../index";
+import { callContext, testUser } from "../test-fixtures";
 import {
 	isBlockedByPasswordChange,
 	isPasswordChangeExempt,
@@ -14,34 +15,13 @@ vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 	getProjectRole: vi.fn(),
 }));
 
-const baseUser: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "11111111-1111-4111-8111-111111111111",
-	mustChangePassword: false,
-	passwordHash: "hash",
-	role: "admin",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "admin",
-};
-
-const mustChange: User = { ...baseUser, mustChangePassword: true };
-
-function contextFor(user: User | null) {
-	return {
-		actor: user === null ? null : { clientId: "test", name: user.username },
-		cookies: [] as string[],
-		secure: false,
-		user,
-	};
-}
+const baseUser = testUser();
+const mustChange = testUser({ mustChangePassword: true });
 
 const probe = protectedProcedure.handler(() => "ok");
 
 function callAs(user: User | null, path: string[]) {
-	return call(probe, undefined, { context: contextFor(user), path });
+	return call(probe, undefined, { context: callContext(user), path });
 }
 
 describe("isPasswordChangeExempt", () => {

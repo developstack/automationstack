@@ -44,6 +44,13 @@ export const STATUS_VALUES: readonly CaseStatus[] = [
 	"draft",
 ];
 
+/** 按用例状态的生命周期排列：草稿、生效、废弃。筛选栏按这个顺序显示。 */
+export const STATUS_LIFECYCLE: readonly CaseStatus[] = [
+	"draft",
+	"active",
+	"deprecated",
+];
+
 export const CASE_TYPE_VALUES: readonly CaseType[] = [
 	"compatibility",
 	"functional",

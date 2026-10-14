@@ -110,24 +110,18 @@ describe("checkModuleDeleteBlock", () => {
 	});
 
 	it("returns a structured block carrying counts, the module and named cases", async () => {
+		const sample = [
+			{ id: "case-a", name: "登录成功" },
+			{ id: "case-b", name: "登录失败" },
+		];
 		const { tx } = createFakeTx({
-			sample: [
-				{ id: "case-a", name: "登录成功" },
-				{ id: "case-b", name: "登录失败" },
-			],
+			sample,
 			subtreeIds: [ROOT_ID, CHILD_ID],
 			totals: [{ caseCount: 5, runCount: 2 }],
 		});
-		const blocked = await checkModuleDeleteBlock(tx, ROOT_MODULE);
-		expect(blocked).not.toBeNull();
-		expect(blocked?.kind).toBe("blocked");
-		expect(blocked?.referencedCaseCount).toBe(5);
-		expect(blocked?.referencedByRunCount).toBe(2);
-		expect(blocked?.module.id).toBe(ROOT_ID);
-		expect(blocked?.blockedCases.map((item) => item.name)).toEqual([
-			"登录成功",
-			"登录失败",
-		]);
+		expect(await checkModuleDeleteBlock(tx, ROOT_MODULE)).toEqual(
+			blockedFixture({ blockedCases: sample, referencedCaseCount: 5 })
+		);
 	});
 
 	it("filters by every id in the subtree, not just the module itself", async () => {
@@ -136,10 +130,9 @@ describe("checkModuleDeleteBlock", () => {
 			totals: [{ caseCount: 0, runCount: 0 }],
 		});
 		await checkModuleDeleteBlock(tx, ROOT_MODULE);
-		const bound = conditionStrings(whereConditions[0]);
-		expect(bound).toContain(ROOT_ID);
-		expect(bound).toContain(CHILD_ID);
-		expect(bound).toContain(GRANDCHILD_ID);
+		expect(conditionStrings(whereConditions[0])).toEqual(
+			expect.arrayContaining([ROOT_ID, CHILD_ID, GRANDCHILD_ID])
+		);
 	});
 
 	it("skips the reference query when the subtree came back empty", async () => {

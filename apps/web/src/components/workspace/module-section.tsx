@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { NetworkIcon, PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { createRootButtonAttributes } from "@/components/workspace/module-tree-focus";
 import { clearModuleSelection } from "@/components/workspace/workspace-search";
 
 const HEADING_ID = "workspace-module-section-heading";
@@ -13,6 +14,7 @@ interface ModuleSectionProps {
 	projectId: string;
 }
 
+/** 模块区域：小标签「模块」，右侧是全项目脑图和新建根模块。 */
 export function ModuleSection({
 	children,
 	onCreateRoot,
@@ -20,11 +22,8 @@ export function ModuleSection({
 }: ModuleSectionProps) {
 	return (
 		<section aria-labelledby={HEADING_ID} className="flex flex-col gap-1">
-			<div className="flex items-center justify-between px-2">
-				<h2
-					className="font-medium text-muted-foreground text-xs"
-					id={HEADING_ID}
-				>
+			<div className="flex min-h-7 items-center justify-between ps-2">
+				<h2 className="eyebrow" id={HEADING_ID}>
 					模块
 				</h2>
 				<div className="flex items-center">
@@ -39,15 +38,17 @@ export function ModuleSection({
 						search={clearModuleSelection}
 						to="/projects/$projectId/mindmap"
 					>
-						<NetworkIcon />
+						<NetworkIcon aria-hidden="true" />
 					</Link>
 					<Button
 						aria-label="新建根模块"
+						className="text-muted-foreground"
 						onClick={onCreateRoot}
 						size="icon-xs"
 						variant="ghost"
+						{...createRootButtonAttributes}
 					>
-						<PlusIcon />
+						<PlusIcon aria-hidden="true" />
 					</Button>
 				</div>
 			</div>

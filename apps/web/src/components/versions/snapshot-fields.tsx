@@ -1,36 +1,24 @@
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
-import type { ReactNode } from "react";
 
 import { CASE_TYPE_LABELS } from "@/components/cases/case-meta";
 import { StatusBadge } from "@/components/status/status-badge";
 
-const EMPTY_VALUE = "—";
+import { SnapshotField } from "./snapshot-field.tsx";
 
-interface SnapshotFieldProps {
-	children: ReactNode;
-	label: string;
-}
+const EMPTY_VALUE = <span className="text-muted-foreground">—</span>;
 
-function SnapshotField({ children, label }: SnapshotFieldProps) {
-	return (
-		<div className="flex items-start gap-2 py-1">
-			<dt className="w-16 shrink-0 text-muted-foreground text-xs">{label}</dt>
-			<dd className="min-w-0 flex-1 break-words text-xs">{children}</dd>
-		</div>
-	);
-}
-
+/** 一个版本的字段。字段的名称和顺序与版本对比相同。 */
 export function SnapshotFields({ snapshot }: { snapshot: CaseSnapshot }) {
 	return (
-		<dl className="divide-y">
+		<dl className="divide-y rounded-lg border px-3">
 			<SnapshotField label="名称">{snapshot.name}</SnapshotField>
 			<SnapshotField label="优先级">
 				<StatusBadge kind="priority" value={snapshot.priority} />
 			</SnapshotField>
-			<SnapshotField label="状态">
+			<SnapshotField label="用例状态">
 				<StatusBadge kind="caseStatus" value={snapshot.status} />
 			</SnapshotField>
-			<SnapshotField label="类型">
+			<SnapshotField label="用例类型">
 				{CASE_TYPE_LABELS[snapshot.caseType]}
 			</SnapshotField>
 			<SnapshotField label="维护人">

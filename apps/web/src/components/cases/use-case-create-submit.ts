@@ -8,8 +8,10 @@ import {
 } from "@/components/cases/case-submit-checks";
 import type { CaseDraftAttachments } from "@/components/cases/use-case-draft-attachments";
 import { useCreateCase } from "@/components/cases/use-case-mutations";
+import { useCaseNameCheck } from "@/components/cases/use-case-name-check";
 
-const UPLOADING_MESSAGE = "还有图片正在上传，等它传完再创建。";
+const UPLOADING_MESSAGE =
+	"还有图片没有上传完成。等上传结束，或者在编辑区下方重试、移除上传失败的图片，再创建。";
 
 export type CaseCreateMutation = ReturnType<typeof useCreateCase>;
 
@@ -51,11 +53,23 @@ export interface CaseCreateSubmitInput {
 	values: CaseFormValues;
 }
 
-export function useCaseCreateSubmit(input: CaseCreateSubmitInput): () => void {
-	const { attachments, caseId, create, moduleId, projectId, values } = input;
+export interface CaseCreateSubmit {
+	/** 名称字段旁边显示的错误。没有错误时为 null。 */
+	nameError: string | null;
+	submit: () => void;
+}
 
-	return useCallback(() => {
-		if (caseId === null || values.name.trim() === "") {
+export function useCaseCreateSubmit(
+	input: CaseCreateSubmitInput
+): CaseCreateSubmit {
+	const { attachments, caseId, create, moduleId, projectId, values } = input;
+	const { check: checkName, errorFor: nameErrorFor } = useCaseNameCheck();
+
+	const submit = useCallback(() => {
+		if (caseId === null) {
+			return;
+		}
+		if (!checkName(values)) {
 			return;
 		}
 		if (hasUnfinishedCaseUploads(values)) {
@@ -69,5 +83,15 @@ export function useCaseCreateSubmit(input: CaseCreateSubmitInput): () => void {
 			moduleId,
 			projectId,
 		});
-	}, [attachments.pending, caseId, create, moduleId, projectId, values]);
+	}, [
+		attachments.pending,
+		caseId,
+		checkName,
+		create,
+		moduleId,
+		projectId,
+		values,
+	]);
+
+	return { nameError: nameErrorFor(values), submit };
 }

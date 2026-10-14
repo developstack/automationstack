@@ -3,7 +3,6 @@ import type { NodeObj } from "mind-elixir";
 import { describe, expect, it } from "vitest";
 
 import {
-	buildPriorityTag,
 	canHaveChildren,
 	getContainerNodeRef,
 	getEntityNodeRef,
@@ -18,6 +17,7 @@ import {
 	encodeProjectNodeId,
 	encodeStepNodeId,
 } from "./mindmap-node-id.ts";
+import { buildCaseStatusTag, buildPriorityTag } from "./mindmap-tags.ts";
 
 const PROJECT_ID = "project-1";
 const MODULE_ID = "module-1";
@@ -103,30 +103,17 @@ describe("case node collapse and child permissions", () => {
 	});
 });
 
-describe("case node topic and priority tag", () => {
-	it("keeps the case tag and topic untouched", () => {
+describe("case node topic, status and priority tags", () => {
+	it("shows the case status and then the priority, like the case detail header", () => {
 		const node = caseNodeOf(twoSteps);
 		expect(node.topic).toBe("登录成功");
-		expect(node.tags).toEqual([buildPriorityTag("P1")]);
-	});
-});
-
-describe("priority tag style", () => {
-	it("uses no color: monospace foreground text on a transparent background", () => {
-		for (const priority of ["P0", "P1", "P2", "P3"] as const) {
-			expect(buildPriorityTag(priority).style).toMatchObject({
-				background: "transparent",
-				color: "var(--foreground)",
-				fontFamily: "var(--font-mono)",
-			});
-		}
-	});
-
-	it("makes only P0 bold", () => {
-		expect(buildPriorityTag("P0").style?.fontWeight).toBe("600");
-		for (const priority of ["P1", "P2", "P3"] as const) {
-			expect(buildPriorityTag(priority).style?.fontWeight).toBe("400");
-		}
+		expect(
+			node.tags?.map((tag) => (typeof tag === "string" ? tag : tag.text))
+		).toEqual(["生效", "P1"]);
+		expect(node.tags).toEqual([
+			buildCaseStatusTag("active"),
+			buildPriorityTag("P1"),
+		]);
 	});
 });
 
@@ -168,24 +155,16 @@ describe("module and root nodes keep their existing shape", () => {
 });
 
 describe("canHaveChildren", () => {
-	it("accepts only modules and the project root", () => {
-		expect(canHaveChildren({ id: encodeProjectNodeId(PROJECT_ID) })).toBe(true);
-		expect(canHaveChildren({ id: encodeModuleNodeId(MODULE_ID) })).toBe(true);
-		expect(canHaveChildren({ id: encodeCaseNodeId(CASE_ID) })).toBe(false);
-	});
-
-	it("refuses step and expected nodes", () => {
-		expect(canHaveChildren({ id: encodeStepNodeId(CASE_ID, "s1") })).toBe(
-			false
-		);
-		expect(canHaveChildren({ id: encodeExpectedNodeId(CASE_ID, "s1") })).toBe(
-			false
-		);
-	});
-
-	it("refuses ids this scheme does not recognise", () => {
-		expect(canHaveChildren({ id: "z:mystery" })).toBe(false);
-		expect(canHaveChildren({ id: "" })).toBe(false);
+	it.each([
+		["accepts the project root", encodeProjectNodeId(PROJECT_ID), true],
+		["accepts modules", encodeModuleNodeId(MODULE_ID), true],
+		["refuses cases", encodeCaseNodeId(CASE_ID), false],
+		["refuses step nodes", encodeStepNodeId(CASE_ID, "s1"), false],
+		["refuses expected nodes", encodeExpectedNodeId(CASE_ID, "s1"), false],
+		["refuses ids this scheme does not recognise", "z:mystery", false],
+		["refuses an empty id", "", false],
+	])("%s", (_name, id, allowed) => {
+		expect(canHaveChildren({ id })).toBe(allowed);
 	});
 });
 

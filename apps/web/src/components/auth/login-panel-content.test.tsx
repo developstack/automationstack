@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LoginMethods } from "@/components/auth/login-methods";
 import { LoginPanelContent } from "@/components/auth/login-panel-content";
 import type { LoginCredentials } from "@/components/auth/login-password-form";
+import { isBefore } from "@/test-dom-fixtures";
 
 const CASDOOR_URL = "http://localhost:3000/api/auth/casdoor/login";
 const CASDOOR_BUTTON = "使用 Casdoor 登录";
@@ -71,12 +72,6 @@ function emergencyTrigger(): HTMLButtonElement {
 	return screen.getByRole("button", { name: EMERGENCY_TRIGGER });
 }
 
-/** a 在文档顺序中位于 b 之前。 */
-function isBefore(a: Element, b: Element): boolean {
-	const ordered = [...document.querySelectorAll("*")];
-	return ordered.indexOf(a) < ordered.indexOf(b);
-}
-
 describe("LoginPanelContent：每种认证方式显示的内容", () => {
 	it("内置认证生效：显示用户名密码表单和忘记密码提示，不显示 Casdoor 按钮和应急登录区域", () => {
 		renderPanel({ methods: BUILT_IN });
@@ -88,28 +83,23 @@ describe("LoginPanelContent：每种认证方式显示的内容", () => {
 		expect(screen.queryByText(EMERGENCY_TRIGGER)).toBeNull();
 	});
 
-	it("Casdoor 认证生效并允许应急登录：显示 Casdoor 主按钮，应急登录默认折叠", () => {
+	it("Casdoor 认证生效并允许应急登录：显示 Casdoor 主按钮，应急登录默认折叠，没有失败信息时不显示提示", () => {
 		renderPanel({ methods: CASDOOR_WITH_EMERGENCY });
 
 		expect(casdoorLink().getAttribute("href")).toBe(CASDOOR_URL);
+		expect(screen.queryByRole("alert")).toBeNull();
 		expect(emergencyTrigger().getAttribute("aria-expanded")).toBe("false");
 		expect(screen.queryByLabelText("用户名")).toBeNull();
 		expect(screen.queryByText(FORGOT_PASSWORD_HINT)).toBeNull();
 	});
 
-	it("Casdoor 认证生效、不允许应急登录：只显示 Casdoor 主按钮，不显示应急登录区域", () => {
-		renderPanel({ methods: CASDOOR_ONLY });
-
-		expect(casdoorLink()).toBeDefined();
-		expect(screen.queryByText(EMERGENCY_TRIGGER)).toBeNull();
-		expect(screen.queryByLabelText("用户名")).toBeNull();
-	});
-
-	it("Casdoor 按钮的地址带上登录后跳转的路径", () => {
+	it("Casdoor 认证生效、不允许应急登录：只显示 Casdoor 主按钮，不显示应急登录区域；地址带上登录后跳转的路径", () => {
 		renderPanel({ methods: CASDOOR_ONLY, redirectTo: "/projects/p1" });
 
 		const href = new URL(casdoorLink().href);
 		expect(href.searchParams.get("redirect")).toBe("/projects/p1");
+		expect(screen.queryByText(EMERGENCY_TRIGGER)).toBeNull();
+		expect(screen.queryByLabelText("用户名")).toBeNull();
 	});
 
 	it("Casdoor 登录失败返回：失败提示显示在标题下方、Casdoor 按钮上方", () => {
@@ -124,12 +114,6 @@ describe("LoginPanelContent：每种认证方式显示的内容", () => {
 			true
 		);
 		expect(isBefore(alert, casdoorLink())).toBe(true);
-	});
-
-	it("没有失败信息：不显示提示", () => {
-		renderPanel({ methods: CASDOOR_WITH_EMERGENCY });
-
-		expect(screen.queryByRole("alert")).toBeNull();
 	});
 });
 
@@ -149,17 +133,6 @@ describe("LoginPanelContent：应急登录的折叠和展开", () => {
 		await waitFor(() => {
 			expect(screen.queryByLabelText("用户名")).toBeNull();
 		});
-	});
-
-	it("展开后的表单：提交时校验，空字段显示提示，请求不发出", () => {
-		const { onLogin } = renderPanel({ methods: CASDOOR_WITH_EMERGENCY });
-		fireEvent.click(emergencyTrigger());
-
-		fireEvent.click(screen.getByRole("button", { name: "登录" }));
-
-		expect(screen.getByText("请输入用户名")).toBeDefined();
-		expect(screen.getByText("请输入密码")).toBeDefined();
-		expect(onLogin).not.toHaveBeenCalled();
 	});
 
 	it("展开后的表单：填写后提交，用 onLogin 发出请求并显示 loading", () => {

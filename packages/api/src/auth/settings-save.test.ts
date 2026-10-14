@@ -74,7 +74,7 @@ async function decrypted(cipher: string | null | undefined) {
 	return await decryptSecret(cipher ?? "", MASTER_KEY);
 }
 
-beforeEach(() => {
+beforeEach(async () => {
 	invalidateAuthSettingsCache();
 	for (const key of Object.keys(mocks.env)) {
 		delete mocks.env[key];
@@ -87,25 +87,28 @@ beforeEach(() => {
 	mocks.getAuthSettingsRow.mockReset();
 	mocks.saveAuthSettings.mockReset();
 	mocks.saveAuthSettings.mockResolvedValue({});
+	mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
 });
+
+function save(
+	overrides: Partial<SaveAuthSettingsInput> = {},
+	options?: Parameters<typeof saveEffectiveAuthSettings>[2]
+) {
+	return saveEffectiveAuthSettings(input(overrides), ACTOR, options);
+}
 
 describe("saveEffectiveAuthSettings：密钥", () => {
 	it("keep：不写密钥列（undefined）", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
-		await saveEffectiveAuthSettings(input(), ACTOR);
+		await save();
 		expect(savedRow().values.clientSecretCipher).toBeUndefined();
 		expect(savedRow().values.webhookSecretCipher).toBeUndefined();
 	});
 
 	it("set：写入密文，不写明文", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
-		await saveEffectiveAuthSettings(
-			input({
-				clientSecret: { kind: "set", value: CLIENT_SECRET },
-				webhookSecret: { kind: "set", value: WEBHOOK_SECRET },
-			}),
-			ACTOR
-		);
+		await save({
+			clientSecret: { kind: "set", value: CLIENT_SECRET },
+			webhookSecret: { kind: "set", value: WEBHOOK_SECRET },
+		});
 		const { values } = savedRow();
 		expect(JSON.stringify(values)).not.toContain(CLIENT_SECRET);
 		expect(JSON.stringify(values)).not.toContain(WEBHOOK_SECRET);
@@ -120,11 +123,7 @@ describe("saveEffectiveAuthSettings：密钥", () => {
 	});
 
 	it("clear：密钥列写 null", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
-		await saveEffectiveAuthSettings(
-			input({ clientSecret: { kind: "clear" } }),
-			ACTOR
-		);
+		await save({ clientSecret: { kind: "clear" } });
 		expect(savedRow().values.clientSecretCipher).toBeNull();
 	});
 
@@ -132,10 +131,7 @@ describe("saveEffectiveAuthSettings：密钥", () => {
 		mocks.env.SECRET_ENCRYPTION_KEY = undefined;
 		mocks.getAuthSettingsRow.mockResolvedValue(null);
 		await expect(
-			saveEffectiveAuthSettings(
-				input({ webhookSecret: { kind: "set", value: WEBHOOK_SECRET } }),
-				ACTOR
-			)
+			save({ webhookSecret: { kind: "set", value: WEBHOOK_SECRET } })
 		).resolves.toEqual({ kind: "master-key-missing" });
 		expect(mocks.saveAuthSettings).not.toHaveBeenCalled();
 	});
@@ -143,7 +139,7 @@ describe("saveEffectiveAuthSettings：密钥", () => {
 	it("第一次保存时 keep：把环境变量中的密钥加密存入数据库", async () => {
 		mocks.env.CASDOOR_CLIENT_SECRET = ENV_CLIENT_SECRET;
 		mocks.getAuthSettingsRow.mockResolvedValue(null);
-		await saveEffectiveAuthSettings(input(), ACTOR);
+		await save();
 		await expect(
 			decrypted(savedRow().values.clientSecretCipher)
 		).resolves.toEqual({ kind: "ok", value: ENV_CLIENT_SECRET });
@@ -153,7 +149,7 @@ describe("saveEffectiveAuthSettings：密钥", () => {
 		mocks.env.CASDOOR_CLIENT_SECRET = ENV_CLIENT_SECRET;
 		mocks.env.SECRET_ENCRYPTION_KEY = undefined;
 		mocks.getAuthSettingsRow.mockResolvedValue(null);
-		await expect(saveEffectiveAuthSettings(input(), ACTOR)).resolves.toEqual({
+		await expect(save()).resolves.toEqual({
 			kind: "master-key-missing",
 		});
 	});
@@ -161,16 +157,12 @@ describe("saveEffectiveAuthSettings：密钥", () => {
 
 describe("saveEffectiveAuthSettings：修改记录", () => {
 	it("只记录字段名和修改类型，不记录任何值", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
-		await saveEffectiveAuthSettings(
-			input({
-				clientId: "another-client",
-				clientSecret: { kind: "clear" },
-				organization: null,
-				webhookSecret: { kind: "set", value: WEBHOOK_SECRET },
-			}),
-			ACTOR
-		);
+		await save({
+			clientId: "another-client",
+			clientSecret: { kind: "clear" },
+			organization: null,
+			webhookSecret: { kind: "set", value: WEBHOOK_SECRET },
+		});
 		const { actorId, changedFields } = savedRow();
 		expect(actorId).toBe(ACTOR.id);
 		expect(changedFields).toEqual([
@@ -186,24 +178,18 @@ describe("saveEffectiveAuthSettings：修改记录", () => {
 	});
 
 	it("没有修改：仍然写修改记录（空列表），不清除上次测试时间", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
-		await saveEffectiveAuthSettings(input(), ACTOR);
+		await save();
 		expect(savedRow().changedFields).toEqual([]);
 		expect(savedRow().values.lastTestOkAt).toBeUndefined();
 	});
 
 	it("有修改：清除上次测试成功的时间", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
-		await saveEffectiveAuthSettings(input({ adminRole: "other" }), ACTOR);
+		await save({ adminRole: "other" });
 		expect(savedRow().values.lastTestOkAt).toBeNull();
 	});
 
 	it("修改项目管理员角色名：写入新值，修改记录只有字段名（#15）", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
-		await saveEffectiveAuthSettings(
-			input({ projectAdminRole: "other-project-admin" }),
-			ACTOR
-		);
+		await save({ projectAdminRole: "other-project-admin" });
 		expect(savedRow().values.projectAdminRole).toBe("other-project-admin");
 		expect(savedRow().changedFields).toEqual([
 			{ change: "changed", field: "projectAdminRole" },
@@ -211,11 +197,7 @@ describe("saveEffectiveAuthSettings：修改记录", () => {
 	});
 
 	it("清空一个本来没有的密钥：不记录", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
-		await saveEffectiveAuthSettings(
-			input({ webhookSecret: { kind: "clear" } }),
-			ACTOR
-		);
+		await save({ webhookSecret: { kind: "clear" } });
 		expect(savedRow().changedFields).toEqual([]);
 	});
 });
@@ -225,9 +207,8 @@ describe("saveEffectiveAuthSettings：认证方式变化", () => {
 		mocks.env.AUTH_PROVIDER = "casdoor";
 		mocks.getAuthSettingsRow.mockResolvedValue(null);
 		const auditLog = vi.fn();
-		await saveEffectiveAuthSettings(
-			input({ clientSecret: { kind: "set", value: CLIENT_SECRET } }),
-			ACTOR,
+		await save(
+			{ clientSecret: { kind: "set", value: CLIENT_SECRET } },
 			{ auditLog }
 		);
 		expect(auditLog).toHaveBeenCalledTimes(1);
@@ -242,9 +223,8 @@ describe("saveEffectiveAuthSettings：认证方式变化", () => {
 	});
 
 	it("认证方式不变：不写审计日志", async () => {
-		mocks.getAuthSettingsRow.mockResolvedValue(await storedRow());
 		const auditLog = vi.fn();
-		await saveEffectiveAuthSettings(input(), ACTOR, { auditLog });
+		await save({}, { auditLog });
 		expect(auditLog).not.toHaveBeenCalled();
 	});
 });

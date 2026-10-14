@@ -1,7 +1,7 @@
 import { SecondaryPanel } from "@automationstack/ui/components/secondary-panel";
 import { Suspense } from "react";
 
-import { ModuleTreeSkeleton } from "@/components/skeletons/module-tree-skeleton";
+import { ModulePanelSkeleton } from "@/components/skeletons/module-panel-skeleton";
 import { ModuleTree } from "@/components/workspace/module-tree";
 
 interface ModulePanelProps {
@@ -12,7 +12,7 @@ interface ModulePanelProps {
 export function ModulePanel({ projectId, projectName }: ModulePanelProps) {
 	return (
 		<SecondaryPanel className="bg-card" title={projectName}>
-			<Suspense fallback={<ModuleTreeSkeleton rows={4} title={false} />}>
+			<Suspense fallback={<ModulePanelSkeleton rows={4} />}>
 				<ModuleTree projectId={projectId} />
 			</Suspense>
 		</SecondaryPanel>

@@ -1,9 +1,10 @@
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { Project } from "@automationstack/db/schema/projects";
-import type { User, UserRole } from "@automationstack/db/schema/users";
+import type { UserRole } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { callContext, testUser } from "../test-fixtures";
 import { projectsRouter } from "./projects";
 
 const mocks = vi.hoisted(() => ({
@@ -30,18 +31,7 @@ vi.mock("../lib/realtime-publish", () => ({
 	publishInvalidate: mocks.publishInvalidate,
 }));
 
-const baseUser: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "11111111-1111-4111-8111-111111111111",
-	mustChangePassword: false,
-	passwordHash: "hash",
-	role: "member",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "alice",
-};
+const baseUser = testUser({ role: "member", username: "alice" });
 
 const project: Project = {
 	createdAt: new Date("2026-01-01T00:00:00Z"),
@@ -55,13 +45,7 @@ const allProjects = [project, { ...project, id: "other", name: "别人的项目"
 const joinedProjects = [project];
 
 function contextFor(role: UserRole) {
-	const user: User = { ...baseUser, role };
-	return {
-		actor: { clientId: "t", name: user.username },
-		cookies: [] as string[],
-		secure: false,
-		user,
-	};
+	return callContext({ ...baseUser, role });
 }
 
 function createAs(role: UserRole) {

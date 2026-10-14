@@ -34,60 +34,55 @@ describe("planPasswordReset", () => {
 		});
 	});
 
-	it("NEW_PASSWORD 为空字符串时等于未设置", () => {
-		expect(planPasswordReset({ ...base, newPassword: "" })).toMatchObject({
-			generated: true,
-			password: GENERATED,
+	it.each([
+		[
+			"NEW_PASSWORD 为空字符串时等于未设置",
+			{ newPassword: "" },
+			{ generated: true, password: GENERATED },
+		],
+		[
+			"使用 NEW_PASSWORD，不标记为打印",
+			{ newPassword: "provided-pass" },
+			{ generated: false, password: "provided-pass" },
+		],
+		[
+			"禁用的账号：同时解除禁用",
+			{ user: { ...localUser, disabledAt: new Date("2026-01-01T00:00:00Z") } },
+			{ reenable: true },
+		],
+	] as const)("%s", (_name, overrides, expected) => {
+		expect(planPasswordReset({ ...base, ...overrides })).toMatchObject({
+			kind: "reset",
+			...expected,
 		});
 	});
 
-	it("使用 NEW_PASSWORD，不标记为打印", () => {
-		expect(
-			planPasswordReset({ ...base, newPassword: "provided-pass" })
-		).toMatchObject({ generated: false, password: "provided-pass" });
-	});
-
-	it("NEW_PASSWORD 太短：报错，信息中不含该值", () => {
-		const plan = planPasswordReset({ ...base, newPassword: "short" });
-		expect(plan.kind).toBe("error");
-		expect(JSON.stringify(plan)).not.toContain("short");
-	});
-
-	it("禁用的账号：同时解除禁用", () => {
-		expect(
-			planPasswordReset({
-				...base,
-				user: { ...localUser, disabledAt: new Date("2026-01-01T00:00:00Z") },
-			})
-		).toMatchObject({ kind: "reset", reenable: true });
-	});
-
-	it("账号不存在：报错", () => {
-		expect(planPasswordReset({ ...base, user: null })).toEqual({
-			kind: "error",
-			message: "账号不存在。",
-		});
-	});
-
-	it("外部账号：报错", () => {
-		expect(
-			planPasswordReset({
-				...base,
-				user: { ...localUser, authSource: "casdoor" },
-			}).kind
-		).toBe("error");
-	});
-
-	it("没有用户名或多余参数：只返回用法，不回显参数", () => {
-		expect(planPasswordReset({ ...base, args: [] })).toEqual({
-			kind: "error",
-			message: RESET_PASSWORD_USAGE,
-		});
-		const plan = planPasswordReset({
-			...base,
-			args: ["admin", "secret-in-argv"],
-		});
-		expect(plan).toEqual({ kind: "error", message: RESET_PASSWORD_USAGE });
-		expect(JSON.stringify(plan)).not.toContain("secret-in-argv");
+	it.each([
+		[
+			"NEW_PASSWORD 太短：报错，信息中不含该值",
+			{ newPassword: "short" },
+			expect.any(String),
+			["short"],
+		],
+		["账号不存在：报错", { user: null }, "账号不存在。", []],
+		[
+			"外部账号：报错",
+			{ user: { ...localUser, authSource: "casdoor" as const } },
+			expect.any(String),
+			[],
+		],
+		["没有用户名：只返回用法", { args: [] }, RESET_PASSWORD_USAGE, []],
+		[
+			"多余参数：只返回用法，不回显参数",
+			{ args: ["admin", "secret-in-argv"] },
+			RESET_PASSWORD_USAGE,
+			["secret-in-argv"],
+		],
+	])("%s", (_name, overrides, message, mustNotLeak) => {
+		const plan = planPasswordReset({ ...base, ...overrides });
+		expect(plan).toEqual({ kind: "error", message });
+		for (const value of mustNotLeak) {
+			expect(JSON.stringify(plan)).not.toContain(value);
+		}
 	});
 });

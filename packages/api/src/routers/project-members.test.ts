@@ -1,8 +1,9 @@
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
-import type { User, UserRole } from "@automationstack/db/schema/users";
+import type { UserRole } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { callContext, testUser } from "../test-fixtures";
 import { projectMembersRouter } from "./project-members";
 
 const mocks = vi.hoisted(() => ({
@@ -36,25 +37,12 @@ const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
 const OWNER_NOT_ELIGIBLE = "只有平台管理员和项目管理员可以成为项目 owner";
 const OWNER_REQUIRED = "只有平台管理员和身为项目 owner 的项目管理员能管理成员";
 
-const caller: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "11111111-1111-4111-8111-111111111111",
-	mustChangePassword: false,
-	passwordHash: "hash",
-	role: "project_admin",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "alice",
-};
-
-const target: User = {
-	...caller,
+const caller = testUser({ role: "project_admin", username: "alice" });
+const target = testUser({
 	id: "22222222-2222-4222-8222-222222222222",
 	role: "member",
 	username: "bob",
-};
+});
 
 /** 被操作用户在本项目里的项目角色。 */
 let targetProjectRole: ProjectRole = "member";
@@ -65,12 +53,7 @@ function contextFor(platformRole: UserRole, projectRole: ProjectRole | null) {
 		(_projectId: string, userId: string) =>
 			Promise.resolve(userId === caller.id ? projectRole : targetProjectRole)
 	);
-	return {
-		actor: { clientId: "t", name: caller.username },
-		cookies: [] as string[],
-		secure: false,
-		user: { ...caller, role: platformRole },
-	};
+	return callContext({ ...caller, role: platformRole });
 }
 
 function addAs(
@@ -141,48 +124,43 @@ describe("项目管理员可以管理自己是项目 owner 的项目，不能管
 		);
 	});
 
-	it("项目成员：FORBIDDEN，不写数据库", async () => {
-		await expect(
-			addAs("project_admin", "member", "member")
-		).rejects.toMatchObject({ code: "FORBIDDEN", message: OWNER_REQUIRED });
-		expect(mocks.addProjectMember).not.toHaveBeenCalled();
-	});
-
-	it("不是项目成员：FORBIDDEN，不写数据库", async () => {
-		await expect(addAs("project_admin", null, "member")).rejects.toMatchObject({
-			code: "FORBIDDEN",
-		});
-		expect(mocks.addProjectMember).not.toHaveBeenCalled();
-	});
+	it.each([
+		["项目成员", "member", { code: "FORBIDDEN", message: OWNER_REQUIRED }],
+		["不是项目成员", null, { code: "FORBIDDEN" }],
+	] as const)(
+		"%s：FORBIDDEN，不写数据库",
+		async (_name, projectRole, error) => {
+			await expect(
+				addAs("project_admin", projectRole, "member")
+			).rejects.toMatchObject(error);
+			expect(mocks.addProjectMember).not.toHaveBeenCalled();
+		}
+	);
 });
 
-describe("不能把普通用户设为项目 owner", () => {
-	it("projectMembers.add：BAD_REQUEST，中文说明，不写数据库", async () => {
-		await expect(
-			addAs("project_admin", "owner", "owner")
-		).rejects.toMatchObject({
+describe("不能把普通用户设为项目 owner：BAD_REQUEST，中文说明，不写数据库", () => {
+	it.each([
+		[
+			"项目管理员调用 projectMembers.add",
+			() => addAs("project_admin", "owner", "owner"),
+			mocks.addProjectMember,
+		],
+		[
+			"项目管理员调用 projectMembers.updateRole",
+			() => updateRoleAs("project_admin", "owner", "owner"),
+			mocks.updateProjectMemberRole,
+		],
+		[
+			"平台管理员操作时同样拒绝",
+			() => addAs("admin", null, "owner"),
+			mocks.addProjectMember,
+		],
+	])("%s", async (_name, invoke, write) => {
+		await expect(invoke()).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 			message: OWNER_NOT_ELIGIBLE,
 		});
-		expect(mocks.addProjectMember).not.toHaveBeenCalled();
-	});
-
-	it("projectMembers.updateRole：BAD_REQUEST，中文说明，不写数据库", async () => {
-		await expect(
-			updateRoleAs("project_admin", "owner", "owner")
-		).rejects.toMatchObject({
-			code: "BAD_REQUEST",
-			message: OWNER_NOT_ELIGIBLE,
-		});
-		expect(mocks.updateProjectMemberRole).not.toHaveBeenCalled();
-	});
-
-	it("平台管理员操作时同样拒绝", async () => {
-		await expect(addAs("admin", null, "owner")).rejects.toMatchObject({
-			code: "BAD_REQUEST",
-			message: OWNER_NOT_ELIGIBLE,
-		});
-		expect(mocks.addProjectMember).not.toHaveBeenCalled();
+		expect(write).not.toHaveBeenCalled();
 	});
 });
 

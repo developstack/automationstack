@@ -5,6 +5,7 @@ import { safeRedirectTarget } from "./redirect-target";
 
 const SECRET = "test-session-secret-0123456789abcdef";
 const FRONTEND = "http://localhost:3001";
+const ELEVEN_MINUTES = 660_000;
 
 const state = {
 	fingerprint: "fp",
@@ -29,22 +30,13 @@ describe("login state cookie", () => {
 		);
 	});
 
-	it("值被修改：null", async () => {
-		const value = await cookie();
-		const tampered = `${value.slice(0, -2)}xx`;
-		await expect(readLoginState(tampered, SECRET)).resolves.toBeNull();
-	});
-
-	it("用其他密钥签名：null", async () => {
+	it.each([
+		["值被修改", async () => `${(await cookie()).slice(0, -2)}xx`, SECRET],
+		["用其他密钥签名", () => cookie(), "another-secret-0123456789abcdef"],
+		["超过 10 分钟", () => cookie(Date.now() - ELEVEN_MINUTES), SECRET],
+	])("%s：null", async (_name, makeCookie, secret) => {
 		await expect(
-			readLoginState(await cookie(), "another-secret-0123456789abcdef")
-		).resolves.toBeNull();
-	});
-
-	it("超过 10 分钟：null", async () => {
-		const elevenMinutes = 660_000;
-		await expect(
-			readLoginState(await cookie(Date.now() - elevenMinutes), SECRET)
+			readLoginState(await makeCookie(), secret)
 		).resolves.toBeNull();
 	});
 

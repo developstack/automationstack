@@ -24,6 +24,8 @@ function makeRows(): ModuleRow[] {
 	];
 }
 
+const MUTUAL = [makeRow("c1", "c2", 0), makeRow("c2", "c1", 0)];
+
 const idsOf = (nodes: readonly { id: string }[]): string[] =>
 	nodes.map((node) => node.id);
 
@@ -92,9 +94,8 @@ test("collectSubtreeIds 对不存在的 rootId 只返回它自己（不做存在
 });
 
 test("collectSubtreeIds 遇到环形 rows 会终止而不是死循环", () => {
-	const mutual = [makeRow("c1", "c2", 0), makeRow("c2", "c1", 0)];
-	expect(collectSubtreeIds(mutual, "c1")).toEqual(["c1", "c2"]);
-	expect(collectSubtreeIds(mutual, "c2")).toEqual(["c2", "c1"]);
+	expect(collectSubtreeIds(MUTUAL, "c1")).toEqual(["c1", "c2"]);
+	expect(collectSubtreeIds(MUTUAL, "c2")).toEqual(["c2", "c1"]);
 	const selfLoop = [makeRow("s1", "s1", 0)];
 	expect(collectSubtreeIds(selfLoop, "s1")).toEqual(["s1"]);
 });
@@ -110,30 +111,27 @@ test("collectSubtreeIds 对多路径可达的同一 id 只收集一次", () => {
 	expect(new Set(ids).size).toBe(ids.length);
 });
 
-test("wouldCreateModuleCycle 在环形 rows 上同样能终止", () => {
-	const mutual = [makeRow("c1", "c2", 0), makeRow("c2", "c1", 0)];
-	expect(wouldCreateModuleCycle(mutual, "c1", "c2")).toBe(true);
-	expect(wouldCreateModuleCycle(mutual, "c1", "outside")).toBe(false);
-});
-
-test("wouldCreateModuleCycle：移到根层级（newParentId 为 null）永远合法", () => {
-	expect(wouldCreateModuleCycle(makeRows(), "m1", null)).toBe(false);
-	expect(wouldCreateModuleCycle(makeRows(), "nope", null)).toBe(false);
-});
-
-test("wouldCreateModuleCycle：挂到自身判为环", () => {
-	expect(wouldCreateModuleCycle(makeRows(), "m1", "m1")).toBe(true);
-	expect(wouldCreateModuleCycle([], "m1", "m1")).toBe(true);
-});
-
-test("wouldCreateModuleCycle：挂到自己子树内判为环（含多层）", () => {
-	expect(wouldCreateModuleCycle(makeRows(), "m1", "m1a")).toBe(true);
-	expect(wouldCreateModuleCycle(makeRows(), "m1", "m1a1")).toBe(true);
-});
-
-test("wouldCreateModuleCycle：挂到子树外合法（含挂回祖先与未知 id）", () => {
-	expect(wouldCreateModuleCycle(makeRows(), "m1", "m2")).toBe(false);
-	expect(wouldCreateModuleCycle(makeRows(), "m1a", "m1")).toBe(false);
-	expect(wouldCreateModuleCycle(makeRows(), "m1a1", "m1b")).toBe(false);
-	expect(wouldCreateModuleCycle(makeRows(), "m1", "gone")).toBe(false);
-});
+test.each<[string, ModuleRow[], [string, string | null], boolean]>([
+	["在环形 rows 上能终止：挂到环内判为环", MUTUAL, ["c1", "c2"], true],
+	["在环形 rows 上能终止：挂到环外合法", MUTUAL, ["c1", "outside"], false],
+	[
+		"移到根层级（newParentId 为 null）永远合法",
+		makeRows(),
+		["m1", null],
+		false,
+	],
+	["未知 id 移到根层级也合法", makeRows(), ["nope", null], false],
+	["挂到自身判为环", makeRows(), ["m1", "m1"], true],
+	["没有 rows 时挂到自身也判为环", [], ["m1", "m1"], true],
+	["挂到自己子树内判为环", makeRows(), ["m1", "m1a"], true],
+	["挂到自己子树内判为环（多层）", makeRows(), ["m1", "m1a1"], true],
+	["挂到子树外合法", makeRows(), ["m1", "m2"], false],
+	["挂回祖先合法", makeRows(), ["m1a", "m1"], false],
+	["挂到兄弟子树合法", makeRows(), ["m1a1", "m1b"], false],
+	["挂到未知 id 合法", makeRows(), ["m1", "gone"], false],
+])(
+	"wouldCreateModuleCycle：%s",
+	(_name, rows, [moduleId, newParentId], expected) => {
+		expect(wouldCreateModuleCycle(rows, moduleId, newParentId)).toBe(expected);
+	}
+);

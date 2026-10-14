@@ -28,68 +28,55 @@ function makeRun(overrides: Partial<TestRun> = {}): TestRun {
 }
 
 describe("deriveRunStatusSteps", () => {
-	it("打完最后一条结论后自动完成", () => {
-		expect(
-			deriveRunStatusSteps("in_progress", { total: 10, untested: 0 })
-		).toEqual(["completed"]);
-	});
-
-	it("还有未测时保持测试中", () => {
-		expect(
-			deriveRunStatusSteps("in_progress", { total: 10, untested: 1 })
-		).toEqual([]);
-	});
-
-	it("已完成的测试任务回退一条结论自动退回测试中", () => {
-		expect(
-			deriveRunStatusSteps("completed", { total: 10, untested: 1 })
-		).toEqual(["in_progress"]);
-	});
-
-	it("已完成的测试任务追加用例（多出未测行）同样自动退回测试中", () => {
-		expect(
-			deriveRunStatusSteps("completed", { total: 13, untested: 3 })
-		).toEqual(["in_progress"]);
-	});
-
-	it("待测试的测试任务打第一条结论转为测试中", () => {
-		expect(deriveRunStatusSteps("ready", { total: 10, untested: 9 })).toEqual([
-			"in_progress",
-		]);
-	});
-
-	it("待测试的测试任务被一键全部通过时，开测与完成两条流转都要留下", () => {
-		expect(deriveRunStatusSteps("ready", { total: 10, untested: 0 })).toEqual([
-			"in_progress",
+	it.each([
+		["打完最后一条结论后自动完成", "in_progress", [10, 0], ["completed"]],
+		["还有未测时保持测试中", "in_progress", [10, 1], []],
+		[
+			"已完成的测试任务回退一条结论自动退回测试中",
 			"completed",
-		]);
-	});
-
-	it("待评审的测试任务不会被结论推进（评审只能人工签字）", () => {
-		expect(
-			deriveRunStatusSteps("pending_review", { total: 10, untested: 0 })
-		).toEqual([]);
-	});
-
-	it("已提交是终态，任何统计都不再推进它", () => {
-		expect(
-			deriveRunStatusSteps("submitted", { total: 10, untested: 4 })
-		).toEqual([]);
-	});
-
-	it("空测试任务不算完成——否则刚建的空任务会被自动提交锁死", () => {
-		expect(
-			deriveRunStatusSteps("in_progress", { total: 0, untested: 0 })
-		).toEqual([]);
-		expect(deriveRunStatusSteps("ready", { total: 0, untested: 0 })).toEqual(
-			[]
-		);
-	});
-
-	it("测试中把结论全撤光也不退回待测试（startedAt 是既成事实）", () => {
-		expect(
-			deriveRunStatusSteps("in_progress", { total: 10, untested: 10 })
-		).toEqual([]);
+			[10, 1],
+			["in_progress"],
+		],
+		[
+			"已完成的测试任务追加用例（多出未测行）同样自动退回测试中",
+			"completed",
+			[13, 3],
+			["in_progress"],
+		],
+		[
+			"待测试的测试任务打第一条结论转为测试中",
+			"ready",
+			[10, 9],
+			["in_progress"],
+		],
+		[
+			"待测试的测试任务被一键全部通过时，开测与完成两条流转都要留下",
+			"ready",
+			[10, 0],
+			["in_progress", "completed"],
+		],
+		[
+			"待评审的测试任务不会被结论推进（评审只能人工签字）",
+			"pending_review",
+			[10, 0],
+			[],
+		],
+		["已提交是终态，任何统计都不再推进它", "submitted", [10, 4], []],
+		[
+			"空测试任务不算完成——否则刚建的空任务会被自动提交锁死",
+			"in_progress",
+			[0, 0],
+			[],
+		],
+		["空的待测试任务同样不推进", "ready", [0, 0], []],
+		[
+			"测试中把结论全撤光也不退回待测试（startedAt 是既成事实）",
+			"in_progress",
+			[10, 10],
+			[],
+		],
+	] as const)("%s", (_name, status, [total, untested], expected) => {
+		expect(deriveRunStatusSteps(status, { total, untested })).toEqual(expected);
 	});
 });
 

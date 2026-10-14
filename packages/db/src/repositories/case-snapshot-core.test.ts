@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CaseStep, TestCase } from "../schema/test-cases";
-import { isNoopCasePatch } from "./case-snapshot-core";
+import { type CaseContentPatch, isNoopCasePatch } from "./case-snapshot-core";
 
 const STEP_ONE: CaseStep = {
 	expected: "弹出退款原因选择",
@@ -38,15 +38,15 @@ function makeCase(overrides: Partial<TestCase> = {}): TestCase {
 	};
 }
 
-describe("isNoopCasePatch 认定为无变化的 patch", () => {
-	it("treats an empty patch as a no-op", () => {
-		expect(isNoopCasePatch(makeCase(), {})).toBe(true);
-	});
+describe("isNoopCasePatch", () => {
+	const row = makeCase();
 
-	it("treats a patch echoing every stored value as a no-op", () => {
-		const row = makeCase();
-		expect(
-			isNoopCasePatch(row, {
+	it.each([
+		["treats an empty patch as a no-op", makeCase(), {}],
+		[
+			"treats a patch echoing every stored value as a no-op",
+			row,
+			{
 				caseType: row.caseType,
 				maintainer: row.maintainer,
 				name: row.name,
@@ -56,60 +56,30 @@ describe("isNoopCasePatch 认定为无变化的 patch", () => {
 				status: row.status,
 				steps: [...row.steps],
 				tags: [...row.tags],
-			})
-		).toBe(true);
+			},
+		],
+		[
+			"ignores fields the patch omits",
+			makeCase({ maintainer: null }),
+			{ name: row.name },
+		],
+	])("%s", (_name, stored, patch) => {
+		expect(isNoopCasePatch(stored, patch)).toBe(true);
 	});
 
-	it("ignores fields the patch omits", () => {
-		const row = makeCase({ maintainer: null });
-		expect(isNoopCasePatch(row, { name: row.name })).toBe(true);
-	});
-});
-
-describe("isNoopCasePatch 对标量字段的比较", () => {
-	it("detects a changed scalar", () => {
-		expect(isNoopCasePatch(makeCase(), { priority: "P0" })).toBe(false);
-	});
-
-	it("detects a scalar cleared to null", () => {
-		expect(isNoopCasePatch(makeCase(), { maintainer: null })).toBe(false);
-	});
-});
-
-describe("isNoopCasePatch 对 steps 的比较", () => {
-	it("detects edited step text", () => {
-		expect(
-			isNoopCasePatch(makeCase(), {
-				steps: [{ ...STEP_ONE, step: "点击「退款」" }, STEP_TWO],
-			})
-		).toBe(false);
-	});
-
-	it("detects a reordered step list", () => {
-		expect(isNoopCasePatch(makeCase(), { steps: [STEP_TWO, STEP_ONE] })).toBe(
-			false
-		);
-	});
-
-	it("detects a removed step", () => {
-		expect(isNoopCasePatch(makeCase(), { steps: [STEP_ONE] })).toBe(false);
-	});
-
-	it("treats an emptied step list as a change", () => {
-		expect(isNoopCasePatch(makeCase(), { steps: [] })).toBe(false);
-	});
-});
-
-describe("isNoopCasePatch 对 tags 的比较", () => {
-	it("detects an added tag", () => {
-		expect(
-			isNoopCasePatch(makeCase(), { tags: ["退款", "核心链路", "冒烟"] })
-		).toBe(false);
-	});
-
-	it("detects reordered tags", () => {
-		expect(isNoopCasePatch(makeCase(), { tags: ["核心链路", "退款"] })).toBe(
-			false
-		);
+	it.each<[string, CaseContentPatch]>([
+		["a changed scalar", { priority: "P0" }],
+		["a scalar cleared to null", { maintainer: null }],
+		[
+			"edited step text",
+			{ steps: [{ ...STEP_ONE, step: "点击「退款」" }, STEP_TWO] },
+		],
+		["a reordered step list", { steps: [STEP_TWO, STEP_ONE] }],
+		["a removed step", { steps: [STEP_ONE] }],
+		["an emptied step list", { steps: [] }],
+		["an added tag", { tags: ["退款", "核心链路", "冒烟"] }],
+		["reordered tags", { tags: ["核心链路", "退款"] }],
+	])("detects %s", (_name, patch) => {
+		expect(isNoopCasePatch(row, patch)).toBe(false);
 	});
 });

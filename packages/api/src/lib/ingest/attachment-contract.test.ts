@@ -12,48 +12,38 @@ const RUN_CASE_ID = "33333333-3333-4333-8333-333333333333";
 
 const REAL_KEY = `test-runs/${PROJECT_ID}/${RUN_ID}/${RUN_CASE_ID}/screenshot-44444444-4444-4444-8444-444444444444.webp`;
 
-function registerItem(storageKey: string) {
-	return {
+function registerWith(storageKey: string) {
+	return ingestAttachmentRegisterRequestSchema.safeParse({
 		attachments: [
 			{
 				fileName: "shot.png",
-				kind: "screenshot" as const,
+				kind: "screenshot",
 				runCaseId: RUN_CASE_ID,
 				runId: RUN_ID,
 				storageKey,
 			},
 		],
-	};
+	});
 }
 
 test("presign：runIds 不传就是 null（不收窄），空数组是「这轮谁都不签」", () => {
-	const parsed = ingestAttachmentPresignRequestSchema.parse({
-		attachments: [],
-		projectId: PROJECT_ID,
-	});
-	expect(parsed.runIds).toBeNull();
-	expect(
+	const runIdsOf = (extra: object) =>
 		ingestAttachmentPresignRequestSchema.parse({
 			attachments: [],
 			projectId: PROJECT_ID,
-			runIds: [],
-		}).runIds
-	).toEqual([]);
+			...extra,
+		}).runIds;
+	expect(runIdsOf({})).toBeNull();
+	expect(runIdsOf({ runIds: [] })).toEqual([]);
 });
 
 test("register：我们自己签出来的最长 key 也进得来，离上限还有余量", () => {
 	expect(REAL_KEY.length).toBeLessThan(MAX_INGEST_STORAGE_KEY_LENGTH);
-	expect(
-		ingestAttachmentRegisterRequestSchema.safeParse(registerItem(REAL_KEY))
-			.success
-	).toBe(true);
+	expect(registerWith(REAL_KEY).success).toBe(true);
 });
 
 test("register：storageKey 有长度上限，任意长的字符串进不来", () => {
-	const tooLong = "a".repeat(MAX_INGEST_STORAGE_KEY_LENGTH + 1);
-	const parsed = ingestAttachmentRegisterRequestSchema.safeParse(
-		registerItem(tooLong)
-	);
+	const parsed = registerWith("a".repeat(MAX_INGEST_STORAGE_KEY_LENGTH + 1));
 	expect(parsed.success).toBe(false);
 	expect(JSON.stringify(parsed.error?.issues)).toContain(
 		String(MAX_INGEST_STORAGE_KEY_LENGTH)
@@ -61,7 +51,5 @@ test("register：storageKey 有长度上限，任意长的字符串进不来", (
 });
 
 test("register：空 storageKey 仍然拒（上限没把下限挤掉）", () => {
-	expect(
-		ingestAttachmentRegisterRequestSchema.safeParse(registerItem("")).success
-	).toBe(false);
+	expect(registerWith("").success).toBe(false);
 });

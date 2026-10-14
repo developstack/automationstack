@@ -1,116 +1,124 @@
+import type { ModuleCoverageGap } from "@automationstack/db/repositories/project-stats-coverage";
+import {
+	EXECUTION_WINDOW_DAYS,
+	RECENT_WINDOW_DAYS,
+	STALLED_RUN_DAYS,
+	TREND_BUCKET_COUNT,
+	TREND_BUCKET_DAYS,
+} from "@automationstack/db/repositories/project-stats-definitions";
+
+/** 趋势图的一个区间，例如「7 天区间」。 */
+export const TREND_BUCKET_TEXT = `${TREND_BUCKET_DAYS} 天区间`;
+
+/** 趋势图的全部区间，例如「过去 12 个 7 天区间」。 */
+export const TREND_SPAN_TEXT = `过去 ${TREND_BUCKET_COUNT} 个 ${TREND_BUCKET_TEXT}`;
+
 const COUNT_FORMAT = new Intl.NumberFormat("en-US");
+
+const PERCENT = 100;
 
 export function formatCount(value: number): string {
 	return COUNT_FORMAT.format(value);
 }
 
+/** 整数百分比。分母为 0 时是 0。 */
+export function sharePercent(part: number, total: number): number {
+	return total === 0 ? 0 : Math.round((part / total) * PERCENT);
+}
+
 interface OverviewSummaryInput {
-	staleTotal: number;
-	thresholdDays: number;
+	activeCount: number;
+	activeRunCount: number;
+	executedCount: number;
+	stalledRunCount: number;
 	totalCases: number;
 }
 
+function casesClause(activeCount: number, executedCount: number): string {
+	if (activeCount === 0) {
+		return "还没有生效用例";
+	}
+	const rate = sharePercent(executedCount, activeCount);
+	return `生效用例 ${formatCount(activeCount)} 条，过去 ${EXECUTION_WINDOW_DAYS} 天执行了 ${rate}%`;
+}
+
+function runsClause(activeRunCount: number, stalledRunCount: number): string {
+	if (activeRunCount === 0) {
+		return "没有进行中的测试任务";
+	}
+	const active = `${formatCount(activeRunCount)} 个测试任务进行中`;
+	if (stalledRunCount === 0) {
+		return active;
+	}
+	return `${active}，${formatCount(stalledRunCount)} 个超过 ${STALLED_RUN_DAYS} 天没有新的执行结果`;
+}
+
+/** 标题下的数据概要（调研报告第 9.1 节），回答 Q1、Q4 和 Q3。 */
 export function overviewSummary({
-	staleTotal,
-	thresholdDays,
+	activeCount,
+	activeRunCount,
+	executedCount,
+	stalledRunCount,
 	totalCases,
 }: OverviewSummaryInput): string {
 	if (totalCases === 0) {
 		return "本项目还没有用例";
 	}
-	const total = `本项目 ${formatCount(totalCases)} 条用例`;
-	if (staleTotal === 0) {
-		return `${total}，P0/P1 用例都在 ${thresholdDays} 天内更新过`;
+	return `${casesClause(activeCount, executedCount)}；${runsClause(activeRunCount, stalledRunCount)}。`;
+}
+
+/** 过去 7 天与前 7 天的差值。 */
+export function compareWithPrevious(current: number, previous: number): string {
+	const difference = current - previous;
+	if (difference === 0) {
+		return `与前 ${RECENT_WINDOW_DAYS} 天相同`;
 	}
-	return `${total}，其中 ${formatCount(staleTotal)} 条 P0/P1 用例超过 ${thresholdDays} 天没有更新`;
+	const direction = difference > 0 ? "多" : "少";
+	return `比前 ${RECENT_WINDOW_DAYS} 天${direction} ${formatCount(Math.abs(difference))} 条`;
 }
 
-export interface MarkAllocation {
-	casesPerMark: number;
-	marks: number[];
+interface RunIdleInput {
+	daysSinceLastExecution: number;
+	executed: boolean;
 }
 
-function sumOf(values: readonly number[]): number {
-	return values.reduce((sum, value) => sum + value, 0);
-}
-
-function indexOfMax(values: readonly number[]): number {
-	return values.reduce(
-		(best, value, index) => (value > (values[best] ?? 0) ? index : best),
-		0
-	);
-}
-
-/** 最大余数法：先取整，不为 0 的状态至少一条，再按小数部分补足或从最大的状态扣除。 */
-function scaleToTotal(counts: readonly number[], markTotal: number): number[] {
-	const caseTotal = sumOf(counts);
-	const exact = counts.map((count) => (count * markTotal) / caseTotal);
-	const marks = exact.map((value, index) =>
-		(counts[index] ?? 0) > 0 ? Math.max(1, Math.floor(value)) : 0
-	);
-	const byRemainder = exact
-		.map((value, index) => ({ index, remainder: value - Math.floor(value) }))
-		.sort((a, b) => b.remainder - a.remainder);
-	let leftover = markTotal - sumOf(marks);
-	for (const { index } of byRemainder) {
-		if (leftover <= 0) {
-			break;
-		}
-		marks[index] = (marks[index] ?? 0) + 1;
-		leftover -= 1;
+/** 测试任务距上次执行的天数。没有执行结果时说出创建了几天。 */
+export function runIdleText({
+	daysSinceLastExecution,
+	executed,
+}: RunIdleInput): string {
+	if (!executed) {
+		return `创建 ${daysSinceLastExecution} 天，还没有执行结果`;
 	}
-	while (leftover < 0) {
-		const largest = indexOfMax(marks);
-		marks[largest] = (marks[largest] ?? 0) - 1;
-		leftover += 1;
+	if (daysSinceLastExecution === 0) {
+		return "今天有执行结果";
 	}
-	return marks;
+	return `距上次执行 ${daysSinceLastExecution} 天`;
 }
 
-/** 条形码式进度条：竖线总数不超过 maxMarks，按状态的数量分配。 */
-export function allocateMarks(
-	counts: readonly number[],
-	maxMarks: number
-): MarkAllocation {
-	const caseTotal = sumOf(counts);
-	if (caseTotal <= maxMarks) {
-		return { casesPerMark: 1, marks: [...counts] };
-	}
-	return {
-		casesPerMark: Math.round(caseTotal / maxMarks),
-		marks: scaleToTotal(counts, maxMarks),
-	};
+const TREND_DATE_FORMAT = new Intl.DateTimeFormat("zh-CN", {
+	day: "2-digit",
+	month: "2-digit",
+});
+
+/** 趋势图横轴上区间的开始日期，例如 10/06。 */
+export function formatTrendDate(value: Date | string): string {
+	return TREND_DATE_FORMAT.format(new Date(value));
 }
 
-export const MATRIX_MAX_CELLS = 200;
-
-export interface MatrixCells {
-	activeCells: number;
-	casesPerCell: number;
-	otherCells: number;
+/** 7 天区间，例如 10/06–10/13。 */
+export function formatTrendRange(
+	start: Date | string,
+	end: Date | string
+): string {
+	return `${formatTrendDate(start)}–${formatTrendDate(end)}`;
 }
 
-interface MatrixCellsInput {
-	activeCount: number;
-	caseCount: number;
-}
+const DAY_FORMAT = new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium" });
 
-/** 模块覆盖的方格：200 条以内一个方格一条用例，超过时一个方格表示多条用例。 */
-export function matrixCells({
-	activeCount,
-	caseCount,
-}: MatrixCellsInput): MatrixCells {
-	const casesPerCell = Math.max(1, Math.ceil(caseCount / MATRIX_MAX_CELLS));
-	const cellTotal = Math.ceil(caseCount / casesPerCell);
-	const hasOther = caseCount > activeCount;
-	let activeCells = Math.round(activeCount / casesPerCell);
-	if (activeCount > 0) {
-		activeCells = Math.max(1, activeCells);
-	}
-	if (hasOther) {
-		activeCells = Math.min(cellTotal - 1, activeCells);
-	}
-	return { activeCells, casesPerCell, otherCells: cellTotal - activeCells };
+/** 日期，例如 2026年7月1日。 */
+export function formatDay(value: Date | string): string {
+	return DAY_FORMAT.format(new Date(value));
 }
 
 interface TreeNode {
@@ -143,4 +151,45 @@ export function orderModuleTree<T extends TreeNode>(
 	};
 	visit(null, 0);
 	return ordered;
+}
+
+interface CoverageModule extends TreeNode {
+	caseCount: number;
+	gap: ModuleCoverageGap | null;
+	name: string;
+}
+
+export interface CoverageGapRow {
+	caseCount: number;
+	gap: ModuleCoverageGap;
+	moduleId: string;
+	/** 从第一层模块开始的路径，例如「登录 / 短信登录」。 */
+	path: string;
+}
+
+/** M8：有缺口的模块。父模块和子模块都有缺口时只列出父模块。 */
+export function coverageGapRows(
+	modules: readonly CoverageModule[]
+): CoverageGapRow[] {
+	const pathStack: string[] = [];
+	let coveredDepth: number | null = null;
+	const rows: CoverageGapRow[] = [];
+	for (const module of orderModuleTree(modules)) {
+		pathStack.length = module.depth;
+		pathStack.push(module.name);
+		if (coveredDepth !== null && module.depth > coveredDepth) {
+			continue;
+		}
+		coveredDepth = null;
+		if (module.gap !== null) {
+			coveredDepth = module.depth;
+			rows.push({
+				caseCount: module.caseCount,
+				gap: module.gap,
+				moduleId: module.moduleId,
+				path: pathStack.join(" / "),
+			});
+		}
+	}
+	return rows;
 }

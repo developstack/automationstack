@@ -6,23 +6,14 @@ import {
 } from "@/components/workspace/module-row-context-key";
 
 describe("isContextMenuKey", () => {
-	it("认 Windows / Linux 的应用程序键", () => {
-		expect(isContextMenuKey({ key: "ContextMenu", shiftKey: false })).toBe(
-			true
-		);
-	});
-
-	it("认 Shift+F10（macOS 上唯一还能按出来的组合）", () => {
-		expect(isContextMenuKey({ key: "F10", shiftKey: true })).toBe(true);
-	});
-
-	it("不认没按 Shift 的 F10：那是浏览器/系统自己的快捷键", () => {
-		expect(isContextMenuKey({ key: "F10", shiftKey: false })).toBe(false);
-	});
-
-	it("不认普通按键，行内的输入与导航不受影响", () => {
-		expect(isContextMenuKey({ key: "Enter", shiftKey: false })).toBe(false);
-		expect(isContextMenuKey({ key: "F", shiftKey: true })).toBe(false);
+	it.each([
+		["认 Windows / Linux 的应用程序键", "ContextMenu", false, true],
+		["认 Shift+F10（macOS 上唯一还能按出来的组合）", "F10", true, true],
+		["不认没按 Shift 的 F10：那是浏览器/系统自己的快捷键", "F10", false, false],
+		["不认普通按键，行内的输入与导航不受影响", "Enter", false, false],
+		["不认普通按键，行内的输入与导航不受影响", "F", true, false],
+	])("%s（%s）", (_name, key, shiftKey, matches) => {
+		expect(isContextMenuKey({ key, shiftKey })).toBe(matches);
 	});
 });
 

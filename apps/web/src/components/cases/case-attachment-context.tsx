@@ -3,21 +3,21 @@ import { createContext, type ReactNode, useContext, useMemo } from "react";
 
 import { useCaseImageUpload } from "@/components/cases/use-case-attachment-upload";
 import {
-	type CasePasteTarget,
+	type CasePasteUpload,
 	useCasePasteUpload,
 } from "@/components/cases/use-case-paste-upload";
 import { orpc } from "@/utils/orpc";
 
-export interface CaseAttachmentContextValue {
-	imageUrls: ReadonlyMap<string, string | null>;
-	uploading: boolean;
-	uploadPasted: ((files: File[], target: CasePasteTarget) => void) | null;
-}
+/** 用例正文中的图片：可以显示的地址、粘贴图片的上传任务，以及重试和移除失败的上传。 */
+export type CaseAttachmentContextValue = CasePasteUpload;
 
 const NO_ATTACHMENTS: CaseAttachmentContextValue = {
+	discardUpload: () => undefined,
 	imageUrls: new Map(),
+	retryUpload: () => undefined,
 	uploading: false,
 	uploadPasted: null,
+	uploads: new Map(),
 };
 
 const CaseAttachmentContext =
@@ -45,14 +45,7 @@ export function useCaseEditAttachments(
 ): CaseAttachmentContextValue {
 	const serverUrls = useCaseAttachmentUrls(caseId);
 	const uploader = useCaseImageUpload(caseId);
-	const { imageUrls, uploading, uploadPasted } = useCasePasteUpload(
-		uploader,
-		serverUrls
-	);
-	return useMemo<CaseAttachmentContextValue>(
-		() => ({ imageUrls, uploading, uploadPasted }),
-		[imageUrls, uploading, uploadPasted]
-	);
+	return useCasePasteUpload(uploader, serverUrls);
 }
 
 export function CaseAttachmentProvider({

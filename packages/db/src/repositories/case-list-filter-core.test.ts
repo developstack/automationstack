@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 
 import {
 	containsPattern,
@@ -6,33 +6,20 @@ import {
 	prefixPattern,
 } from "./case-list-filter-core";
 
-describe("escapeLikePattern", () => {
-	it("escapes the three LIKE special characters", () => {
-		expect(escapeLikePattern("100%_off")).toBe("100\\%\\_off");
-		expect(escapeLikePattern("a\\b")).toBe("a\\\\b");
-	});
-
-	it("leaves ordinary text untouched", () => {
-		expect(escapeLikePattern("gen:PROJ-1234#refund-over-total")).toBe(
-			"gen:PROJ-1234#refund-over-total"
-		);
-	});
-});
-
-describe("containsPattern", () => {
-	it("wraps the escaped keyword in wildcards on both ends", () => {
-		expect(containsPattern("退款")).toBe("%退款%");
-		expect(containsPattern("50%")).toBe("%50\\%%");
-	});
-});
-
-describe("prefixPattern", () => {
-	it("anchors at the left: no leading wildcard", () => {
-		expect(prefixPattern("gen:PROJ-1234#")).toBe("gen:PROJ-1234#%");
-		expect(prefixPattern("gen:PROJ-1234#").startsWith("%")).toBe(false);
-	});
-
-	it("keeps user-supplied wildcards literal", () => {
-		expect(prefixPattern("gen:PRD_v2#")).toBe("gen:PRD\\_v2#%");
-	});
+// escapeLikePattern 转义 LIKE 的三个特殊字符、不动普通文本；containsPattern 两端加通配符；
+// prefixPattern 只在右侧加通配符（左侧锚定），用户输入的通配符保持字面
+it.each([
+	[escapeLikePattern, "100%_off", "100\\%\\_off"],
+	[escapeLikePattern, "a\\b", "a\\\\b"],
+	[
+		escapeLikePattern,
+		"gen:PROJ-1234#refund-over-total",
+		"gen:PROJ-1234#refund-over-total",
+	],
+	[containsPattern, "退款", "%退款%"],
+	[containsPattern, "50%", "%50\\%%"],
+	[prefixPattern, "gen:PROJ-1234#", "gen:PROJ-1234#%"],
+	[prefixPattern, "gen:PRD_v2#", "gen:PRD\\_v2#%"],
+])("%o(%j) → %j", (pattern, input, expected) => {
+	expect(pattern(input)).toBe(expected);
 });

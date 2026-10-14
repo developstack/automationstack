@@ -78,18 +78,13 @@ describe("PresenceAvatars", () => {
 		expect(screen.getAllByRole("button")).toHaveLength(2);
 	});
 
-	it("头像的可访问名称有姓名和所在页面，并且可以用键盘聚焦", () => {
-		renderAvatars([makeEntry("tab-1", "alice")]);
-		const trigger = screen.getByRole("button", { name: "alice · 列表" });
+	it("头像的可访问名称有姓名和所在页面，可以用键盘聚焦；自己的头像标注「（我）」", () => {
+		renderAvatars([makeEntry("other", "bob"), makeEntry("self", "me")]);
+		const trigger = screen.getByRole("button", { name: "bob · 列表" });
 		trigger.focus();
 		expect(document.activeElement).toBe(trigger);
-	});
-
-	it("自己的头像标注「（我）」", () => {
-		renderAvatars([makeEntry("other", "bob"), makeEntry("self", "me")]);
 		expect(
 			screen.getByRole("button", { name: "me（我） · 列表" })
 		).toBeDefined();
-		expect(screen.getByRole("button", { name: "bob · 列表" })).toBeDefined();
 	});
 });

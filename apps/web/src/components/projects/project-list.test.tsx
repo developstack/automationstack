@@ -1,9 +1,9 @@
 import type { UserRole } from "@automationstack/db/schema/users";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { ProjectList } from "@/components/projects/project-list";
+import { renderWithQuery } from "@/test-dom-fixtures";
 
 const PROJECTS_KEY = ["projects", "list"];
 const CLICK_CREATE_HINT = /点击「新建项目」/;
@@ -38,18 +38,8 @@ vi.mock("@/utils/orpc", () => ({
 
 function renderAs(role: UserRole) {
 	session.role = role;
-	const queryClient = new QueryClient();
-	queryClient.setQueryData(PROJECTS_KEY, []);
-	render(
-		<QueryClientProvider client={queryClient}>
-			<ProjectList />
-		</QueryClientProvider>
-	);
+	renderWithQuery(<ProjectList />, [PROJECTS_KEY, []]);
 }
-
-beforeEach(() => {
-	session.role = "member";
-});
 
 describe("ProjectList：「新建项目」按钮", () => {
 	it.each([

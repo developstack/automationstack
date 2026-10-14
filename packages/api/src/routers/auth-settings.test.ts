@@ -1,11 +1,11 @@
 import type { SaveAuthSettingsInput as SaveRowInput } from "@automationstack/db/repositories/auth-settings-repository";
 import type { AuthSettingsRow } from "@automationstack/db/schema/auth-settings";
-import type { User } from "@automationstack/db/schema/users";
 import { decryptSecret } from "@automationstack/db/secret-box";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { invalidateAuthSettingsCache } from "../auth/settings-store";
+import { callContext, testUser } from "../test-fixtures";
 import { authSettingsRouter } from "./auth-settings";
 
 const MASTER_KEY = btoa("k".repeat(32));
@@ -41,18 +41,7 @@ vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 	getProjectRole: vi.fn(),
 }));
 
-const admin: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "22222222-2222-4222-8222-222222222222",
-	mustChangePassword: false,
-	passwordHash: "hash",
-	role: "admin",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "admin",
-};
+const admin = testUser();
 
 const STEP_IDS = ["discovery", "token", "organization", "adminRole"] as const;
 
@@ -67,15 +56,6 @@ const PASSED = {
 };
 
 let storedRow: AuthSettingsRow | null = null;
-
-function contextFor(user: User) {
-	return {
-		actor: { clientId: "t", name: user.username },
-		cookies: [] as string[],
-		secure: false,
-		user,
-	};
-}
 
 function baseInput(): Record<string, unknown> {
 	return {
@@ -95,13 +75,13 @@ function save(overrides: Record<string, unknown> = {}, user = admin) {
 	return call(
 		authSettingsRouter.save,
 		{ ...baseInput(), ...overrides } as never,
-		{ context: contextFor(user), path: ["authSettings", "save"] }
+		{ context: callContext(user), path: ["authSettings", "save"] }
 	);
 }
 
 function get(user = admin) {
 	return call(authSettingsRouter.get, undefined, {
-		context: contextFor(user),
+		context: callContext(user),
 		path: ["authSettings", "get"],
 	});
 }
@@ -151,7 +131,7 @@ beforeEach(() => {
 });
 
 describe("authSettings：权限", () => {
-	const member: User = { ...admin, role: "member" };
+	const member = testUser({ role: "member" });
 
 	it("非管理员调用 get：FORBIDDEN", async () => {
 		await expect(get(member)).rejects.toMatchObject({ code: "FORBIDDEN" });
@@ -201,35 +181,34 @@ describe("authSettings.get", () => {
 });
 
 describe("authSettings.save：校验", () => {
-	it("组织为 built-in：BAD_REQUEST", async () => {
-		await expect(save({ organization: "built-in" })).rejects.toMatchObject({
+	it.each([
+		["组织为 built-in", { organization: "built-in" }, "development"],
+		[
+			"公网地址带路径",
+			{ issuer: "https://casdoor.example.com/login" },
+			"development",
+		],
+		[
+			"生产环境中公网地址不是 https",
+			{ issuer: "http://casdoor.example.com" },
+			"production",
+		],
+		[
+			"回调地址不以 /api/auth/casdoor/callback 结尾",
+			{ redirectUrl: "https://testcase.example.com/callback" },
+			"development",
+		],
+		[
+			"Webhook 密钥少于 32 个字符",
+			{ webhookSecret: { kind: "set", value: "short" } },
+			"development",
+		],
+	])("%s：BAD_REQUEST，不写数据库", async (_name, overrides, nodeEnv) => {
+		mocks.env.NODE_ENV = nodeEnv;
+		await expect(save(overrides)).rejects.toMatchObject({
 			code: "BAD_REQUEST",
 		});
-	});
-
-	it("公网地址带路径：BAD_REQUEST", async () => {
-		await expect(
-			save({ issuer: "https://casdoor.example.com/login" })
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-	});
-
-	it("生产环境中公网地址不是 https：BAD_REQUEST", async () => {
-		mocks.env.NODE_ENV = "production";
-		await expect(
-			save({ issuer: "http://casdoor.example.com" })
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-	});
-
-	it("回调地址不以 /api/auth/casdoor/callback 结尾：BAD_REQUEST", async () => {
-		await expect(
-			save({ redirectUrl: "https://testcase.example.com/callback" })
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-	});
-
-	it("Webhook 密钥少于 32 个字符：BAD_REQUEST", async () => {
-		await expect(
-			save({ webhookSecret: { kind: "set", value: "short" } })
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(mocks.saveAuthSettings).not.toHaveBeenCalled();
 	});
 
 	it("公网地址规范为 origin（去掉结尾的斜杠）", async () => {

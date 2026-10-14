@@ -1,3 +1,5 @@
+import { emptyCaseFormValues } from "@/components/cases/case-meta";
+
 export class FakeStorage implements Storage {
 	private readonly map = new Map<string, string>();
 
@@ -51,4 +53,26 @@ export function installStorage(store: Storage = new FakeStorage()): Storage {
 
 export function uninstallStorage(): void {
 	(globalThis as { window?: unknown }).window = undefined;
+}
+
+/** 草稿在 localStorage 里的键。新格式的后缀是 caseId，老格式的后缀是 moduleId。 */
+export function caseDraftKey(projectId: string, suffix: string): string {
+	return `automationstack.case-draft.${projectId}.${suffix}`;
+}
+
+/** 在 key 下写入一份老格式的草稿：名称是「老草稿」，savedAt 是 100，patch 可以覆盖。 */
+export function seedLegacyCaseDraft(
+	store: Storage,
+	key: string,
+	patch: Record<string, unknown>
+): void {
+	store.setItem(
+		key,
+		JSON.stringify({
+			attachments: [],
+			savedAt: 100,
+			values: { ...emptyCaseFormValues(), name: "老草稿" },
+			...patch,
+		})
+	);
 }

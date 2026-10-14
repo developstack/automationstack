@@ -23,13 +23,9 @@ const carol = makeUser("u-3", "carol");
 const rowWithProject = (
 	user: PublicUser,
 	projectId: string,
-	projectName: string
-): UserProjectRow => ({
-	projectId,
-	projectName,
-	projectRole: "member",
-	user,
-});
+	projectName: string,
+	projectRole: UserProjectRow["projectRole"] = "member"
+): UserProjectRow => ({ projectId, projectName, projectRole, user });
 
 const rowWithoutProject = (user: PublicUser): UserProjectRow => ({
 	projectId: null,
@@ -66,17 +62,10 @@ describe("groupUsersWithProjects", () => {
 	});
 
 	it("角色跟着成员关系走，不是跟着用户走", () => {
-		const rows: UserProjectRow[] = [
-			{
-				projectId: "p-1",
-				projectName: "Apollo",
-				projectRole: "owner",
-				user: alice,
-			},
+		const result = groupUsersWithProjects([
+			rowWithProject(alice, "p-1", "Apollo", "owner"),
 			rowWithProject(alice, "p-2", "Borealis"),
-		];
-
-		const result = groupUsersWithProjects(rows);
+		]);
 
 		expect(result[0]?.projects).toEqual([
 			{ id: "p-1", name: "Apollo", role: "owner" },

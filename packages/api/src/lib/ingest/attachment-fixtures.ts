@@ -4,6 +4,7 @@ import type {
 	IngestAttachmentPresignItem,
 	IngestAttachmentRegisterItem,
 } from "./attachment-contract";
+import { planAttachmentUploads } from "./attachment-reconcile";
 
 export const CASE_A = "11111111-1111-4111-8111-111111111111";
 export const CASE_B = "22222222-2222-4222-8222-222222222222";
@@ -75,4 +76,37 @@ export function registerItem(
 		runId,
 		storageKey: `test-runs/p/${runId}/${runCaseId}/screenshot-x.png`,
 	};
+}
+
+export const REGRESSION = {
+	runCaseId: RUN_CASE_TWO,
+	runId: RUN_TWO,
+	runName: "回归",
+} as const;
+
+export const PENDING_REVIEW = {
+	runName: "评审中",
+	status: "pending_review",
+} as const;
+
+/** 默认是「冒烟」任务里 sourceRef 为 A 的那一行，只写与默认值不同的字段。 */
+export function row(
+	overrides: Partial<Parameters<typeof targetRow>[0]> = {}
+): AutomationTargetRow {
+	return targetRow({
+		caseId: CASE_A,
+		runCaseId: RUN_CASE_ONE,
+		runId: RUN_ONE,
+		runName: "冒烟",
+		sourceRef: "A",
+		...overrides,
+	});
+}
+
+export function plan(
+	rows: AutomationTargetRow[],
+	runIds: string[] | null = null,
+	attachments: IngestAttachmentPresignItem[] = [screenshot("A")]
+) {
+	return planAttachmentUploads({ attachments, rows, runIds });
 }

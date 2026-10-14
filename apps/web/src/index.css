@@ -5,7 +5,7 @@
 }
 
 @utility grid-cols-case-step {
-	grid-template-columns: 1fr 1fr auto;
+	grid-template-columns: 2rem minmax(0, 1fr) minmax(0, 1fr) auto;
 }
 
 @utility grid-cols-run-execution {
@@ -24,12 +24,9 @@
 	grid-template-columns: 1.5rem minmax(0, 1fr) auto;
 }
 
-@utility grid-cols-overview-change {
-	grid-template-columns: minmax(0, 1fr) auto;
-}
-
-@utility grid-cols-overview-change-wide {
-	grid-template-columns: minmax(0, 2fr) 3rem minmax(0, 3fr) 6rem 8.5rem;
+/* 进行中的测试任务的一行：名称和状态、条形码式进度条、有结论的条数、距上次执行的天数 */
+@utility grid-cols-overview-run {
+	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 7rem 12rem;
 }
 
 @utility text-kbd-hint {

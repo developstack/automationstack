@@ -124,16 +124,11 @@ describe("relativeLuminance", () => {
 });
 
 describe.each(["light", "dark"] as const)("%s 模式的主题令牌", (mode) => {
-	it.each(
-		SURFACE_TOKENS.flatMap((surface) => [
+	it.each([
+		...SURFACE_TOKENS.flatMap((surface) => [
 			["foreground", surface],
 			["muted-foreground", surface],
-		])
-	)("%s 在 %s 上达到 WCAG AA", (text, surface) => {
-		expect(contrast(mode, text, surface)).toBeGreaterThanOrEqual(WCAG_AA_TEXT);
-	});
-
-	it.each([
+		]),
 		["primary-foreground", "primary"],
 		["secondary-foreground", "secondary"],
 		["muted-foreground", "muted"],

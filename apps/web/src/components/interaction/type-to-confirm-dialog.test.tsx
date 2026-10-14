@@ -8,6 +8,7 @@ const NAME_INPUT_LABEL = /输入项目名称/;
 const MISMATCH_ERROR = "输入的名称与项目名称不一致";
 
 interface RenderOptions {
+	name?: string;
 	onClose?: () => void;
 	onConfirm?: () => void;
 	open?: boolean;
@@ -19,7 +20,7 @@ function dialog(options: RenderOptions) {
 		<TypeToConfirmDialog
 			confirmLabel="删除项目"
 			description="项目下的模块与用例将一并删除，且不可恢复。"
-			name={PROJECT_NAME}
+			name={options.name ?? PROJECT_NAME}
 			nameLabel="项目名称"
 			onClose={options.onClose ?? vi.fn()}
 			onConfirm={options.onConfirm ?? vi.fn()}
@@ -50,14 +51,10 @@ function typeName(value: string) {
 }
 
 describe("TypeToConfirmDialog：输入名称才能确认", () => {
-	it("提示要输入的名称", () => {
-		renderDialog();
+	it("提示要输入的名称；名称为空或不一致时，确认按钮不可用，点击不调用 onConfirm", () => {
+		const { onConfirm } = renderDialog();
 		expect(screen.getByRole("alertdialog")).toBeDefined();
 		expect(screen.getAllByText(PROJECT_NAME).length).toBeGreaterThan(0);
-	});
-
-	it("名称为空或不一致时，确认按钮不可用，点击不调用 onConfirm", () => {
-		const { onConfirm } = renderDialog();
 		expect(confirmButton().getAttribute("aria-disabled")).toBe("true");
 		typeName("支付");
 		expect(confirmButton().getAttribute("aria-disabled")).toBe("true");
@@ -65,38 +62,21 @@ describe("TypeToConfirmDialog：输入名称才能确认", () => {
 		expect(onConfirm).not.toHaveBeenCalled();
 	});
 
-	it("输入完全一致的名称后，点击确认调用 onConfirm", () => {
+	it.each([
+		["输入完全一致的名称后，点击确认调用 onConfirm", PROJECT_NAME],
+		["忽略名称前后的空格", `  ${PROJECT_NAME} `],
+	])("%s", (_name, input) => {
 		const { onConfirm } = renderDialog();
-		typeName(PROJECT_NAME);
+		typeName(input);
 		expect(confirmButton().getAttribute("aria-disabled")).not.toBe("true");
 		fireEvent.click(confirmButton());
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 	});
 
 	it("要输入的名称为空时，空输入也不能确认", () => {
-		const onConfirm = vi.fn();
-		render(
-			<TypeToConfirmDialog
-				confirmLabel="删除项目"
-				description="说明"
-				name=""
-				nameLabel="项目名称"
-				onClose={vi.fn()}
-				onConfirm={onConfirm}
-				open={true}
-				pending={false}
-				title="删除项目？"
-			/>
-		);
+		const { onConfirm } = renderDialog({ name: "" });
 		fireEvent.submit(nameInput());
 		expect(onConfirm).not.toHaveBeenCalled();
-	});
-
-	it("忽略名称前后的空格", () => {
-		const { onConfirm } = renderDialog();
-		typeName(`  ${PROJECT_NAME} `);
-		fireEvent.click(confirmButton());
-		expect(onConfirm).toHaveBeenCalledTimes(1);
 	});
 
 	it("名称一致时，在输入框按 Enter 提交", () => {
@@ -106,7 +86,7 @@ describe("TypeToConfirmDialog：输入名称才能确认", () => {
 		expect(onConfirm).toHaveBeenCalledTimes(1);
 	});
 
-	it("名称不一致时按 Enter，不提交，并在输入框旁边显示错误", () => {
+	it("名称不一致时按 Enter，不提交，并在输入框旁边显示错误；修改输入后清除错误", () => {
 		const { onConfirm } = renderDialog();
 		typeName("支付");
 		fireEvent.keyDown(nameInput(), { key: "Enter" });
@@ -115,12 +95,6 @@ describe("TypeToConfirmDialog：输入名称才能确认", () => {
 		const error = screen.getByText(MISMATCH_ERROR);
 		expect(nameInput().getAttribute("aria-invalid")).toBe("true");
 		expect(nameInput().getAttribute("aria-describedby")).toContain(error.id);
-	});
-
-	it("修改输入后清除错误", () => {
-		renderDialog();
-		typeName("支付");
-		fireEvent.keyDown(nameInput(), { key: "Enter" });
 		typeName("支付中");
 		expect(screen.queryByText(MISMATCH_ERROR)).toBeNull();
 	});

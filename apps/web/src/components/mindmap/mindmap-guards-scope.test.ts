@@ -51,38 +51,37 @@ function createScopedHost(): MindmapGuardHost {
 	};
 }
 
+let host = createScopedHost();
+let before = createMindmapGuards(host);
+
+beforeEach(() => {
+	host = createScopedHost();
+	before = createMindmapGuards(host);
+});
+
 describe("a module-scoped canvas refuses edits that leave the scope", () => {
-	let host: MindmapGuardHost;
-	let before: ReturnType<typeof createMindmapGuards>;
-
-	beforeEach(() => {
-		host = createScopedHost();
-		before = createMindmapGuards(host);
-	});
-
-	it("refuses addChild on the project root", () => {
-		expect(before.addChild?.(topicOf(projectRoot()))).toBe(false);
+	it.each([
+		[
+			"refuses addChild on the project root",
+			() => before.addChild?.(topicOf(projectRoot())),
+		],
+		[
+			"refuses a sibling of the scope root",
+			() => before.insertSibling?.("after", topicOf(scopeRoot())),
+		],
+		[
+			"refuses dragging a node out onto the project root",
+			() =>
+				before.moveNodeIn?.([topicOf(insideNode())], topicOf(projectRoot())),
+		],
+		[
+			"refuses dragging the scope root itself",
+			() => before.moveNodeIn?.([topicOf(scopeRoot())], topicOf(projectRoot())),
+		],
+	])("%s", (_name, edit) => {
+		expect(edit()).toBe(false);
 		expect(host.reject).toHaveBeenCalledWith(MINDMAP_SCOPE_ESCAPE_MESSAGE);
 		expect(host.setPendingKind).not.toHaveBeenCalled();
-	});
-
-	it("refuses a sibling of the scope root", () => {
-		expect(before.insertSibling?.("after", topicOf(scopeRoot()))).toBe(false);
-		expect(host.reject).toHaveBeenCalledWith(MINDMAP_SCOPE_ESCAPE_MESSAGE);
-		expect(host.setPendingKind).not.toHaveBeenCalled();
-	});
-
-	it("refuses dragging a node out onto the project root", () => {
-		const moved = topicOf(insideNode());
-		expect(before.moveNodeIn?.([moved], topicOf(projectRoot()))).toBe(false);
-		expect(host.reject).toHaveBeenCalledWith(MINDMAP_SCOPE_ESCAPE_MESSAGE);
-	});
-
-	it("refuses dragging the scope root itself", () => {
-		expect(
-			before.moveNodeIn?.([topicOf(scopeRoot())], topicOf(projectRoot()))
-		).toBe(false);
-		expect(host.reject).toHaveBeenCalledWith(MINDMAP_SCOPE_ESCAPE_MESSAGE);
 	});
 
 	it("refuses deleting the scope root", async () => {
@@ -95,14 +94,6 @@ describe("a module-scoped canvas refuses edits that leave the scope", () => {
 });
 
 describe("a module-scoped canvas still allows everything inside the scope", () => {
-	let host: MindmapGuardHost;
-	let before: ReturnType<typeof createMindmapGuards>;
-
-	beforeEach(() => {
-		host = createScopedHost();
-		before = createMindmapGuards(host);
-	});
-
 	it("adds children and siblings under an in-scope module", () => {
 		const inside = topicOf(insideNode());
 		expect(before.addChild?.(inside)).toBe(true);

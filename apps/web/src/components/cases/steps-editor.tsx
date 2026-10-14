@@ -1,110 +1,14 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
+import { cn } from "@automationstack/ui/lib/utils";
+import { DndContext } from "@dnd-kit/core";
 import { PlusIcon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { MarkdownField } from "@/components/cases/markdown-field";
-import { StepRowActions } from "@/components/cases/step-row-actions";
-
-interface StepRowProps {
-	canMoveDown: boolean;
-	canMoveUp: boolean;
-	index: number;
-	onChange: (id: string, patch: Partial<CaseStep>) => void;
-	onMove: (id: string, delta: number) => void;
-	onRemove: (id: string) => void;
-	step: CaseStep;
-}
-
-function useStepRowHandlers(props: StepRowProps) {
-	const { onChange, onMove, onRemove, step } = props;
-
-	const handleStepChange = useCallback(
-		(value: string) => onChange(step.id, { step: value }),
-		[onChange, step.id]
-	);
-	const handleExpectedChange = useCallback(
-		(value: string) => onChange(step.id, { expected: value }),
-		[onChange, step.id]
-	);
-	const handleMoveUp = useCallback(
-		() => onMove(step.id, -1),
-		[onMove, step.id]
-	);
-	const handleMoveDown = useCallback(
-		() => onMove(step.id, 1),
-		[onMove, step.id]
-	);
-	const handleRemove = useCallback(
-		() => onRemove(step.id),
-		[onRemove, step.id]
-	);
-
-	return {
-		handleExpectedChange,
-		handleMoveDown,
-		handleMoveUp,
-		handleRemove,
-		handleStepChange,
-	};
-}
-
-function StepRow(props: StepRowProps) {
-	const { step } = props;
-	const {
-		handleExpectedChange,
-		handleMoveDown,
-		handleMoveUp,
-		handleRemove,
-		handleStepChange,
-	} = useStepRowHandlers(props);
-
-	const [previewOpen, setPreviewOpen] = useState(false);
-	const togglePreview = useCallback(() => setPreviewOpen((open) => !open), []);
-
-	return (
-		<li className="grid grid-cols-1 items-start gap-3 sm:grid-cols-case-step">
-			<MarkdownField
-				ariaLabel={`第 ${props.index + 1} 步操作`}
-				onChange={handleStepChange}
-				placeholder="操作步骤，支持 markdown"
-				preview={previewOpen}
-				value={step.step}
-			/>
-			<MarkdownField
-				ariaLabel={`第 ${props.index + 1} 步预期结果`}
-				onChange={handleExpectedChange}
-				placeholder="预期结果，支持 markdown"
-				preview={previewOpen}
-				value={step.expected}
-			/>
-			<StepRowActions
-				canMoveDown={props.canMoveDown}
-				canMoveUp={props.canMoveUp}
-				index={props.index}
-				onMoveDown={handleMoveDown}
-				onMoveUp={handleMoveUp}
-				onRemove={handleRemove}
-				onTogglePreview={togglePreview}
-				previewOpen={previewOpen}
-			/>
-		</li>
-	);
-}
-
-function moveStep(steps: CaseStep[], id: string, delta: number): CaseStep[] {
-	const from = steps.findIndex((step) => step.id === id);
-	const to = from + delta;
-	if (from === -1 || to < 0 || to >= steps.length) {
-		return steps;
-	}
-	const next = [...steps];
-	const [moved] = next.splice(from, 1);
-	if (moved) {
-		next.splice(to, 0, moved);
-	}
-	return next;
-}
+import { CASE_TABLE_HEAD_CLASS } from "@/components/cases/case-table-layout";
+import { useStepDrag } from "@/components/cases/step-drag";
+import { moveStep } from "@/components/cases/step-order";
+import { STEP_GRID_CLASS, StepRow } from "@/components/cases/step-row";
 
 function useStepActions(
 	steps: CaseStep[],
@@ -128,6 +32,54 @@ function useStepActions(
 	);
 }
 
+/** 表头与只读的步骤表格（CaseStepsTable）一致：小标签、灰色。窄屏不显示。 */
+function StepsHeader() {
+	return (
+		<div
+			aria-hidden="true"
+			className={cn(
+				STEP_GRID_CLASS,
+				CASE_TABLE_HEAD_CLASS,
+				"hidden items-center border-b sm:grid"
+			)}
+		>
+			<span className="pl-1">#</span>
+			<span>操作步骤</span>
+			<span>预期结果</span>
+			<span className="w-6" />
+		</div>
+	);
+}
+
+interface StepsListProps {
+	actions: ReturnType<typeof useStepActions>;
+	onChange: (steps: CaseStep[]) => void;
+	steps: CaseStep[];
+}
+
+function StepsList({ actions, onChange, steps }: StepsListProps) {
+	const drag = useStepDrag(steps, onChange);
+	return (
+		<DndContext {...drag}>
+			<StepsHeader />
+			<ol>
+				{steps.map((step, index) => (
+					<StepRow
+						canMoveDown={index < steps.length - 1}
+						canMoveUp={index > 0}
+						index={index}
+						key={step.id}
+						onChange={actions.change}
+						onMove={actions.move}
+						onRemove={actions.remove}
+						step={step}
+					/>
+				))}
+			</ol>
+		</DndContext>
+	);
+}
+
 interface StepsEditorProps {
 	onChange: (steps: CaseStep[]) => void;
 	steps: CaseStep[];
@@ -141,37 +93,20 @@ export function StepsEditor({ onChange, steps }: StepsEditorProps) {
 			<span className="select-none font-medium text-sm leading-none">
 				测试步骤
 			</span>
-			<div className="flex flex-col gap-4">
+			<div className="rounded-lg border">
 				{steps.length === 0 ? (
-					<p className="text-muted-foreground text-sm">
-						还没有步骤，点击下面的按钮新增。
+					<p className="border-b px-3 py-4 text-muted-foreground text-sm">
+						还没有步骤。点击「新增步骤」添加操作步骤和预期结果。
 					</p>
 				) : (
-					<ol className="flex flex-col gap-4">
-						{steps.map((step, index) => (
-							<StepRow
-								canMoveDown={index < steps.length - 1}
-								canMoveUp={index > 0}
-								index={index}
-								key={step.id}
-								onChange={actions.change}
-								onMove={actions.move}
-								onRemove={actions.remove}
-								step={step}
-							/>
-						))}
-					</ol>
+					<StepsList actions={actions} onChange={onChange} steps={steps} />
 				)}
-				<Button
-					className="self-start"
-					onClick={actions.add}
-					size="sm"
-					type="button"
-					variant="outline"
-				>
-					<PlusIcon data-icon="inline-start" />
-					新增步骤
-				</Button>
+				<div className="px-1.5 py-1.5">
+					<Button onClick={actions.add} size="sm" type="button" variant="ghost">
+						<PlusIcon data-icon="inline-start" />
+						新增步骤
+					</Button>
+				</div>
 			</div>
 		</div>
 	);

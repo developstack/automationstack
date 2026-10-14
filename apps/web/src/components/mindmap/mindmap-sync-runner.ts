@@ -19,7 +19,10 @@ import {
 } from "./mindmap-refresh-merge.ts";
 import type { MindmapScope } from "./mindmap-scope.ts";
 import { mindmapTreeQueryOptions } from "./mindmap-scope-query.ts";
-import { describeMindmapSyncFailure } from "./mindmap-sync-error.ts";
+import {
+	describeMindmapSyncFailure,
+	type MindmapSyncFailure,
+} from "./mindmap-sync-error.ts";
 import { MindmapSyncQueue } from "./mindmap-sync-queue.ts";
 import {
 	type MindmapProject,
@@ -35,6 +38,7 @@ interface MindmapSnapshot {
 export interface MindmapSyncRunnerDeps {
 	notifyError: (message: string) => void;
 	notifyLimit: (message: string) => void;
+	notifySyncFailure: (failure: MindmapSyncFailure) => void;
 	queryClient: QueryClient;
 	scope: MindmapScope;
 }
@@ -221,7 +225,7 @@ export class MindmapSyncRunner {
 	}
 
 	private fail(error: unknown): void {
-		this.deps.notifyError(describeMindmapSyncFailure(error));
+		this.deps.notifySyncFailure(describeMindmapSyncFailure(error));
 		this.rebuild().catch(() => this.deps.notifyError(REFRESH_FAILED_MESSAGE));
 	}
 }

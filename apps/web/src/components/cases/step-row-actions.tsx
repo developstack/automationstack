@@ -65,7 +65,7 @@ export function StepRowActions(props: StepRowActionsProps) {
 		? `收起第 ${position} 步预览`
 		: `展开第 ${position} 步预览`;
 	return (
-		<div className="flex justify-end gap-1 sm:flex-col sm:justify-start">
+		<div className="flex justify-end gap-1 sm:flex-col sm:justify-start sm:pt-1">
 			<Button
 				aria-expanded={props.previewOpen}
 				aria-label={previewLabel}
@@ -86,8 +86,10 @@ export function StepRowActions(props: StepRowActionsProps) {
 			/>
 			<Button
 				aria-label={`删除第 ${position} 步`}
+				className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive dark:hover:bg-destructive/20"
 				onClick={props.onRemove}
 				size="icon-xs"
+				title={`删除第 ${position} 步`}
 				type="button"
 				variant="ghost"
 			>

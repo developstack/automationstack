@@ -8,6 +8,7 @@ import {
 	FIELD_CLASS,
 	LABEL_TEXT,
 } from "@/components/cases/case-field-classes";
+import { FieldError } from "@/components/interaction/field-error";
 
 interface CaseTextFieldProps {
 	className?: string;
@@ -50,11 +51,7 @@ export function CaseTextField({
 				required={required}
 				value={value}
 			/>
-			{error ? (
-				<p className="text-destructive text-xs" id={errorId}>
-					{error}
-				</p>
-			) : null}
+			<FieldError id={errorId} message={error ?? null} />
 		</div>
 	);
 }

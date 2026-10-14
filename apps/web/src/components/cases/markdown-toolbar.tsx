@@ -1,4 +1,5 @@
 import { Button } from "@automationstack/ui/components/button";
+import { Separator } from "@automationstack/ui/components/separator";
 import type { EditorView } from "@codemirror/view";
 import {
 	BoldIcon,
@@ -8,12 +9,16 @@ import {
 	ListOrderedIcon,
 } from "lucide-react";
 import {
+	Fragment,
 	type KeyboardEvent,
 	type MouseEvent,
 	useCallback,
 	useRef,
 	useState,
 } from "react";
+
+import { useCaseAttachments } from "@/components/cases/case-attachment-context";
+import { MARKDOWN_TOOLBAR_CLASS } from "@/components/cases/markdown-editor-classes";
 
 function wrapSelection(view: EditorView, marker: string) {
 	const range = view.state.selection.main;
@@ -43,26 +48,50 @@ function prefixLines(view: EditorView, prefix: string) {
 }
 
 interface ToolbarCommand {
+	/** 同一组的按钮挨在一起，组与组之间有分隔线。 */
+	group: "inline" | "list";
 	Icon: typeof BoldIcon;
 	label: string;
 	run: (view: EditorView) => void;
 }
 
 const COMMANDS: readonly ToolbarCommand[] = [
-	{ Icon: BoldIcon, label: "加粗", run: (view) => wrapSelection(view, "**") },
-	{ Icon: ItalicIcon, label: "斜体", run: (view) => wrapSelection(view, "*") },
 	{
+		group: "inline",
+		Icon: BoldIcon,
+		label: "加粗",
+		run: (view) => wrapSelection(view, "**"),
+	},
+	{
+		group: "inline",
+		Icon: ItalicIcon,
+		label: "斜体",
+		run: (view) => wrapSelection(view, "*"),
+	},
+	{
+		group: "inline",
 		Icon: CodeIcon,
 		label: "行内代码",
 		run: (view) => wrapSelection(view, "`"),
 	},
-	{ Icon: ListIcon, label: "无序列表", run: (view) => prefixLines(view, "- ") },
 	{
+		group: "list",
+		Icon: ListIcon,
+		label: "无序列表",
+		run: (view) => prefixLines(view, "- "),
+	},
+	{
+		group: "list",
 		Icon: ListOrderedIcon,
 		label: "有序列表",
 		run: (view) => prefixLines(view, "1. "),
 	},
 ];
+
+function startsGroup(index: number): boolean {
+	const previous = COMMANDS[index - 1];
+	return previous !== undefined && previous.group !== COMMANDS[index]?.group;
+}
 
 function useRovingIndex(count: number) {
 	const [activeIndex, setActiveIndex] = useState(0);
@@ -139,6 +168,7 @@ function ToolbarButton({
 			ref={handleRef}
 			size="icon-xs"
 			tabIndex={isActive ? 0 : -1}
+			title={command.label}
 			type="button"
 			variant="ghost"
 		>
@@ -158,23 +188,35 @@ export function MarkdownToolbar({ view }: { view: EditorView | null }) {
 		[buttonsRef]
 	);
 
+	const { uploadPasted } = useCaseAttachments();
+
 	return (
 		<div
 			aria-label="markdown 格式"
-			className="flex flex-wrap items-center gap-0.5 border-input border-t bg-muted/40 px-1 py-0.5"
+			className={MARKDOWN_TOOLBAR_CLASS}
 			role="toolbar"
 		>
 			{COMMANDS.map((command, index) => (
-				<ToolbarButton
-					command={command}
-					index={index}
-					isActive={index === activeIndex}
-					key={command.label}
-					onKeyDown={handleKeyDown}
-					onRegister={handleRegister}
-					view={view}
-				/>
+				<Fragment key={command.label}>
+					{startsGroup(index) ? (
+						<Separator
+							className="mx-1 h-4 data-vertical:self-center"
+							orientation="vertical"
+						/>
+					) : null}
+					<ToolbarButton
+						command={command}
+						index={index}
+						isActive={index === activeIndex}
+						onKeyDown={handleKeyDown}
+						onRegister={handleRegister}
+						view={view}
+					/>
+				</Fragment>
 			))}
+			<span className="ml-auto hidden select-none px-1.5 text-kbd-hint text-muted-foreground sm:inline">
+				{uploadPasted === null ? "Markdown" : "Markdown · 可粘贴图片"}
+			</span>
 		</div>
 	);
 }

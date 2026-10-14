@@ -20,22 +20,27 @@ function makeEntry(
 	};
 }
 
-function withStore(): {
-	calls: () => number;
-	store: PresenceStore;
-} {
+/** 新建一个计数通知次数的 store；给了 entries 时先同步一次，first 是同步后的快照。 */
+function withStore(entries?: PresenceEntry[]) {
 	const store = new PresenceStore();
 	let count = 0;
 	store.subscribe(() => {
 		count += 1;
 	});
-	return { calls: () => count, store };
+	if (entries) {
+		store.apply({ entries, type: "presence:sync" });
+	}
+	return { calls: () => count, first: store.getSnapshot(), store };
 }
 
+function idsOf(store: PresenceStore): string[] {
+	return store.getSnapshot().map((entry) => entry.clientId);
+}
+
+const JOINED_LATER = makeEntry("b", { joinedAt: 2000 });
+
 test("内容完全相同的两次 commit 保留旧引用且不通知", () => {
-	const { calls, store } = withStore();
-	store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
-	const first = store.getSnapshot();
+	const { calls, first, store } = withStore([makeEntry("a")]);
 	expect(calls()).toBe(1);
 
 	store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
@@ -45,9 +50,7 @@ test("内容完全相同的两次 commit 保留旧引用且不通知", () => {
 });
 
 test("presence:update 内容没变时不通知", () => {
-	const { calls, store } = withStore();
-	store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
-	const first = store.getSnapshot();
+	const { calls, first, store } = withStore([makeEntry("a")]);
 
 	store.apply({ entry: makeEntry("a"), type: "presence:update" });
 
@@ -77,9 +80,7 @@ const CHANGED_FIELDS: [string, Partial<PresenceEntry>][] = [
 
 for (const [field, overrides] of CHANGED_FIELDS) {
 	test(`entry 的 ${field} 变化会换引用并通知`, () => {
-		const { calls, store } = withStore();
-		store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
-		const first = store.getSnapshot();
+		const { calls, first, store } = withStore([makeEntry("a")]);
 
 		store.apply({
 			entry: makeEntry("a", overrides),
@@ -92,14 +93,9 @@ for (const [field, overrides] of CHANGED_FIELDS) {
 }
 
 test("有人加入会换引用并通知", () => {
-	const { calls, store } = withStore();
-	store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
-	const first = store.getSnapshot();
+	const { calls, first, store } = withStore([makeEntry("a")]);
 
-	store.apply({
-		entry: makeEntry("b", { joinedAt: 2000 }),
-		type: "presence:join",
-	});
+	store.apply({ entry: JOINED_LATER, type: "presence:join" });
 
 	expect(store.getSnapshot()).not.toBe(first);
 	expect(store.getSnapshot()).toHaveLength(2);
@@ -107,23 +103,17 @@ test("有人加入会换引用并通知", () => {
 });
 
 test("有人离开会换引用并通知", () => {
-	const { calls, store } = withStore();
-	store.apply({
-		entries: [makeEntry("a"), makeEntry("b", { joinedAt: 2000 })],
-		type: "presence:sync",
-	});
-	const first = store.getSnapshot();
+	const { calls, first, store } = withStore([makeEntry("a"), JOINED_LATER]);
 
 	store.apply({ clientId: "b", type: "presence:leave" });
 
 	expect(store.getSnapshot()).not.toBe(first);
-	expect(store.getSnapshot().map((entry) => entry.clientId)).toEqual(["a"]);
+	expect(idsOf(store)).toEqual(["a"]);
 	expect(calls()).toBe(2);
 });
 
 test("clear 清空后换引用并通知，重复 clear 静默", () => {
-	const { calls, store } = withStore();
-	store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
+	const { calls, store } = withStore([makeEntry("a")]);
 
 	store.clear();
 	expect(store.getSnapshot()).toEqual([]);
@@ -141,8 +131,7 @@ test("joinedAt 相同的 entry 多次 commit 顺序不抖", () => {
 		makeEntry("b-bob", { joinedAt: 1000 }),
 	];
 	store.apply({ entries: tied, type: "presence:sync" });
-	const order = store.getSnapshot().map((entry) => entry.clientId);
-	expect(order).toEqual(["a-alice", "b-bob", "c-charlie"]);
+	expect(idsOf(store)).toEqual(["a-alice", "b-bob", "c-charlie"]);
 
 	const first = store.getSnapshot();
 	store.apply({ entries: [...tied].reverse(), type: "presence:sync" });
@@ -160,10 +149,7 @@ test("joinedAt 决定主序，不受到达顺序影响", () => {
 		type: "presence:sync",
 	});
 
-	expect(store.getSnapshot().map((entry) => entry.clientId)).toEqual([
-		"early",
-		"late",
-	]);
+	expect(idsOf(store)).toEqual(["early", "late"]);
 });
 
 test("setSelf 首次设置会注入自己并通知", () => {
@@ -171,7 +157,7 @@ test("setSelf 首次设置会注入自己并通知", () => {
 
 	store.setSelf(makeEntry("me"));
 
-	expect(store.getSnapshot().map((entry) => entry.clientId)).toEqual(["me"]);
+	expect(idsOf(store)).toEqual(["me"]);
 	expect(calls()).toBe(1);
 });
 
@@ -222,7 +208,7 @@ test("服务端已回发自己后 setSelf(null) 不改变可见结果，因此�
 	store.setSelf(null);
 
 	expect(store.getSnapshot()).toBe(first);
-	expect(store.getSnapshot().map((entry) => entry.clientId)).toEqual(["me"]);
+	expect(idsOf(store)).toEqual(["me"]);
 	expect(calls()).toBe(1);
 });
 
@@ -233,9 +219,7 @@ test("setSelf 换 clientId 会替换自己并通知", () => {
 	store.setSelf(makeEntry("me-new", { joinedAt: 5000 }));
 
 	const [self] = store.getSnapshot();
-	expect(store.getSnapshot().map((entry) => entry.clientId)).toEqual([
-		"me-new",
-	]);
+	expect(idsOf(store)).toEqual(["me-new"]);
 	expect(self?.joinedAt).toBe(5000);
 	expect(calls()).toBe(2);
 });
@@ -263,10 +247,7 @@ test("listener 在回调里退订自己不影响后续 listener", () => {
 	});
 
 	store.apply({ entries: [makeEntry("a")], type: "presence:sync" });
-	store.apply({
-		entry: makeEntry("b", { joinedAt: 2000 }),
-		type: "presence:join",
-	});
+	store.apply({ entry: JOINED_LATER, type: "presence:join" });
 
 	expect(seen).toEqual(["first", "second", "second"]);
 });

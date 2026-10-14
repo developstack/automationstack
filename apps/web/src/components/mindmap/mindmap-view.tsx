@@ -1,9 +1,3 @@
-import {
-	Empty,
-	EmptyDescription,
-	EmptyHeader,
-	EmptyTitle,
-} from "@automationstack/ui/components/empty";
 import { cn } from "@automationstack/ui/lib/utils";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -12,6 +6,12 @@ import { orpc } from "@/utils/orpc";
 
 import { MindmapBudgetNotice } from "./mindmap-budget-notice.tsx";
 import { MindmapCanvas } from "./mindmap-canvas.tsx";
+import { MindmapEmptyNotice } from "./mindmap-empty-notice.tsx";
+import { MINDMAP_BODY_CLASS, MINDMAP_PANEL_CLASS } from "./mindmap-layout.ts";
+import {
+	MindmapLoadError,
+	type MindmapLoadQuery,
+} from "./mindmap-load-error.tsx";
 import {
 	createMindmapScope,
 	isScopedMindmap,
@@ -20,40 +20,80 @@ import {
 import { MindmapScopeBar } from "./mindmap-scope-bar.tsx";
 import { mindmapTreeQueryOptions } from "./mindmap-scope-query.ts";
 import { MindmapSkeleton } from "./mindmap-skeleton.tsx";
-import { isEmptyMindmapTree } from "./mindmap-tree-input.ts";
+import {
+	isEmptyMindmapTree,
+	type MindmapProject,
+	type MindmapTreeData,
+} from "./mindmap-tree-input.ts";
 
 interface MindmapViewProps {
 	moduleId: string | undefined;
 	projectId: string;
 }
 
-function MindmapError({ scope }: { scope: MindmapScope }) {
+interface MindmapErrorPanelProps {
+	project: MindmapLoadQuery;
+	projectId: string;
+	scoped: boolean;
+	tree: MindmapLoadQuery;
+}
+
+function MindmapErrorPanel({
+	project,
+	projectId,
+	scoped,
+	tree,
+}: MindmapErrorPanelProps) {
 	return (
-		<div className="flex h-full flex-col">
-			{isScopedMindmap(scope) ? (
-				<MindmapScopeBar moduleName={undefined} projectId={scope.projectId} />
-			) : null}
-			<div className="flex min-h-0 flex-1 items-center justify-center">
-				<Empty>
-					<EmptyHeader>
-						<EmptyTitle>脑图加载失败</EmptyTitle>
-						<EmptyDescription>
-							{isScopedMindmap(scope)
-								? "该模块可能已被删除。请返回全量脑图，或切换到列表视图继续工作。"
-								: "请检查网络连接后刷新页面，或切换到列表视图继续工作。"}
-						</EmptyDescription>
-					</EmptyHeader>
-				</Empty>
+		<div className={MINDMAP_BODY_CLASS}>
+			<div className={MINDMAP_PANEL_CLASS}>
+				{scoped ? (
+					<MindmapScopeBar moduleName={undefined} projectId={projectId} />
+				) : null}
+				<div className="flex min-h-0 flex-1 items-center justify-center">
+					<MindmapLoadError project={project} tree={tree} />
+				</div>
 			</div>
 		</div>
 	);
 }
 
-function useMindmapTree(scope: MindmapScope) {
-	return useQuery({
-		...mindmapTreeQueryOptions(scope),
-		placeholderData: keepPreviousData,
-	});
+interface MindmapContentProps {
+	project: MindmapProject;
+	scope: MindmapScope;
+	stale: boolean;
+	tree: MindmapTreeData;
+}
+
+function MindmapContent({ project, scope, stale, tree }: MindmapContentProps) {
+	return (
+		<div
+			className={cn(
+				MINDMAP_BODY_CLASS,
+				"transition-crossfade",
+				stale && "opacity-60"
+			)}
+		>
+			{isEmptyMindmapTree(tree) ? <MindmapEmptyNotice /> : null}
+			<MindmapBudgetNotice data={tree} project={project} />
+			<div className={MINDMAP_PANEL_CLASS}>
+				{isScopedMindmap(scope) ? (
+					<MindmapScopeBar
+						moduleName={tree.modules.at(0)?.name}
+						projectId={scope.projectId}
+					/>
+				) : null}
+				<div className="min-h-0 flex-1">
+					<MindmapCanvas
+						data={tree}
+						key={`${scope.projectId}:${scope.moduleId ?? ""}`}
+						project={project}
+						scope={scope}
+					/>
+				</div>
+			</div>
+		</div>
+	);
 }
 
 export function MindmapView({ moduleId, projectId }: MindmapViewProps) {
@@ -64,44 +104,32 @@ export function MindmapView({ moduleId, projectId }: MindmapViewProps) {
 	const projectQuery = useQuery(
 		orpc.projects.get.queryOptions({ input: { id: projectId } })
 	);
-	const treeQuery = useMindmapTree(scope);
+	const treeQuery = useQuery({
+		...mindmapTreeQueryOptions(scope),
+		placeholderData: keepPreviousData,
+	});
 
 	if (projectQuery.isError || treeQuery.isError) {
-		return <MindmapError scope={scope} />;
+		return (
+			<MindmapErrorPanel
+				project={projectQuery}
+				projectId={projectId}
+				scoped={isScopedMindmap(scope)}
+				tree={treeQuery}
+			/>
+		);
 	}
 	const project = projectQuery.data;
 	const tree = treeQuery.data;
 	if (project === undefined || tree === undefined) {
-		return <MindmapSkeleton />;
+		return <MindmapSkeleton scoped={isScopedMindmap(scope)} />;
 	}
-
 	return (
-		<div
-			className={cn(
-				"flex h-full flex-col transition-crossfade",
-				treeQuery.isPlaceholderData && "opacity-60"
-			)}
-		>
-			{isScopedMindmap(scope) ? (
-				<MindmapScopeBar
-					moduleName={tree.modules.at(0)?.name}
-					projectId={projectId}
-				/>
-			) : null}
-			{isEmptyMindmapTree(tree) ? (
-				<p className="px-4 py-2 text-muted-foreground text-sm">
-					该项目还没有模块：选中中间的项目节点，按 Tab 新建第一个模块。
-				</p>
-			) : null}
-			<MindmapBudgetNotice data={tree} project={project} />
-			<div className="min-h-0 flex-1">
-				<MindmapCanvas
-					data={tree}
-					key={`${scope.projectId}:${scope.moduleId ?? ""}`}
-					project={project}
-					scope={scope}
-				/>
-			</div>
-		</div>
+		<MindmapContent
+			project={project}
+			scope={scope}
+			stale={treeQuery.isPlaceholderData}
+			tree={tree}
+		/>
 	);
 }

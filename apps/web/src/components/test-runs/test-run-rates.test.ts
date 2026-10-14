@@ -27,30 +27,26 @@ function counts(input: CountsInput) {
 }
 
 describe("formatPassRate", () => {
-	it("把阻塞与跳过踢出分母", () => {
-		expect(
-			formatPassRate(counts({ blocked: 6, failed: 1, passed: 3, total: 10 }))
-		).toBe("75%");
-	});
-
-	it("分母为 0 时显示占位而不是 0%", () => {
-		expect(
-			formatPassRate(counts({ blocked: 4, skipped: 2, total: 10, untested: 4 }))
-		).toBe(RATE_UNKNOWN);
-	});
-
-	it("空测试任务同样显示占位", () => {
-		expect(formatPassRate(counts({ total: 0 }))).toBe(RATE_UNKNOWN);
-	});
-
-	it("全部通过是 100%", () => {
-		expect(formatPassRate(counts({ passed: 8, total: 8 }))).toBe("100%");
-	});
-
-	it("差一条没过时不许显示 100%", () => {
-		expect(formatPassRate(counts({ failed: 1, passed: 119, total: 120 }))).toBe(
-			"99%"
-		);
+	it.each<[string, CountsInput, string]>([
+		[
+			"把阻塞与跳过踢出分母",
+			{ blocked: 6, failed: 1, passed: 3, total: 10 },
+			"75%",
+		],
+		[
+			"分母为 0 时显示占位而不是 0%",
+			{ blocked: 4, skipped: 2, total: 10, untested: 4 },
+			RATE_UNKNOWN,
+		],
+		["空测试任务同样显示占位", { total: 0 }, RATE_UNKNOWN],
+		["全部通过是 100%", { passed: 8, total: 8 }, "100%"],
+		[
+			"差一条没过时不许显示 100%",
+			{ failed: 1, passed: 119, total: 120 },
+			"99%",
+		],
+	])("%s", (_name, input, rate) => {
+		expect(formatPassRate(counts(input))).toBe(rate);
 	});
 });
 

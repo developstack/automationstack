@@ -14,6 +14,8 @@ const CALLBACK_PATH = "/api/auth/casdoor/callback";
 const SERVER_URL = "https://testcase.example.com";
 const BASE64URL = /^[A-Za-z0-9_-]+$/;
 
+type AuthSettingsErrors = ReturnType<typeof validateAuthSettingsForm>;
+
 const view: AuthSettingsView = {
 	adminRole: null,
 	allowLocalLogin: true,
@@ -70,79 +72,55 @@ describe("validateAuthSettingsForm", () => {
 		).toBe(false);
 	});
 
-	it("公网地址带路径：报错", () => {
+	it.each<[string, Partial<AuthSettingsFormValues>, keyof AuthSettingsErrors]>([
+		[
+			"公网地址带路径：报错",
+			{ issuer: "https://casdoor.example.com/login" },
+			"issuer",
+		],
+		["组织为 built-in：报错", { organization: "built-in" }, "organization"],
+		[
+			"回调地址的路径不对：报错",
+			{ redirectUrl: "https://testcase.example.com/callback" },
+			"redirectUrl",
+		],
+		["Webhook 密钥太短：报错", { webhookSecret: "short" }, "webhookSecret"],
+	])("%s", (_name, patch, field) => {
 		expect(
-			validateAuthSettingsForm(
-				values({ issuer: "https://casdoor.example.com/login" }),
-				CALLBACK_PATH
-			).issuer
-		).not.toBeNull();
-	});
-
-	it("组织为 built-in：报错", () => {
-		expect(
-			validateAuthSettingsForm(
-				values({ organization: "built-in" }),
-				CALLBACK_PATH
-			).organization
-		).not.toBeNull();
-	});
-
-	it("回调地址的路径不对：报错", () => {
-		expect(
-			validateAuthSettingsForm(
-				values({ redirectUrl: "https://testcase.example.com/callback" }),
-				CALLBACK_PATH
-			).redirectUrl
-		).not.toBeNull();
-	});
-
-	it("Webhook 密钥太短：报错", () => {
-		expect(
-			validateAuthSettingsForm(
-				values({ webhookSecret: "short" }),
-				CALLBACK_PATH
-			).webhookSecret
+			validateAuthSettingsForm(values(patch), CALLBACK_PATH)[field]
 		).not.toBeNull();
 	});
 });
 
 describe("toAuthSettingsSaveInput", () => {
-	it("密钥输入框为空：keep", () => {
-		expect(toAuthSettingsSaveInput(values())).toMatchObject({
-			clientSecret: { kind: "keep" },
-			webhookSecret: { kind: "keep" },
-		});
-	});
-
-	it("填写了密钥：set", () => {
-		expect(
-			toAuthSettingsSaveInput(values({ clientSecret: " secret " })).clientSecret
-		).toEqual({ kind: "set", value: "secret" });
-	});
-
-	it("选择清空：clear", () => {
-		expect(
-			toAuthSettingsSaveInput(values({ clearWebhookSecret: true }))
-				.webhookSecret
-		).toEqual({ kind: "clear" });
-	});
-
-	it("空字符串保存为 null", () => {
-		expect(
-			toAuthSettingsSaveInput(values({ adminRole: "  " })).adminRole
-		).toBeNull();
-		expect(
-			toAuthSettingsSaveInput(values({ projectAdminRole: " " }))
-				.projectAdminRole
-		).toBeNull();
-	});
-
-	it("项目管理员角色名去掉首尾空白后保存（#15）", () => {
-		expect(
-			toAuthSettingsSaveInput(values({ projectAdminRole: " pm-role " }))
-				.projectAdminRole
-		).toBe("pm-role");
+	it.each<[string, Partial<AuthSettingsFormValues>, object]>([
+		[
+			"密钥输入框为空：keep",
+			{},
+			{ clientSecret: { kind: "keep" }, webhookSecret: { kind: "keep" } },
+		],
+		[
+			"填写了密钥：set",
+			{ clientSecret: " secret " },
+			{ clientSecret: { kind: "set", value: "secret" } },
+		],
+		[
+			"选择清空：clear",
+			{ clearWebhookSecret: true },
+			{ webhookSecret: { kind: "clear" } },
+		],
+		[
+			"空字符串保存为 null",
+			{ adminRole: "  ", projectAdminRole: " " },
+			{ adminRole: null, projectAdminRole: null },
+		],
+		[
+			"项目管理员角色名去掉首尾空白后保存（#15）",
+			{ projectAdminRole: " pm-role " },
+			{ projectAdminRole: "pm-role" },
+		],
+	])("%s", (_name, patch, saved) => {
+		expect(toAuthSettingsSaveInput(values(patch))).toMatchObject(saved);
 	});
 });
 

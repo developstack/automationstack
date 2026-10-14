@@ -42,7 +42,7 @@ describe("对账单打印（§7.2 第 3 条）", () => {
 		expect(lines.some((line) => line.includes("12 条"))).toBe(true);
 	});
 
-	it("跳过 / 未匹配 / 越界三类逐条打，理由是服务端原文", () => {
+	it("跳过 / 未匹配 / 越界三类逐条打，理由是服务端原文，一条都不吞", () => {
 		const lines = formatReceiptLines(receipt);
 		expect(lines).toContain(
 			"跳过 1 条（已有人工结论）：PAY-CART-007 @《v2.3 回归》"
@@ -53,13 +53,6 @@ describe("对账单打印（§7.2 第 3 条）", () => {
 		expect(lines).toContain(
 			"越界 1 条（不在任何未提交任务的范围内）：PAY-CART-031"
 		);
-	});
-
-	it("一条都不吞：三类里每一条 sourceRef 都出现在输出里", () => {
-		const text = formatReceiptLines(receipt).join("\n");
-		for (const sourceRef of ["PAY-CART-007", "PAY-NEW-099", "PAY-CART-031"]) {
-			expect(text).toContain(sourceRef);
-		}
 	});
 
 	it("越界条目带任务名时也指名道姓，否则对账单读起来自相矛盾", () => {

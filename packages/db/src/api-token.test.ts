@@ -14,16 +14,11 @@ const HEX_64 = /^[0-9a-f]{64}$/;
 const BASE64URL_BODY = /^[A-Za-z0-9_-]+$/;
 
 describe("generateApiToken", () => {
-	it("明文以 as_ 开头且总长 46", async () => {
-		const token = await generateApiToken();
-		expect(token.plaintext.startsWith(API_TOKEN_PREFIX)).toBe(true);
-		expect(token.plaintext).toHaveLength(EXPECTED_PLAINTEXT_LENGTH);
-	});
-
-	it("随机体只含 URL 安全字符，没有 padding", async () => {
-		const token = await generateApiToken();
-		const body = token.plaintext.slice(API_TOKEN_PREFIX.length);
-		expect(body).toMatch(BASE64URL_BODY);
+	it("明文以 as_ 开头且总长 46，随机体只含 URL 安全字符，没有 padding", async () => {
+		const { plaintext } = await generateApiToken();
+		expect(plaintext.startsWith(API_TOKEN_PREFIX)).toBe(true);
+		expect(plaintext).toHaveLength(EXPECTED_PLAINTEXT_LENGTH);
+		expect(plaintext.slice(API_TOKEN_PREFIX.length)).toMatch(BASE64URL_BODY);
 	});
 
 	it("两次生成不相同（否则 token_hash 的唯一约束会当场炸给你看）", async () => {
@@ -35,21 +30,18 @@ describe("generateApiToken", () => {
 		expect(first.tokenHash).not.toBe(second.tokenHash);
 	});
 
-	it("prefix 是明文前 11 个字符", async () => {
+	it("prefix 是明文前 11 个字符，与 extractApiTokenPrefix 的结果一致", async () => {
 		const token = await generateApiToken();
 		expect(token.prefix).toBe(
 			token.plaintext.slice(0, API_TOKEN_DISPLAY_PREFIX_LENGTH)
 		);
 		expect(token.prefix).toHaveLength(API_TOKEN_DISPLAY_PREFIX_LENGTH);
-	});
-
-	it("prefix 与 extractApiTokenPrefix 的结果一致", async () => {
-		const token = await generateApiToken();
 		expect(token.prefix).toBe(extractApiTokenPrefix(token.plaintext));
 	});
 
-	it("tokenHash 等于对含前缀完整明文的哈希（不是剥掉 as_ 之后的）", async () => {
+	it("tokenHash 是 64 位小写十六进制，等于对含前缀完整明文的哈希（不是剥掉 as_ 之后的）", async () => {
 		const token = await generateApiToken();
+		expect(token.tokenHash).toMatch(HEX_64);
 		expect(token.tokenHash).toBe(await hashApiToken(token.plaintext));
 		expect(token.tokenHash).not.toBe(
 			await hashApiToken(token.plaintext.slice(API_TOKEN_PREFIX.length))
@@ -58,21 +50,12 @@ describe("generateApiToken", () => {
 });
 
 describe("hashApiToken", () => {
-	it("同一明文稳定（否则鉴权那次等值查找永远查不中）", async () => {
+	it("同一明文稳定（否则鉴权那次等值查找永远查不中），不同明文得到不同哈希", async () => {
 		const plaintext = "as_deterministic-sample-value";
 		expect(await hashApiToken(plaintext)).toBe(await hashApiToken(plaintext));
-	});
-
-	it("不同明文得到不同哈希", async () => {
 		expect(await hashApiToken("as_alpha")).not.toBe(
 			await hashApiToken("as_beta")
 		);
-	});
-
-	it("输出是 64 位小写十六进制", async () => {
-		const token = await generateApiToken();
-		expect(token.tokenHash).toMatch(HEX_64);
-		expect(await hashApiToken("as_alpha")).toMatch(HEX_64);
 	});
 
 	it("对上游已知向量给出标准 SHA-256（换算法会被这条拦住）", async () => {
@@ -82,15 +65,11 @@ describe("hashApiToken", () => {
 	});
 });
 
-describe("extractApiTokenPrefix", () => {
-	it("短于 11 个字符的输入原样返回，不抛错（校验路径拿到的是用户输入）", () => {
-		expect(extractApiTokenPrefix("as_1")).toBe("as_1");
-	});
+it("extractApiTokenPrefix：短于 11 个字符的输入原样返回，不抛错（校验路径拿到的是用户输入）", () => {
+	expect(extractApiTokenPrefix("as_1")).toBe("as_1");
 });
 
-describe("API_TOKEN_LAST_USED_THROTTLE_SECONDS", () => {
-	it("是正整数秒（它会被拼进 SQL 的 interval 字面量）", () => {
-		expect(Number.isInteger(API_TOKEN_LAST_USED_THROTTLE_SECONDS)).toBe(true);
-		expect(API_TOKEN_LAST_USED_THROTTLE_SECONDS).toBeGreaterThan(0);
-	});
+it("API_TOKEN_LAST_USED_THROTTLE_SECONDS 是正整数秒（它会被拼进 SQL 的 interval 字面量）", () => {
+	expect(Number.isInteger(API_TOKEN_LAST_USED_THROTTLE_SECONDS)).toBe(true);
+	expect(API_TOKEN_LAST_USED_THROTTLE_SECONDS).toBeGreaterThan(0);
 });

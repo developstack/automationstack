@@ -20,6 +20,18 @@ export interface CaseSaveConflict {
 
 const UNKNOWN_EDITOR = "他人";
 
+/**
+ * 保存时用哪个版本做乐观锁校验。冲突后用户已经看到对方保存的版本，
+ * 再次保存表示覆盖它，所以用冲突中的版本，不用等最新内容载入。
+ * 之后又有人保存时，服务端仍然返回冲突。
+ */
+export function caseSaveBaseVersion(
+	loadedVersion: number,
+	conflict: CaseSaveConflict | null
+): number {
+	return conflict?.currentVersion ?? loadedVersion;
+}
+
 export function useUpdateCase(onSaved: () => void) {
 	const invalidateCases = useInvalidateCases();
 	const [conflict, setConflict] = useState<CaseSaveConflict | null>(null);

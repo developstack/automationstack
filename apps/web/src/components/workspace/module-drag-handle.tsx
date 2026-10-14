@@ -13,8 +13,8 @@ export function ModuleDragHandle({ drag, name }: ModuleDragHandleProps) {
 		<button
 			aria-label={`拖拽排序：${name}`}
 			className={cn(
-				"absolute start-8 top-1/2 flex size-6 -translate-y-1/2 cursor-grab items-center justify-center text-muted-foreground opacity-0 outline-none transition-opacity",
-				"focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-ring group-hover/module-row:opacity-100",
+				"absolute start-7 top-1/2 flex size-6 -translate-y-1/2 cursor-grab items-center justify-center text-muted-foreground opacity-0 outline-none transition-opacity",
+				"rounded-sm focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-sidebar-ring group-hover/module-row:opacity-100",
 				drag.isDragging && "cursor-grabbing opacity-100"
 			)}
 			data-drag-handle=""

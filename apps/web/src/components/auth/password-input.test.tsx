@@ -18,16 +18,10 @@ function renderInForm(onSubmit = vi.fn()) {
 }
 
 describe("PasswordInput", () => {
-	it("默认遮盖密码，按钮名称是显示密码", () => {
-		renderInForm();
-
-		expect(screen.getByLabelText(LABEL)).toHaveProperty("type", "password");
-		expect(screen.getByRole("button", { name: SHOW })).toBeDefined();
-	});
-
-	it("点击按钮显示明文，再次点击恢复遮盖", () => {
+	it("默认遮盖密码，按钮名称是显示密码；点击显示明文，再次点击恢复遮盖", () => {
 		renderInForm();
 		const input = screen.getByLabelText(LABEL);
+		expect(input).toHaveProperty("type", "password");
 
 		fireEvent.click(screen.getByRole("button", { name: SHOW }));
 		expect(input).toHaveProperty("type", "text");
