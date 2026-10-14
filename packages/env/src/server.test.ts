@@ -38,15 +38,15 @@ async function loadEnv(): Promise<{ error: unknown; output: string }> {
 	return { error, output };
 }
 
+beforeEach(() => {
+	vi.resetModules();
+});
+
+afterEach(() => {
+	vi.unstubAllEnvs();
+});
+
 describe("server env：生产环境拒绝开发默认密钥", () => {
-	beforeEach(() => {
-		vi.resetModules();
-	});
-
-	afterEach(() => {
-		vi.unstubAllEnvs();
-	});
-
 	it("SESSION_SECRET 等于开发默认值（大小写不同、首尾空白）：启动失败，只点名变量", async () => {
 		stubEnv({
 			NODE_ENV: "production",
@@ -84,38 +84,36 @@ describe("server env：生产环境拒绝开发默认密钥", () => {
 		}
 	});
 
-	it("生产环境使用自己的值：正常加载", async () => {
-		stubEnv({ NODE_ENV: "production" });
-		const { error } = await loadEnv();
-		expect(error).toBeNull();
-	});
-
-	it("非生产环境使用开发默认值：正常加载", async () => {
-		stubEnv({
-			ADMIN_INITIAL_PASSWORD: "dev-only-admin-password",
-			NODE_ENV: "development",
-			SECRET_ENCRYPTION_KEY: "U0t6cb4rxrzmt9qa9Po0Txv+IoE5wZ/3ZBYkt7TBbxo=",
-			SESSION_SECRET: DEV_SESSION_SECRET,
-		});
+	it.each([
+		["生产环境使用自己的值", { NODE_ENV: "production" }],
+		[
+			"非生产环境使用开发默认值",
+			{
+				ADMIN_INITIAL_PASSWORD: "dev-only-admin-password",
+				NODE_ENV: "development",
+				SECRET_ENCRYPTION_KEY: "U0t6cb4rxrzmt9qa9Po0Txv+IoE5wZ/3ZBYkt7TBbxo=",
+				SESSION_SECRET: DEV_SESSION_SECRET,
+			},
+		],
+	])("%s：正常加载", async (_name, overrides) => {
+		stubEnv(overrides);
 		const { error } = await loadEnv();
 		expect(error).toBeNull();
 	});
 });
 
 describe("server env：Casdoor 默认值", () => {
-	beforeEach(() => {
-		vi.resetModules();
-	});
-
-	afterEach(() => {
-		vi.unstubAllEnvs();
-	});
-
 	it("CASDOOR_ISSUER 带路径：启动失败", async () => {
 		stubEnv({ CASDOOR_ISSUER: "https://casdoor.example.com/login" });
 		const { error, output } = await loadEnv();
 		expect(error).toBeInstanceOf(Error);
 		expect(output).toContain("CASDOOR_ISSUER");
+	});
+
+	it("CASDOOR_WEBHOOK_SECRET 少于 32 个字符：启动失败", async () => {
+		stubEnv({ CASDOOR_WEBHOOK_SECRET: "too-short" });
+		const { error } = await loadEnv();
+		expect(error).toBeInstanceOf(Error);
 	});
 
 	it("CASDOOR_INTERNAL_URL 结尾有斜杠：规范为 origin", async () => {
@@ -126,11 +124,5 @@ describe("server env：Casdoor 默认值", () => {
 		expect(env.CASDOOR_INTERNAL_URL).toBe(
 			"http://casdoor.casdoor.svc.cluster.local:8000"
 		);
-	});
-
-	it("CASDOOR_WEBHOOK_SECRET 少于 32 个字符：启动失败", async () => {
-		stubEnv({ CASDOOR_WEBHOOK_SECRET: "too-short" });
-		const { error } = await loadEnv();
-		expect(error).toBeInstanceOf(Error);
 	});
 });

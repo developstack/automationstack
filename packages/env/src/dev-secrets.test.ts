@@ -44,6 +44,13 @@ function readEnvExample(relativePath: string): Map<string, string> {
 	return entries;
 }
 
+/** .env.example 中名字像密钥、并且有值的那些行。 */
+function secretsIn(entries: Map<string, string>): [string, string][] {
+	return [...entries].filter(
+		([key, value]) => SECRET_LIKE_KEY.test(key) && value !== ""
+	);
+}
+
 describe("findDevSecretsInProduction：生产环境", () => {
 	for (const variable of DEV_SECRET_VARIABLES) {
 		it(`${variable} 等于任一开发默认值（含大小写不同、首尾空白）：拒绝`, () => {
@@ -128,20 +135,14 @@ describe("databaseUrlPassword", () => {
 
 // 在 .env.example 里加一个新的开发密钥但没有登记，下面的测试就会失败。
 describe("KNOWN_DEV_SECRETS 与 .env.example 一致", () => {
-	it("apps/server/.env.example 中每个有值的密钥都已登记，并且生产环境检查它", () => {
+	it("apps/server/.env.example 中每个有值的密钥（含 DATABASE_URL 的密码）都已登记，并且生产环境检查它", () => {
 		const entries = readEnvExample("../../../apps/server/.env.example");
-		const secrets = [...entries].filter(
-			([key, value]) => SECRET_LIKE_KEY.test(key) && value !== ""
-		);
+		const secrets = secretsIn(entries);
 		expect(secrets.length).toBeGreaterThan(0);
 		for (const [key, value] of secrets) {
 			expect(DEV_SECRET_VARIABLES, key).toContain(key);
 			expect(isKnownDevSecret(value), key).toBe(true);
 		}
-	});
-
-	it("apps/server/.env.example 中 DATABASE_URL 的密码已登记", () => {
-		const entries = readEnvExample("../../../apps/server/.env.example");
 		expect(
 			isKnownDevSecret(databaseUrlPassword(entries.get("DATABASE_URL"))),
 			"DATABASE_URL"
@@ -149,10 +150,7 @@ describe("KNOWN_DEV_SECRETS 与 .env.example 一致", () => {
 	});
 
 	it("根目录 .env.example 中每个有值的密钥都已登记", () => {
-		const entries = readEnvExample("../../../.env.example");
-		const secrets = [...entries].filter(
-			([key, value]) => SECRET_LIKE_KEY.test(key) && value !== ""
-		);
+		const secrets = secretsIn(readEnvExample("../../../.env.example"));
 		expect(secrets.length).toBeGreaterThan(0);
 		for (const [key, value] of secrets) {
 			expect(isKnownDevSecret(value), key).toBe(true);
