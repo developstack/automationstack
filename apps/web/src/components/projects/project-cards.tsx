@@ -23,6 +23,11 @@ import { MoreHorizontalIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import { formatDateTime } from "@/components/cases/case-meta";
+import {
+	PROJECT_CARD_DESCRIPTION,
+	PROJECT_CARD_GRID,
+	PROJECT_CARD_SIZE,
+} from "@/components/projects/project-card-layout";
 
 interface ProjectCardProps {
 	onDelete: (project: Project) => void;
@@ -38,18 +43,19 @@ function ProjectCard({ onDelete, onEdit, project }: ProjectCardProps) {
 	);
 
 	return (
-		<Card>
+		<Card className={PROJECT_CARD_SIZE}>
 			<CardHeader>
-				<CardTitle>
+				<CardTitle className="min-w-0">
 					<Link
-						className="hover:underline"
+						className="block truncate hover:underline"
 						params={{ projectId: project.id }}
+						title={project.name}
 						to="/projects/$projectId/overview"
 					>
 						{project.name}
 					</Link>
 				</CardTitle>
-				<CardDescription className="line-clamp-2">
+				<CardDescription className={PROJECT_CARD_DESCRIPTION}>
 					{project.description ?? "暂无描述"}
 				</CardDescription>
 				<div className="flex items-center justify-between gap-2 text-muted-foreground text-xs">
@@ -112,7 +118,7 @@ export function ProjectCards({
 		return <ProjectsEmpty canCreate={canCreate} />;
 	}
 	return (
-		<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+		<div className={PROJECT_CARD_GRID}>
 			{projects.map((project) => (
 				<ProjectCard
 					key={project.id}

@@ -1,22 +1,17 @@
 import type { ReactNode } from "react";
 
-import { AppHeader } from "@/components/layout/app-header";
-import { AppShell } from "@/components/layout/app-shell";
-import {
-	HeaderPath,
-	type HeaderPathItem,
-} from "@/components/layout/header-path";
+import type { HeaderPathItem } from "@/components/layout/header-path";
 import { PageHeader } from "@/components/layout/page-header";
 import type { PageTransitionPhase } from "@/components/layout/page-transition";
-import { PageTransition } from "@/components/layout/page-transition";
-import { PlatformSidebar } from "@/components/layout/platform-sidebar";
+import { PlatformPageShell } from "@/components/layout/platform-page-shell";
 
 const PATH: readonly HeaderPathItem[] = [
 	{ key: "platform", label: "平台" },
 	{ current: true, key: "auth", label: "认证设置" },
 ];
 
-const AUTH_SETTINGS_MAIN = "min-h-0 w-full flex-1 overflow-y-auto";
+/** 表单靠左，最大宽度与项目设置页的表单相同。更宽时单行输入框和中文正文不容易读。 */
+const READABLE_FORM = "flex max-w-3xl flex-col gap-4";
 
 export function AuthSettingsShell({
 	children,
@@ -26,16 +21,9 @@ export function AuthSettingsShell({
 	phase: PageTransitionPhase;
 }) {
 	return (
-		<AppShell sidebar={<PlatformSidebar />}>
-			<AppHeader>
-				<HeaderPath items={PATH} />
-			</AppHeader>
-			<PageTransition className={AUTH_SETTINGS_MAIN} phase={phase}>
-				<div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-4 pt-4 pb-6">
-					<PageHeader title="认证设置" />
-					{children}
-				</div>
-			</PageTransition>
-		</AppShell>
+		<PlatformPageShell path={PATH} phase={phase}>
+			<PageHeader title="认证设置" />
+			<div className={READABLE_FORM}>{children}</div>
+		</PlatformPageShell>
 	);
 }

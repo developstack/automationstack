@@ -14,6 +14,10 @@ import { useCallback } from "react";
 
 import { PageTransition } from "@/components/layout/page-transition";
 
+/** 与项目以内的页面相同：内容靠左，左右内边距 p-4，不整页居中。 */
+const ROUTE_ERROR_MAIN = "min-h-0 w-full overflow-y-auto p-4";
+const START_ALIGNED = "items-start";
+
 const FALLBACK_DESCRIPTION =
 	"服务端没有给出原因。可以重试一次，若一直失败请联系管理员。";
 
@@ -38,9 +42,9 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
 	}, [reset, router]);
 
 	return (
-		<PageTransition className="container mx-auto flex max-w-5xl items-center px-4 py-6">
-			<Empty>
-				<EmptyHeader>
+		<PageTransition className={ROUTE_ERROR_MAIN}>
+			<Empty className="items-start p-0 text-left">
+				<EmptyHeader className={START_ALIGNED}>
 					<EmptyMedia variant="icon">
 						<TriangleAlertIcon />
 					</EmptyMedia>
@@ -49,7 +53,7 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
 					</EmptyTitle>
 					<EmptyDescription>{description}</EmptyDescription>
 				</EmptyHeader>
-				<EmptyContent>
+				<EmptyContent className={START_ALIGNED}>
 					<Button onClick={handleRetry} size="sm">
 						重试
 					</Button>
