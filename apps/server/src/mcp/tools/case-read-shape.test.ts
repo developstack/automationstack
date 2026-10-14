@@ -1,5 +1,5 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
-import { describe, expect, it } from "vitest";
+import { expect, it } from "vitest";
 
 import {
 	FULL_DEFAULT_PAGE_SIZE,
@@ -34,56 +34,46 @@ const sampleCase: TestCase = {
 	updatedAt: new Date("2026-02-01T00:00:00Z"),
 };
 
-const listResult = { items: [sampleCase], page: 1, pageSize: 10, total: 1 };
+const listResult = { items: [sampleCase], page: 2, pageSize: 20, total: 41 };
 
-describe("resolveReadPageSize", () => {
-	it("passes summary page sizes straight through", () => {
-		expect(resolveReadPageSize("summary", 100)).toBe(100);
-		expect(resolveReadPageSize("summary", undefined)).toBeUndefined();
-	});
+// projectId、sortOrder、currentVersion 等项目内部的记账字段一律不出现
+const SUMMARY_FIELDS = [
+	"caseType",
+	"id",
+	"maintainer",
+	"moduleId",
+	"name",
+	"priority",
+	"sourceRef",
+	"status",
+	"tags",
+	"updatedAt",
+] as const;
 
-	it("defaults full detail to a small page", () => {
-		expect(resolveReadPageSize("full", undefined)).toBe(FULL_DEFAULT_PAGE_SIZE);
-	});
+it.each([
+	["summary", undefined, undefined],
+	["summary", 100, 100],
+	// full detail defaults to a small page and is capped even when a larger page is requested
+	["full", undefined, FULL_DEFAULT_PAGE_SIZE],
+	["full", 100, FULL_MAX_PAGE_SIZE],
+	["full", 5, 5],
+] as const)(
+	"resolveReadPageSize(%s, %s) → %s",
+	(detail, requested, expected) => {
+		expect(resolveReadPageSize(detail, requested)).toBe(expected);
+	}
+);
 
-	it("caps full detail even when a larger page size is requested", () => {
-		expect(resolveReadPageSize("full", 100)).toBe(FULL_MAX_PAGE_SIZE);
-		expect(resolveReadPageSize("full", 5)).toBe(5);
-	});
-});
-
-describe("shapeReadCases", () => {
-	it("drops case bodies in summary detail", () => {
-		const page = shapeReadCases(listResult, "summary");
-		const [row] = page.items;
-		expect(page.detail).toBe("summary");
-		expect(row).not.toHaveProperty("steps");
-		expect(row).not.toHaveProperty("preconditions");
-		expect(row?.name).toBe(sampleCase.name);
-		expect(row?.sourceRef).toBe(sampleCase.sourceRef);
-	});
-
-	it("keeps case bodies in full detail", () => {
-		const page = shapeReadCases(listResult, "full");
-		const [row] = page.items;
-		expect(row).toHaveProperty("steps", sampleCase.steps);
-		expect(row).toHaveProperty("preconditions", sampleCase.preconditions);
-	});
-
-	it("never leaks project-internal bookkeeping fields", () => {
-		for (const detail of ["summary", "full"] as const) {
-			const [row] = shapeReadCases(listResult, detail).items;
-			expect(row).not.toHaveProperty("projectId");
-			expect(row).not.toHaveProperty("sortOrder");
-			expect(row).not.toHaveProperty("currentVersion");
-		}
-	});
-
-	it("carries pagination metadata through unchanged", () => {
-		const page = shapeReadCases(
-			{ items: [], page: 2, pageSize: 20, total: 41 },
-			"full"
-		);
-		expect(page).toMatchObject({ page: 2, pageSize: 20, total: 41 });
-	});
-});
+it.each([
+	["summary", "drops case bodies", SUMMARY_FIELDS],
+	["full", "keeps case bodies", [...SUMMARY_FIELDS, "preconditions", "steps"]],
+] as const)(
+	"shapeReadCases %s detail %s, never leaks bookkeeping fields, and carries pagination through",
+	(detail, _what, fields) => {
+		const page = shapeReadCases(listResult, detail);
+		expect(page).toMatchObject({ detail, page: 2, pageSize: 20, total: 41 });
+		expect(page.items).toEqual([
+			Object.fromEntries(fields.map((field) => [field, sampleCase[field]])),
+		]);
+	}
+);

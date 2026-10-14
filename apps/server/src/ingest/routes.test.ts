@@ -50,20 +50,6 @@ test("四条路径逐字就是对外公布的那张表", () => {
 	);
 });
 
-test("四条路径互不相同，也没有一条以斜杠结尾", () => {
-	const paths = [
-		INGEST_ATTACHMENTS_PRESIGN_ROUTE,
-		INGEST_ATTACHMENTS_REGISTER_ROUTE,
-		INGEST_EXECUTIONS_ROUTE,
-		INGEST_RUNS_ROUTE,
-	];
-	expect(new Set(paths).size).toBe(paths.length);
-	for (const path of paths) {
-		expect(path.startsWith("/ingest/")).toBe(true);
-		expect(path.endsWith("/")).toBe(false);
-	}
-});
-
 test("registerIngestRoutes 把四条全挂上了，一条都没漏", async () => {
 	const app = buildApp();
 	const runs = await app.request(`${INGEST_RUNS_ROUTE}?projectId=x`);
@@ -78,23 +64,21 @@ test("registerIngestRoutes 把四条全挂上了，一条都没漏", async () =>
 	expect(posted.map((response) => response.status)).toEqual([200, 200, 200]);
 });
 
-test("没有 /ingest/target 这类端点，也不认没注册过的路径", async () => {
-	const app = buildApp();
-	const target = await app.request("/ingest/target", {
-		body: "{}",
-		method: "POST",
-	});
-	expect(target.status).toBe(404);
-	const unknown = await app.request("/ingest/attachments", { method: "GET" });
-	expect(unknown.status).toBe(404);
-});
-
-test("方法不对就当没这条路由：POST /ingest/runs 不会走进 GET 的 handler", async () => {
-	const app = buildApp();
-	const response = await app.request(INGEST_RUNS_ROUTE, {
-		body: "{}",
-		method: "POST",
+// 没有 /ingest/target 这类端点；方法不对也当没这条路由
+test.each([
+	["POST", "/ingest/target"],
+	["GET", "/ingest/attachments"],
+	["POST", INGEST_RUNS_ROUTE],
+])("没注册过的 %s %s → 404，不会走进任何 handler", async (method, path) => {
+	const response = await buildApp().request(path, {
+		body: method === "POST" ? "{}" : undefined,
+		method,
 	});
 	expect(response.status).toBe(404);
-	expect(executionMocks.handleIngestRuns).not.toHaveBeenCalled();
+	for (const handler of [
+		...Object.values(executionMocks),
+		...Object.values(attachmentMocks),
+	]) {
+		expect(handler).not.toHaveBeenCalled();
+	}
 });

@@ -62,7 +62,7 @@ describe("evictUserFromRoom", () => {
 		expect(getClient(projectId, "tab-2")).toBeNull();
 	});
 
-	it("同房间的其他人一条都不受影响", () => {
+	it("同房间的其他人一条都不受影响，并收到那个人的 presence:leave，不会留下幽灵头像", () => {
 		const projectId = "p-bystander";
 		join(projectId, "tab-1", "u-removed");
 		const bystander = join(projectId, "tab-2", "u-stays");
@@ -70,6 +70,10 @@ describe("evictUserFromRoom", () => {
 		evictUserFromRoom(projectId, "u-removed");
 		expect(bystander.closed).toBe(false);
 		expect(getClient(projectId, "tab-2")).not.toBeNull();
+		expect(bystander.sent.map((raw) => JSON.parse(raw))).toContainEqual({
+			clientId: "tab-1",
+			type: "presence:leave",
+		});
 	});
 
 	it("同一个人在别的项目里的连接不受影响——撤销是按项目发生的", () => {
@@ -79,18 +83,6 @@ describe("evictUserFromRoom", () => {
 		evictUserFromRoom("p-target", "u-removed");
 		expect(other.closed).toBe(false);
 		expect(getClient("p-other", "tab-1")).not.toBeNull();
-	});
-
-	it("剩下的人会收到那个人的 presence:leave，不会留下幽灵头像", () => {
-		const projectId = "p-leave-broadcast";
-		join(projectId, "tab-1", "u-removed");
-		const bystander = join(projectId, "tab-2", "u-stays");
-
-		evictUserFromRoom(projectId, "u-removed");
-		expect(bystander.sent.map((raw) => JSON.parse(raw))).toContainEqual({
-			clientId: "tab-1",
-			type: "presence:leave",
-		});
 	});
 
 	it("房间不存在 / 那个人不在房间里时是无操作，不抛", () => {
