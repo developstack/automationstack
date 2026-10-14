@@ -28,33 +28,24 @@ function renderPending(uploads: CaseUploadJobs) {
 }
 
 describe("ImageNode：预览中粘贴的图片说明上传状态", () => {
-	it("上传中的图片说明正在上传", () => {
-		renderPending(
-			new Map([
-				[TOKEN, { fileName: "a.png", progress: 0.3, status: "uploading" }],
-			])
-		);
-		expect(screen.getByRole("img").getAttribute("alt")).toBe(
-			"用例插图（上传中）"
-		);
-	});
-
-	it("上传失败的图片说明上传失败，不再显示为上传中", () => {
-		renderPending(
-			new Map([
-				[
-					TOKEN,
-					{
-						fileName: "a.png",
-						reason: "网络中断",
-						retryable: true,
-						status: "failed",
-					},
-				],
-			])
-		);
-		expect(screen.getByRole("img").getAttribute("alt")).toBe(
-			"用例插图（上传失败）"
-		);
+	it.each([
+		[
+			"上传中的图片说明正在上传",
+			{ fileName: "a.png", progress: 0.3, status: "uploading" },
+			"用例插图（上传中）",
+		],
+		[
+			"上传失败的图片说明上传失败，不再显示为上传中",
+			{
+				fileName: "a.png",
+				reason: "网络中断",
+				retryable: true,
+				status: "failed",
+			},
+			"用例插图（上传失败）",
+		],
+	] as const)("%s", (_name, job, alt) => {
+		renderPending(new Map([[TOKEN, job]]));
+		expect(screen.getByRole("img").getAttribute("alt")).toBe(alt);
 	});
 });

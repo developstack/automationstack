@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { replaceCaseImageRef } from "@/components/cases/case-upload-placeholder";
 import type {
@@ -14,6 +14,10 @@ vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
 const ATTACHMENT_ID = "11111111-2222-4333-8444-555555555555";
 const ATTACHMENT_REF = `![](attachment:${ATTACHMENT_ID})`;
 const NO_SERVER_URLS: ReadonlyMap<string, string | null> = new Map();
+const UPLOADED: CaseImageUploadResult = {
+	attachmentId: ATTACHMENT_ID,
+	kind: "ok",
+};
 
 interface PendingUpload {
 	onProgress: (fraction: number) => void;
@@ -71,14 +75,8 @@ async function settle(call: PendingUpload, result: CaseImageUploadResult) {
 	});
 }
 
-beforeEach(() => {
-	URL.createObjectURL = vi.fn(() => "blob:local");
-	URL.revokeObjectURL = vi.fn();
-});
-
-afterEach(() => {
-	vi.clearAllMocks();
-});
+URL.createObjectURL = vi.fn(() => "blob:local");
+URL.revokeObjectURL = vi.fn();
 
 describe("useCasePasteUpload：粘贴图片后显示上传进度，失败时可以重试", () => {
 	it("上传中报告进度，传完后占位换成附件引用，任务消失", async () => {
@@ -94,7 +92,7 @@ describe("useCasePasteUpload：粘贴图片后显示上传进度，失败时可�
 		});
 		expect(hook.result.current.uploading).toBe(true);
 
-		await settle(first, { attachmentId: ATTACHMENT_ID, kind: "ok" });
+		await settle(first, UPLOADED);
 		expect(field.text).toBe(`看图：${ATTACHMENT_REF}`);
 		expect(hook.result.current.uploads.has(token)).toBe(false);
 		expect(hook.result.current.uploading).toBe(false);
@@ -120,10 +118,7 @@ describe("useCasePasteUpload：粘贴图片后显示上传进度，失败时可�
 		expect(calls).toHaveLength(2);
 		expect(hook.result.current.uploads.get(token)?.status).toBe("uploading");
 
-		await settle(nthCall(calls, 1), {
-			attachmentId: ATTACHMENT_ID,
-			kind: "ok",
-		});
+		await settle(nthCall(calls, 1), UPLOADED);
 		expect(field.text).toBe(`看图：${ATTACHMENT_REF}`);
 		expect(hook.result.current.uploads.size).toBe(0);
 	});
@@ -175,10 +170,7 @@ describe("useCasePasteUpload：粘贴图片后显示上传进度，失败时可�
 		act(() => hook.result.current.uploadPasted?.(files, target));
 		hook.rerender({ uploader: latest.uploader });
 
-		await settle(nthCall(first.calls, 0), {
-			attachmentId: ATTACHMENT_ID,
-			kind: "ok",
-		});
+		await settle(nthCall(first.calls, 0), UPLOADED);
 		expect(first.calls).toHaveLength(1);
 		expect(latest.calls).toHaveLength(1);
 	});

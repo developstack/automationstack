@@ -30,14 +30,16 @@ describe("CaseConflictAlert：其他人先保存时，提示说明下一步", ()
 		expect(alert.textContent).toContain("你的修改还在表单中");
 	});
 
-	it("三个下一步各自对应一个按钮", () => {
+	it("三个下一步各自对应一个按钮，也可以关闭提示", () => {
 		const handlers = renderAlert({});
 		fireEvent.click(screen.getByRole("button", { name: "查看对方的修改" }));
 		fireEvent.click(screen.getByRole("button", { name: "放弃我的修改" }));
 		fireEvent.click(screen.getByRole("button", { name: "用我的修改覆盖" }));
+		fireEvent.click(screen.getByRole("button", { name: "关闭冲突提示" }));
 		expect(handlers.onViewHistory).toHaveBeenCalledOnce();
 		expect(handlers.onDiscard).toHaveBeenCalledOnce();
 		expect(handlers.onOverwrite).toHaveBeenCalledOnce();
+		expect(handlers.onDismiss).toHaveBeenCalledOnce();
 	});
 
 	it("保存中不能重复覆盖", () => {
@@ -47,22 +49,17 @@ describe("CaseConflictAlert：其他人先保存时，提示说明下一步", ()
 		fireEvent.click(overwrite);
 		expect(handlers.onOverwrite).not.toHaveBeenCalled();
 	});
-
-	it("可以关闭提示", () => {
-		const handlers = renderAlert({});
-		fireEvent.click(screen.getByRole("button", { name: "关闭冲突提示" }));
-		expect(handlers.onDismiss).toHaveBeenCalledOnce();
-	});
 });
 
 describe("caseSaveBaseVersion：保存时用哪个版本校验", () => {
-	it("没有冲突时用面板中载入的版本", () => {
-		expect(caseSaveBaseVersion(3, null)).toBe(3);
-	});
-
-	it("冲突后用对方保存的版本，不等最新内容载入，覆盖不会再次冲突", () => {
-		expect(
-			caseSaveBaseVersion(3, { currentVersion: 5, lastModifiedBy: "李四" })
-		).toBe(5);
+	it.each([
+		["没有冲突时用面板中载入的版本", null, 3],
+		[
+			"冲突后用对方保存的版本，不等最新内容载入，覆盖不会再次冲突",
+			{ currentVersion: 5, lastModifiedBy: "李四" },
+			5,
+		],
+	])("%s", (_name, conflict, version) => {
+		expect(caseSaveBaseVersion(3, conflict)).toBe(version);
 	});
 });

@@ -85,16 +85,13 @@ async function renderTable(
 const rowOf = (name: string) => screen.getByText(name).closest("tr");
 
 describe("CaseTable：改筛选条件和翻页时，表格保留在原位", () => {
-	it("第一次显示时，行不单独淡入", async () => {
-		await renderTable([LOGIN, LOGOUT]);
-		expect(rowOf("登录成功")?.dataset.entering).toBeUndefined();
-		expect(rowOf("退出登录")?.dataset.entering).toBeUndefined();
-	});
-
-	it("从空状态或骨架屏换成表格时，每一行都淡入", async () => {
-		await renderTable([LOGIN, LOGOUT], true);
-		expect(rowOf("登录成功")?.dataset.entering).toBe("true");
-		expect(rowOf("退出登录")?.dataset.entering).toBe("true");
+	it.each([
+		["第一次显示时，行不单独淡入", false, undefined],
+		["从空状态或骨架屏换成表格时，每一行都淡入", true, "true"],
+	])("%s", async (_name, animateFirst, entering) => {
+		await renderTable([LOGIN, LOGOUT], animateFirst);
+		expect(rowOf("登录成功")?.dataset.entering).toBe(entering);
+		expect(rowOf("退出登录")?.dataset.entering).toBe(entering);
 	});
 
 	it("加载新结果时，表格和原来的行留在原位，并标记为忙碌", async () => {

@@ -66,19 +66,15 @@ const RETRY_LABEL = /重试上传/;
 const FIELD_TEXT = `步骤一 ${buildCaseUploadingRef(UPLOADING)}\n${buildCaseUploadingRef(FAILED)}`;
 
 describe("MarkdownFieldUploads：字段下方显示本字段图片的上传进度和失败", () => {
-	it("上传中的图片显示进度，只列出本字段中的图片", () => {
-		renderUploads(FIELD_TEXT);
+	it("上传中的图片显示进度；上传失败的图片显示原因，可以重试或移除，操作后焦点回到编辑区", () => {
+		const field = fieldCallbacks();
+		const value = renderUploads(FIELD_TEXT, JOBS, field);
 		const progress = screen.getByRole("progressbar", {
 			name: "登录页.png 上传进度",
 		});
 		expect(progress.getAttribute("aria-valuenow")).toBe("45");
 		expect(progress.textContent).toContain("45%");
 		expect(screen.queryByText("别的字段.png")).toBeNull();
-	});
-
-	it("上传失败的图片显示原因，可以重试或移除，操作后焦点回到编辑区", () => {
-		const field = fieldCallbacks();
-		const value = renderUploads(FIELD_TEXT, JOBS, field);
 		expect(screen.getByText("上传到存储失败（HTTP 403）")).toBeTruthy();
 
 		fireEvent.click(

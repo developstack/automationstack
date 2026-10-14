@@ -44,13 +44,16 @@ describe("useCaseCreateSubmit：新建用例时名称的错误显示在字段旁
 		nameInput.remove();
 	});
 
-	it("填写名称后再次提交会创建用例，错误消失", () => {
+	it("填写名称后错误立即消失，不用等到再次提交；再次提交会创建用例", () => {
 		const { hook, input, mutate } = setup("");
 		act(() => hook.result.current.submit());
+		expect(hook.result.current.nameError).toBe("请填写用例名称");
 
 		hook.rerender({ ...input, values: { ...input.values, name: "下单成功" } });
-		act(() => hook.result.current.submit());
+		expect(hook.result.current.nameError).toBeNull();
+		expect(mutate).not.toHaveBeenCalled();
 
+		act(() => hook.result.current.submit());
 		expect(mutate).toHaveBeenCalledOnce();
 		expect(mutate.mock.calls[0]?.[0]).toMatchObject({
 			id: CASE_ID,
@@ -59,16 +62,5 @@ describe("useCaseCreateSubmit：新建用例时名称的错误显示在字段旁
 			projectId: "project-1",
 		});
 		expect(hook.result.current.nameError).toBeNull();
-	});
-
-	it("填写名称后错误立即消失，不用等到再次提交", () => {
-		const { hook, input, mutate } = setup("");
-		act(() => hook.result.current.submit());
-		expect(hook.result.current.nameError).toBe("请填写用例名称");
-
-		hook.rerender({ ...input, values: { ...input.values, name: "支" } });
-
-		expect(hook.result.current.nameError).toBeNull();
-		expect(mutate).not.toHaveBeenCalled();
 	});
 });

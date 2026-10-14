@@ -19,8 +19,8 @@ describe("CaseCollaboratorsCell：用例列表的协作者头像", () => {
 		expect(avatars(container)).toHaveLength(0);
 	});
 
-	it("头像按钮的名称说明谁在编辑、谁在查看", () => {
-		render(
+	it("头像按钮的名称说明谁在编辑、谁在查看；头像淡入，正在编辑的头像带标记", () => {
+		const { container } = render(
 			<CaseCollaboratorsCell
 				collaborators={{ editors: [alice], viewers: [bob] }}
 			/>
@@ -28,14 +28,6 @@ describe("CaseCollaboratorsCell：用例列表的协作者头像", () => {
 		expect(
 			screen.getByRole("button", { name: "alice 正在编辑；bob 正在查看" })
 		).toBeDefined();
-	});
-
-	it("头像出现时淡入，不突然弹出；正在编辑的头像带标记", () => {
-		const { container } = render(
-			<CaseCollaboratorsCell
-				collaborators={{ editors: [alice], viewers: [bob] }}
-			/>
-		);
 		const [editor, viewer] = avatars(container);
 		for (const avatar of [editor, viewer]) {
 			expect(avatar?.className).toContain("fade-in-0");
