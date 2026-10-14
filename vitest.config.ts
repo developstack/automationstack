@@ -5,6 +5,10 @@ const resolveFromRoot = (relative: string): string =>
 	fileURLToPath(new URL(relative, import.meta.url));
 
 const webAlias = { "@": resolveFromRoot("./apps/web/src") };
+// web 的模块加载时会校验 VITE_SERVER_URL（packages/env/src/web.ts）。CI 没有 apps/web/.env，
+// 所以没有配置时给测试一个地址。Vite 在加载配置时收集 VITE_ 变量，所以要在这里设置，
+// 写在项目的 test.env 中只会进入测试进程的 process.env，packages/env 读不到
+process.env.VITE_SERVER_URL ??= "http://localhost:3000";
 
 export default defineConfig({
 	test: {
