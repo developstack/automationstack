@@ -19,64 +19,37 @@ function makeEvent(
 	return { action, actor: ACTOR, entity, ids: ["id-1"] };
 }
 
-const MODULE_TOUCHING_CASE_ACTIONS: InvalidateAction[] = [
-	"create",
-	"delete",
-	"move",
-	"restore",
-];
+const CASE_TARGETS = ["caseAttachments", "cases", "mindmap"];
 
-test("case + update 刷新用例、贴图与脑图", () => {
-	expect(mapInvalidateTargets(makeEvent("case", "update"))).toEqual([
-		"caseAttachments",
-		"cases",
-		"mindmap",
-	]);
-});
-
-test("case 的增删改移会连带刷新模块树", () => {
-	for (const action of MODULE_TOUCHING_CASE_ACTIONS) {
-		expect(mapInvalidateTargets(makeEvent("case", action))).toEqual([
-			"caseAttachments",
-			"cases",
-			"mindmap",
-			"modules",
-		]);
-	}
-});
-
-test("module 的任何动作都刷新 cases/mindmap/modules 且不重复", () => {
-	const actions: InvalidateAction[] = [
-		"create",
-		"delete",
-		"move",
-		"restore",
-		"update",
-	];
+test.each<[string, InvalidateEntity, InvalidateAction[], string[]]>([
+	["case + update 刷新用例、贴图与脑图", "case", ["update"], CASE_TARGETS],
+	[
+		"case 的增删改移会连带刷新模块树",
+		"case",
+		["create", "delete", "move", "restore"],
+		[...CASE_TARGETS, "modules"],
+	],
+	[
+		"module 的任何动作都刷新 cases/mindmap/modules 且不重复",
+		"module",
+		["create", "delete", "move", "restore", "update"],
+		["cases", "mindmap", "modules"],
+	],
+	[
+		"project 的任何动作都只刷新 mindmap/projects",
+		"project",
+		["update", "delete"],
+		["mindmap", "projects"],
+	],
+	[
+		"testRun 同时刷新测试任务与附件两个缓存根",
+		"testRun",
+		["create", "delete", "update"],
+		["testRunAttachments", "testRuns"],
+	],
+])("%s", (_name, entity, actions, targets) => {
 	for (const action of actions) {
-		const targets = mapInvalidateTargets(makeEvent("module", action));
-		expect(targets).toEqual(["cases", "mindmap", "modules"]);
-		expect(new Set(targets).size).toBe(targets.length);
-	}
-});
-
-test("project 的任何动作都只刷新 mindmap/projects", () => {
-	expect(mapInvalidateTargets(makeEvent("project", "update"))).toEqual([
-		"mindmap",
-		"projects",
-	]);
-	expect(mapInvalidateTargets(makeEvent("project", "delete"))).toEqual([
-		"mindmap",
-		"projects",
-	]);
-});
-
-test("testRun 同时刷新测试任务与附件两个缓存根", () => {
-	for (const action of ["create", "delete", "update"] as InvalidateAction[]) {
-		expect(mapInvalidateTargets(makeEvent("testRun", action))).toEqual([
-			"testRunAttachments",
-			"testRuns",
-		]);
+		expect(mapInvalidateTargets(makeEvent(entity, action))).toEqual(targets);
 	}
 });
 
@@ -102,19 +75,13 @@ test("ALL_INVALIDATE_TARGETS 覆盖全部缓存根", () => {
 	]);
 });
 
-test("shouldApplyInvalidate：身份未就绪时保守地全部应用", () => {
-	expect(shouldApplyInvalidate(makeEvent("case", "update"), null)).toBe(true);
-});
-
-test("shouldApplyInvalidate：跳过自己触发的失效", () => {
-	expect(shouldApplyInvalidate(makeEvent("case", "update"), "client-a")).toBe(
-		false
+test.each([
+	["身份未就绪时保守地全部应用", null, true],
+	["跳过自己触发的失效", "client-a", false],
+	["他人触发的失效要应用", "client-b", true],
+	["他人触发的失效要应用", "", true],
+])("shouldApplyInvalidate：%s（%j）", (_name, selfClientId, apply) => {
+	expect(shouldApplyInvalidate(makeEvent("case", "update"), selfClientId)).toBe(
+		apply
 	);
-});
-
-test("shouldApplyInvalidate：他人触发的失效要应用", () => {
-	expect(shouldApplyInvalidate(makeEvent("case", "update"), "client-b")).toBe(
-		true
-	);
-	expect(shouldApplyInvalidate(makeEvent("case", "update"), "")).toBe(true);
 });

@@ -38,24 +38,20 @@ describe("isLoginPathname：字符串精确匹配，不做归一化", () => {
 		expect(isLoginPathname(`${LOGIN_PATHNAME}/`)).toBe(true);
 	});
 
-	it("其他路径不命中", () => {
-		expect(isLoginPathname("/")).toBe(false);
-		expect(isLoginPathname("/dashboard")).toBe(false);
-	});
-
-	it("大小写不同不命中——实现是严格相等，没有做大小写归一化", () => {
-		expect(isLoginPathname("/Login")).toBe(false);
-		expect(isLoginPathname("/LOGIN")).toBe(false);
-	});
-
-	it("login 路径下的子路径不命中——只认恰好等于 /login 或 /login/", () => {
-		expect(isLoginPathname("/login/callback")).toBe(false);
-		expect(isLoginPathname("/login//")).toBe(false);
-	});
-
-	it("前缀或后缀相似但不是同一个词也不命中", () => {
-		expect(isLoginPathname("/loginx")).toBe(false);
-		expect(isLoginPathname("/relogin")).toBe(false);
+	it.each([
+		["其他路径不命中", "/"],
+		["其他路径不命中", "/dashboard"],
+		["大小写不同不命中——实现是严格相等，没有做大小写归一化", "/Login"],
+		["大小写不同不命中——实现是严格相等，没有做大小写归一化", "/LOGIN"],
+		[
+			"login 路径下的子路径不命中——只认恰好等于 /login 或 /login/",
+			"/login/callback",
+		],
+		["login 路径下的子路径不命中——只认恰好等于 /login 或 /login/", "/login//"],
+		["前缀或后缀相似但不是同一个词也不命中", "/loginx"],
+		["前缀或后缀相似但不是同一个词也不命中", "/relogin"],
+	])("%s：%s", (_name, pathname) => {
+		expect(isLoginPathname(pathname)).toBe(false);
 	});
 });
 
@@ -69,16 +65,7 @@ describe("会话过期回调槽：注册、收敛、复位", () => {
 		expect(() => notifySessionExpired()).not.toThrow();
 	});
 
-	it("注册后被调到", () => {
-		const handler = vi.fn();
-		setSessionExpiredHandler(handler);
-
-		notifySessionExpired();
-
-		expect(handler).toHaveBeenCalledTimes(1);
-	});
-
-	it("同一次失效被多条查询同时喊到，只导航一次", () => {
+	it("注册后被调到；同一次失效被多条查询同时喊到，只导航一次", () => {
 		const handler = vi.fn();
 		setSessionExpiredHandler(handler);
 
@@ -109,21 +96,5 @@ describe("会话过期回调槽：注册、收敛、复位", () => {
 		notifySessionExpired();
 
 		expect(handler).not.toHaveBeenCalled();
-	});
-
-	it("留下未复位的状态（配合下一条验证 beforeEach 生效）", () => {
-		const staleHandler = vi.fn();
-		setSessionExpiredHandler(staleHandler);
-		notifySessionExpired();
-		expect(staleHandler).toHaveBeenCalledTimes(1);
-	});
-
-	it("上一条没有手动清理，但这里应该是干净状态——靠 beforeEach 复位", () => {
-		const handler = vi.fn();
-		setSessionExpiredHandler(handler);
-
-		notifySessionExpired();
-
-		expect(handler).toHaveBeenCalledTimes(1);
 	});
 });
