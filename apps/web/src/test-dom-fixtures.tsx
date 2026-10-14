@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-router";
 import { render } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { vi } from "vitest";
 
 /** 组件测试共用的辅助函数。只给 *.test.tsx 使用。 */
 
@@ -65,6 +66,16 @@ export function createQueryWrapper(...seed: [QueryKey, unknown][]) {
 /** 在新的 QueryClient 中渲染 ui。 */
 export function renderWithQuery(ui: ReactNode, ...seed: [QueryKey, unknown][]) {
 	return render(ui, { wrapper: createQueryWrapper(...seed) });
+}
+
+/** jsdom 没有 matchMedia；SidebarProvider 用它判断窄屏。这里总是宽屏。 */
+export function stubMatchMedia() {
+	vi.stubGlobal("matchMedia", (query: string) => ({
+		addEventListener: () => undefined,
+		matches: false,
+		media: query,
+		removeEventListener: () => undefined,
+	}));
 }
 
 /** a 在文档顺序中位于 b 之前。 */

@@ -16,7 +16,6 @@ import { PageTransition } from "@/components/layout/page-transition";
 
 /** 与项目以内的页面相同：内容靠左，左右内边距 p-4，不整页居中。 */
 const ROUTE_ERROR_MAIN = "min-h-0 w-full overflow-y-auto p-4";
-const START_ALIGNED = "items-start";
 
 const FALLBACK_DESCRIPTION =
 	"服务端没有给出原因。可以重试一次，若一直失败请联系管理员。";
@@ -44,7 +43,7 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
 	return (
 		<PageTransition className={ROUTE_ERROR_MAIN}>
 			<Empty className="items-start p-0 text-left">
-				<EmptyHeader className={START_ALIGNED}>
+				<EmptyHeader className="items-start">
 					<EmptyMedia variant="icon">
 						<TriangleAlertIcon />
 					</EmptyMedia>
@@ -53,7 +52,7 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
 					</EmptyTitle>
 					<EmptyDescription>{description}</EmptyDescription>
 				</EmptyHeader>
-				<EmptyContent className={START_ALIGNED}>
+				<EmptyContent className="items-start">
 					<Button onClick={handleRetry} size="sm">
 						重试
 					</Button>

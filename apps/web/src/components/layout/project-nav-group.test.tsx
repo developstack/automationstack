@@ -1,20 +1,14 @@
 import { SidebarProvider } from "@automationstack/ui/components/sidebar-context";
 import { Outlet } from "@tanstack/react-router";
 import { screen, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import { ProjectNavGroup } from "@/components/layout/project-nav-group";
-import { renderRoutes } from "@/test-dom-fixtures";
+import { renderRoutes, stubMatchMedia } from "@/test-dom-fixtures";
 
 const PROJECT_ID = "p1";
 
-// jsdom 没有 matchMedia；SidebarProvider 用它判断窄屏
-vi.stubGlobal("matchMedia", (query: string) => ({
-	addEventListener: () => undefined,
-	matches: false,
-	media: query,
-	removeEventListener: () => undefined,
-}));
+stubMatchMedia();
 
 async function renderNav() {
 	renderRoutes({

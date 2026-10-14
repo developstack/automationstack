@@ -8,16 +8,16 @@ import { renderRoutes } from "@/test-dom-fixtures";
 
 const LONG_NAME = "一个名称很长很长很长很长很长很长很长很长很长很长的项目";
 const LONG_DESCRIPTION = "描述".repeat(200);
-/** 卡片的固定尺寸：宽 18rem、高 9rem（见 project-card-layout.ts）。 */
-const CARD_SIZE = ["w-72", "h-36"];
+/** 卡片的固定尺寸：宽 288px、高 146px（见 project-card-layout.ts）。 */
+const CARD_SIZE = ["w-72", "h-36.5"];
 
-const PROJECT = {
+const PROJECT: Project = {
 	createdAt: new Date("2026-10-01T00:00:00Z"),
 	description: LONG_DESCRIPTION,
 	id: "p1",
 	name: LONG_NAME,
 	updatedAt: new Date("2026-10-02T00:00:00Z"),
-} as Project;
+};
 
 async function renderCardsAndSkeleton() {
 	renderRoutes({
