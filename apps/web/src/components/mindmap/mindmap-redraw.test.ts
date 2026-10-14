@@ -72,15 +72,14 @@ describe("applyExpandedCases 受预算额度约束", () => {
 		expect(opened).toHaveLength(TIGHT_ALLOWANCE);
 	});
 
-	it("does nothing when the user had nothing open", () => {
+	it.each([
+		["does nothing when the user had nothing open", [], 0],
+		["treats a zero allowance as 'restore nothing'", ["c1"], 1],
+	])("%s", (_name, openCaseIds, dropped) => {
 		const tree = treeWith([caseNode("c1")]);
-		expect(applyExpandedCases(tree, [], 0)).toBe(0);
-		expect(tree.children?.[0].children?.[0].expanded).toBeUndefined();
-	});
-
-	it("treats a zero allowance as 'restore nothing'", () => {
-		const tree = treeWith([caseNode("c1")]);
-		expect(applyExpandedCases(tree, [encodeCaseNodeId("c1")], 0)).toBe(1);
+		expect(applyExpandedCases(tree, openCaseIds.map(encodeCaseNodeId), 0)).toBe(
+			dropped
+		);
 		expect(tree.children?.[0].children?.[0].expanded).toBeUndefined();
 	});
 });

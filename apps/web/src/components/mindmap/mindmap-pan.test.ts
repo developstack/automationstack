@@ -35,15 +35,14 @@ function setup() {
 	return { controller: createMindmapPanController(effects), effects };
 }
 
-let harness = setup();
+let { controller, effects } = setup();
 
 beforeEach(() => {
-	harness = setup();
+	({ controller, effects } = setup());
 });
 
 describe("createMindmapPanController", () => {
 	it("接管空白画布上的左键按下，并按增量驱动 move", () => {
-		const { controller, effects } = harness;
 		expect(controller.down(pointer({ clientX: 100, clientY: 50 }))).toBe(true);
 		expect(effects.capturePointer).toHaveBeenCalledWith(1);
 		expect(effects.setPanning).toHaveBeenCalledWith(true);
@@ -57,7 +56,6 @@ describe("createMindmapPanController", () => {
 	});
 
 	it("按在节点上不接管，节点拖拽仍归 mind-elixir", () => {
-		const { controller, effects } = harness;
 		expect(controller.down(pointer({ target: NODE }))).toBe(false);
 		controller.drag(pointer({ clientX: 200, target: NODE }));
 		expect(effects.capturePointer).not.toHaveBeenCalled();
@@ -66,14 +64,12 @@ describe("createMindmapPanController", () => {
 	});
 
 	it("右键与触屏不接管：那两条路库自己是通的", () => {
-		const { controller, effects } = harness;
 		expect(controller.down(pointer({ button: 2 }))).toBe(false);
 		expect(controller.down(pointer({ pointerType: "touch" }))).toBe(false);
 		expect(effects.move).not.toHaveBeenCalled();
 	});
 
 	it("pointerup 之后停止：松手后的移动不再平移", () => {
-		const { controller, effects } = harness;
 		controller.down(pointer({ clientX: 10, clientY: 10 }));
 		controller.drag(pointer({ clientX: 60, clientY: 10 }));
 		controller.end(pointer({ clientX: 60, clientY: 10 }));
@@ -85,7 +81,6 @@ describe("createMindmapPanController", () => {
 	});
 
 	it("pointercancel 之后停止，并且不算成一次点击", () => {
-		const { controller, effects } = harness;
 		controller.down(pointer({ clientX: 10, clientY: 10 }));
 		controller.cancel();
 		expect(effects.setPanning).toHaveBeenLastCalledWith(false);
@@ -96,7 +91,6 @@ describe("createMindmapPanController", () => {
 	});
 
 	it("位移没超过 slop 的一次按下算点空白：取消选中", () => {
-		const { controller, effects } = harness;
 		controller.down(pointer({ clientX: 10, clientY: 10 }));
 		controller.drag(pointer({ clientX: 13, clientY: 14 }));
 		controller.end(pointer({ clientX: 13, clientY: 14 }));
@@ -104,7 +98,6 @@ describe("createMindmapPanController", () => {
 	});
 
 	it("拖过 slop 之后松手不再取消选中，即使手又回到了原点", () => {
-		const { controller, effects } = harness;
 		controller.down(pointer({ clientX: 10, clientY: 10 }));
 		controller.drag(pointer({ clientX: 90, clientY: 10 }));
 		controller.drag(pointer({ clientX: 10, clientY: 10 }));
@@ -113,14 +106,12 @@ describe("createMindmapPanController", () => {
 	});
 
 	it("Ctrl/Cmd + 点空白不清选中：那是加选手势，与框选库原行为一致", () => {
-		const { controller, effects } = harness;
 		controller.down(pointer({ metaKey: true }));
 		controller.end(pointer({}));
 		expect(effects.onCanvasClick).not.toHaveBeenCalled();
 	});
 
 	it("只认发起拖拽的那个指针，第二根手指的事件不干扰", () => {
-		const { controller, effects } = harness;
 		controller.down(pointer({ clientX: 10, clientY: 10, pointerId: 7 }));
 		controller.drag(pointer({ clientX: 999, clientY: 999, pointerId: 8 }));
 		expect(effects.move).not.toHaveBeenCalled();
@@ -132,7 +123,6 @@ describe("createMindmapPanController", () => {
 	});
 
 	it("一次拖拽期间再来一次 pointerdown 不会重入", () => {
-		const { controller } = harness;
 		expect(controller.down(pointer({ pointerId: 1 }))).toBe(true);
 		expect(controller.down(pointer({ pointerId: 2 }))).toBe(false);
 	});

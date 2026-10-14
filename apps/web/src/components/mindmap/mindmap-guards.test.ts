@@ -45,15 +45,15 @@ function createHost(scope: MindmapScope = FULL_SCOPE) {
 	return host;
 }
 
+let host = createHost();
+let before = createMindmapGuards(host);
+
+beforeEach(() => {
+	host = createHost();
+	before = createMindmapGuards(host);
+});
+
 describe("step and expected nodes are read-only on the canvas", () => {
-	let host: MindmapGuardHost;
-	let before: ReturnType<typeof createMindmapGuards>;
-
-	beforeEach(() => {
-		host = createHost();
-		before = createMindmapGuards(host);
-	});
-
 	const stepLikeIds = [STEP_NODE_ID, EXPECTED_NODE_ID];
 
 	it.each(stepLikeIds)("refuses beginEdit on %s", (id) => {
@@ -93,79 +93,52 @@ describe("step and expected nodes are read-only on the canvas", () => {
 	});
 });
 
-describe("step nodes as the dragged node", () => {
-	let host: MindmapGuardHost;
-	let before: ReturnType<typeof createMindmapGuards>;
+describe("step nodes as the dragged node or the drop target", () => {
+	const moduleTopic = () => topicOf(nodeOf(encodeModuleNodeId(MODULE_ID)));
+	const caseTopic = () => topicOf(nodeOf(encodeCaseNodeId(CASE_ID)));
+	const childOf = (id: string, parentId: string) => {
+		const node = nodeOf(id);
+		node.parent = nodeOf(parentId);
+		return topicOf(node);
+	};
 
-	beforeEach(() => {
-		host = createHost();
-		before = createMindmapGuards(host);
-	});
-
-	it("refuses moveNodeIn of a step node", () => {
-		const target = topicOf(nodeOf(encodeModuleNodeId(MODULE_ID)));
-		expect(before.moveNodeIn?.([topicOf(nodeOf(STEP_NODE_ID))], target)).toBe(
-			false
-		);
-		expect(host.reject).toHaveBeenCalledWith(STEP_READONLY_MESSAGE);
-	});
-
-	it("refuses moveNodeBefore of an expected node", () => {
-		const sibling = nodeOf(encodeCaseNodeId(CASE_ID));
-		sibling.parent = nodeOf(encodeModuleNodeId(MODULE_ID));
-		expect(
-			before.moveNodeBefore?.(
-				[topicOf(nodeOf(EXPECTED_NODE_ID))],
-				topicOf(sibling)
-			)
-		).toBe(false);
-		expect(host.reject).toHaveBeenCalledWith(STEP_READONLY_MESSAGE);
-	});
-});
-
-describe("step nodes as the drop target", () => {
-	let host: MindmapGuardHost;
-	let before: ReturnType<typeof createMindmapGuards>;
-
-	beforeEach(() => {
-		host = createHost();
-		before = createMindmapGuards(host);
-	});
-
-	it("refuses dropping a module into a step node", () => {
-		const moved = topicOf(nodeOf(encodeModuleNodeId(MODULE_ID)));
-		expect(before.moveNodeIn?.([moved], topicOf(nodeOf(STEP_NODE_ID)))).toBe(
-			false
-		);
-		expect(host.reject).toHaveBeenCalledWith(STEP_READONLY_MESSAGE);
-	});
-
-	it("refuses dropping a case into an expected node", () => {
-		const moved = topicOf(nodeOf(encodeCaseNodeId(CASE_ID)));
-		expect(
-			before.moveNodeIn?.([moved], topicOf(nodeOf(EXPECTED_NODE_ID)))
-		).toBe(false);
-		expect(host.reject).toHaveBeenCalledWith(STEP_READONLY_MESSAGE);
-	});
-
-	it("refuses a sibling drop whose parent is a step node", () => {
-		const sibling = nodeOf(EXPECTED_NODE_ID);
-		sibling.parent = nodeOf(STEP_NODE_ID);
-		const moved = topicOf(nodeOf(encodeModuleNodeId(MODULE_ID)));
-		expect(before.moveNodeAfter?.([moved], topicOf(sibling))).toBe(false);
+	it.each([
+		[
+			"refuses moveNodeIn of a step node",
+			() => before.moveNodeIn?.([topicOf(nodeOf(STEP_NODE_ID))], moduleTopic()),
+		],
+		[
+			"refuses moveNodeBefore of an expected node",
+			() =>
+				before.moveNodeBefore?.(
+					[topicOf(nodeOf(EXPECTED_NODE_ID))],
+					childOf(encodeCaseNodeId(CASE_ID), encodeModuleNodeId(MODULE_ID))
+				),
+		],
+		[
+			"refuses dropping a module into a step node",
+			() => before.moveNodeIn?.([moduleTopic()], topicOf(nodeOf(STEP_NODE_ID))),
+		],
+		[
+			"refuses dropping a case into an expected node",
+			() =>
+				before.moveNodeIn?.([caseTopic()], topicOf(nodeOf(EXPECTED_NODE_ID))),
+		],
+		[
+			"refuses a sibling drop whose parent is a step node",
+			() =>
+				before.moveNodeAfter?.(
+					[moduleTopic()],
+					childOf(EXPECTED_NODE_ID, STEP_NODE_ID)
+				),
+		],
+	])("%s", (_name, move) => {
+		expect(move()).toBe(false);
 		expect(host.reject).toHaveBeenCalledWith(STEP_READONLY_MESSAGE);
 	});
 });
 
 describe("existing module / case behaviour is unchanged", () => {
-	let host: MindmapGuardHost;
-	let before: ReturnType<typeof createMindmapGuards>;
-
-	beforeEach(() => {
-		host = createHost();
-		before = createMindmapGuards(host);
-	});
-
 	it("still allows adding a child module under a module", () => {
 		expect(
 			before.addChild?.(topicOf(nodeOf(encodeModuleNodeId(MODULE_ID))))

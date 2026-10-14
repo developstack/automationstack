@@ -155,24 +155,16 @@ describe("module and root nodes keep their existing shape", () => {
 });
 
 describe("canHaveChildren", () => {
-	it("accepts only modules and the project root", () => {
-		expect(canHaveChildren({ id: encodeProjectNodeId(PROJECT_ID) })).toBe(true);
-		expect(canHaveChildren({ id: encodeModuleNodeId(MODULE_ID) })).toBe(true);
-		expect(canHaveChildren({ id: encodeCaseNodeId(CASE_ID) })).toBe(false);
-	});
-
-	it("refuses step and expected nodes", () => {
-		expect(canHaveChildren({ id: encodeStepNodeId(CASE_ID, "s1") })).toBe(
-			false
-		);
-		expect(canHaveChildren({ id: encodeExpectedNodeId(CASE_ID, "s1") })).toBe(
-			false
-		);
-	});
-
-	it("refuses ids this scheme does not recognise", () => {
-		expect(canHaveChildren({ id: "z:mystery" })).toBe(false);
-		expect(canHaveChildren({ id: "" })).toBe(false);
+	it.each([
+		["accepts the project root", encodeProjectNodeId(PROJECT_ID), true],
+		["accepts modules", encodeModuleNodeId(MODULE_ID), true],
+		["refuses cases", encodeCaseNodeId(CASE_ID), false],
+		["refuses step nodes", encodeStepNodeId(CASE_ID, "s1"), false],
+		["refuses expected nodes", encodeExpectedNodeId(CASE_ID, "s1"), false],
+		["refuses ids this scheme does not recognise", "z:mystery", false],
+		["refuses an empty id", "", false],
+	])("%s", (_name, id, allowed) => {
+		expect(canHaveChildren({ id })).toBe(allowed);
 	});
 });
 
