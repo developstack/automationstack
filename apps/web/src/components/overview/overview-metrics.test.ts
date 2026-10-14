@@ -33,34 +33,30 @@ describe("overviewSummary", () => {
 		totalCases: 1500,
 	};
 
-	it("说出生效用例、执行覆盖率、进行中和停滞的测试任务", () => {
-		expect(overviewSummary(base)).toBe(
-			"生效用例 1,204 条，过去 30 天执行了 68%；3 个测试任务进行中，1 个超过 7 天没有新的执行结果。"
-		);
-	});
-
-	it("没有停滞的测试任务时，删除停滞的部分", () => {
-		expect(overviewSummary({ ...base, stalledRunCount: 0 })).toBe(
-			"生效用例 1,204 条，过去 30 天执行了 68%；3 个测试任务进行中。"
-		);
-	});
-
-	it("没有进行中的测试任务时，后半句说明没有", () => {
-		expect(
-			overviewSummary({ ...base, activeRunCount: 0, stalledRunCount: 0 })
-		).toBe("生效用例 1,204 条，过去 30 天执行了 68%；没有进行中的测试任务。");
-	});
-
-	it("有用例但没有生效用例时，不说执行覆盖率", () => {
-		expect(overviewSummary({ ...base, activeCount: 0, executedCount: 0 })).toBe(
-			"还没有生效用例；3 个测试任务进行中，1 个超过 7 天没有新的执行结果。"
-		);
-	});
-
-	it("没有用例时，说明本项目还没有用例", () => {
-		expect(overviewSummary({ ...base, totalCases: 0 })).toBe(
-			"本项目还没有用例"
-		);
+	it.each([
+		[
+			"说出生效用例、执行覆盖率、进行中和停滞的测试任务",
+			{},
+			"生效用例 1,204 条，过去 30 天执行了 68%；3 个测试任务进行中，1 个超过 7 天没有新的执行结果。",
+		],
+		[
+			"没有停滞的测试任务时，删除停滞的部分",
+			{ stalledRunCount: 0 },
+			"生效用例 1,204 条，过去 30 天执行了 68%；3 个测试任务进行中。",
+		],
+		[
+			"没有进行中的测试任务时，后半句说明没有",
+			{ activeRunCount: 0, stalledRunCount: 0 },
+			"生效用例 1,204 条，过去 30 天执行了 68%；没有进行中的测试任务。",
+		],
+		[
+			"有用例但没有生效用例时，不说执行覆盖率",
+			{ activeCount: 0, executedCount: 0 },
+			"还没有生效用例；3 个测试任务进行中，1 个超过 7 天没有新的执行结果。",
+		],
+		["没有用例时，说明本项目还没有用例", { totalCases: 0 }, "本项目还没有用例"],
+	])("%s", (_name, patch, summary) => {
+		expect(overviewSummary({ ...base, ...patch })).toBe(summary);
 	});
 });
 
