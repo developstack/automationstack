@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { effectiveSettings } from "../auth/settings-fixtures";
 import { resetLoginRateLimitState } from "../lib/login-rate-limit";
+import { callContext, testUser } from "../test-fixtures";
 import { authRouter } from "./auth";
 
 const mocks = vi.hoisted(() => ({
@@ -43,43 +44,28 @@ const STORED_PBKDF2_HASH = /^pbkdf2_sha256\$/;
 const CURRENT = "current-password";
 const NEXT = "next-password";
 
-const user: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "22222222-2222-4222-8222-222222222222",
+const user = testUser({
 	mustChangePassword: true,
 	passwordHash: `hash:${CURRENT}`,
-	role: "admin",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "admin",
-};
+});
 
-function contextFor(current: User | null) {
-	return {
-		actor: current === null ? null : { clientId: "t", name: current.username },
-		cookies: [] as string[],
-		secure: false,
-		user: current,
-	};
-}
-
+/** 默认用正确的旧密码改成 NEXT。 */
 function changePassword(
-	current: User,
-	input: { currentPassword: string; newPassword: string }
+	input: { currentPassword?: string; newPassword?: string } = {},
+	current: User = user
 ) {
-	return call(authRouter.changePassword, input, {
-		context: contextFor(current),
-		path: ["auth", "changePassword"],
-	});
+	return call(
+		authRouter.changePassword,
+		{ currentPassword: CURRENT, newPassword: NEXT, ...input },
+		{ context: callContext(current), path: ["auth", "changePassword"] }
+	);
 }
 
 function login(username: string, password: string) {
 	return call(
 		authRouter.login,
 		{ password, username },
-		{ context: contextFor(null), path: ["auth", "login"] }
+		{ context: callContext(null), path: ["auth", "login"] }
 	);
 }
 
@@ -95,9 +81,7 @@ beforeEach(() => {
 
 describe("auth.changePassword", () => {
 	it("旧密码正确：保存新哈希，并清除 must_change_password", async () => {
-		await expect(
-			changePassword(user, { currentPassword: CURRENT, newPassword: NEXT })
-		).resolves.toEqual({ ok: true });
+		await expect(changePassword()).resolves.toEqual({ ok: true });
 		expect(mocks.updateUserPasswordHash).toHaveBeenCalledWith(
 			user.id,
 			`hash:${NEXT}`,
@@ -107,7 +91,7 @@ describe("auth.changePassword", () => {
 
 	it("旧密码错误：BAD_REQUEST（不是 UNAUTHORIZED），不修改密码", async () => {
 		await expect(
-			changePassword(user, { currentPassword: "wrong-pass", newPassword: NEXT })
+			changePassword({ currentPassword: "wrong-pass" })
 		).rejects.toMatchObject({ code: "BAD_REQUEST", message: "当前密码错误" });
 		expect(mocks.updateUserPasswordHash).not.toHaveBeenCalled();
 	});
@@ -117,40 +101,34 @@ describe("auth.changePassword", () => {
 		for (let index = 0; index < BACKOFF_AFTER_FAILURES; index += 1) {
 			// biome-ignore lint/performance/noAwaitInLoops: 限流按失败顺序计数，必须逐次执行
 			await expect(
-				changePassword(user, {
-					currentPassword: "wrong-pass",
-					newPassword: NEXT,
-				})
+				changePassword({ currentPassword: "wrong-pass" })
 			).rejects.toMatchObject({ code: "BAD_REQUEST" });
 		}
-		await expect(
-			changePassword(user, { currentPassword: CURRENT, newPassword: NEXT })
-		).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
+		await expect(changePassword()).rejects.toMatchObject({
+			code: "TOO_MANY_REQUESTS",
+		});
 		expect(mocks.updateUserPasswordHash).not.toHaveBeenCalled();
 	});
 
-	it("没有本地密码的账号：BAD_REQUEST，不校验密码", async () => {
-		await expect(
-			changePassword(
-				{ ...user, passwordHash: null },
-				{ currentPassword: CURRENT, newPassword: NEXT }
-			)
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		expect(mocks.verifyPassword).not.toHaveBeenCalled();
-	});
-
-	it("新密码与旧密码相同：BAD_REQUEST", async () => {
-		await expect(
-			changePassword(user, { currentPassword: CURRENT, newPassword: CURRENT })
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		expect(mocks.updateUserPasswordHash).not.toHaveBeenCalled();
-	});
-
-	it("新密码太短：输入校验失败", async () => {
-		await expect(
-			changePassword(user, { currentPassword: CURRENT, newPassword: "short" })
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		expect(mocks.verifyPassword).not.toHaveBeenCalled();
+	it.each([
+		[
+			"没有本地密码的账号：BAD_REQUEST，不校验密码",
+			() => changePassword({}, { ...user, passwordHash: null }),
+			mocks.verifyPassword,
+		],
+		[
+			"新密码与旧密码相同：BAD_REQUEST，不修改密码",
+			() => changePassword({ newPassword: CURRENT }),
+			mocks.updateUserPasswordHash,
+		],
+		[
+			"新密码太短：输入校验失败，不校验密码",
+			() => changePassword({ newPassword: "short" }),
+			mocks.verifyPassword,
+		],
+	])("%s", async (_name, invoke, untouched) => {
+		await expect(invoke()).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(untouched).not.toHaveBeenCalled();
 	});
 });
 
@@ -225,7 +203,7 @@ describe("auth.login：按当前生效的认证方式", () => {
 describe("auth.config", () => {
 	function config() {
 		return call(authRouter.config, undefined, {
-			context: contextFor(null),
+			context: callContext(null),
 			path: ["auth", "config"],
 		});
 	}

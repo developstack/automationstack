@@ -5,6 +5,7 @@ import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { invalidateAuthSettingsCache } from "../auth/settings-store";
+import { callContext, testUser } from "../test-fixtures";
 import { authSettingsRouter } from "./auth-settings";
 
 const MASTER_KEY = btoa("k".repeat(32));
@@ -38,18 +39,7 @@ vi.mock("../auth/casdoor/test-connection", () => ({
 	testCasdoorConnection: mocks.testCasdoorConnection,
 }));
 
-const admin: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "22222222-2222-4222-8222-222222222222",
-	mustChangePassword: false,
-	passwordHash: "hash",
-	role: "admin",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "admin",
-};
+const admin = testUser();
 
 function steps(failedId: string | null) {
 	return ["discovery", "token", "organization", "adminRole"].map((id) => ({
@@ -62,12 +52,7 @@ function steps(failedId: string | null) {
 
 let storedRow: AuthSettingsRow | null = null;
 
-const context = {
-	actor: { clientId: "t", name: "admin" },
-	cookies: [] as string[],
-	secure: false,
-	user: admin,
-};
+const context = callContext(admin);
 
 function casdoorInput(overrides: Record<string, unknown> = {}) {
 	return {
@@ -93,7 +78,7 @@ function save(input: Record<string, unknown>) {
 
 function testConnection(input: Record<string, unknown>, user: User = admin) {
 	return call(authSettingsRouter.testConnection, input as never, {
-		context: { ...context, user },
+		context: callContext(user),
 		path: ["authSettings", "testConnection"],
 	});
 }
@@ -240,7 +225,7 @@ describe("authSettings.testConnection", () => {
 
 	it("非管理员：FORBIDDEN", async () => {
 		await expect(
-			testConnection(form(), { ...admin, role: "member" })
+			testConnection(form(), testUser({ role: "member" }))
 		).rejects.toMatchObject({ code: "FORBIDDEN" });
 	});
 

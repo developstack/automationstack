@@ -3,6 +3,7 @@ import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { effectiveSettings } from "../auth/settings-fixtures";
+import { callContext, testUser } from "../test-fixtures";
 import { usersRouter } from "./users";
 
 const mocks = vi.hoisted(() => ({
@@ -42,32 +43,13 @@ vi.mock("../auth/settings-store", () => ({
 		Promise.resolve(effectiveSettings({ provider: "local" })),
 }));
 
-const actingAdmin: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "11111111-1111-4111-8111-111111111111",
-	mustChangePassword: false,
-	passwordHash: "hash",
-	role: "admin",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "admin",
-};
-
-const localUser: User = {
-	...actingAdmin,
+const actingAdmin = testUser();
+const localUser = testUser({
 	id: "22222222-2222-4222-8222-222222222222",
 	role: "member",
 	username: "bob",
-};
-
-const context = {
-	actor: { clientId: "t", name: "admin" },
-	cookies: [] as string[],
-	secure: false,
-	user: actingAdmin,
-};
+});
+const context = callContext(actingAdmin);
 
 const PLATFORM_ROLES = [
 	["admin", "平台管理员"],
@@ -190,7 +172,7 @@ describe("非平台管理员不能管理用户", () => {
 		["project_admin", "项目管理员"],
 		["member", "普通用户"],
 	] as const)("%s（%s）：FORBIDDEN，不写数据库", async (role, _label) => {
-		const caller = { ...context, user: { ...actingAdmin, role } };
+		const caller = callContext({ ...actingAdmin, role });
 		await expect(
 			call(
 				usersRouter.setRole,

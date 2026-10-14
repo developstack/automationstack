@@ -1,7 +1,7 @@
-import type { User } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { callContext, testUser } from "../test-fixtures";
 import { projectStatsRouter } from "./project-stats";
 
 const mocks = vi.hoisted(() => ({
@@ -38,25 +38,7 @@ vi.mock("@automationstack/db/repositories/project-stats-execution", () => ({
 
 const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
 
-const user: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "11111111-1111-4111-8111-111111111111",
-	mustChangePassword: false,
-	passwordHash: "hash",
-	role: "member",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "alice",
-};
-
-const context = {
-	actor: { clientId: "t", name: user.username },
-	cookies: [] as string[],
-	secure: false,
-	user,
-};
+const context = callContext(testUser({ role: "member", username: "alice" }));
 
 const INPUT = { projectId: PROJECT_ID };
 
@@ -107,11 +89,11 @@ const NEW_QUERIES = [
 	},
 ];
 
-describe("projectStats 的新只读查询", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
+beforeEach(() => {
+	vi.clearAllMocks();
+});
 
+describe("projectStats 的新只读查询", () => {
 	it.each(NEW_QUERIES)(
 		"$name：项目成员取得该项目的统计",
 		async ({ invoke, name, repo }) => {

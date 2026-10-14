@@ -1,4 +1,4 @@
-import type { User } from "@automationstack/db/schema/users";
+import type { UserRole } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,6 +7,7 @@ import {
 	CASDOOR_NO_LOCAL_PASSWORD_MESSAGE,
 } from "../auth/casdoor/managed-users";
 import { effectiveSettings } from "../auth/settings-fixtures";
+import { callContext, testUser } from "../test-fixtures";
 import { usersRouter } from "./users";
 
 const mocks = vi.hoisted(() => ({
@@ -43,40 +44,27 @@ vi.mock("../auth/settings-store", () => ({
 	getEffectiveAuthSettings: mocks.getEffectiveAuthSettings,
 }));
 
-const actingAdmin: User = {
-	authSource: "local",
-	createdAt: new Date("2026-01-01T00:00:00Z"),
-	disabledAt: null,
-	externalId: null,
-	id: "11111111-1111-4111-8111-111111111111",
-	mustChangePassword: false,
-	passwordHash: "hash",
-	role: "admin",
-	updatedAt: new Date("2026-01-01T00:00:00Z"),
-	username: "admin",
-};
-
-const casdoorUser: User = {
-	...actingAdmin,
+const actingAdmin = testUser();
+const casdoorUser = testUser({
 	authSource: "casdoor",
 	externalId: "ext-1",
 	id: "33333333-3333-4333-8333-333333333333",
 	passwordHash: null,
 	role: "member",
 	username: "alice",
-};
-
-const context = {
-	actor: { clientId: "t", name: "admin" },
-	cookies: [] as string[],
-	secure: false,
-	user: actingAdmin,
-};
+});
+const context = callContext(actingAdmin);
 
 const ID = casdoorUser.id;
 
 /** mutations 中同一接口的不同输入用后缀区分，例如 setRoleAdmin。 */
 const VARIANT_SUFFIX = /(True|False|ProjectAdmin|Admin|Member)$/;
+
+const options = (name: string) => ({ context, path: ["users", name] });
+const setDisabled = (disabled: boolean) => () =>
+	call(usersRouter.setDisabled, { disabled, id: ID }, options("setDisabled"));
+const setRole = (role: UserRole) => () =>
+	call(usersRouter.setRole, { id: ID, role }, options("setRole"));
 
 /** 修改用户的全部接口。新增修改用户的接口时，必须加到这里（plan 021 T12）。 */
 const mutations = {
@@ -84,44 +72,19 @@ const mutations = {
 		call(
 			usersRouter.create,
 			{ password: "password-1", role: "admin", username: "newbie" },
-			{ context, path: ["users", "create"] }
+			options("create")
 		),
 	resetPassword: () =>
 		call(
 			usersRouter.resetPassword,
 			{ id: ID, password: "password-1" },
-			{ context, path: ["users", "resetPassword"] }
+			options("resetPassword")
 		),
-	setDisabledFalse: () =>
-		call(
-			usersRouter.setDisabled,
-			{ disabled: false, id: ID },
-			{ context, path: ["users", "setDisabled"] }
-		),
-	setDisabledTrue: () =>
-		call(
-			usersRouter.setDisabled,
-			{ disabled: true, id: ID },
-			{ context, path: ["users", "setDisabled"] }
-		),
-	setRoleAdmin: () =>
-		call(
-			usersRouter.setRole,
-			{ id: ID, role: "admin" },
-			{ context, path: ["users", "setRole"] }
-		),
-	setRoleMember: () =>
-		call(
-			usersRouter.setRole,
-			{ id: ID, role: "member" },
-			{ context, path: ["users", "setRole"] }
-		),
-	setRoleProjectAdmin: () =>
-		call(
-			usersRouter.setRole,
-			{ id: ID, role: "project_admin" },
-			{ context, path: ["users", "setRole"] }
-		),
+	setDisabledFalse: setDisabled(false),
+	setDisabledTrue: setDisabled(true),
+	setRoleAdmin: setRole("admin"),
+	setRoleMember: setRole("member"),
+	setRoleProjectAdmin: setRole("project_admin"),
 };
 
 function expectNoWrites() {
@@ -228,11 +191,10 @@ describe("local 模式：可以创建用户", () => {
 });
 
 describe("最后一个管理员的检查只计算本地管理员（T12）", () => {
-	const localAdmin: User = {
-		...actingAdmin,
+	const localAdmin = testUser({
 		id: "44444444-4444-4444-8444-444444444444",
 		username: "admin2",
-	};
+	});
 
 	it("只剩一个本地登录管理员：不能降级，也不能停用", async () => {
 		mocks.getEffectiveAuthSettings.mockResolvedValue(
