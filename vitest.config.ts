@@ -40,6 +40,15 @@ export default defineConfig({
 				},
 			},
 			{
+				// Cloudflare Worker（#63）。测试用模拟的 R2 bucket 和 Cache，在 node 环境中执行
+				test: {
+					environment: "node",
+					include: ["src/**/*.test.ts"],
+					name: "image-worker",
+					root: resolveFromRoot("./apps/image-worker"),
+				},
+			},
+			{
 				test: {
 					environment: "node",
 					include: ["src/**/*.test.ts"],

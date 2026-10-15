@@ -78,3 +78,6 @@ temp
 .cursor/skills/
 .pi/skills/
 # <<< dev-cli <<<
+
+# wrangler 的本地缓存（apps/image-worker）
+.wrangler/

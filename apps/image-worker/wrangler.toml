@@ -1,0 +1,17 @@
+# 用例图片的 Cloudflare Worker（#63）。部署步骤见 docs/runbooks/image-cdn-setup.md。
+# 在本目录中执行 pnpm dlx wrangler deploy 手动部署。CI 不部署这个 Worker。
+name = "automationstack-image-worker"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+# 只通过自定义域名访问，不开放 *.workers.dev 地址。
+workers_dev = false
+# Worker 的自定义域名。wrangler deploy 时创建 DNS 记录和证书。
+routes = [{ pattern = "img.trendf.top", custom_domain = true }]
+
+# 签名密钥不写在这里。用 pnpm dlx wrangler secret put IMAGE_CDN_SIGNING_SECRET 设置。
+
+[[r2_buckets]]
+# 代码中使用的绑定名，不要修改。
+binding = "CASE_IMAGES"
+# 替换为保存用例图片的 R2 bucket 名称，与服务端的 R2_BUCKET 相同。
+bucket_name = "REPLACE_WITH_R2_BUCKET"

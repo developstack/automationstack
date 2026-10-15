@@ -1,0 +1,9 @@
+{
+  "name": "image-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "deploy": "pnpm dlx wrangler deploy"
+  }
+}
