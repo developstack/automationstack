@@ -1,9 +1,4 @@
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@automationstack/ui/components/tooltip";
 import { cn } from "@automationstack/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { FolderIcon } from "lucide-react";
@@ -33,35 +28,28 @@ export function ModuleNodeLink({ depth, node, selected }: ModuleNodeLinkProps) {
 	const selectModule = useSelectModuleSearch(node.id);
 
 	return (
-		<Tooltip>
-			<TooltipTrigger
-				render={
-					<Link
-						aria-current={selected ? "true" : undefined}
-						className={cn(
-							"flex min-h-7 min-w-0 flex-1 items-center gap-1.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-							treeTextClass(depth),
-							selected
-								? "font-medium text-foreground"
-								: "text-muted-foreground hover:text-foreground"
-						)}
-						params={{ projectId: node.projectId }}
-						search={selectModule}
-						to="/projects/$projectId"
-						{...moduleLinkAttributes(node.id)}
-					>
-						<FolderIcon
-							aria-hidden="true"
-							className={cn(
-								"icon-stroke-regular pointer-events-none size-3.5 shrink-0 transition-opacity group-hover/module-row:opacity-0 group-has-[[data-drag-handle]:focus-visible]/module-row:opacity-0",
-								selected ? "text-foreground" : "text-muted-foreground"
-							)}
-						/>
-						<span className="truncate">{node.name}</span>
-					</Link>
-				}
+		<Link
+			aria-current={selected ? "true" : undefined}
+			className={cn(
+				"flex min-h-7 min-w-0 flex-1 items-center gap-1.5 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+				treeTextClass(depth),
+				selected
+					? "font-medium text-foreground"
+					: "text-muted-foreground hover:text-foreground"
+			)}
+			params={{ projectId: node.projectId }}
+			search={selectModule}
+			to="/projects/$projectId"
+			{...moduleLinkAttributes(node.id)}
+		>
+			<FolderIcon
+				aria-hidden="true"
+				className={cn(
+					"icon-stroke-regular pointer-events-none size-3.5 shrink-0 transition-opacity group-hover/module-row:opacity-0 group-has-[[data-drag-handle]:focus-visible]/module-row:opacity-0",
+					selected ? "text-foreground" : "text-muted-foreground"
+				)}
 			/>
-			<TooltipContent side="right">{node.name}</TooltipContent>
-		</Tooltip>
+			<span className="truncate">{node.name}</span>
+		</Link>
 	);
 }
