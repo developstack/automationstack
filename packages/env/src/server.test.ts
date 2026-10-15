@@ -126,3 +126,27 @@ describe("server env：Casdoor 默认值", () => {
 		);
 	});
 });
+
+describe("server env：用例图片的 Worker", () => {
+	it.each([
+		["IMAGE_CDN_BASE_URL 不是 URL", { IMAGE_CDN_BASE_URL: "img.trendf.top" }],
+		[
+			"IMAGE_CDN_SIGNING_SECRET 少于 32 个字符",
+			{ IMAGE_CDN_SIGNING_SECRET: "too-short" },
+		],
+	])("%s：启动失败，点名变量", async (_name, overrides) => {
+		stubEnv(overrides);
+		const { error, output } = await loadEnv();
+		expect(error).toBeInstanceOf(Error);
+		expect(output).toContain(Object.keys(overrides)[0]);
+	});
+
+	it("两个变量都有效：正常加载", async () => {
+		stubEnv({
+			IMAGE_CDN_BASE_URL: "https://img.trendf.top",
+			IMAGE_CDN_SIGNING_SECRET: STRONG_SESSION_SECRET,
+		});
+		const { error } = await loadEnv();
+		expect(error).toBeNull();
+	});
+});

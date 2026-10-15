@@ -18,6 +18,7 @@ import {
 	isCaseAttachmentKeyOwnedBy,
 	validateCaseImageUpload,
 } from "../lib/case-attachment-policy";
+import { presignCaseImageDownload } from "../lib/case-image-url";
 import { requireCaseMember } from "../lib/project-scope";
 import { getR2Storage, type R2Storage } from "../lib/r2";
 import { caseAttachmentDraftProcedures } from "./case-attachment-drafts";
@@ -76,7 +77,7 @@ export const caseAttachmentsRouter = {
 			return await Promise.all(
 				attachments.map(async (attachment) => ({
 					attachment,
-					url: await storage.presignDownload(attachment.storageKey),
+					url: await presignCaseImageDownload(storage, attachment.storageKey),
 				}))
 			);
 		}),

@@ -11,6 +11,7 @@ import {
 	isCaseAttachmentKeyOwnedBy,
 	validateCaseImageUpload,
 } from "../lib/case-attachment-policy";
+import { presignCaseImageDownload } from "../lib/case-image-url";
 import { getR2Storage } from "../lib/r2";
 
 const sizeBytesSchema = z.number().int().positive();
@@ -60,7 +61,7 @@ export const caseAttachmentDraftProcedures = {
 			return await Promise.all(
 				input.storageKeys.map(async (storageKey) => ({
 					storageKey,
-					url: await storage.presignDownload(storageKey),
+					url: await presignCaseImageDownload(storage, storageKey),
 				}))
 			);
 		}),
