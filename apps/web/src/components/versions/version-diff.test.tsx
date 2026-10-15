@@ -1,5 +1,5 @@
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { diffCaseSnapshots } from "@/components/versions/field-diff";
@@ -19,7 +19,12 @@ function makeSnapshot(overrides: Partial<CaseSnapshot> = {}): CaseSnapshot {
 		sourceRef: null,
 		status: "draft",
 		steps: [
-			{ expected: "展示登录表单", id: "s1", step: "打开登录页" },
+			{
+				expected: "展示登录表单",
+				id: "s1",
+				screenshots: ["a", "b", "c"],
+				step: "打开登录页",
+			},
 			{ expected: "提示密码错误", id: "s2", step: "输入错误密码" },
 		],
 		tags: ["smoke", "login"],
@@ -34,7 +39,12 @@ function renderDiff() {
 		preconditions: "已注册并激活账号",
 		status: "active",
 		steps: [
-			{ expected: "展示登录表单", id: "s1", step: "打开登录页面" },
+			{
+				expected: "展示登录表单",
+				id: "s1",
+				screenshots: ["b", "a", "d"],
+				step: "打开登录页面",
+			},
 			{ expected: "进入首页", id: "s3", step: "点击登录" },
 		],
 		tags: ["smoke", "auth"],
@@ -43,6 +53,7 @@ function renderDiff() {
 		<VersionDiff
 			baseVersion={3}
 			diff={diffCaseSnapshots(oldSnapshot, newSnapshot)}
+			imageUrls={new Map([["a", "https://r2.example/a.png"]])}
 			targetVersion={5}
 		/>
 	);
@@ -81,6 +92,15 @@ describe("VersionDiff：新增和删除的内容不只用颜色区分", () => {
 			(badge) => badge.textContent
 		);
 		expect(tones).toEqual(expect.arrayContaining(["新增", "删除", "修改"]));
+	});
+
+	it("步骤截图的新增、删除和移动用统一状态标签，没有变化的截图不加标记", () => {
+		renderDiff();
+		const list = screen.getByRole("list", { name: "第 1 步截图" });
+		const badges = within(list)
+			.getAllByRole("listitem")
+			.map((item) => item.querySelector("[data-tone]")?.textContent ?? null);
+		expect(badges).toEqual([null, "移动", "新增", "删除"]);
 	});
 
 	it("修改的用例状态，旧值和新值都用统一状态标签", () => {

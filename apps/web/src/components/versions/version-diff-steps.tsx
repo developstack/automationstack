@@ -1,7 +1,6 @@
 import {
 	Table,
 	TableBody,
-	TableCell,
 	TableHead,
 	TableHeader,
 	TableRow,
@@ -9,11 +8,11 @@ import {
 import { cn } from "@automationstack/ui/lib/utils";
 
 import { CASE_TABLE_HEAD_CLASS } from "@/components/cases/case-table-layout";
-import { StatusBadge } from "@/components/status/status-badge";
+import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 
 import { CHANGE_KIND_LABELS, type ChangeKind } from "./change-kind.ts";
-import type { StepDiffEntry, StepsDiff } from "./step-diff.ts";
-import { StepTextCell } from "./step-text-cell.tsx";
+import type { StepsDiff } from "./step-diff.ts";
+import { StepDiffRow } from "./step-diff-row.tsx";
 import { VersionSection } from "./version-section.tsx";
 
 const KIND_ORDER: readonly ChangeKind[] = [
@@ -23,39 +22,6 @@ const KIND_ORDER: readonly ChangeKind[] = [
 	"moved",
 	"unchanged",
 ];
-
-function humanIndex(index: number | null): string {
-	return index === null ? "—" : String(index + 1);
-}
-
-function orderLabel(entry: StepDiffEntry): string {
-	if (entry.kind === "moved") {
-		return `${humanIndex(entry.oldIndex)} → ${humanIndex(entry.newIndex)}`;
-	}
-	if (entry.kind === "removed") {
-		return humanIndex(entry.oldIndex);
-	}
-	return humanIndex(entry.newIndex);
-}
-
-function StepDiffRow({ entry }: { entry: StepDiffEntry }) {
-	return (
-		<TableRow className="last:border-b-0">
-			<TableCell className="numeric pl-3 align-top text-muted-foreground text-xs">
-				{orderLabel(entry)}
-			</TableCell>
-			<TableCell className="align-top">
-				<StatusBadge kind="change" value={entry.kind} />
-			</TableCell>
-			<TableCell className="w-1/2 min-w-0 whitespace-normal align-top">
-				<StepTextCell entry={entry} field="step" />
-			</TableCell>
-			<TableCell className="w-1/2 min-w-0 whitespace-normal align-top">
-				<StepTextCell entry={entry} field="expected" />
-			</TableCell>
-		</TableRow>
-	);
-}
 
 /** 各种变化的步骤数，例如「新增 1 · 修改 2」。 */
 function StepCountsSummary({ steps }: { steps: StepsDiff }) {
@@ -76,7 +42,12 @@ function StepCountsSummary({ steps }: { steps: StepsDiff }) {
 	);
 }
 
-export function VersionDiffSteps({ steps }: { steps: StepsDiff }) {
+interface VersionDiffStepsProps {
+	imageUrls: MarkdownImageUrls;
+	steps: StepsDiff;
+}
+
+export function VersionDiffSteps({ imageUrls, steps }: VersionDiffStepsProps) {
 	return (
 		<VersionSection
 			aside={<StepCountsSummary steps={steps} />}
@@ -107,7 +78,11 @@ export function VersionDiffSteps({ steps }: { steps: StepsDiff }) {
 						</TableHeader>
 						<TableBody>
 							{steps.entries.map((entry) => (
-								<StepDiffRow entry={entry} key={entry.id} />
+								<StepDiffRow
+									entry={entry}
+									imageUrls={imageUrls}
+									key={entry.id}
+								/>
 							))}
 						</TableBody>
 					</Table>
