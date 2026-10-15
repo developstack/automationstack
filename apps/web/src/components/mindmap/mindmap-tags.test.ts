@@ -54,25 +54,58 @@ describe("用例状态标签：与统一状态标签的样式相同", () => {
 	});
 });
 
-describe("优先级标签：不用颜色", () => {
-	it("等宽字体的前景色文字，没有底色和边框色", () => {
-		for (const priority of ["P0", "P1", "P2", "P3"] as const) {
-			const tag = buildPriorityTag(priority);
-			expect(tag.text).toBe(priority);
-			expect(tag.style).toMatchObject({
-				background: "transparent",
+const MONO = "var(--font-mono)";
+
+describe("优先级标签：每个优先级有自己的颜色，与 StatusBadge 使用同一组令牌", () => {
+	it.each([
+		{
+			priority: "P0",
+			style: {
+				background: "var(--destructive)",
 				borderColor: "transparent",
-				color: "var(--foreground)",
-				fontFamily: "var(--font-mono)",
-			});
-		}
+				color: "var(--destructive-foreground)",
+				fontFamily: MONO,
+				fontWeight: "600",
+			},
+		},
+		{
+			priority: "P1",
+			style: {
+				background: "var(--warning-soft)",
+				borderColor: "color-mix(in oklab, var(--warning) 20%, transparent)",
+				color: "var(--warning-soft-foreground)",
+				fontFamily: MONO,
+			},
+		},
+		{
+			priority: "P2",
+			style: {
+				background: "var(--info-soft)",
+				borderColor: "color-mix(in oklab, var(--info) 20%, transparent)",
+				color: "var(--info-soft-foreground)",
+				fontFamily: MONO,
+			},
+		},
+		{
+			priority: "P3",
+			style: {
+				background: "transparent",
+				borderColor:
+					"color-mix(in oklab, var(--muted-foreground) 40%, transparent)",
+				color: "var(--muted-foreground)",
+				fontFamily: MONO,
+			},
+		},
+	] as const)("$priority 的标签样式", ({ priority, style }) => {
+		expect(buildPriorityTag(priority)).toEqual({ style, text: priority });
 	});
 
-	it("只有 P0 加粗", () => {
-		expect(buildPriorityTag("P0").style?.fontWeight).toBe("600");
-		for (const priority of ["P1", "P2", "P3"] as const) {
-			expect(buildPriorityTag(priority).style?.fontWeight).toBe("400");
-		}
+	it("P0–P3 的底色和边框色组合各不相同", () => {
+		const looks = (["P0", "P1", "P2", "P3"] as const).map((priority) => {
+			const style = buildPriorityTag(priority).style ?? {};
+			return `${style.background} ${style.borderColor}`;
+		});
+		expect(new Set(looks).size).toBe(looks.length);
 	});
 });
 
@@ -91,7 +124,7 @@ const BORDER_CLASS = /(?:^|\s)border-([a-z-]+)\/(\d+)(?:\s|$)/;
 
 describe("每种样式与 StatusBadge 的 STATUS_TONE_CLASSES 一致", () => {
 	for (const [tone, classes] of Object.entries(STATUS_TONE_CLASSES)) {
-		it(`${tone}：底色、文字色、边框色、删除线和字体相同`, () => {
+		it(`${tone}：底色、文字色、边框色、删除线、字体和字重相同`, () => {
 			const style = buildToneTag("x", tone as StatusTone).style ?? {};
 			const bg = classes.match(BG_CLASS)?.[1];
 			expect(style.background).toBe(bg ? `var(--${bg})` : "transparent");
@@ -110,6 +143,9 @@ describe("每种样式与 StatusBadge 的 STATUS_TONE_CLASSES 一致", () => {
 			);
 			expect(style.fontFamily === "var(--font-mono)").toBe(
 				classes.includes("numeric")
+			);
+			expect(style.fontWeight === "600").toBe(
+				classes.includes("font-semibold")
 			);
 		});
 	}

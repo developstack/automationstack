@@ -7,14 +7,59 @@ import { cn } from "@automationstack/ui/lib/utils";
 import { useCallback } from "react";
 
 import { PRIORITY_VALUES } from "@/components/cases/case-meta";
-import { isStrongPriority } from "@/components/status/status-badge-meta";
+import { StatusBadge } from "@/components/status/status-badge";
 
 interface PriorityFilterProps {
 	onChange: (priority: CasePriority[]) => void;
 	priority: CasePriority[];
 }
 
-/** 分段按钮，可以按下多个优先级。优先级不用颜色：等宽字体，P0 加粗。 */
+/** 没有按下的按钮用色点表示优先级，颜色与这个优先级的 StatusBadge 相同。 */
+const PRIORITY_DOT_CLASSES: Record<CasePriority, string> = {
+	P0: "bg-destructive",
+	P1: "bg-warning",
+	P2: "bg-info",
+	P3: "bg-muted-foreground",
+};
+
+function PriorityDot({ className }: { className: string }) {
+	return (
+		<span
+			aria-hidden="true"
+			className={cn("size-1.5 shrink-0 rounded-full", className)}
+			data-priority-dot=""
+		/>
+	);
+}
+
+interface PriorityOptionProps {
+	pressed: boolean;
+	value: CasePriority;
+}
+
+/**
+ * 按下：这个优先级的 StatusBadge，色点用文字色。
+ * 没有按下：灰色文字和这个优先级颜色的色点。两种状态的形状和宽度相同，切换时按钮不变宽。
+ */
+function PriorityOption({ pressed, value }: PriorityOptionProps) {
+	if (pressed) {
+		return (
+			<StatusBadge
+				icon={<PriorityDot className="bg-current" />}
+				kind="priority"
+				value={value}
+			/>
+		);
+	}
+	return (
+		<span className="numeric inline-flex h-5 items-center gap-1 rounded-md border border-transparent px-1.5 font-medium text-muted-foreground text-xs group-hover/toggle:text-foreground">
+			<PriorityDot className={PRIORITY_DOT_CLASSES[value]} />
+			{value}
+		</span>
+	);
+}
+
+/** 分段按钮，可以按下多个优先级。每个优先级使用自己的颜色，与 StatusBadge 相同。 */
 export function PriorityFilter({ onChange, priority }: PriorityFilterProps) {
 	const handleValueChange = useCallback(
 		(groupValue: string[]) =>
@@ -32,15 +77,8 @@ export function PriorityFilter({ onChange, priority }: PriorityFilterProps) {
 			variant="segmented"
 		>
 			{PRIORITY_VALUES.map((value) => (
-				<ToggleGroupItem
-					className={cn(
-						"numeric",
-						isStrongPriority(value) ? "font-semibold" : "font-normal"
-					)}
-					key={value}
-					value={value}
-				>
-					{value}
+				<ToggleGroupItem className="px-0.5" key={value} value={value}>
+					<PriorityOption pressed={priority.includes(value)} value={value} />
 				</ToggleGroupItem>
 			))}
 		</ToggleGroup>

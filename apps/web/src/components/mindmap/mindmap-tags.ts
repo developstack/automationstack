@@ -51,22 +51,31 @@ const TONE_STYLES: Record<StatusTone, TagStyle> = {
 		borderColor: tint("--muted-foreground", OUTLINE_TINT_PERCENT),
 		color: "var(--muted-foreground)",
 	},
-	// 和 StatusBadge 的 font-normal、font-semibold 一致
-	priority: {
-		background: "transparent",
+	// 优先级的颜色与 StatusBadge 相同；等宽字体对应 numeric，P0 的字重对应 font-semibold
+	"priority-p0": {
+		background: "var(--destructive)",
 		borderColor: "transparent",
-		color: "var(--foreground)",
-		fontFamily: "var(--font-mono)",
-		fontWeight: "400",
-		paddingInline: "0",
-	},
-	"priority-strong": {
-		background: "transparent",
-		borderColor: "transparent",
-		color: "var(--foreground)",
+		color: "var(--destructive-foreground)",
 		fontFamily: "var(--font-mono)",
 		fontWeight: "600",
-		paddingInline: "0",
+	},
+	"priority-p1": {
+		background: "var(--warning-soft)",
+		borderColor: tint("--warning", BORDER_TINT_PERCENT),
+		color: "var(--warning-soft-foreground)",
+		fontFamily: "var(--font-mono)",
+	},
+	"priority-p2": {
+		background: "var(--info-soft)",
+		borderColor: tint("--info", BORDER_TINT_PERCENT),
+		color: "var(--info-soft-foreground)",
+		fontFamily: "var(--font-mono)",
+	},
+	"priority-p3": {
+		background: "transparent",
+		borderColor: tint("--muted-foreground", OUTLINE_TINT_PERCENT),
+		color: "var(--muted-foreground)",
+		fontFamily: "var(--font-mono)",
 	},
 	solid: {
 		background: "var(--neutral-solid)",
@@ -101,7 +110,7 @@ export function buildCaseStatusTag(status: CaseStatus): TagObj {
 	return buildToneTag(STATUS_LABELS[status], CASE_STATUS_TONES[status]);
 }
 
-/** 优先级标签，与 StatusBadge kind="priority" 相同：不用颜色，等宽字体，只有 P0 加粗。 */
+/** 优先级标签，与 StatusBadge kind="priority" 相同：每个优先级有自己的颜色，等宽字体，只有 P0 加粗。 */
 export function buildPriorityTag(priority: CasePriority): TagObj {
 	return buildToneTag(priority, priorityTone(priority));
 }

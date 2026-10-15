@@ -39,10 +39,10 @@ const CASES: readonly BadgeExample[] = [
 	badge("草稿", { kind: "caseStatus", value: "draft" }, "outline"),
 	badge("生效", { kind: "caseStatus", value: "active" }, "success"),
 	badge("废弃", { kind: "caseStatus", value: "deprecated" }, "struck"),
-	badge("P0", { kind: "priority", value: "P0" }, "priority-strong"),
-	badge("P1", { kind: "priority", value: "P1" }, "priority"),
-	badge("P2", { kind: "priority", value: "P2" }, "priority"),
-	badge("P3", { kind: "priority", value: "P3" }, "priority"),
+	badge("P0", { kind: "priority", value: "P0" }, "priority-p0"),
+	badge("P1", { kind: "priority", value: "P1" }, "priority-p1"),
+	badge("P2", { kind: "priority", value: "P2" }, "priority-p2"),
+	badge("P3", { kind: "priority", value: "P3" }, "priority-p3"),
 	badge("新增", { kind: "change", value: "added" }, "success"),
 	badge("删除", { kind: "change", value: "removed" }, "danger"),
 	badge("修改", { kind: "change", value: "modified" }, "warning"),
@@ -56,8 +56,29 @@ const TONE_KEY_CLASSES: Record<StatusTone, readonly string[]> = {
 	"info-outline": ["border-info/40", "text-info"],
 	neutral: ["bg-muted", "text-muted-foreground"],
 	outline: ["border-muted-foreground/40", "text-muted-foreground"],
-	priority: ["numeric", "font-normal", "text-foreground"],
-	"priority-strong": ["numeric", "font-semibold", "text-foreground"],
+	"priority-p0": [
+		"numeric",
+		"bg-destructive",
+		"text-destructive-foreground",
+		"font-semibold",
+	],
+	"priority-p1": [
+		"numeric",
+		"border-warning/20",
+		"bg-warning-soft",
+		"text-warning-soft-foreground",
+	],
+	"priority-p2": [
+		"numeric",
+		"border-info/20",
+		"bg-info-soft",
+		"text-info-soft-foreground",
+	],
+	"priority-p3": [
+		"numeric",
+		"border-muted-foreground/40",
+		"text-muted-foreground",
+	],
 	solid: ["bg-neutral-solid", "text-neutral-solid-foreground"],
 	struck: ["bg-muted", "text-muted-foreground", "line-through"],
 	success: ["bg-success-soft", "text-success-soft-foreground"],
@@ -75,14 +96,28 @@ describe("StatusBadge", () => {
 			for (const keyClass of TONE_KEY_CLASSES[tone]) {
 				expect(classes).toContain(keyClass);
 			}
+			// 每种标签的形状相同：都有内边距
+			expect(classes).toContain("px-1.5");
 		}
 	);
 
-	it("优先级只有 P0 加粗", () => {
-		render(<StatusBadge kind="priority" value="P1" />);
-		expect(
-			screen.getByText("P1").closest("[data-tone]")?.className
-		).not.toContain("font-semibold");
+	it("P0 是实底，执行结果「失败」是浅底，两者的 class 不同", () => {
+		render(
+			<>
+				<StatusBadge kind="priority" value="P0" />
+				<StatusBadge kind="result" value="failed" />
+			</>
+		);
+		const classesOf = (text: string): string[] =>
+			(screen.getByText(text).closest("[data-tone]")?.className ?? "").split(
+				" "
+			);
+		const p0 = classesOf("P0");
+		const failed = classesOf("失败");
+		expect(p0).toContain("bg-destructive");
+		expect(p0).not.toContain("bg-destructive-soft");
+		expect(failed).toContain("bg-destructive-soft");
+		expect(failed).not.toContain("bg-destructive");
 	});
 
 	it("执行结果带图标，图标对读屏软件隐藏", () => {

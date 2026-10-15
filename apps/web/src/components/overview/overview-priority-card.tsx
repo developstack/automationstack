@@ -31,7 +31,7 @@ interface PriorityRowProps {
 	total: number;
 }
 
-/** 一个优先级一行。优先级不用颜色：竖线用前景色，其余部分是浅灰的轨道。 */
+/** 一个优先级一行。标签使用这个优先级的颜色；竖线用前景色，其余部分是浅灰的轨道。 */
 function PriorityRow({ count, priority, total }: PriorityRowProps) {
 	return (
 		<>
