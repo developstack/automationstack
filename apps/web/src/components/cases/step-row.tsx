@@ -9,6 +9,9 @@ import {
 	useStepRowDrag,
 } from "@/components/cases/step-drag";
 import { StepRowActions } from "@/components/cases/step-row-actions";
+import { StepScreenshotStrip } from "@/components/cases/step-screenshot-strip";
+import { stepScreenshots } from "@/components/cases/step-screenshots";
+import { useStepScreenshotEdit } from "@/components/cases/use-step-screenshot-edit";
 
 /** 步骤编辑器的表头和每一行共用的列：编号、操作步骤、预期结果、操作。 */
 export const STEP_GRID_CLASS =
@@ -69,32 +72,34 @@ function StepNumber({
 	);
 }
 
-/** 步骤编辑器的一行：拖动把手和编号、操作步骤、预期结果、行尾操作。 */
+function stepRowClass(drag: ReturnType<typeof useStepRowDrag>): string {
+	return cn(
+		STEP_GRID_CLASS,
+		"relative items-start border-b py-3",
+		drag.isDragging && "z-10 bg-card opacity-80 shadow-card",
+		drag.dropEdge !== null &&
+			"before:absolute before:inset-x-0 before:h-0.5 before:bg-primary",
+		drag.dropEdge !== null && DROP_EDGE_CLASS[drag.dropEdge]
+	);
+}
+
+/** 步骤编辑器的一行：拖动把手和编号、操作步骤、预期结果、行尾操作，下面是步骤截图。 */
 export function StepRow(props: StepRowProps) {
 	const { index, step } = props;
 	const position = index + 1;
 	const handlers = useStepRowHandlers(props);
+	const screenshots = useStepScreenshotEdit(step, props.onChange);
 	const drag = useStepRowDrag(step.id, index);
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const togglePreview = useCallback(() => setPreviewOpen((open) => !open), []);
 
 	return (
-		<li
-			className={cn(
-				STEP_GRID_CLASS,
-				"relative items-start border-b py-3",
-				drag.isDragging && "z-10 bg-card opacity-80 shadow-card",
-				drag.dropEdge !== null &&
-					"before:absolute before:inset-x-0 before:h-0.5 before:bg-primary",
-				drag.dropEdge !== null && DROP_EDGE_CLASS[drag.dropEdge]
-			)}
-			ref={drag.setRowRef}
-			style={drag.style}
-		>
+		<li className={stepRowClass(drag)} ref={drag.setRowRef} style={drag.style}>
 			<StepNumber handle={drag.handle} position={position} />
 			<MarkdownField
 				ariaLabel={`第 ${position} 步操作`}
 				onChange={handlers.handleStepChange}
+				onPasteImages={screenshots.addFiles}
 				placeholder="操作步骤，支持 markdown"
 				preview={previewOpen}
 				value={step.step}
@@ -102,6 +107,7 @@ export function StepRow(props: StepRowProps) {
 			<MarkdownField
 				ariaLabel={`第 ${position} 步预期结果`}
 				onChange={handlers.handleExpectedChange}
+				onPasteImages={screenshots.addFiles}
 				placeholder="预期结果，支持 markdown"
 				preview={previewOpen}
 				value={step.expected}
@@ -115,6 +121,11 @@ export function StepRow(props: StepRowProps) {
 				onRemove={handlers.handleRemove}
 				onTogglePreview={togglePreview}
 				previewOpen={previewOpen}
+			/>
+			<StepScreenshotStrip
+				edit={screenshots}
+				ids={stepScreenshots(step)}
+				position={position}
 			/>
 		</li>
 	);

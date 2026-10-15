@@ -43,8 +43,10 @@ function renderUploads(
 ) {
 	const value: CaseAttachmentContextValue = {
 		discardUpload: vi.fn(),
+		fileNames: new Map(),
 		imageUrls: new Map(),
 		retryUpload: vi.fn(),
+		screenshots: null,
 		uploading: true,
 		uploadPasted: null,
 		uploads: jobs,
