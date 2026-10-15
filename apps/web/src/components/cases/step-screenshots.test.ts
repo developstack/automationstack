@@ -9,6 +9,7 @@ import {
 	planScreenshotAdd,
 	resolveStepScreenshots,
 	runWithConcurrency,
+	withoutStepScreenshot,
 } from "@/components/cases/step-screenshots";
 
 const MIB = 1024 * 1024;
@@ -102,6 +103,38 @@ describe("local screenshot ids", () => {
 
 	it("refuses to resolve a screenshot that was not uploaded", () => {
 		expect(() => resolveStepScreenshots(steps, new Map())).toThrow(LOCAL_A);
+	});
+});
+
+describe("withoutStepScreenshot", () => {
+	const STEPS = [step("s1", [SAVED, LOCAL_A]), step("s2", [SAVED])];
+
+	it.each([
+		[
+			"removes the screenshot from that step only",
+			"s1",
+			SAVED,
+			[[LOCAL_A], [SAVED]],
+		],
+		[
+			"keeps the steps when the step is unknown",
+			"s9",
+			SAVED,
+			[[SAVED, LOCAL_A], [SAVED]],
+		],
+		[
+			"keeps the step when the id is unknown",
+			"s2",
+			LOCAL_B,
+			[[SAVED, LOCAL_A], [SAVED]],
+		],
+	])("%s", (_name, stepId, attachmentId, expected) => {
+		const result = withoutStepScreenshot(STEPS, stepId, attachmentId);
+		expect(result.map((item) => item.screenshots)).toEqual(expected);
+		expect(STEPS.map((item) => item.screenshots)).toEqual([
+			[SAVED, LOCAL_A],
+			[SAVED],
+		]);
 	});
 });
 

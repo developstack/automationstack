@@ -1,4 +1,5 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
+import { ORPCError } from "@orpc/client";
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -112,5 +113,43 @@ describe("useCaseEditor：保存时先上传步骤截图，再保存用例", () 
 		leave(hook);
 		expect(hook.result.current.form).toBeNull();
 		expect(store.clear).toHaveBeenCalled();
+	});
+});
+
+describe("useCaseEditor：在只读视图中删除步骤截图", () => {
+	function removeSaved() {
+		mutate.mockClear();
+		const hook = renderHook(() => useCaseEditor("case-1", TEST_CASE));
+		act(() => hook.result.current.removeScreenshot("s1", SAVED));
+		return hook;
+	}
+
+	it("saves only the steps without the screenshot, checked against the loaded version", () => {
+		removeSaved();
+		expect(mutate).toHaveBeenCalledOnce();
+		expect(mutate.mock.calls[0]?.[0]).toEqual({
+			expectedVersion: 4,
+			id: "case-1",
+			patch: {
+				steps: [{ expected: "", id: "s1", screenshots: [], step: "打开首页" }],
+			},
+		});
+	});
+
+	const conflict = new ORPCError("CONFLICT", {
+		data: { currentVersion: 5, lastModifiedBy: "bob" },
+		defined: true,
+	});
+
+	it.each([
+		["keeps the removal in the editor after a version conflict", conflict, []],
+		["stays in the read-only view after other errors", new Error("断网"), null],
+	])("%s", (_name, error, screenshots) => {
+		const hook = removeSaved();
+		const options = mutate.mock.calls[0]?.[1];
+		act(() => options.onError(error));
+		const { form } = hook.result.current;
+		expect(form?.steps[0]?.screenshots ?? null).toEqual(screenshots);
+		expect(form?.name ?? null).toBe(screenshots === null ? null : "登录");
 	});
 });

@@ -54,8 +54,19 @@ function CaseTags({ tags }: { tags: string[] }) {
 	);
 }
 
+interface CaseDetailViewProps {
+	/** 用户确认删除一张步骤截图后调用。不传时不显示删除按钮。 */
+	onRemoveScreenshot?: (stepId: string, attachmentId: string) => void;
+	removingScreenshot?: boolean;
+	testCase: TestCase;
+}
+
 /** 用例详情的只读内容。用例编号、用例状态、优先级、版本和更新时间显示在面板头部。 */
-export function CaseDetailView({ testCase }: { testCase: TestCase }) {
+export function CaseDetailView({
+	onRemoveScreenshot,
+	removingScreenshot,
+	testCase,
+}: CaseDetailViewProps) {
 	const imageUrls = useCaseAttachmentUrls(testCase.id);
 
 	return (
@@ -79,7 +90,12 @@ export function CaseDetailView({ testCase }: { testCase: TestCase }) {
 				)}
 			</DetailSection>
 			<DetailSection title="操作步骤">
-				<CaseStepsList imageUrls={imageUrls} steps={testCase.steps} />
+				<CaseStepsList
+					imageUrls={imageUrls}
+					onRemoveScreenshot={onRemoveScreenshot}
+					removingScreenshot={removingScreenshot}
+					steps={testCase.steps}
+				/>
 			</DetailSection>
 		</div>
 	);

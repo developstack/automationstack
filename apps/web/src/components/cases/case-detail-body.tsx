@@ -16,6 +16,7 @@ import {
 	useUpdateCase,
 } from "@/components/cases/use-case-mutations";
 import { useCaseNameCheck } from "@/components/cases/use-case-name-check";
+import { useScreenshotRemoval } from "@/components/cases/use-screenshot-removal";
 import type { StepScreenshotStore } from "@/components/cases/use-step-screenshots";
 
 export const CASE_EDITOR_FORM_ID = "case-editor-form";
@@ -68,6 +69,18 @@ function useCaseSave(input: CaseSaveInput) {
 	}, [save]);
 }
 
+/** 两种保存：编辑区的「保存」，以及只读视图中删除一张步骤截图。 */
+function useCaseSaveActions(
+	input: CaseSaveInput & { setForm: (values: CaseFormValues) => void }
+) {
+	const handleSave = useCaseSave(input);
+	const removeScreenshot = useScreenshotRemoval({
+		...input,
+		onConflict: input.setForm,
+	});
+	return { handleSave, removeScreenshot };
+}
+
 export function useCaseEditor(
 	caseId: string,
 	testCase: TestCase | undefined,
@@ -97,13 +110,14 @@ export function useCaseEditor(
 		}
 	}, [testCase]);
 
-	const handleSave = useCaseSave({
+	const { handleSave, removeScreenshot } = useCaseSaveActions({
 		caseId,
 		checkName,
 		conflict,
 		form,
 		mutation,
 		screenshots,
+		setForm,
 		testCase,
 	});
 
@@ -113,6 +127,7 @@ export function useCaseEditor(
 		form,
 		handleSave,
 		nameError: nameErrorFor(form),
+		removeScreenshot,
 		saving: mutation.isPending || Boolean(screenshots?.progress),
 		setForm,
 		startEditing,
@@ -139,5 +154,11 @@ export function CaseDetailBody({ editor, testCase }: CaseDetailBodyProps) {
 			/>
 		);
 	}
-	return <CaseDetailView testCase={testCase} />;
+	return (
+		<CaseDetailView
+			onRemoveScreenshot={editor.removeScreenshot}
+			removingScreenshot={editor.saving}
+			testCase={testCase}
+		/>
+	);
 }

@@ -86,6 +86,24 @@ export function resolveStepScreenshots(
 	});
 }
 
+/** 从一个步骤中删除一张截图，返回新的步骤列表。其他步骤和截图的顺序不变。 */
+export function withoutStepScreenshot(
+	steps: readonly CaseStep[],
+	stepId: string,
+	attachmentId: string
+): CaseStep[] {
+	return steps.map((step) =>
+		step.id === stepId
+			? {
+					...step,
+					screenshots: stepScreenshots(step).filter(
+						(id) => id !== attachmentId
+					),
+				}
+			: step
+	);
+}
+
 /** 依次处理 items，同时运行的 worker 不超过 limit 个。结果的顺序与 items 相同。 */
 export async function runWithConcurrency<T, R>(
 	items: readonly T[],
