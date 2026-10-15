@@ -1,7 +1,7 @@
 import type { CaseSnapshot } from "@automationstack/db/schema/test-cases";
 
 import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
-import { CaseStepsTable } from "@/components/cases/case-steps-table";
+import { CaseStepsList } from "@/components/cases/case-steps-list";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 
 import { SnapshotFields } from "./snapshot-fields.tsx";
@@ -50,7 +50,7 @@ export function VersionSnapshotView({
 				}}
 			/>
 			<VersionSection title="操作步骤">
-				<CaseStepsTable
+				<CaseStepsList
 					emptyText="这个版本没有步骤。"
 					imageUrls={imageUrls}
 					steps={snapshot.steps}

@@ -32,7 +32,7 @@ function useStepActions(
 	);
 }
 
-/** 表头与只读的步骤表格（CaseStepsTable）一致：小标签、灰色。窄屏不显示。 */
+/** 表头使用表格的表头样式（CASE_TABLE_HEAD_CLASS）：小标签、灰色。窄屏不显示。 */
 function StepsHeader() {
 	return (
 		<div

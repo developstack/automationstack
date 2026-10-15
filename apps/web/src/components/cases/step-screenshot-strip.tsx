@@ -1,13 +1,6 @@
 import { Button } from "@automationstack/ui/components/button";
 import { PlusIcon } from "lucide-react";
-import {
-	type ChangeEvent,
-	useCallback,
-	useId,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import { type ChangeEvent, useCallback, useId, useMemo, useRef } from "react";
 
 import { useCaseAttachments } from "@/components/cases/case-attachment-context";
 import {
@@ -18,6 +11,7 @@ import {
 	isLocalScreenshot,
 	SCREENSHOT_ACCEPT,
 } from "@/components/cases/step-screenshots";
+import { useScreenshotLightbox } from "@/components/cases/use-screenshot-lightbox";
 import {
 	SCREENSHOT_STORAGE_UNAVAILABLE,
 	type StepScreenshotEdit,
@@ -54,21 +48,6 @@ export function describeScreenshot(
 		status: null,
 		url: sources.imageUrls.get(id) ?? null,
 	};
-}
-
-interface LightboxState {
-	index: number;
-	origin: HTMLElement;
-}
-
-function useScreenshotLightbox() {
-	const [state, setState] = useState<LightboxState | null>(null);
-	const open = useCallback(
-		(index: number, origin: HTMLElement) => setState({ index, origin }),
-		[]
-	);
-	const close = useCallback(() => setState(null), []);
-	return { close, open, state };
 }
 
 function useFilePicker(onAdd: (files: File[]) => void) {

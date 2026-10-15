@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
 import { CASE_TYPE_LABELS } from "@/components/cases/case-meta";
-import { CaseStepsTable } from "@/components/cases/case-steps-table";
+import { CaseStepsList } from "@/components/cases/case-steps-list";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 
 const EMPTY_VALUE = <span className="text-muted-foreground">—</span>;
@@ -79,7 +79,7 @@ export function CaseDetailView({ testCase }: { testCase: TestCase }) {
 				)}
 			</DetailSection>
 			<DetailSection title="操作步骤">
-				<CaseStepsTable imageUrls={imageUrls} steps={testCase.steps} />
+				<CaseStepsList imageUrls={imageUrls} steps={testCase.steps} />
 			</DetailSection>
 		</div>
 	);
