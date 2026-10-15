@@ -77,6 +77,16 @@ const SCALAR_CONTENT_KEYS = [
 	"status",
 ] as const satisfies readonly (keyof CaseContentPatch)[];
 
+function sameList(
+	stored: readonly string[],
+	patched: readonly string[]
+): boolean {
+	return (
+		stored.length === patched.length &&
+		stored.every((item, index) => item === patched[index])
+	);
+}
+
 function sameSteps(
 	stored: readonly CaseStep[],
 	patched: readonly CaseStep[]
@@ -89,20 +99,39 @@ function sameSteps(
 				other !== undefined &&
 				step.id === other.id &&
 				step.step === other.step &&
-				step.expected === other.expected
+				step.expected === other.expected &&
+				sameList(step.screenshots ?? [], other.screenshots ?? [])
 			);
 		})
 	);
 }
 
-function sameTags(
-	stored: readonly string[],
-	patched: readonly string[]
-): boolean {
-	return (
-		stored.length === patched.length &&
-		stored.every((tag, index) => tag === patched[index])
-	);
+/**
+ * 外部工具（MCP、导入、其他 API）写入的步骤可能不带 screenshots。
+ * 这时 id 相同的步骤保留现有的步骤截图；新的步骤 id 没有步骤截图。
+ */
+export function mergeStepScreenshots(
+	stored: readonly CaseStep[],
+	patched: readonly CaseStep[]
+): CaseStep[] {
+	const storedById = new Map(stored.map((step) => [step.id, step]));
+	return patched.map((step) => {
+		if (step.screenshots !== undefined) {
+			return step;
+		}
+		const kept = storedById.get(step.id)?.screenshots;
+		return kept === undefined ? step : { ...step, screenshots: kept };
+	});
+}
+
+function withMergedScreenshots(
+	row: TestCase,
+	patch: CaseContentPatch
+): CaseContentPatch {
+	if (patch.steps === undefined) {
+		return patch;
+	}
+	return { ...patch, steps: mergeStepScreenshots(row.steps, patch.steps) };
 }
 
 export function isNoopCasePatch(
@@ -112,7 +141,7 @@ export function isNoopCasePatch(
 	if (patch.steps !== undefined && !sameSteps(row.steps, patch.steps)) {
 		return false;
 	}
-	if (patch.tags !== undefined && !sameTags(row.tags, patch.tags)) {
+	if (patch.tags !== undefined && !sameList(row.tags, patch.tags)) {
 		return false;
 	}
 	return SCALAR_CONTENT_KEYS.every(
@@ -143,13 +172,14 @@ export async function writeCaseMutation(
 			lastModifiedBy: current.lastModifiedBy,
 		};
 	}
-	if (isNoopCasePatch(current, options.patch)) {
+	const patch = withMergedScreenshots(current, options.patch);
+	if (isNoopCasePatch(current, patch)) {
 		return { kind: "unchanged", testCase: current };
 	}
 	const [updated] = await tx
 		.update(testCases)
 		.set({
-			...options.patch,
+			...patch,
 			currentVersion: sql`${testCases.currentVersion} + 1`,
 			lastModifiedBy: options.actorName,
 		})

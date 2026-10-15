@@ -44,6 +44,8 @@ export type CaseStatus = (typeof caseStatusEnum.enumValues)[number];
 export interface CaseStep {
 	expected: string;
 	id: string;
+	/** 步骤截图：有序的用例附件 id 列表。旧的步骤没有这个字段，等于空列表。 */
+	screenshots?: string[];
 	step: string;
 }
 

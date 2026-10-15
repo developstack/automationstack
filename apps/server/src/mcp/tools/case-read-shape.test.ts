@@ -29,6 +29,12 @@ const sampleCase: TestCase = {
 			id: "s1",
 			step: "输入 21 个字符",
 		},
+		{
+			expected: "注册成功",
+			id: "s2",
+			screenshots: ["44444444-4444-4444-8444-444444444444"],
+			step: "输入 20 个字符",
+		},
 	],
 	tags: ["边界值"],
 	updatedAt: new Date("2026-02-01T00:00:00Z"),
@@ -64,16 +70,24 @@ it.each([
 	}
 );
 
+const pick = (fields: readonly (keyof TestCase)[]) =>
+	Object.fromEntries(fields.map((field) => [field, sampleCase[field]]));
+
 it.each([
-	["summary", "drops case bodies", SUMMARY_FIELDS],
-	["full", "keeps case bodies", [...SUMMARY_FIELDS, "preconditions", "steps"]],
+	["summary", "drops case bodies", pick(SUMMARY_FIELDS)],
+	[
+		"full",
+		"keeps case bodies and lists each step's screenshots, empty for old steps",
+		{
+			...pick([...SUMMARY_FIELDS, "preconditions"]),
+			steps: [{ ...sampleCase.steps[0], screenshots: [] }, sampleCase.steps[1]],
+		},
+	],
 ] as const)(
 	"shapeReadCases %s detail %s, never leaks bookkeeping fields, and carries pagination through",
-	(detail, _what, fields) => {
+	(detail, _what, expected) => {
 		const page = shapeReadCases(listResult, detail);
 		expect(page).toMatchObject({ detail, page: 2, pageSize: 20, total: 41 });
-		expect(page.items).toEqual([
-			Object.fromEntries(fields.map((field) => [field, sampleCase[field]])),
-		]);
+		expect(page.items).toEqual([expected]);
 	}
 );

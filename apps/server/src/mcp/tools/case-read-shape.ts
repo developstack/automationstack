@@ -64,7 +64,10 @@ function toFullRow(row: TestCase): CaseFullRow {
 	return {
 		...toSummaryRow(row),
 		preconditions: row.preconditions,
-		steps: row.steps,
+		steps: row.steps.map((step) => ({
+			...step,
+			screenshots: step.screenshots ?? [],
+		})),
 	};
 }
 

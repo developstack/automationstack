@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { CaseStep, TestCase } from "../schema/test-cases";
-import { type CaseContentPatch, isNoopCasePatch } from "./case-snapshot-core";
+import {
+	type CaseContentPatch,
+	isNoopCasePatch,
+	mergeStepScreenshots,
+} from "./case-snapshot-core";
 
 const STEP_ONE: CaseStep = {
 	expected: "弹出退款原因选择",
@@ -14,6 +18,8 @@ const STEP_TWO: CaseStep = {
 	step: "选择原因并提交",
 };
 const STEPS: CaseStep[] = [STEP_ONE, STEP_TWO];
+const SHOT_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const SHOT_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 function makeCase(overrides: Partial<TestCase> = {}): TestCase {
 	return {
@@ -63,6 +69,11 @@ describe("isNoopCasePatch", () => {
 			makeCase({ maintainer: null }),
 			{ name: row.name },
 		],
+		[
+			"treats a missing screenshot list as an empty one",
+			row,
+			{ steps: [{ ...STEP_ONE, screenshots: [] }, STEP_TWO] },
+		],
 	])("%s", (_name, stored, patch) => {
 		expect(isNoopCasePatch(stored, patch)).toBe(true);
 	});
@@ -77,9 +88,46 @@ describe("isNoopCasePatch", () => {
 		["a reordered step list", { steps: [STEP_TWO, STEP_ONE] }],
 		["a removed step", { steps: [STEP_ONE] }],
 		["an emptied step list", { steps: [] }],
+		[
+			"an added step screenshot",
+			{ steps: [{ ...STEP_ONE, screenshots: [SHOT_A] }, STEP_TWO] },
+		],
 		["an added tag", { tags: ["退款", "核心链路", "冒烟"] }],
 		["reordered tags", { tags: ["核心链路", "退款"] }],
 	])("detects %s", (_name, patch) => {
 		expect(isNoopCasePatch(row, patch)).toBe(false);
+	});
+});
+
+describe("mergeStepScreenshots", () => {
+	const stored: CaseStep[] = [
+		{ ...STEP_ONE, screenshots: [SHOT_A, SHOT_B] },
+		STEP_TWO,
+	];
+
+	it.each<[string, CaseStep[], CaseStep[]]>([
+		[
+			"keeps the stored screenshots of a step with the same id",
+			[{ ...STEP_ONE, step: "新的操作" }],
+			[{ ...STEP_ONE, screenshots: [SHOT_A, SHOT_B], step: "新的操作" }],
+		],
+		[
+			"gives a new step id no screenshots",
+			[{ expected: "", id: "s9", step: "新步骤" }],
+			[{ expected: "", id: "s9", step: "新步骤" }],
+		],
+		[
+			"uses the screenshots the writer sends, an empty list included",
+			[
+				{ ...STEP_ONE, screenshots: [SHOT_B] },
+				{ ...STEP_TWO, screenshots: [] },
+			],
+			[
+				{ ...STEP_ONE, screenshots: [SHOT_B] },
+				{ ...STEP_TWO, screenshots: [] },
+			],
+		],
+	])("%s", (_name, patched, expected) => {
+		expect(mergeStepScreenshots(stored, patched)).toEqual(expected);
 	});
 });

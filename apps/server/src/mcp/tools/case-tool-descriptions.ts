@@ -10,7 +10,8 @@ export const READ_CASES_DESCRIPTION =
 	"for that requirement). " +
 	"detail: 'summary' (default) returns id/name/moduleId/priority/status/" +
 	"caseType/tags/sourceRef/maintainer/updatedAt; 'full' adds preconditions and " +
-	"steps, and is capped at 10 rows per page by default (20 max) because case " +
+	"steps (each step carries screenshots: an ordered list of case attachment " +
+	"ids, empty when the step has none), and is capped at 10 rows per page by default (20 max) because case " +
 	"bodies are expensive — page through them rather than asking for everything. " +
 	"Returns {detail, items[], page, pageSize, total}. " +
 	"Do not use it to check whether one specific case landed after an import — " +
@@ -38,7 +39,9 @@ export const IMPORT_TEST_CASES_DESCRIPTION =
 	"explicitly, an all-P2 batch carries no prioritisation), caseType " +
 	"functional|interface|performance|security|compatibility|other, status " +
 	"draft|active|deprecated, preconditions, steps [{id, step, expected}] (id must " +
-	"be a unique non-empty string, e.g. a uuid), tags, maintainer. " +
+	"be a unique non-empty string, e.g. a uuid; step screenshots cannot be " +
+	"written here, and on overwrite a step that keeps its id keeps its stored " +
+	"screenshots), tags, maintainer. " +
 	"Newly designed cases go in as status 'draft' (the default): the platform's " +
 	"case list filters on status, so draft is where a human reviews them before " +
 	"they count as the project's real coverage. Writing 'active' directly puts " +
