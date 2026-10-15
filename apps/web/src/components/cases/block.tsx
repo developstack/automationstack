@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { Heading } from "@/components/cases/heading";
+import { Heading, type MarkdownTextSize } from "@/components/cases/heading";
 import type {
 	MarkdownBlock,
 	MarkdownListItem,
@@ -11,17 +11,27 @@ import {
 } from "@/components/cases/markdown-inline-render";
 import { TEXT_FLOW_CLASS } from "@/components/cases/markdown-text-flow";
 
+/** 列表标记用正文颜色并加粗：在 muted 文字（引用、预期结果）中也比正文清楚 */
+const LIST_CLASS = "space-y-1 pl-5 marker:font-semibold marker:text-foreground";
+
 function ListBlocks({
 	blocks,
 	imageUrls,
+	textSize,
 }: {
 	blocks: readonly MarkdownBlock[];
 	imageUrls: MarkdownImageUrls | undefined;
+	textSize: MarkdownTextSize;
 }): ReactElement {
 	return (
 		<>
 			{blocks.map((block) => (
-				<Block block={block} imageUrls={imageUrls} key={block.from} />
+				<Block
+					block={block}
+					imageUrls={imageUrls}
+					key={block.from}
+					textSize={textSize}
+				/>
 			))}
 		</>
 	);
@@ -31,17 +41,21 @@ function ListNode({
 	imageUrls,
 	items,
 	ordered,
+	textSize,
 }: {
 	imageUrls: MarkdownImageUrls | undefined;
 	items: readonly MarkdownListItem[];
 	ordered: boolean;
+	textSize: MarkdownTextSize;
 }): ReactElement {
-	const className = ordered
-		? "list-decimal space-y-1 pl-5"
-		: "list-disc space-y-1 pl-5";
+	const className = `${ordered ? "list-decimal" : "list-disc"} ${LIST_CLASS}`;
 	const children = items.map((item) => (
 		<li key={item.from}>
-			<ListBlocks blocks={item.blocks} imageUrls={imageUrls} />
+			<ListBlocks
+				blocks={item.blocks}
+				imageUrls={imageUrls}
+				textSize={textSize}
+			/>
 		</li>
 	));
 	return ordered ? (
@@ -54,9 +68,11 @@ function ListNode({
 export function Block({
 	block,
 	imageUrls,
+	textSize,
 }: {
 	block: MarkdownBlock;
 	imageUrls: MarkdownImageUrls | undefined;
+	textSize: MarkdownTextSize;
 }): ReactElement {
 	switch (block.kind) {
 		case "paragraph":
@@ -67,13 +83,13 @@ export function Block({
 			);
 		case "heading":
 			return (
-				<Heading level={block.level}>
+				<Heading level={block.level} textSize={textSize}>
 					<InlineNodes imageUrls={imageUrls} nodes={block.children} />
 				</Heading>
 			);
 		case "code":
 			return (
-				<pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
+				<pre className="overflow-x-auto rounded-md border border-border bg-muted p-2 font-mono text-xs">
 					<code>{block.text}</code>
 				</pre>
 			);
@@ -83,12 +99,17 @@ export function Block({
 					imageUrls={imageUrls}
 					items={block.items}
 					ordered={block.ordered}
+					textSize={textSize}
 				/>
 			);
 		default:
 			return (
 				<blockquote className="border-muted-foreground/40 border-l-2 pl-3 text-muted-foreground">
-					<ListBlocks blocks={block.blocks} imageUrls={imageUrls} />
+					<ListBlocks
+						blocks={block.blocks}
+						imageUrls={imageUrls}
+						textSize={textSize}
+					/>
 				</blockquote>
 			);
 	}
