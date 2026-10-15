@@ -1,5 +1,11 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import {
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+	within,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { CaseStepsList } from "@/components/cases/case-steps-list";
@@ -85,6 +91,14 @@ describe("CaseStepsList：只读的步骤是编号列表", () => {
 		fireEvent.click(thumbs()[index] as HTMLElement);
 		expect(screen.getByRole("dialog")).toBeTruthy();
 		expect(screen.getByText(counter)).toBeTruthy();
+	});
+	it("closes the lightbox with Esc and returns focus to the thumbnail", async () => {
+		renderList();
+		const thumb = thumbs()[1] as HTMLElement;
+		fireEvent.click(thumb);
+		fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+		await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+		await waitFor(() => expect(document.activeElement).toBe(thumb));
 	});
 });
 

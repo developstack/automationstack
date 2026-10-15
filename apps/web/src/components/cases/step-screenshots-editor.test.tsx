@@ -186,6 +186,27 @@ describe("步骤截图：编辑区的「+」、粘贴、缩略图和删除", () 
 		expect(screen.getByText("附件存储（R2）未配置，无法添加截图")).toBeTruthy();
 	});
 
+	it("an uploading screenshot shows a spinner on its thumbnail", () => {
+		const store = fakeStore();
+		const uploading = new Map(store.shots);
+		uploading.set("local:up", localShot("上传.png", { status: "uploading" }));
+		renderSteps({ ...store, shots: uploading }, [
+			{ ...STEP, screenshots: ["local:up"] },
+		]);
+		expect(screen.getByLabelText("上传中")).toBeTruthy();
+	});
+
+	it("shows no screenshot strip without a screenshot store", () => {
+		render(
+			<CaseAttachmentProvider
+				value={{ ...contextValue(fakeStore()), screenshots: null }}
+			>
+				<StepsEditor onChange={vi.fn()} steps={[STEP]} />
+			</CaseAttachmentProvider>
+		);
+		expect(screen.queryByRole("button", { name: "添加截图" })).toBeNull();
+	});
+
 	it("an old step without screenshots shows only the 「+」 button", () => {
 		renderSteps(fakeStore(), [{ expected: "", id: "s1", step: "" }]);
 		expect(screen.queryAllByRole("button", { name: "删除截图" })).toHaveLength(
