@@ -16,6 +16,8 @@ import {
 } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 import { TEXT_FLOW_CLASS } from "@/components/cases/markdown-text-flow";
+import { StepScreenshotGallery } from "@/components/cases/step-screenshot-gallery";
+import { stepScreenshots } from "@/components/cases/step-screenshots";
 import { RunCaseResultBadge } from "@/components/test-runs/run-case-result-badge";
 import { StepCardFooter } from "@/components/test-runs/step-card-footer";
 
@@ -122,6 +124,12 @@ export function RunStepCard({
 			</CardHeader>
 			<CardContent>
 				<StepCardBody imageUrls={imageUrls} step={step} />
+				<StepScreenshotGallery
+					className="mt-2"
+					ids={stepScreenshots(step)}
+					imageUrls={imageUrls}
+					label={`第 ${index + 1} 步截图`}
+				/>
 				<StepCardFooter
 					comment={comment}
 					editing={editing}

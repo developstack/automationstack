@@ -8,6 +8,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@automationstack/ui/components/alert-dialog";
+import { cn } from "@automationstack/ui/lib/utils";
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 
 import { useCaseAttachments } from "@/components/cases/case-attachment-context";
@@ -25,6 +26,8 @@ const NO_LOCAL_SHOTS = new Map();
 export interface StepScreenshotGalleryProps {
 	/** 缩略图左上角的标记，例如版本对比中截图的变化。 */
 	badgeFor?: (id: string) => ReactNode;
+	/** 缩略图列表的附加类名，例如外边距。 */
+	className?: string;
 	/** 步骤截图的附件 id，按显示的顺序。 */
 	ids: readonly string[];
 	imageUrls: MarkdownImageUrls;
@@ -143,6 +146,7 @@ function useRemoveConfirm(onRemove: ((id: string) => void) | undefined) {
  */
 export function StepScreenshotGallery({
 	badgeFor,
+	className,
 	ids,
 	imageUrls,
 	label,
@@ -157,7 +161,7 @@ export function StepScreenshotGallery({
 	}
 	return (
 		<>
-			<ul aria-label={label} className="flex flex-wrap gap-2">
+			<ul aria-label={label} className={cn("flex flex-wrap gap-2", className)}>
 				{views.map((view, index) => (
 					<GalleryThumb
 						badge={badgeFor?.(view.id)}
