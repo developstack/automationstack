@@ -56,8 +56,8 @@ function useCaseDetail(
 	const caseQuery = useQuery(
 		orpc.cases.get.queryOptions({ input: { id: caseId } })
 	);
-	const editor = useCaseEditor(caseId, caseQuery.data);
 	const attachments = useCaseEditAttachments(caseId);
+	const editor = useCaseEditor(caseId, caseQuery.data, attachments.screenshots);
 	useCasePresence(caseId, editor.form !== null);
 	const { guard, requestStopEditing } = useCaseDirtyGuard(
 		editor,

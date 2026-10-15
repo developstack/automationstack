@@ -11,6 +11,7 @@ import {
 } from "@/components/cases/case-draft-storage";
 import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
 import type { CaseFormValues } from "@/components/cases/case-meta";
+import { stepsWithoutScreenshots } from "@/components/cases/step-screenshot-save";
 
 const DRAFT_WRITE_DEBOUNCE_MS = 500;
 
@@ -73,7 +74,7 @@ function nextWrite(input: Omit<DraftWriteInput, "projectId">): DraftWrite {
 			attachments: [...pending],
 			caseId: session.caseId,
 			moduleId,
-			values,
+			values: { ...values, steps: stepsWithoutScreenshots(values.steps) },
 		},
 		kind: "write",
 	};

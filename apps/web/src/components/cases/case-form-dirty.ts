@@ -9,7 +9,12 @@ function caseFormFingerprint(values: CaseFormValues): string {
 		values.priority,
 		values.status,
 		values.tagsText,
-		values.steps.map((step) => [step.id, step.step, step.expected]),
+		values.steps.map((step) => [
+			step.id,
+			step.step,
+			step.expected,
+			step.screenshots ?? [],
+		]),
 	]);
 }
 
