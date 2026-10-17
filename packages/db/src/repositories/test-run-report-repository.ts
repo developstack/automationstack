@@ -34,6 +34,7 @@ export type { TestRunAutomationExecution } from "./test-run-report-automation";
 export type {
 	TestRunFailedCase,
 	TestRunFailedCaseAutomation,
+	TestRunReportStep,
 } from "./test-run-report-failed-cases";
 export type { TestRunOutOfScopeCase } from "./test-run-report-out-of-scope";
 

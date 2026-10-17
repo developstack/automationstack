@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "../index";
 import {
@@ -169,10 +169,20 @@ export function registerStepAttachment(
 export function listAttachments(
 	runCaseId: string
 ): Promise<TestRunAttachment[]> {
-	return db
+	return listAttachmentsForRunCases([runCaseId]);
+}
+
+/** 几条用例的全部附件，用一次查询读取，按上传顺序。报告用它读取全部失败用例的附件。 */
+export async function listAttachmentsForRunCases(
+	runCaseIds: readonly string[]
+): Promise<TestRunAttachment[]> {
+	if (runCaseIds.length === 0) {
+		return [];
+	}
+	return await db
 		.select()
 		.from(testRunAttachments)
-		.where(eq(testRunAttachments.runCaseId, runCaseId))
+		.where(inArray(testRunAttachments.runCaseId, [...runCaseIds]))
 		.orderBy(asc(testRunAttachments.createdAt), asc(testRunAttachments.id));
 }
 

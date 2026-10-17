@@ -10,8 +10,10 @@ import { testRunsRouter } from "./test-runs";
 const mocks = vi.hoisted(() => ({
 	findTestRun: vi.fn(),
 	getProjectRole: vi.fn(),
+	getTestRunReport: vi.fn(),
 	markTestRunReviewed: vi.fn(),
 	publishInvalidate: vi.fn(),
+	storage: null as { presignDownload: (key: string) => Promise<string> } | null,
 	submitTestRun: vi.fn(),
 	unmarkTestRunReviewed: vi.fn(),
 	updateTestRun: vi.fn(),
@@ -46,6 +48,10 @@ vi.mock(
 		voidTestRun: mocks.voidTestRun,
 	})
 );
+vi.mock("@automationstack/db/repositories/test-run-report-repository", () => ({
+	getTestRunReport: mocks.getTestRunReport,
+}));
+vi.mock("../lib/r2", () => ({ getR2Storage: () => mocks.storage }));
 vi.mock("../lib/realtime-publish", () => ({
 	publishInvalidate: mocks.publishInvalidate,
 }));
@@ -223,6 +229,62 @@ describe("已作废的测试任务拒绝所有写操作", () => {
 			});
 		}
 	);
+});
+
+describe("testRuns.report：失败用例的附件带下载地址", () => {
+	const attachment = (storageKey: string, stepId: string | null) => ({
+		fileName: `${storageKey}.png`,
+		stepId,
+		storageKey,
+	});
+	const failedCase = (attachments: ReturnType<typeof attachment>[]) => ({
+		attachments,
+		steps: [],
+	});
+
+	const report = () =>
+		call(testRunsRouter.report, byRunId, callOptions("report"));
+
+	beforeEach(() => {
+		mocks.getProjectRole.mockResolvedValue("member");
+		mocks.getTestRunReport.mockResolvedValue({
+			failedCases: [
+				failedCase([attachment("actual", "s1"), attachment("auto", null)]),
+				failedCase([]),
+			],
+			run,
+		});
+	});
+
+	it.each([
+		[
+			"存储可用：每个附件一个签名地址",
+			{
+				presignDownload: (key: string) => Promise.resolve(`https://r2/${key}`),
+			},
+			["https://r2/actual", "https://r2/auto"],
+		],
+		["存储未配置：地址为 null", null, [null, null]],
+	])("%s", async (_name, storage, urls) => {
+		mocks.storage = storage;
+		const { failedCases } = await report();
+		expect(
+			failedCases.map((item) =>
+				item.attachments.map(({ attachment: { stepId }, url }) => [stepId, url])
+			)
+		).toEqual([
+			[
+				["s1", urls[0]],
+				[null, urls[1]],
+			],
+			[],
+		]);
+	});
+
+	it("测试任务不存在：NOT_FOUND", async () => {
+		mocks.getTestRunReport.mockResolvedValue(null);
+		await expect(report()).rejects.toMatchObject({ code: "NOT_FOUND" });
+	});
 });
 
 it("测试任务不能删除，只能作废：没有 remove 接口", () => {

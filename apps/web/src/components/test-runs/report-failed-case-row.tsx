@@ -1,15 +1,16 @@
-import { Badge } from "@automationstack/ui/components/badge";
 import { TableCell, TableRow } from "@automationstack/ui/components/table";
 import { ExternalLinkIcon } from "lucide-react";
 
-import { formatDateTime } from "@/components/cases/case-meta";
 import { StatusBadge } from "@/components/status/status-badge";
 import { AttachmentCell } from "@/components/test-runs/report-attachment-cell";
-import { ReportCommitLink } from "@/components/test-runs/report-commit-link";
+import { ReportExecutorCell } from "@/components/test-runs/report-executor-cell";
 import {
 	isSafeHttpUrl,
 	type ReportFailedCase,
 } from "@/components/test-runs/report-meta";
+import { reportStepResults } from "@/components/test-runs/report-step-results";
+import { ReportStepResultsRow } from "@/components/test-runs/report-step-results-row";
+import { caseLevelAttachments } from "@/components/test-runs/run-step-attachment-items";
 
 const NO_DEFECT_STATUS = "—";
 
@@ -35,70 +36,56 @@ function DefectCell({ row }: { row: ReportFailedCase }) {
 	);
 }
 
-function SourceCell({ row }: { row: ReportFailedCase }) {
-	if (row.executedVia !== "automation") {
-		return null;
-	}
-	const execution = row.automationExecution;
-	return (
-		<span className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
-			<Badge variant="secondary">脚本</Badge>
-			{execution === null ? (
-				<span className="text-muted-foreground">执行记录已清理</span>
-			) : (
-				<>
-					<span className="text-muted-foreground">
-						{execution.branch ?? "未记录分支"}
-					</span>
-					<ReportCommitLink
-						ciUrl={execution.ciUrl}
-						commitSha={execution.commitSha}
-					/>
-				</>
-			)}
-		</span>
-	);
+interface ReportFailedCaseRowProps {
+	/** 表格的列数：步骤实际结果的一行占满整行。 */
+	columnCount: number;
+	row: ReportFailedCase;
 }
 
-export function ReportFailedCaseRow({ row }: { row: ReportFailedCase }) {
+/** 一条失败用例：用例的一行，下面是有实际结果的步骤（没有时不显示）。 */
+export function ReportFailedCaseRow({
+	columnCount,
+	row,
+}: ReportFailedCaseRowProps) {
+	const stepResults = reportStepResults(row);
+	// 整条用例的附件与执行页一致：自动化上传、以前人工上传的附件，以及已删除步骤的实际附件
+	const caseAttachments = caseLevelAttachments(
+		row.attachments,
+		row.steps.map((step) => step.id)
+	);
 	return (
-		<TableRow>
-			<TableCell className="font-medium">{row.name}</TableCell>
-			<TableCell>{row.moduleName}</TableCell>
-			<TableCell>
-				<StatusBadge kind="priority" value={row.priority} />
-			</TableCell>
-			<TableCell>
-				{row.executedByName ?? (
-					<span className="text-muted-foreground">未记录</span>
-				)}
-				{row.executedAt === null ? null : (
-					<span className="block text-muted-foreground text-xs">
-						{formatDateTime(row.executedAt)}
-					</span>
-				)}
-				<SourceCell row={row} />
-			</TableCell>
-			<TableCell className="max-w-xs whitespace-pre-wrap">
-				{row.comment ?? (
-					<span className="text-muted-foreground">未填写说明</span>
-				)}
-			</TableCell>
-			<TableCell>
-				<AttachmentCell
-					attachmentCount={row.attachmentCount}
-					caseName={row.name}
-					runCaseId={row.runCaseId}
-				/>
-			</TableCell>
-			<TableCell>
-				<DefectCell row={row} />
-			</TableCell>
-			<TableCell>
-				{row.defectStatus ?? (
-					<span className="text-muted-foreground">{NO_DEFECT_STATUS}</span>
-				)}
-			</TableCell>
-		</TableRow>
+		<>
+			<TableRow className={stepResults.length > 0 ? "border-b-0" : undefined}>
+				<TableCell className="font-medium">{row.name}</TableCell>
+				<TableCell>{row.moduleName}</TableCell>
+				<TableCell>
+					<StatusBadge kind="priority" value={row.priority} />
+				</TableCell>
+				<TableCell>
+					<ReportExecutorCell row={row} />
+				</TableCell>
+				<TableCell className="max-w-xs whitespace-pre-wrap">
+					{row.comment ?? (
+						<span className="text-muted-foreground">未填写说明</span>
+					)}
+				</TableCell>
+				<TableCell>
+					<AttachmentCell caseName={row.name} items={caseAttachments} />
+				</TableCell>
+				<TableCell>
+					<DefectCell row={row} />
+				</TableCell>
+				<TableCell>
+					{row.defectStatus ?? (
+						<span className="text-muted-foreground">{NO_DEFECT_STATUS}</span>
+					)}
+				</TableCell>
+			</TableRow>
+			<ReportStepResultsRow
+				caseName={row.name}
+				columnCount={columnCount}
+				results={stepResults}
+			/>
+		</>
 	);
 }

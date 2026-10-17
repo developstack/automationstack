@@ -19,6 +19,17 @@ import type {
 	TestRunReportView,
 } from "@/components/test-runs/report-meta";
 
+const FAILED_CASE_COLUMNS = [
+	"用例名",
+	"模块",
+	"优先级",
+	"执行人 / 来源",
+	"说明",
+	"截图",
+	"Jira",
+	"Jira 状态",
+] as const;
+
 function EmptyFailedCases({ counts }: { counts: TestRunReportView["counts"] }) {
 	const { blocked, passed, skipped, total, untested } = counts;
 	if (total === 0) {
@@ -61,19 +72,18 @@ export function ReportFailedCasesCard({
 						<Table>
 							<TableHeader>
 								<TableRow>
-									<TableHead>用例名</TableHead>
-									<TableHead>模块</TableHead>
-									<TableHead>优先级</TableHead>
-									<TableHead>执行人 / 来源</TableHead>
-									<TableHead>说明</TableHead>
-									<TableHead>截图</TableHead>
-									<TableHead>Jira</TableHead>
-									<TableHead>Jira 状态</TableHead>
+									{FAILED_CASE_COLUMNS.map((column) => (
+										<TableHead key={column}>{column}</TableHead>
+									))}
 								</TableRow>
 							</TableHeader>
 							<TableBody>
 								{failedCases.map((row) => (
-									<ReportFailedCaseRow key={row.runCaseId} row={row} />
+									<ReportFailedCaseRow
+										columnCount={FAILED_CASE_COLUMNS.length}
+										key={row.runCaseId}
+										row={row}
+									/>
 								))}
 							</TableBody>
 						</Table>

@@ -5,7 +5,6 @@ import {
 	removeAttachment,
 } from "@automationstack/db/repositories/test-run-attachments-repository";
 import type { StepAttachmentRejection } from "@automationstack/db/repositories/test-run-step-attachments-core";
-import type { TestRunAttachment } from "@automationstack/db/schema/test-run-attachments";
 import { isR2Configured } from "@automationstack/env/server";
 import { ORPCError } from "@orpc/server";
 import { z } from "zod";
@@ -26,6 +25,10 @@ import {
 } from "../lib/project-scope";
 import { getR2Storage, type R2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
+import {
+	type TestRunAttachmentView,
+	withDownloadUrls,
+} from "../lib/run-attachment-urls";
 import {
 	CASE_ATTACHMENT_READ_ONLY_MESSAGE,
 	isStepAttachmentRejection,
@@ -71,11 +74,6 @@ const runCaseSchema = z.object({ runCaseId: z.uuid() });
 
 const attachmentIdSchema = z.object({ attachmentId: z.uuid() });
 
-export interface TestRunAttachmentView {
-	attachment: TestRunAttachment;
-	url: string | null;
-}
-
 function requireStorage(): R2Storage {
 	const storage = getR2Storage();
 	if (storage === null) {
@@ -114,16 +112,7 @@ export const testRunAttachmentsRouter = {
 		.use(requireRunCaseMember)
 		.handler(async ({ input }): Promise<TestRunAttachmentView[]> => {
 			const attachments = await listAttachments(input.runCaseId);
-			const storage = getR2Storage();
-			if (storage === null) {
-				return attachments.map((attachment) => ({ attachment, url: null }));
-			}
-			return await Promise.all(
-				attachments.map(async (attachment) => ({
-					attachment,
-					url: await storage.presignDownload(attachment.storageKey),
-				}))
-			);
+			return await withDownloadUrls(attachments, getR2Storage());
 		}),
 
 	presignUpload: protectedProcedure
