@@ -42,7 +42,7 @@
 
 ## 4. 准备 R2
 
-如果生产环境有 `R2_*` 环境变量，跳到第 5 节。
+生产环境现在没有 `R2_*` 环境变量。GitOps 仓库的 `automationstack-secrets.example.yaml` 说明 R2 没有开启。所以生产环境必须执行本节。本地开发执行第 4.1 节、第 4.2 节和第 4.4 节。
 
 ### 4.1 创建 bucket
 
@@ -62,24 +62,61 @@
 6. 记录 **Access Key ID** 和 **Secret Access Key**。页面关闭后，你不能再查看 Secret Access Key。
 7. 记录 **Account ID**。Account ID 在 R2 页面的右侧。
 
-### 4.3 填写 R2 环境变量
+三个值的格式如下。下面的值是示例，不能使用。
 
-服务端读取下面的环境变量。变量的说明在 `apps/server/.env.example` 中。
-
-| 变量 | 值 | GitOps 仓库中的位置 |
+| 值 | 格式 | 示例 |
 | --- | --- | --- |
-| `R2_BUCKET` | 第 4.1 节的 bucket 名称 | ConfigMap `automationstack-config` |
-| `R2_ACCOUNT_ID` | 第 4.2 节的 Account ID | ConfigMap `automationstack-config` |
-| `R2_ACCESS_KEY_ID` | 第 4.2 节的 Access Key ID | Secret `automationstack-secrets` |
-| `R2_SECRET_ACCESS_KEY` | 第 4.2 节的 Secret Access Key | Secret `automationstack-secrets` |
+| Account ID | 32 个十六进制字符 | `0123456789abcdef0123456789abcdef` |
+| Access Key ID | 32 个十六进制字符 | `a1b2c3d4e5f60718293a4b5c6d7e8f90` |
+| Secret Access Key | 64 个十六进制字符 | `f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f` |
 
-1. 在 GitOps 仓库中打开 `automationstack/k8s` 目录。
-2. 在 ConfigMap `automationstack-config` 中加入 `R2_BUCKET` 和 `R2_ACCOUNT_ID`。
-3. 在 Secret `automationstack-secrets` 中加入 `R2_ACCESS_KEY_ID` 和 `R2_SECRET_ACCESS_KEY`。
-4. 用 GitOps 仓库的 `scripts/seal.sh` 重新封装 Secret。
-5. 确认封装后的 Secret 包含全部现有的键和值。
+页面也显示一个 S3 endpoint，例如 `https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com`。填写 Account ID 后，服务端自动使用这个地址。所以不需要填写 `R2_ENDPOINT`。
 
-第 9 节说明怎样推送修改。你可以在第 9 节一起推送全部修改。
+### 4.3 填写生产环境的 R2 环境变量
+
+服务端读取下面的环境变量。变量的说明在 `apps/server/.env.example` 中。GitOps 仓库把四个变量都放在 Secret `automationstack-secrets` 中。
+
+| 变量 | 值 | 示例 |
+| --- | --- | --- |
+| `R2_BUCKET` | 第 4.1 节的 bucket 名称 | `automationstack-attachments` |
+| `R2_ACCOUNT_ID` | 第 4.2 节的 Account ID | `0123456789abcdef0123456789abcdef` |
+| `R2_ACCESS_KEY_ID` | 第 4.2 节的 Access Key ID | `a1b2c3d4e5f60718293a4b5c6d7e8f90` |
+| `R2_SECRET_ACCESS_KEY` | 第 4.2 节的 Secret Access Key | `f0e1d2c3…1e0f`（64 个字符） |
+
+`scripts/seal.sh` 每次覆盖整个 Secret。所以 env 文件必须包含 Secret 的全部键：现有的三个键和四个 R2 键。缺少一个现有的键时，server 不能启动。
+
+1. 从密码管理器中取得现有的三个值：`DATABASE_URL`、`SESSION_SECRET` 和 `SECRET_ENCRYPTION_KEY`。
+2. 在 GitOps 仓库的根目录中，执行下面的命令。用真实的值替换每个 `<…>`。
+
+   ```sh
+   umask 077
+   cat > /tmp/automationstack.env <<'EOF'
+   DATABASE_URL=<现有的值>
+   SESSION_SECRET=<现有的值>
+   SECRET_ENCRYPTION_KEY=<现有的值>
+   R2_BUCKET=automationstack-attachments
+   R2_ACCOUNT_ID=<第 4.2 节的 Account ID>
+   R2_ACCESS_KEY_ID=<第 4.2 节的 Access Key ID>
+   R2_SECRET_ACCESS_KEY=<第 4.2 节的 Secret Access Key>
+   EOF
+   ```
+
+3. 确认每个值都没有引号。`scripts/seal.sh` 不删除引号。
+4. 封装 Secret。
+
+   ```sh
+   scripts/seal.sh automationstack automationstack-secrets --from-env-file /tmp/automationstack.env
+   ```
+
+5. 删除 env 文件。
+
+   ```sh
+   shred -u /tmp/automationstack.env 2>/dev/null || rm -P /tmp/automationstack.env
+   ```
+
+6. 确认 `automationstack/k8s/sealed/automationstack-secrets-sealed.yaml` 有修改。
+
+第 9 节说明怎样推送修改和重新启动 server。你可以在第 9 节一起推送全部修改。
 
 ### 4.4 配置本地开发
 
@@ -88,10 +125,22 @@
 1. 按第 4.1 节创建本地开发的 bucket。
 2. 按第 4.2 节为这个 bucket 创建 API token。
 3. 打开 `apps/server/.env`。
-4. 填写 `R2_BUCKET`、`R2_ACCOUNT_ID`、`R2_ACCESS_KEY_ID` 和 `R2_SECRET_ACCESS_KEY`。
-5. 不要填写 `IMAGE_PUBLIC_BASE_URL`。本地开发使用 R2 签名链接。
-6. 按第 5 节配置这个 bucket 的 CORS。`AllowedOrigins` 只填写 `http://localhost:5173`。
+4. 填写下面的四个变量。用第 4.2 节的值替换示例值。
+
+   ```sh
+   R2_BUCKET=automationstack-dev
+   R2_ACCOUNT_ID=0123456789abcdef0123456789abcdef
+   R2_ACCESS_KEY_ID=a1b2c3d4e5f60718293a4b5c6d7e8f90
+   R2_SECRET_ACCESS_KEY=f0e1d2c3b4a5968778695a4b3c2d1e0ff0e1d2c3b4a5968778695a4b3c2d1e0f
+   R2_ENDPOINT=
+   IMAGE_PUBLIC_BASE_URL=
+   ```
+
+5. 让 `R2_ENDPOINT` 和 `IMAGE_PUBLIC_BASE_URL` 保持空值。本地开发使用 R2 签名链接。
+6. 按第 5 节配置这个 bucket 的 CORS。使用第 5 节的「本地开发」JSON。
 7. 重新启动服务端。
+8. 在平台中新建一个用例，在步骤中添加一张截图，然后保存。
+9. 确认截图显示在步骤下面。
 
 本地开发的 bucket 不需要第 6 节到第 9 节的配置。
 
@@ -102,13 +151,28 @@
 1. 在 **R2 Object Storage** 页面，打开第 4.1 节的 bucket。
 2. 打开 **Settings** 标签。
 3. 在 **CORS Policy** 中，点击 **Add CORS policy**。
-4. 把下面的 JSON 粘贴到编辑框。
+4. 把对应的 JSON 粘贴到编辑框。
+
+   生产环境的 bucket：
 
    ```json
    [
      {
-       "AllowedOrigins": ["https://testcase.trendf.top", "http://localhost:5173"],
-       "AllowedMethods": ["PUT"],
+       "AllowedOrigins": ["https://testcase.trendf.top"],
+       "AllowedMethods": ["PUT", "GET"],
+       "AllowedHeaders": ["content-type"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
+   本地开发的 bucket：
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["http://localhost:5173"],
+       "AllowedMethods": ["PUT", "GET"],
        "AllowedHeaders": ["content-type"],
        "MaxAgeSeconds": 3600
      }
@@ -117,9 +181,9 @@
 
 5. 点击 **Save**。
 
-`https://testcase.trendf.top` 是生产前端的来源。这个值必须与服务端的 `CORS_ORIGIN` 相同。`http://localhost:5173` 是本地开发的前端来源。如果本地开发不使用这个 bucket，删除 `http://localhost:5173`。
+`https://testcase.trendf.top` 是生产前端的来源。这个值必须与 ConfigMap 中的 `CORS_ORIGIN` 相同，末尾没有 `/`。`http://localhost:5173` 是本地开发的前端来源。
 
-浏览器用 `<img>` 显示用例图片。所以 GET 请求不需要 CORS。
+浏览器上传图片时使用 PUT。上报 SDK 用 GET 下载附件。
 
 ## 6. 添加 WAF 规则
 
@@ -192,15 +256,36 @@ Access 保护 `img.trendf.top` 时，浏览器不能显示用例图片。
 | --- | --- | --- |
 | `IMAGE_PUBLIC_BASE_URL` | `https://img.trendf.top` | ConfigMap `automationstack-config` |
 
-1. 在 GitOps 仓库中打开 `automationstack/k8s` 目录。
-2. 在 ConfigMap `automationstack-config` 中加入 `IMAGE_PUBLIC_BASE_URL`。
-3. 把修改推送到 GitOps 仓库的 main 分支。
-4. 在 ArgoCD 中确认 automationstack 的同步状态是 **Synced**。
-5. 确认 server 的 Pod 重新启动。
+1. 在 GitOps 仓库中打开 `automationstack/k8s/automationstack.yaml`。
+2. 找到 ConfigMap `automationstack-config`。
+3. 在 `data:` 下面加入一行 `IMAGE_PUBLIC_BASE_URL`。修改后的内容如下：
+
+   ```yaml
+   kind: ConfigMap
+   metadata:
+     name: automationstack-config
+   data:
+     NODE_ENV: production
+     CORS_ORIGIN: https://testcase.trendf.top
+     # 用例图片的公开域名。末尾没有 /。
+     IMAGE_PUBLIC_BASE_URL: https://img.trendf.top
+     # 其他现有的键保持不变
+   ```
+
+4. 提交修改。如果第 4.3 节修改了 Secret，一起提交 `sealed/automationstack-secrets-sealed.yaml`。
+5. 把修改推送到 GitOps 仓库的 main 分支。
+6. 在 ArgoCD 中确认 automationstack 的同步状态是 **Synced**。
+7. 在 ArgoCD 中对 Deployment `automationstack-server` 执行 **Restart**。也可以执行下面的命令：
+
+   ```sh
+   kubectl -n automationstack rollout restart deployment/automationstack-server
+   ```
+
+8. 确认 server 的新 Pod 的状态是 **Running**。
 
 不要把 `IMAGE_PUBLIC_BASE_URL` 放入 Secret `automationstack-secrets`。只修改 ConfigMap 时，不需要执行 `scripts/seal.sh`。
 
-服务端只在启动时读取环境变量。如果 server 的 Pod 没有重新启动，手动重新启动 server 的 Deployment。
+服务端只在启动时读取环境变量。修改 ConfigMap 或 Secret 后，Pod 不自动重新启动。所以必须执行第 7 步。
 
 ## 10. 验证
 
@@ -220,7 +305,7 @@ Access 保护 `img.trendf.top` 时，浏览器不能显示用例图片。
 1. 把公开链接保存到环境变量 `LINK`。
 
    ```sh
-   LINK='<第 10.1 节的公开链接>'
+   LINK='https://img.trendf.top/test-cases/<项目 id>/<用例 id>/<uuid>.png'
    ```
 
 2. 发送第一次请求。
@@ -229,12 +314,30 @@ Access 保护 `img.trendf.top` 时，浏览器不能显示用例图片。
    curl -sS -o /dev/null -D - "$LINK" | grep -iE '^HTTP|cf-cache-status|cache-control|content-type'
    ```
 
+   第一次请求的输出示例：
+
+   ```text
+   HTTP/2 200
+   content-type: image/png
+   cache-control: max-age=31536000
+   cf-cache-status: MISS
+   ```
+
 3. 确认状态码是 200。
 4. 确认 `cf-cache-status` 是 `MISS`。
 5. 确认 `content-type` 是图片的类型，例如 `image/png`。
 6. 确认 `cache-control` 包含 `max-age=31536000`。这个值是 1 年。
 7. 再次执行第 2 步的命令。
 8. 确认 `cf-cache-status` 是 `HIT`。
+
+   第二次请求的输出示例：
+
+   ```text
+   HTTP/2 200
+   content-type: image/png
+   cache-control: max-age=31536000
+   cf-cache-status: HIT
+   ```
 
 边缘缓存属于各个数据中心。所以从同一台电脑发送两次请求。
 
@@ -246,7 +349,11 @@ Access 保护 `img.trendf.top` 时，浏览器不能显示用例图片。
    curl -sS -o /dev/null -w '%{http_code}\n' https://img.trendf.top/test-runs/check
    ```
 
-2. 确认输出是 `403`。
+2. 确认输出是 `403`。输出示例：
+
+   ```text
+   403
+   ```
 
 ### 10.4 检查执行页附件
 
@@ -264,7 +371,7 @@ Access 保护 `img.trendf.top` 时，浏览器不能显示用例图片。
 
 1. 在 GitOps 仓库中，从 ConfigMap `automationstack-config` 删除 `IMAGE_PUBLIC_BASE_URL`。
 2. 把修改推送到 GitOps 仓库的 main 分支。
-3. 确认 server 的 Pod 重新启动。
+3. 按第 9 节的第 7 步重新启动 server。
 4. 用第 10.1 节的步骤复制一张用例图片的链接。
 5. 确认复制的链接不以 `https://img.trendf.top/` 开头。
 
