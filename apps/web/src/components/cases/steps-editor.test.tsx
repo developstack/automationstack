@@ -54,6 +54,20 @@ describe("StepsEditor：步骤编辑器", () => {
 		expect(stepIds(onChange)).toEqual(["s1", "s3"]);
 	});
 
+	it.each([
+		["第 2 步操作", { step: "输入手机号" }],
+		["第 2 步预期结果", { expected: "进入首页" }],
+	])("在「%s」中输入，只改这一步的这一栏", (label, change) => {
+		const onChange = renderEditor(STEPS);
+		const [value] = Object.values(change);
+		fireEvent.change(screen.getByLabelText(label), { target: { value } });
+		expect(onChange.mock.lastCall?.[0]).toEqual([
+			STEPS[0],
+			{ ...STEPS[1], ...change },
+			STEPS[2],
+		]);
+	});
+
 	it("每一步有拖动排序的把手，键盘用户使用上移和下移按钮", () => {
 		renderEditor(STEPS);
 		const handle = screen.getByTitle("拖动第 2 步排序");

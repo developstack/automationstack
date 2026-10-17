@@ -19,7 +19,6 @@ import {
 	CASE_SHEET_HEADER_CLASS,
 	CASE_SHEET_TITLE_CLASS,
 } from "@/components/cases/case-sheet-layout";
-import { saveButtonLabel } from "@/components/cases/step-screenshot-save";
 
 interface CaseDetailActionsProps {
 	editor: CaseEditor;
@@ -27,7 +26,7 @@ interface CaseDetailActionsProps {
 }
 
 function CaseDetailActions({ editor, onStopEditing }: CaseDetailActionsProps) {
-	const { screenshots, uploading } = useCaseAttachments();
+	const { uploading } = useCaseAttachments();
 
 	if (editor.form) {
 		return (
@@ -47,7 +46,7 @@ function CaseDetailActions({ editor, onStopEditing }: CaseDetailActionsProps) {
 					size="sm"
 					type="submit"
 				>
-					{saveButtonLabel("保存", screenshots?.progress)}
+					保存
 				</Button>
 			</div>
 		);

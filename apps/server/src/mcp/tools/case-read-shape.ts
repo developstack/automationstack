@@ -64,10 +64,8 @@ function toFullRow(row: TestCase): CaseFullRow {
 	return {
 		...toSummaryRow(row),
 		preconditions: row.preconditions,
-		steps: row.steps.map((step) => ({
-			...step,
-			screenshots: step.screenshots ?? [],
-		})),
+		// 只返回这三个字段。迁移 0019 以前的步骤可能还带 screenshots，MCP 不返回截图
+		steps: row.steps.map(({ expected, id, step }) => ({ expected, id, step })),
 	};
 }
 

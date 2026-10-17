@@ -23,11 +23,6 @@ import {
 	CASE_SHEET_TITLE_CLASS,
 } from "@/components/cases/case-sheet-layout";
 import {
-	hasStepScreenshots,
-	SCREENSHOTS_NOT_IN_DRAFT,
-	saveButtonLabel,
-} from "@/components/cases/step-screenshot-save";
-import {
 	type CaseCreateDraft,
 	useCaseCreateDraft,
 } from "@/components/cases/use-case-create-draft";
@@ -35,39 +30,23 @@ import {
 	useCaseCreateMutation,
 	useCaseCreateSubmit,
 } from "@/components/cases/use-case-create-submit";
-import type { ScreenshotUploadProgress } from "@/components/cases/use-step-screenshots";
 
 const CASE_CREATE_FORM_ID = "case-create-form";
 
 interface CaseCreateHeaderProps {
 	caseId: string;
-	hasScreenshots: boolean;
 	onCancel: () => void;
 	pending: boolean;
 	priority: CasePriority;
-	progress: ScreenshotUploadProgress | null;
 	status: CaseStatus;
 	uploading: boolean;
 }
 
-/** 保存按钮旁边的说明：正文图片上传中，或者截图不随草稿保存。 */
-function caseCreateStatusText(
-	uploading: boolean,
-	hasScreenshots: boolean
-): string | null {
-	if (uploading) {
-		return "图片上传中…";
-	}
-	return hasScreenshots ? SCREENSHOTS_NOT_IN_DRAFT : null;
-}
-
 function CaseCreateHeader({
 	caseId,
-	hasScreenshots,
 	onCancel,
 	pending,
 	priority,
-	progress,
 	status,
 	uploading,
 }: CaseCreateHeaderProps) {
@@ -79,20 +58,22 @@ function CaseCreateHeader({
 				用例创建在当前选中的模块下。编号、用例状态和优先级是创建后的值。
 			</SheetDescription>
 			<div className="flex flex-wrap items-center justify-end gap-2 pt-1">
-				<span className="text-muted-foreground text-xs" role="status">
-					{caseCreateStatusText(uploading, hasScreenshots)}
-				</span>
+				{uploading ? (
+					<span className="text-muted-foreground text-xs" role="status">
+						图片上传中…
+					</span>
+				) : null}
 				<Button onClick={onCancel} size="sm" type="button" variant="ghost">
 					取消
 				</Button>
 				<Button
 					disabled={uploading}
 					form={CASE_CREATE_FORM_ID}
-					pending={pending || progress !== null}
+					pending={pending}
 					size="sm"
 					type="submit"
 				>
-					{saveButtonLabel("创建", progress)}
+					创建
 				</Button>
 			</div>
 		</SheetHeader>
@@ -128,11 +109,9 @@ function CaseCreateContent({
 		<CaseAttachmentProvider value={attachments}>
 			<CaseCreateHeader
 				caseId={caseId}
-				hasScreenshots={hasStepScreenshots(values.steps)}
 				onCancel={onCancel}
 				pending={pending}
 				priority={values.priority}
-				progress={attachments.screenshots.progress}
 				status={values.status}
 				uploading={attachments.uploading}
 			/>

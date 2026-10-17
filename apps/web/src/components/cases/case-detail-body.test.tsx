@@ -1,13 +1,10 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
-import { ORPCError } from "@orpc/client";
 import { act, renderHook } from "@testing-library/react";
+import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
 
 import { useCaseEditor } from "@/components/cases/case-detail-body";
-import type {
-	ScreenshotUploadOutcome,
-	StepScreenshotStore,
-} from "@/components/cases/use-step-screenshots";
+import { buildCaseUploadingRef } from "@/components/cases/case-upload-placeholder";
 
 const mutate = vi.fn();
 let savedCallback: () => void = () => undefined;
@@ -25,7 +22,7 @@ vi.mock("@/components/cases/use-case-mutations", () => ({
 	},
 }));
 
-const SAVED = "11111111-1111-4111-8111-111111111111";
+const UPLOAD_TOKEN = "22222222-2222-4222-8222-222222222222";
 
 const TEST_CASE = {
 	caseType: "functional",
@@ -36,69 +33,55 @@ const TEST_CASE = {
 	preconditions: null,
 	priority: "P2",
 	status: "draft",
-	steps: [{ expected: "", id: "s1", screenshots: [SAVED], step: "打开首页" }],
+	steps: [{ expected: "", id: "s1", step: "打开首页" }],
 	tags: [],
 } as unknown as TestCase;
 
-function setup(outcome: ScreenshotUploadOutcome) {
+function setup(stepText: string, name = "登录") {
 	mutate.mockClear();
-	const store = {
-		clear: vi.fn(),
-		progress: null,
-		uploadAll: vi.fn(async () => outcome),
-	} as unknown as StepScreenshotStore;
-	const hook = renderHook(() => useCaseEditor("case-1", TEST_CASE, store));
+	const hook = renderHook(() => useCaseEditor("case-1", TEST_CASE));
 	act(() => hook.result.current.startEditing());
 	const { form } = hook.result.current;
 	if (form === null) {
 		throw new Error("没有进入编辑");
 	}
-	const step = {
-		expected: "",
-		id: "s1",
-		screenshots: [SAVED, "local:a"],
-		step: "打开首页",
-	};
-	act(() => hook.result.current.setForm({ ...form, steps: [step] }));
-	return { hook, step, store };
+	const step = { expected: "进入首页", id: "s1", step: stepText };
+	act(() => hook.result.current.setForm({ ...form, name, steps: [step] }));
+	return { hook, step };
 }
 
-async function save(hook: ReturnType<typeof setup>["hook"]) {
-	await act(async () => {
-		hook.result.current.handleSave();
-		await Promise.resolve();
-	});
-}
-
-describe("useCaseEditor：保存时先上传步骤截图，再保存用例", () => {
-	it("saves the case with attachment ids in editor order", async () => {
-		const resolved = {
-			expected: "",
-			id: "s1",
-			screenshots: [SAVED, "id-a"],
-			step: "打开首页",
-		};
-		const { hook, step, store } = setup({
-			attachments: [],
-			kind: "ok",
-			steps: [resolved],
-		});
-		expect(store.uploadAll).not.toHaveBeenCalled();
-		await save(hook);
-		expect(store.uploadAll).toHaveBeenCalledWith([step]);
+describe("useCaseEditor：保存编辑区", () => {
+	it("saves the edited steps against the loaded version", () => {
+		const { hook, step } = setup("打开首页并登录");
+		act(() => hook.result.current.handleSave());
 		expect(mutate).toHaveBeenCalledOnce();
 		expect(mutate.mock.calls[0]?.[0]).toMatchObject({
 			expectedVersion: 4,
 			id: "case-1",
-			patch: { steps: [resolved] },
+			patch: { steps: [step] },
 		});
 	});
 
-	it("does not save the case when a screenshot upload fails", async () => {
-		const { hook } = setup({ failed: 1, kind: "failed" });
-		await save(hook);
+	it("does not save while an image in the text is uploading", () => {
+		const { hook } = setup(`打开首页 ${buildCaseUploadingRef(UPLOAD_TOKEN)}`);
+		act(() => hook.result.current.handleSave());
 		expect(mutate).not.toHaveBeenCalled();
+		expect(toast.error).toHaveBeenCalled();
 		expect(hook.result.current.form).not.toBeNull();
+	});
+
+	it("does nothing before editing starts", () => {
+		mutate.mockClear();
+		const hook = renderHook(() => useCaseEditor("case-1", TEST_CASE));
+		act(() => hook.result.current.handleSave());
+		expect(mutate).not.toHaveBeenCalled();
+	});
+
+	it("does not save a case without a name", () => {
+		const { hook } = setup("打开首页", " ");
+		act(() => hook.result.current.handleSave());
+		expect(mutate).not.toHaveBeenCalled();
+		expect(hook.result.current.nameError).not.toBeNull();
 	});
 
 	it.each([
@@ -108,11 +91,10 @@ describe("useCaseEditor：保存时先上传步骤截图，再保存用例", () 
 			(hook: ReturnType<typeof setup>["hook"]) =>
 				act(() => hook.result.current.stopEditing()),
 		],
-	])("leaves the form and drops local screenshots %s", (_name, leave) => {
-		const { hook, store } = setup({ failed: 1, kind: "failed" });
+	])("leaves the form %s", (_name, leave) => {
+		const { hook } = setup("打开首页");
 		leave(hook);
 		expect(hook.result.current.form).toBeNull();
-		expect(store.clear).toHaveBeenCalled();
 	});
 });
 
@@ -133,43 +115,5 @@ describe("useCaseEditor：编辑中用例被他人修改", () => {
 			await Promise.resolve();
 		});
 		expect(mutate.mock.calls[0]?.[0]).toMatchObject({ expectedVersion: 4 });
-	});
-});
-
-describe("useCaseEditor：在只读视图中删除步骤截图", () => {
-	function removeSaved() {
-		mutate.mockClear();
-		const hook = renderHook(() => useCaseEditor("case-1", TEST_CASE));
-		act(() => hook.result.current.removeScreenshot("s1", SAVED));
-		return hook;
-	}
-
-	it("saves only the steps without the screenshot, checked against the loaded version", () => {
-		removeSaved();
-		expect(mutate).toHaveBeenCalledOnce();
-		expect(mutate.mock.calls[0]?.[0]).toEqual({
-			expectedVersion: 4,
-			id: "case-1",
-			patch: {
-				steps: [{ expected: "", id: "s1", screenshots: [], step: "打开首页" }],
-			},
-		});
-	});
-
-	const conflict = new ORPCError("CONFLICT", {
-		data: { currentVersion: 5, lastModifiedBy: "bob" },
-		defined: true,
-	});
-
-	it.each([
-		["keeps the removal in the editor after a version conflict", conflict, []],
-		["stays in the read-only view after other errors", new Error("断网"), null],
-	])("%s", (_name, error, screenshots) => {
-		const hook = removeSaved();
-		const options = mutate.mock.calls[0]?.[1];
-		act(() => options.onError(error));
-		const { form } = hook.result.current;
-		expect(form?.steps[0]?.screenshots ?? null).toEqual(screenshots);
-		expect(form?.name ?? null).toBe(screenshots === null ? null : "登录");
 	});
 });

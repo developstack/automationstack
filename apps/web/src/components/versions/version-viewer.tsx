@@ -1,7 +1,6 @@
 import { skipToken, useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 
-import { useCaseAttachmentUrls } from "@/components/cases/case-attachment-context";
 import { CaseListError } from "@/components/cases/case-list-error";
 import { VersionViewerSkeleton } from "@/components/skeletons/version-viewer-skeleton";
 import { orpc } from "@/utils/orpc";
@@ -57,7 +56,6 @@ function useVersionSnapshots({
 export function VersionViewer(props: VersionViewerProps) {
 	const { baseVersion, caseId, targetVersion } = props;
 	const { base, error, isFetching, retry, target } = useVersionSnapshots(props);
-	const imageUrls = useCaseAttachmentUrls(caseId);
 	const diff = useMemo(
 		() =>
 			base && target ? diffCaseSnapshots(base.snapshot, target.snapshot) : null,
@@ -91,7 +89,6 @@ export function VersionViewer(props: VersionViewerProps) {
 		<VersionDiff
 			baseVersion={baseVersion}
 			diff={diff}
-			imageUrls={imageUrls}
 			targetVersion={targetVersion}
 		/>
 	);

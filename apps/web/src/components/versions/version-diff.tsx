@@ -1,7 +1,5 @@
 import { ArrowRightIcon } from "lucide-react";
 
-import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
-
 import { DiffMark } from "./diff-mark.tsx";
 import type { CaseSnapshotDiff } from "./field-diff.ts";
 import { VersionDiffScalars } from "./version-diff-scalars.tsx";
@@ -11,8 +9,6 @@ import { VersionTag } from "./version-tag.tsx";
 interface VersionDiffProps {
 	baseVersion: number;
 	diff: CaseSnapshotDiff;
-	/** 步骤截图的地址。删除的截图仍然可以显示，因为附件没有删除。 */
-	imageUrls: MarkdownImageUrls;
 	targetVersion: number;
 }
 
@@ -73,7 +69,6 @@ function DiffHeader({
 export function VersionDiff({
 	baseVersion,
 	diff,
-	imageUrls,
 	targetVersion,
 }: VersionDiffProps) {
 	return (
@@ -88,7 +83,7 @@ export function VersionDiff({
 				scalars={diff.scalars}
 				tags={diff.tags}
 			/>
-			<VersionDiffSteps imageUrls={imageUrls} steps={diff.steps} />
+			<VersionDiffSteps steps={diff.steps} />
 		</div>
 	);
 }

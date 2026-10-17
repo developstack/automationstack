@@ -12,10 +12,6 @@ import {
 	useStorageAvailability,
 } from "@/components/cases/use-case-attachment-upload";
 import { useCasePasteUpload } from "@/components/cases/use-case-paste-upload";
-import {
-	type StepScreenshotStore,
-	useStepScreenshots,
-} from "@/components/cases/use-step-screenshots";
 import { client, orpc } from "@/utils/orpc";
 
 const PLACEHOLDER_CASE_ID = "00000000-0000-0000-0000-000000000000";
@@ -47,9 +43,8 @@ async function uploadDraftOne(
 				})
 		);
 		const { attachmentId: id, storageKey } = presigned;
-		const draft = { fileName, id, storageKey };
-		onUploaded(draft);
-		return { attachmentId: id, draft, kind: "ok" };
+		onUploaded({ fileName, id, storageKey });
+		return { attachmentId: id, kind: "ok" };
 	} catch (error) {
 		return caseUploadFailure(error);
 	}
@@ -121,12 +116,7 @@ function useRestoredImageUrls(
 
 export interface CaseDraftAttachments extends CaseAttachmentContextValue {
 	pending: readonly CaseDraftAttachment[];
-	screenshots: StepScreenshotStore;
 }
-
-const IGNORE_UPLOADED = (): void => undefined;
-
-const NO_FILE_NAMES: ReadonlyMap<string, string> = new Map();
 
 export interface CaseDraftAttachmentsOptions {
 	caseId: string | null;
@@ -154,14 +144,8 @@ export function useCaseDraftAttachments(
 	}, []);
 
 	const uploader = useDraftUploader(scope, handleUploaded);
-	// 步骤截图不随草稿保存，所以上传后不加入草稿的附件列表
-	const screenshotUploader = useDraftUploader(scope, IGNORE_UPLOADED);
-	const screenshots = useStepScreenshots(screenshotUploader);
 	const serverUrls = useRestoredImageUrls(scope, restored);
 	const paste = useCasePasteUpload(uploader, serverUrls);
 
-	return useMemo(
-		() => ({ ...paste, fileNames: NO_FILE_NAMES, pending, screenshots }),
-		[paste, pending, screenshots]
-	);
+	return useMemo(() => ({ ...paste, pending }), [paste, pending]);
 }

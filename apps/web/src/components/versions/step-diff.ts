@@ -1,17 +1,10 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 
-import { stepScreenshots } from "@/components/cases/step-screenshots";
-
 import type { ChangeKind } from "./change-kind.ts";
 import {
 	buildWordDiffSegments,
 	type TextDiffSegment,
 } from "./diff-segments.ts";
-import {
-	diffScreenshots,
-	hasScreenshotChanges,
-	type ScreenshotDiffEntry,
-} from "./screenshot-diff.ts";
 
 export interface StepDiffEntry {
 	expectedSegments: TextDiffSegment[] | null;
@@ -21,8 +14,6 @@ export interface StepDiffEntry {
 	newStep: CaseStep | null;
 	oldIndex: number | null;
 	oldStep: CaseStep | null;
-	/** 这个步骤的截图变化。新增的步骤中所有截图都是新增，删除的步骤中所有截图都是删除。 */
-	screenshots: ScreenshotDiffEntry[];
 	stepSegments: TextDiffSegment[] | null;
 }
 
@@ -50,7 +41,6 @@ function createAddedEntry(newStep: CaseStep, newIndex: number): StepDiffEntry {
 		newStep,
 		oldIndex: null,
 		oldStep: null,
-		screenshots: diffScreenshots([], stepScreenshots(newStep)),
 		stepSegments: null,
 	};
 }
@@ -67,21 +57,14 @@ function createRemovedEntry(
 		newStep: null,
 		oldIndex,
 		oldStep,
-		screenshots: diffScreenshots(stepScreenshots(oldStep), []),
 		stepSegments: null,
 	};
 }
 
 function createPairedEntry(pair: PairedSteps): StepDiffEntry {
 	const { newIndex, newStep, oldIndex, oldStep } = pair;
-	const screenshots = diffScreenshots(
-		stepScreenshots(oldStep),
-		stepScreenshots(newStep)
-	);
 	const contentChanged =
-		oldStep.step !== newStep.step ||
-		oldStep.expected !== newStep.expected ||
-		hasScreenshotChanges(screenshots);
+		oldStep.step !== newStep.step || oldStep.expected !== newStep.expected;
 	const base = {
 		expectedSegments: null,
 		id: newStep.id,
@@ -89,7 +72,6 @@ function createPairedEntry(pair: PairedSteps): StepDiffEntry {
 		newStep,
 		oldIndex,
 		oldStep,
-		screenshots,
 		stepSegments: null,
 	};
 	if (contentChanged) {

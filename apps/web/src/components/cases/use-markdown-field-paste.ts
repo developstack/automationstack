@@ -126,8 +126,6 @@ function useFieldUploadCommands(
 
 export interface MarkdownFieldPasteOptions {
 	onChange: (value: string) => void;
-	/** 传入时，粘贴的图片交给它处理（例如成为步骤截图），不写入文字。 */
-	onPasteImages?: (files: File[]) => void;
 	textareaRef: RefObject<HTMLTextAreaElement | null>;
 	value: string;
 }
@@ -170,38 +168,27 @@ function useFieldTarget({
 	return { target, viewRef };
 }
 
-/** 粘贴的图片：传入 onPasteImages 时交给它，否则上传并写入文字。返回是否处理了粘贴。 */
-function usePasteFiles(
-	onPasteImages: ((files: File[]) => void) | undefined,
-	target: CasePasteTarget
-) {
+export function useMarkdownFieldPaste(
+	options: MarkdownFieldPasteOptions
+): MarkdownFieldPaste {
+	const { textareaRef } = options;
 	const { uploadPasted } = useCaseAttachments();
-	return useCallback(
+	const { target, viewRef } = useFieldTarget(options);
+
+	const handlePasteFiles = useCallback(
 		(files: File[]) => {
-			const images = pastedImages(files);
-			if (images.length === 0) {
+			if (uploadPasted === null) {
 				return false;
 			}
-			if (onPasteImages !== undefined) {
-				onPasteImages(images);
-				return true;
-			}
-			if (uploadPasted === null) {
+			const images = pastedImages(files);
+			if (images.length === 0) {
 				return false;
 			}
 			uploadPasted(images, target);
 			return true;
 		},
-		[onPasteImages, target, uploadPasted]
+		[target, uploadPasted]
 	);
-}
-
-export function useMarkdownFieldPaste(
-	options: MarkdownFieldPasteOptions
-): MarkdownFieldPaste {
-	const { textareaRef } = options;
-	const { target, viewRef } = useFieldTarget(options);
-	const handlePasteFiles = usePasteFiles(options.onPasteImages, target);
 
 	const handleTextareaPaste = useCallback(
 		(event: ReactClipboardEvent<HTMLTextAreaElement>) => {

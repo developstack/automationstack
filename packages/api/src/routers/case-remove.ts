@@ -38,7 +38,7 @@ export const caseRemoveProcedures = {
 	 * 传勾选的用例 id，或传筛选条件（选择了全部符合筛选的用例，由服务端找出现在符合筛选的用例）。
 	 * 被测试任务用到的用例跳过（测试任务不能删除，这些用例只能改为废弃，见 ADR 0004）。
 	 * 不存在的用例（例如已被别人删除）当作已经删除，在 missingIds 中报告，不让整批失败。
-	 * 与删除一条用例一样，不删除 R2 中的步骤截图文件。
+	 * 与删除一条用例一样，不删除 R2 中的用例图片文件。
 	 */
 	removeMany: protectedProcedure
 		.errors({ BAD_REQUEST: {} })

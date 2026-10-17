@@ -4,7 +4,7 @@ import type { CaseStep, TestCase } from "../schema/test-cases";
 import {
 	type CaseContentPatch,
 	isNoopCasePatch,
-	mergeStepScreenshots,
+	toCaseSnapshot,
 } from "./case-snapshot-core";
 
 const STEP_ONE: CaseStep = {
@@ -18,8 +18,6 @@ const STEP_TWO: CaseStep = {
 	step: "选择原因并提交",
 };
 const STEPS: CaseStep[] = [STEP_ONE, STEP_TWO];
-const SHOT_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
-const SHOT_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 function makeCase(overrides: Partial<TestCase> = {}): TestCase {
 	return {
@@ -69,11 +67,6 @@ describe("isNoopCasePatch", () => {
 			makeCase({ maintainer: null }),
 			{ name: row.name },
 		],
-		[
-			"treats a missing screenshot list as an empty one",
-			row,
-			{ steps: [{ ...STEP_ONE, screenshots: [] }, STEP_TWO] },
-		],
 	])("%s", (_name, stored, patch) => {
 		expect(isNoopCasePatch(stored, patch)).toBe(true);
 	});
@@ -89,8 +82,8 @@ describe("isNoopCasePatch", () => {
 		["a removed step", { steps: [STEP_ONE] }],
 		["an emptied step list", { steps: [] }],
 		[
-			"an added step screenshot",
-			{ steps: [{ ...STEP_ONE, screenshots: [SHOT_A] }, STEP_TWO] },
+			"edited expected text",
+			{ steps: [STEP_ONE, { ...STEP_TWO, expected: "退款单已创建" }] },
 		],
 		["an added tag", { tags: ["退款", "核心链路", "冒烟"] }],
 		["reordered tags", { tags: ["核心链路", "退款"] }],
@@ -99,35 +92,19 @@ describe("isNoopCasePatch", () => {
 	});
 });
 
-describe("mergeStepScreenshots", () => {
-	const stored: CaseStep[] = [
-		{ ...STEP_ONE, screenshots: [SHOT_A, SHOT_B] },
-		STEP_TWO,
-	];
-
-	it.each<[string, CaseStep[], CaseStep[]]>([
-		[
-			"keeps the stored screenshots of a step with the same id",
-			[{ ...STEP_ONE, step: "新的操作" }],
-			[{ ...STEP_ONE, screenshots: [SHOT_A, SHOT_B], step: "新的操作" }],
-		],
-		[
-			"gives a new step id no screenshots",
-			[{ expected: "", id: "s9", step: "新步骤" }],
-			[{ expected: "", id: "s9", step: "新步骤" }],
-		],
-		[
-			"uses the screenshots the writer sends, an empty list included",
-			[
-				{ ...STEP_ONE, screenshots: [SHOT_B] },
-				{ ...STEP_TWO, screenshots: [] },
-			],
-			[
-				{ ...STEP_ONE, screenshots: [SHOT_B] },
-				{ ...STEP_TWO, screenshots: [] },
-			],
-		],
-	])("%s", (_name, patched, expected) => {
-		expect(mergeStepScreenshots(stored, patched)).toEqual(expected);
+describe("toCaseSnapshot", () => {
+	it("keeps the case content and drops the bookkeeping fields", () => {
+		expect(toCaseSnapshot(makeCase())).toEqual({
+			caseType: "functional",
+			maintainer: "王五",
+			moduleId: "22222222-2222-2222-2222-222222222222",
+			name: "未发货订单申请退款",
+			preconditions: "存在一笔已支付未发货订单",
+			priority: "P1",
+			sourceRef: "seed:refund:001",
+			status: "active",
+			steps: STEPS,
+			tags: ["退款", "核心链路"],
+		});
 	});
 });

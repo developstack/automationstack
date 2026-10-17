@@ -99,39 +99,10 @@ function sameSteps(
 				other !== undefined &&
 				step.id === other.id &&
 				step.step === other.step &&
-				step.expected === other.expected &&
-				sameList(step.screenshots ?? [], other.screenshots ?? [])
+				step.expected === other.expected
 			);
 		})
 	);
-}
-
-/**
- * 外部工具（MCP、导入、其他 API）写入的步骤可能不带 screenshots。
- * 这时 id 相同的步骤保留现有的步骤截图；新的步骤 id 没有步骤截图。
- */
-export function mergeStepScreenshots(
-	stored: readonly CaseStep[],
-	patched: readonly CaseStep[]
-): CaseStep[] {
-	const storedById = new Map(stored.map((step) => [step.id, step]));
-	return patched.map((step) => {
-		if (step.screenshots !== undefined) {
-			return step;
-		}
-		const kept = storedById.get(step.id)?.screenshots;
-		return kept === undefined ? step : { ...step, screenshots: kept };
-	});
-}
-
-function withMergedScreenshots(
-	row: TestCase,
-	patch: CaseContentPatch
-): CaseContentPatch {
-	if (patch.steps === undefined) {
-		return patch;
-	}
-	return { ...patch, steps: mergeStepScreenshots(row.steps, patch.steps) };
 }
 
 export function isNoopCasePatch(
@@ -172,7 +143,7 @@ export async function writeCaseMutation(
 			lastModifiedBy: current.lastModifiedBy,
 		};
 	}
-	const patch = withMergedScreenshots(current, options.patch);
+	const { patch } = options;
 	if (isNoopCasePatch(current, patch)) {
 		return { kind: "unchanged", testCase: current };
 	}

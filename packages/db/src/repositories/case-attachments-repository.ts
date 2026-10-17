@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 
 import { db } from "../index";
 import {
@@ -98,23 +98,6 @@ export function listCaseAttachments(caseId: string): Promise<CaseAttachment[]> {
 		.from(caseAttachments)
 		.where(eq(caseAttachments.caseId, caseId))
 		.orderBy(desc(caseAttachments.createdAt));
-}
-
-/** 返回 ids 中属于这个用例的附件 id。 */
-export async function findCaseAttachmentIds(
-	caseId: string,
-	ids: readonly string[]
-): Promise<Set<string>> {
-	if (ids.length === 0) {
-		return new Set();
-	}
-	const rows = await db
-		.select({ id: caseAttachments.id })
-		.from(caseAttachments)
-		.where(
-			and(eq(caseAttachments.caseId, caseId), inArray(caseAttachments.id, ids))
-		);
-	return new Set(rows.map((row) => row.id));
 }
 
 export interface NewCaseAttachmentRow {

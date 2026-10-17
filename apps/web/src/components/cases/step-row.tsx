@@ -10,9 +10,6 @@ import {
 } from "@/components/cases/step-drag";
 import { STEP_GRID_CLASS } from "@/components/cases/step-grid-header";
 import { StepRowActions } from "@/components/cases/step-row-actions";
-import { StepScreenshotStrip } from "@/components/cases/step-screenshot-strip";
-import { stepScreenshots } from "@/components/cases/step-screenshots";
-import { useStepScreenshotEdit } from "@/components/cases/use-step-screenshot-edit";
 
 const DROP_EDGE_CLASS: Record<Exclude<StepDropEdge, null>, string> = {
 	after: "before:bottom-0",
@@ -80,12 +77,11 @@ function stepRowClass(drag: ReturnType<typeof useStepRowDrag>): string {
 	);
 }
 
-/** 步骤编辑器的一行：拖动把手和编号、操作步骤、预期结果、行尾操作，下面是步骤截图。 */
+/** 步骤编辑器的一行：拖动把手和编号、操作步骤、预期结果和行尾操作。 */
 export function StepRow(props: StepRowProps) {
 	const { index, step } = props;
 	const position = index + 1;
 	const handlers = useStepRowHandlers(props);
-	const screenshots = useStepScreenshotEdit(step, props.onChange);
 	const drag = useStepRowDrag(step.id, index);
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const togglePreview = useCallback(() => setPreviewOpen((open) => !open), []);
@@ -96,7 +92,6 @@ export function StepRow(props: StepRowProps) {
 			<MarkdownField
 				ariaLabel={`第 ${position} 步操作`}
 				onChange={handlers.handleStepChange}
-				onPasteImages={screenshots.addFiles}
 				placeholder="操作步骤，支持 markdown"
 				preview={previewOpen}
 				value={step.step}
@@ -104,7 +99,6 @@ export function StepRow(props: StepRowProps) {
 			<MarkdownField
 				ariaLabel={`第 ${position} 步预期结果`}
 				onChange={handlers.handleExpectedChange}
-				onPasteImages={screenshots.addFiles}
 				placeholder="预期结果，支持 markdown"
 				preview={previewOpen}
 				value={step.expected}
@@ -118,11 +112,6 @@ export function StepRow(props: StepRowProps) {
 				onRemove={handlers.handleRemove}
 				onTogglePreview={togglePreview}
 				previewOpen={previewOpen}
-			/>
-			<StepScreenshotStrip
-				edit={screenshots}
-				ids={stepScreenshots(step)}
-				position={position}
 			/>
 		</li>
 	);
