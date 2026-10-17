@@ -26,6 +26,7 @@ import {
 import { getR2Storage, type R2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
 import {
+	isRunWriteLock,
 	type RunWriteRejection,
 	rejectRunWrite,
 	type TestRunErrorThrowers,
@@ -74,7 +75,7 @@ function rejectAttachmentWrite(
 	errors: TestRunErrorThrowers,
 	notFoundMessage: string
 ): never {
-	if (rejection.kind === "locked") {
+	if (isRunWriteLock(rejection)) {
 		rejectRunWrite(rejection, errors);
 	}
 	throw errors.NOT_FOUND({ message: notFoundMessage });

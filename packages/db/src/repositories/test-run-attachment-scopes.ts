@@ -3,7 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../index";
 import { testRunCases } from "../schema/test-runs";
 import type { DbTransaction, RepositoryNotFound } from "./repository-types";
-import type { RunLocked } from "./test-run-status-core";
+import type { RunWriteLock } from "./test-run-status-core";
 import { ensureRunWritable } from "./test-run-status-repository";
 
 export interface AttachmentScope {
@@ -13,7 +13,7 @@ export interface AttachmentScope {
 }
 
 export type PrepareAttachmentUploadResult =
-	| RunLocked
+	| RunWriteLock
 	| RepositoryNotFound
 	| { kind: "ok"; scope: AttachmentScope };
 
@@ -53,7 +53,7 @@ export interface PrepareRunAttachmentUploadsInput {
 }
 
 export type PrepareRunAttachmentUploadsResult =
-	| RunLocked
+	| RunWriteLock
 	| RepositoryNotFound
 	| {
 			kind: "ok";

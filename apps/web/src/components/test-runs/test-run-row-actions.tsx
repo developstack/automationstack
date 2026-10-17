@@ -1,3 +1,5 @@
+import { canVoidTestRun } from "@automationstack/api/lib/test-run-access";
+import { isTestRunVoidable } from "@automationstack/db/repositories/test-run-status-core";
 import type { TestRunListItem } from "@automationstack/db/repositories/test-runs-repository";
 import {
 	AlertDialog,
@@ -9,19 +11,14 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@automationstack/ui/components/alert-dialog";
-import { Button } from "@automationstack/ui/components/button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@automationstack/ui/components/dropdown-menu";
-import { MoreHorizontalIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { CreateFromFailedDialog } from "@/components/test-runs/create-from-failed-dialog";
 import { isTestRunLocked } from "@/components/test-runs/test-run-rates";
+import { TestRunRowActionsMenu } from "@/components/test-runs/test-run-row-actions-menu";
+import { useRunViewer } from "@/components/test-runs/use-run-viewer";
 import { useRemoveTestRun } from "@/components/test-runs/use-test-run-list-mutations";
+import { VoidRunDialog } from "@/components/test-runs/void-run-dialog";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 
 interface DeleteRunDialogProps {
@@ -67,20 +64,11 @@ function DeleteRunDialog({
 	);
 }
 
-function RowActionsTrigger({ runName }: { runName: string }) {
-	return (
-		<DropdownMenuTrigger
-			render={
-				<Button
-					aria-label={`测试任务「${runName}」操作`}
-					size="icon-xs"
-					variant="ghost"
-				>
-					<MoreHorizontalIcon />
-				</Button>
-			}
-		/>
-	);
+function useDialogToggle(): [boolean, () => void, () => void] {
+	const [open, setOpen] = useState(false);
+	const show = useCallback(() => setOpen(true), []);
+	const hide = useCallback(() => setOpen(false), []);
+	return [open, show, hide];
 }
 
 interface TestRunRowActionsProps {
@@ -90,17 +78,19 @@ interface TestRunRowActionsProps {
 
 export function TestRunRowActions({ item, onEdit }: TestRunRowActionsProps) {
 	const { counts, run } = item;
-	const [deleting, setDeleting] = useState(false);
-	const [retesting, setRetesting] = useState(false);
-	// 不能用的操作不放进菜单。已提交的测试任务不能编辑和删除。
+	const [deleting, openDelete, closeDelete] = useDialogToggle();
+	const [retesting, openRetest, closeRetest] = useDialogToggle();
+	const [voiding, openVoid, closeVoid] = useDialogToggle();
+	const viewer = useRunViewer(run.projectId);
+	// 不能用的操作不放进菜单。已提交和已作废的测试任务不能编辑和删除。
 	const locked = isTestRunLocked(run.status);
 	const canRetest = counts.failed > 0;
-
+	// 与服务端用同一条规则：状态允许，并且是创建者、项目 owner 或平台管理员。
+	const canVoid =
+		viewer !== null &&
+		isTestRunVoidable(run.status) &&
+		canVoidTestRun(viewer, run.createdBy);
 	const handleEdit = useCallback(() => onEdit(run.id), [onEdit, run.id]);
-	const openDelete = useCallback(() => setDeleting(true), []);
-	const closeDelete = useCallback(() => setDeleting(false), []);
-	const openRetest = useCallback(() => setRetesting(true), []);
-	const closeRetest = useCallback(() => setRetesting(false), []);
 
 	// 一项都不能用时，不显示「更多操作」按钮。
 	if (locked && !canRetest) {
@@ -109,27 +99,25 @@ export function TestRunRowActions({ item, onEdit }: TestRunRowActionsProps) {
 
 	return (
 		<>
-			<DropdownMenu>
-				<RowActionsTrigger runName={run.name} />
-				<DropdownMenuContent align="end">
-					{locked ? null : (
-						<DropdownMenuItem onClick={handleEdit}>编辑</DropdownMenuItem>
-					)}
-					{canRetest ? (
-						<DropdownMenuItem onClick={openRetest}>
-							从失败用例创建
-						</DropdownMenuItem>
-					) : null}
-					{locked ? null : (
-						<DropdownMenuItem onClick={openDelete} variant="destructive">
-							删除
-						</DropdownMenuItem>
-					)}
-				</DropdownMenuContent>
-			</DropdownMenu>
+			<TestRunRowActionsMenu
+				canEdit={!locked}
+				canRetest={canRetest}
+				canVoid={canVoid}
+				onDelete={openDelete}
+				onEdit={handleEdit}
+				onRetest={openRetest}
+				onVoid={openVoid}
+				runName={run.name}
+			/>
 			<DeleteRunDialog
 				onClose={closeDelete}
 				open={deleting}
+				runId={run.id}
+				runName={run.name}
+			/>
+			<VoidRunDialog
+				onClose={closeVoid}
+				open={voiding}
 				runId={run.id}
 				runName={run.name}
 			/>

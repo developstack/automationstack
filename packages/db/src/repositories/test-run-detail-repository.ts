@@ -43,20 +43,24 @@ export interface TestRunDetail {
 	createdByName: string | null;
 	run: TestRun;
 	submittedByName: string | null;
+	voidedByName: string | null;
 }
 
 async function loadRunHeader(runId: string) {
 	const creator = alias(users, "creator");
 	const submitter = alias(users, "submitter");
+	const voider = alias(users, "voider");
 	const [row] = await db
 		.select({
 			createdByName: creator.username,
 			run: testRuns,
 			submittedByName: submitter.username,
+			voidedByName: voider.username,
 		})
 		.from(testRuns)
 		.leftJoin(creator, eq(creator.id, testRuns.createdBy))
 		.leftJoin(submitter, eq(submitter.id, testRuns.submittedBy))
+		.leftJoin(voider, eq(voider.id, testRuns.voidedBy))
 		.where(eq(testRuns.id, runId))
 		.limit(1);
 	return row ?? null;
@@ -136,5 +140,6 @@ export async function getTestRunDetail(
 		createdByName: header.createdByName,
 		run: header.run,
 		submittedByName: header.submittedByName,
+		voidedByName: header.voidedByName,
 	};
 }

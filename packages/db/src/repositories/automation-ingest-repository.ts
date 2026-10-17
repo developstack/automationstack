@@ -31,7 +31,13 @@ export function listIngestRunSummaries(
 		})
 		.from(testRuns)
 		.leftJoin(testRunCases, eq(testRunCases.runId, testRuns.id))
-		.where(and(eq(testRuns.projectId, projectId), isNull(testRuns.submittedAt)))
+		.where(
+			and(
+				eq(testRuns.projectId, projectId),
+				isNull(testRuns.submittedAt),
+				isNull(testRuns.voidedAt)
+			)
+		)
 		.groupBy(testRuns.id)
 		.orderBy(desc(testRuns.createdAt));
 }

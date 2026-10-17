@@ -58,13 +58,14 @@ export interface RunExecutionData {
 	setFilter: Dispatch<SetStateAction<RunCaseFilter>>;
 	submittedByName: TestRunDetailView["submittedByName"];
 	user: PublicUser | null;
+	voidedByName: TestRunDetailView["voidedByName"];
 }
 
 export function useRunExecutionData(runId: string): RunExecutionData {
 	const detailQuery = useSuspenseQuery(
 		orpc.testRuns.get.queryOptions({ input: { runId } })
 	);
-	const { cases, run, submittedByName } = detailQuery.data;
+	const { cases, run, submittedByName, voidedByName } = detailQuery.data;
 	const { user } = useSession();
 	const [filter, setFilter] = useState<RunCaseFilter>(DEFAULT_RUN_CASE_FILTER);
 	return {
@@ -75,6 +76,7 @@ export function useRunExecutionData(runId: string): RunExecutionData {
 		setFilter,
 		submittedByName,
 		user,
+		voidedByName,
 	};
 }
 

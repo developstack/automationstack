@@ -60,6 +60,7 @@ export const RUN_STATUS_TONES: Record<TestRunStatus, StatusTone> = {
 	pending_review: "outline",
 	ready: "info-outline",
 	submitted: "solid",
+	voided: "neutral",
 };
 
 export const CASE_STATUS_TONES: Record<CaseStatus, StatusTone> = {

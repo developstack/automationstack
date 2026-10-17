@@ -68,6 +68,11 @@ export const testRuns = pgTable(
 			.notNull()
 			.defaultNow()
 			.$onUpdate(() => new Date()),
+		voidedAt: timestamp("voided_at", { withTimezone: true }),
+		voidedBy: uuid("voided_by").references(() => users.id, {
+			onDelete: "set null",
+		}),
+		voidReason: text("void_reason"),
 	},
 	(table) => [
 		index("test_runs_project_id_status_idx").on(table.projectId, table.status),

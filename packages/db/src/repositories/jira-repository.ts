@@ -110,6 +110,7 @@ export interface DefectContext {
 	runId: string;
 	runName: string;
 	submittedAt: Date | null;
+	voidedAt: Date | null;
 }
 
 export async function getDefectContext(
@@ -127,6 +128,7 @@ export async function getDefectContext(
 			runId: testRuns.id,
 			runName: testRuns.name,
 			submittedAt: testRuns.submittedAt,
+			voidedAt: testRuns.voidedAt,
 		})
 		.from(testRunCases)
 		.innerJoin(testRuns, eq(testRuns.id, testRunCases.runId))

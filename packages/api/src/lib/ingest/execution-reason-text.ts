@@ -24,6 +24,9 @@ export function describeRunWriteRejection(
 	if (rejection.kind === "locked") {
 		return `测试任务「${runName}」已于 ${rejection.submittedAt.toLocaleString("zh-CN")} 提交并锁定，本轮结论未写入`;
 	}
+	if (rejection.kind === "voided") {
+		return `测试任务「${runName}」已作废，本轮结论未写入`;
+	}
 	if (rejection.kind === "review-pending") {
 		return describePendingReview(runName);
 	}

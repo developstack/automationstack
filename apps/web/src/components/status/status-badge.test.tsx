@@ -36,6 +36,7 @@ const CASES: readonly BadgeExample[] = [
 	badge("测试中", { kind: "runStatus", value: "in_progress" }, "info"),
 	badge("已完成", { kind: "runStatus", value: "completed" }, "solid"),
 	badge("已提交", { kind: "runStatus", value: "submitted" }, "solid"),
+	badge("已作废", { kind: "runStatus", value: "voided" }, "neutral"),
 	badge("草稿", { kind: "caseStatus", value: "draft" }, "outline"),
 	badge("生效", { kind: "caseStatus", value: "active" }, "success"),
 	badge("废弃", { kind: "caseStatus", value: "deprecated" }, "struck"),

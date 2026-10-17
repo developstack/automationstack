@@ -12,12 +12,15 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 
+import { isTestRunLocked } from "@/components/test-runs/test-run-rates";
+
 export const RUN_STATUS_LABELS: Record<TestRunStatus, string> = {
 	completed: "已完成",
 	in_progress: "测试中",
 	pending_review: "待评审",
 	ready: "待测试",
 	submitted: "已提交",
+	voided: "已作废",
 };
 
 export const RESULT_LABELS: Record<TestRunCaseResult, string> = {
@@ -106,7 +109,8 @@ export interface RunPermissions {
 }
 
 export function runPermissions(status: TestRunStatus): RunPermissions {
-	if (status === "submitted") {
+	// 已提交和已作废的测试任务只读，服务端也拒绝一切写操作。
+	if (isTestRunLocked(status)) {
 		return { canConclude: false, canEditCases: false, locked: true };
 	}
 	return {

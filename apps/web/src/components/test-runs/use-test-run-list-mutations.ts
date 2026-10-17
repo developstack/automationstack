@@ -44,6 +44,15 @@ export function useRemoveTestRun(onDone: () => void) {
 	);
 }
 
+export function useVoidTestRun(onDone: () => void) {
+	const settle = useSettle(onDone);
+	return useMutation(
+		orpc.testRuns.void.mutationOptions({
+			onSuccess: () => settle("测试任务已作废"),
+		})
+	);
+}
+
 export function useCreateTestRunFromFailed(onDone: () => void) {
 	const settle = useSettle(onDone);
 	return useMutation(

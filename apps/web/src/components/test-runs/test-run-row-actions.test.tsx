@@ -1,3 +1,4 @@
+import type { RunViewer } from "@automationstack/api/lib/test-run-access";
 import type { TestRunListItem } from "@automationstack/db/repositories/test-runs-repository";
 import type { TestRunStatus } from "@automationstack/db/schema/test-runs";
 import { render, screen } from "@testing-library/react";
@@ -9,8 +10,24 @@ import { openMenuItems } from "@/test-dom-fixtures";
 vi.mock("@/components/test-runs/create-from-failed-dialog", () => ({
 	CreateFromFailedDialog: () => null,
 }));
+vi.mock("@/components/test-runs/void-run-dialog", () => ({
+	VoidRunDialog: () => null,
+}));
 vi.mock("@/components/test-runs/use-test-run-list-mutations", () => ({
 	useRemoveTestRun: () => ({ isPending: false, mutate: vi.fn() }),
+}));
+vi.mock("@/components/test-runs/use-run-viewer", () => ({
+	useRunViewer: () => viewerState.current,
+}));
+
+const CREATOR_ID = "22222222-2222-4222-8222-222222222222";
+const creator: RunViewer = {
+	platformRole: "member",
+	projectRole: "member",
+	userId: CREATOR_ID,
+};
+const viewerState = vi.hoisted(() => ({
+	current: null as RunViewer | null,
 }));
 
 const RUN_NAME = "回归测试";
@@ -31,7 +48,7 @@ function listItem(status: TestRunStatus, failed: number): TestRunListItem {
 		run: {
 			completedAt: null,
 			createdAt: CREATED_AT,
-			createdBy: null,
+			createdBy: CREATOR_ID,
 			description: null,
 			id: "44444444-4444-4444-8444-444444444444",
 			name: RUN_NAME,
@@ -43,36 +60,88 @@ function listItem(status: TestRunStatus, failed: number): TestRunListItem {
 			submittedAt: status === "submitted" ? CREATED_AT : null,
 			submittedBy: null,
 			updatedAt: CREATED_AT,
+			voidedAt: status === "voided" ? CREATED_AT : null,
+			voidedBy: null,
+			voidReason: null,
 		},
 	};
 }
 
+const otherMember: RunViewer = { ...creator, userId: "other" };
+const projectOwner: RunViewer = {
+	platformRole: "project_admin",
+	projectRole: "owner",
+	userId: "owner",
+};
+
 describe("TestRunRowActions：菜单里只有能用的操作", () => {
-	it.each<[string, TestRunStatus, number, string[]]>([
+	it.each<[string, TestRunStatus, number, RunViewer | null, string[]]>([
 		[
-			"进行中、有失败用例：三项都能用",
+			"创建者看测试中、有失败用例：四项都能用",
 			"in_progress",
 			2,
-			["编辑", "从失败用例创建", "删除"],
+			creator,
+			["编辑", "从失败用例创建", "作废", "删除"],
 		],
 		[
 			"没有失败用例：没有「从失败用例创建」",
 			"in_progress",
 			0,
+			creator,
+			["编辑", "作废", "删除"],
+		],
+		[
+			"待评审：可以作废",
+			"pending_review",
+			0,
+			creator,
+			["编辑", "作废", "删除"],
+		],
+		["待测试：可以作废", "ready", 0, creator, ["编辑", "作废", "删除"]],
+		[
+			"项目 owner：可以作废",
+			"ready",
+			0,
+			projectOwner,
+			["编辑", "作废", "删除"],
+		],
+		[
+			"其他项目成员：没有「作废」",
+			"in_progress",
+			0,
+			otherMember,
 			["编辑", "删除"],
 		],
-		["已提交：没有「编辑」和「删除」", "submitted", 2, ["从失败用例创建"]],
-	])("%s", async (_name, status, failed, items) => {
+		["成员列表加载中：没有「作废」", "in_progress", 0, null, ["编辑", "删除"]],
+		["已完成：没有「作废」", "completed", 0, creator, ["编辑", "删除"]],
+		[
+			"已提交：只有「从失败用例创建」",
+			"submitted",
+			2,
+			creator,
+			["从失败用例创建"],
+		],
+		[
+			"已作废：只有「从失败用例创建」",
+			"voided",
+			2,
+			creator,
+			["从失败用例创建"],
+		],
+	])("%s", async (_name, status, failed, viewer, items) => {
+		viewerState.current = viewer;
 		render(
 			<TestRunRowActions item={listItem(status, failed)} onEdit={vi.fn()} />
 		);
 		expect(await openMenuItems(TRIGGER_NAME)).toEqual(items);
 	});
 
-	it("已提交、没有失败用例：一项都不能用，不显示「更多操作」按钮", () => {
-		render(
-			<TestRunRowActions item={listItem("submitted", 0)} onEdit={vi.fn()} />
-		);
-		expect(screen.queryByRole("button", { name: TRIGGER_NAME })).toBeNull();
-	});
+	it.each<TestRunStatus>(["submitted", "voided"])(
+		"%s、没有失败用例：一项都不能用，不显示「更多操作」按钮",
+		(status) => {
+			viewerState.current = creator;
+			render(<TestRunRowActions item={listItem(status, 0)} onEdit={vi.fn()} />);
+			expect(screen.queryByRole("button", { name: TRIGGER_NAME })).toBeNull();
+		}
+	);
 });

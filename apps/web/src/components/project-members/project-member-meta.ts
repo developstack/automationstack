@@ -2,6 +2,7 @@ import {
 	canAdministerProject,
 	canBecomeProjectOwner,
 	isProjectOwnerSuspended,
+	type ProjectAccess,
 } from "@automationstack/api/lib/project-access";
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { UserRole } from "@automationstack/db/schema/users";
@@ -74,6 +75,17 @@ function ownProjectRole(
 	return members.find((member) => member.userId === session.id)?.role ?? null;
 }
 
+/** 当前用户在项目中的权限输入，与服务端的 ProjectAccess 相同。 */
+export function viewerProjectAccess(
+	session: SessionIdentity,
+	members: readonly ProjectRoleHolder[]
+): ProjectAccess {
+	return {
+		platformRole: session.role,
+		projectRole: ownProjectRole(session, members),
+	};
+}
+
 /** 与服务端共用 canAdministerProject。服务端也检查。 */
 export function canManageProjectMembers(
 	session: SessionIdentity | null,
@@ -82,10 +94,7 @@ export function canManageProjectMembers(
 	if (session === null) {
 		return false;
 	}
-	return canAdministerProject({
-		platformRole: session.role,
-		projectRole: ownProjectRole(session, members),
-	});
+	return canAdministerProject(viewerProjectAccess(session, members));
 }
 
 /** 用户是项目拥有者，但平台角色不能成为项目拥有者：管理权限暂停。 */

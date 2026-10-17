@@ -4,8 +4,11 @@ import type { TestRun } from "../schema/test-runs";
 import {
 	classifySubmitRejection,
 	deriveRunStatusSteps,
+	evaluateRunVoidable,
 	evaluateRunWritable,
 } from "./test-run-status-core";
+
+const VOIDED_AT = new Date("2026-08-12T08:00:00Z");
 
 function makeRun(overrides: Partial<TestRun> = {}): TestRun {
 	return {
@@ -23,6 +26,9 @@ function makeRun(overrides: Partial<TestRun> = {}): TestRun {
 		submittedAt: null,
 		submittedBy: null,
 		updatedAt: new Date("2026-08-01T00:00:00Z"),
+		voidedAt: null,
+		voidedBy: null,
+		voidReason: null,
 		...overrides,
 	};
 }
@@ -62,6 +68,7 @@ describe("deriveRunStatusSteps", () => {
 			[],
 		],
 		["已提交是终态，任何统计都不再推进它", "submitted", [10, 4], []],
+		["已作废是终态，任何统计都不再推进它", "voided", [10, 0], []],
 		[
 			"空测试任务不算完成——否则刚建的空任务会被自动提交锁死",
 			"in_progress",
@@ -93,8 +100,44 @@ describe("evaluateRunWritable", () => {
 		).toEqual({ kind: "locked", submittedAt });
 	});
 
+	it("已作废的测试任务拒绝一切写操作，并带回作废时刻", () => {
+		expect(
+			evaluateRunWritable(makeRun({ status: "voided", voidedAt: VOIDED_AT }))
+		).toEqual({ kind: "voided", voidedAt: VOIDED_AT });
+	});
+
 	it("测试任务不存在时返回 not-found 而不是抛异常", () => {
 		expect(evaluateRunWritable(undefined)).toEqual({ kind: "not-found" });
+	});
+});
+
+describe("evaluateRunVoidable", () => {
+	it.each(["pending_review", "ready", "in_progress"] as const)(
+		"「%s」的测试任务可以作废",
+		(status) => {
+			const run = makeRun({ status });
+			expect(evaluateRunVoidable(run)).toEqual({ kind: "ok", run });
+		}
+	);
+
+	it.each(["completed", "submitted"] as const)(
+		"「%s」的测试任务不能作废，回带当前状态",
+		(status) => {
+			expect(evaluateRunVoidable(makeRun({ status }))).toEqual({
+				kind: "invalid-status",
+				status,
+			});
+		}
+	);
+
+	it("作废是终态：再次作废按写锁拒绝", () => {
+		expect(
+			evaluateRunVoidable(makeRun({ status: "voided", voidedAt: VOIDED_AT }))
+		).toEqual({ kind: "voided", voidedAt: VOIDED_AT });
+	});
+
+	it("测试任务不存在时返回 not-found", () => {
+		expect(evaluateRunVoidable(undefined)).toEqual({ kind: "not-found" });
 	});
 });
 
@@ -118,6 +161,14 @@ describe("classifySubmitRejection", () => {
 				status: "in_progress",
 			}
 		);
+	});
+
+	it("已作废的测试任务提交时按写锁拒绝，而不是「尚未完成」", () => {
+		expect(
+			classifySubmitRejection(
+				makeRun({ status: "voided", voidedAt: VOIDED_AT })
+			)
+		).toEqual({ kind: "voided", voidedAt: VOIDED_AT });
 	});
 
 	it("测试任务已被删时返回 not-found", () => {

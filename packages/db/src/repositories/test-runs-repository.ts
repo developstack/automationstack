@@ -101,6 +101,15 @@ export async function listTestRuns(
 	);
 }
 
+export async function findTestRun(runId: string): Promise<TestRun | null> {
+	const [run] = await db
+		.select()
+		.from(testRuns)
+		.where(eq(testRuns.id, runId))
+		.limit(1);
+	return run ?? null;
+}
+
 export async function countCaseRunReferences(
 	tx: DbTransaction,
 	caseId: string

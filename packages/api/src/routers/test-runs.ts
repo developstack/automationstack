@@ -22,6 +22,7 @@ import { runIdSchema, testRunStatusSchema } from "../schemas/test-run";
 import { testRunEventProcedures } from "./test-run-events";
 import { testRunExecutionProcedures } from "./test-run-execution";
 import { testRunStepExecutionProcedures } from "./test-run-step-execution";
+import { testRunVoidProcedures } from "./test-run-void";
 
 const listTestRunsSchema = z.object({
 	keyword: z.string().optional(),
@@ -56,6 +57,7 @@ export const testRunsRouter = {
 	...testRunEventProcedures,
 	...testRunExecutionProcedures,
 	...testRunStepExecutionProcedures,
+	...testRunVoidProcedures,
 	create: protectedProcedure
 		.errors(testRunErrors)
 		.input(createTestRunSchema)
@@ -198,8 +200,8 @@ export const testRunsRouter = {
 				actorId: context.user.id,
 				runId: input.runId,
 			});
-			if (result.kind === "not-found") {
-				throw errors.NOT_FOUND({ message: "测试任务不存在" });
+			if (result.kind === "not-found" || result.kind === "voided") {
+				rejectRunWrite(result, errors);
 			}
 			if (result.kind === "invalid-status") {
 				throw errors.CONFLICT({

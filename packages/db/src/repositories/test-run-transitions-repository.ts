@@ -9,12 +9,15 @@ import {
 } from "../schema/test-runs";
 import {
 	classifySubmitRejection,
-	type RunLocked,
+	evaluateRunVoidable,
+	type RunWriteLock,
 	type SubmitTestRunResult,
+	type VoidTestRunRejection,
 } from "./test-run-status-core";
 import {
 	countRunConclusions,
 	ensureRunWritable,
+	lockTestRun,
 } from "./test-run-status-repository";
 
 export interface RunStatusActionInput {
@@ -23,7 +26,7 @@ export interface RunStatusActionInput {
 }
 
 export type MarkReviewedResult =
-	| RunLocked
+	| RunWriteLock
 	| { kind: "invalid-status"; status: TestRunStatus }
 	| { kind: "not-found" }
 	| { kind: "ok"; run: TestRun };
@@ -132,5 +135,47 @@ export function submitTestRun(
 			toStatus: "submitted",
 		});
 		return { kind: "submitted" as const, run: updated };
+	});
+}
+
+export interface VoidTestRunInput extends RunStatusActionInput {
+	reason: string | null;
+}
+
+export type VoidTestRunResult =
+	| VoidTestRunRejection
+	| { kind: "ok"; run: TestRun };
+
+/** 作废测试任务。权限由调用方检查；这里在行锁内检查状态，作废后测试任务只读。 */
+export function voidTestRun(
+	input: VoidTestRunInput
+): Promise<VoidTestRunResult> {
+	return db.transaction(async (tx) => {
+		const voidable = evaluateRunVoidable(await lockTestRun(tx, input.runId));
+		if (voidable.kind !== "ok") {
+			return voidable;
+		}
+		const { run } = voidable;
+		const [updated] = await tx
+			.update(testRuns)
+			.set({
+				status: "voided",
+				voidedAt: new Date(),
+				voidedBy: input.actorId,
+				voidReason: input.reason,
+			})
+			.where(eq(testRuns.id, run.id))
+			.returning();
+		if (!updated) {
+			throw new Error("voidTestRun: update returned no row");
+		}
+		await tx.insert(testRunEvents).values({
+			actorId: input.actorId,
+			fromStatus: run.status,
+			reason: input.reason,
+			runId: run.id,
+			toStatus: "voided",
+		});
+		return { kind: "ok" as const, run: updated };
 	});
 }
