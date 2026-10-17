@@ -1,4 +1,4 @@
-import { and, eq, gt, gte, ne, or } from "drizzle-orm";
+import { and, eq, gt, gte } from "drizzle-orm";
 
 import { db } from "../index";
 import { caseVersions, testCases } from "../schema/test-cases";
@@ -9,6 +9,10 @@ import {
 	trendStart,
 } from "./project-stats-definitions";
 import {
+	executionTrendConditions,
+	runTrendConditions,
+} from "./project-stats-filter-core";
+import {
 	buildCaseTrend,
 	buildExecutionTrend,
 	buildRunTrend,
@@ -18,7 +22,10 @@ import {
 	type RunTrendStats,
 } from "./project-stats-trend-core";
 
-/** 只读查询的行只取时间窗口内的数据；区间的划分和计数在 project-stats-trend-core 中完成。 */
+/**
+ * 只读查询的行只取时间窗口内的数据；区间的划分和计数在 project-stats-trend-core 中完成。
+ * 读取测试任务的查询条件在 project-stats-filter-core 中，不包含已作废的测试任务。
+ */
 
 const FIRST_VERSION = 1;
 
@@ -69,13 +76,7 @@ export async function getExecutionTrend(
 		})
 		.from(testRunCases)
 		.innerJoin(testRuns, eq(testRunCases.runId, testRuns.id))
-		.where(
-			and(
-				eq(testRuns.projectId, projectId),
-				ne(testRunCases.result, "untested"),
-				gte(testRunCases.executedAt, trendStart(now))
-			)
-		);
+		.where(and(...executionTrendConditions(projectId, now)));
 	const executions: ExecutionRow[] = [];
 	for (const { executedAt, result } of rows) {
 		if (executedAt !== null) {
@@ -89,7 +90,6 @@ export async function getRunTrend(
 	projectId: string,
 	now: Date = new Date()
 ): Promise<RunTrendStats> {
-	const since = trendStart(now);
 	const runs = await db
 		.select({
 			completedAt: testRuns.completedAt,
@@ -97,11 +97,6 @@ export async function getRunTrend(
 			status: testRuns.status,
 		})
 		.from(testRuns)
-		.where(
-			and(
-				eq(testRuns.projectId, projectId),
-				or(gte(testRuns.createdAt, since), gte(testRuns.completedAt, since))
-			)
-		);
+		.where(and(...runTrendConditions(projectId, now)));
 	return buildRunTrend({ now, runs });
 }
