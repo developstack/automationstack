@@ -12,6 +12,7 @@ import {
 	RUN_SECTION_TEXT,
 	RUN_SECTION_TITLE,
 } from "@/components/test-runs/run-panel-typography";
+import { useRunStepAttachments } from "@/components/test-runs/run-step-attachments-context";
 import { RunStepCard } from "@/components/test-runs/run-step-card";
 import { RunStepsSummary } from "@/components/test-runs/run-steps-summary";
 import type { VerdictEditingMode } from "@/components/test-runs/run-verdict-editing-mode";
@@ -69,6 +70,15 @@ function useStepsPreview(
 		derived: deriveCaseResult(filled),
 		unjudged: steps.filter((step) => judged[step.id] === undefined).length,
 	};
+}
+
+/** 已有实际附件的步骤 id。 */
+function useAttachedStepIds(): ReadonlySet<string> {
+	const { list } = useRunStepAttachments();
+	return useMemo(
+		() => new Set(list.flatMap(({ attachment }) => attachment.stepId ?? [])),
+		[list]
+	);
 }
 
 function RunStepsHeader({
@@ -131,8 +141,10 @@ function useRunStepsSection(
 		stopEditing();
 	}, [markSaved, stopEditing]);
 
+	const attachedStepIds = useAttachedStepIds();
 	const save = useRunStepSave({
 		actualResults,
+		attachedStepIds,
 		caseVersion: testCase.currentVersion,
 		judged,
 		onSaved,
@@ -187,6 +199,7 @@ export function RunStepsSection({
 				dirty={draft.dirty}
 				editing={editing}
 				missingActualResult={save.missingActualResult}
+				missingVerdict={save.missingVerdict}
 				onPassAll={draft.passAll}
 				onReset={draft.reset}
 				onSave={save.handleSave}

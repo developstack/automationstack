@@ -1,16 +1,13 @@
 import { actualResultRequired } from "@automationstack/db/repositories/test-run-step-results-core";
 import type { TestRunStepResult } from "@automationstack/db/schema/test-runs";
-import { Textarea } from "@automationstack/ui/components/textarea";
 import { cn } from "@automationstack/ui/lib/utils";
-import { type ChangeEvent, type ClipboardEvent, useCallback } from "react";
+import { useCallback } from "react";
 
 import { RUN_STEP_COLUMN_TITLE } from "@/components/test-runs/run-panel-typography";
 import { useStepAttachments } from "@/components/test-runs/run-step-attachments-context";
 import { StepActualAttachments } from "@/components/test-runs/step-actual-attachments";
+import { StepActualResultText } from "@/components/test-runs/step-actual-result-text";
 import { useStepAttachmentDrop } from "@/components/test-runs/use-step-attachment-drop";
-
-const PLACEHOLDER =
-	"这一步实际发生了什么。失败和阻塞时必填，会汇总进用例说明并带进 Jira。可以粘贴或拖入截图和录屏";
 
 interface StepActualResultFieldProps {
 	editing: boolean;
@@ -22,54 +19,9 @@ interface StepActualResultFieldProps {
 	value: string;
 }
 
-function ReadOnlyActualResult({ value }: { value: string }) {
-	if (value.trim() === "") {
-		return <p className="text-muted-foreground text-sm">—</p>;
-	}
-	return <p className="whitespace-pre-wrap break-words text-sm">{value}</p>;
-}
-
-interface ActualResultTextProps {
-	editing: boolean;
-	headingId: string;
-	onChange: (text: string) => void;
-	onPaste: (event: ClipboardEvent<HTMLTextAreaElement>) => void;
-	required: boolean;
-	value: string;
-}
-
-/** 实际结果的文字：编辑时是输入框，可以粘贴文件；不编辑时只读。 */
-function ActualResultText({
-	editing,
-	headingId,
-	onChange,
-	onPaste,
-	required,
-	value,
-}: ActualResultTextProps) {
-	const handleChange = useCallback(
-		(event: ChangeEvent<HTMLTextAreaElement>) => onChange(event.target.value),
-		[onChange]
-	);
-	if (!editing) {
-		return <ReadOnlyActualResult value={value} />;
-	}
-	return (
-		<Textarea
-			aria-invalid={required && value.trim() === ""}
-			aria-labelledby={headingId}
-			aria-required={required}
-			onChange={handleChange}
-			onPaste={onPaste}
-			placeholder={PLACEHOLDER}
-			rows={3}
-			value={value}
-		/>
-	);
-}
-
 /**
  * 步骤卡片的「实际结果」一栏：文字和实际附件。编辑时是输入框，失败和阻塞时必填；
+ * 没有判定的步骤不能填写文字，也不能添加实际附件，先提示选择判定。
  * 可以把文件拖入这一栏、粘贴到输入框，或点「+」选择文件。不编辑时（包括已提交和已作废）只读。
  */
 export function StepActualResultField({
@@ -80,7 +32,8 @@ export function StepActualResultField({
 	stepId,
 	value,
 }: StepActualResultFieldProps) {
-	const attachments = useStepAttachments(stepId);
+	const judged = result !== undefined;
+	const attachments = useStepAttachments(stepId, judged);
 	const drop = useStepAttachmentDrop(attachments.canAdd, attachments.addFiles);
 	const headingId = `run-step-actual-${stepId}`;
 	const required = result !== undefined && actualResultRequired(result);
@@ -108,9 +61,10 @@ export function StepActualResultField({
 					<span className="text-destructive text-xs">必填</span>
 				) : null}
 			</div>
-			<ActualResultText
+			<StepActualResultText
 				editing={editing}
 				headingId={headingId}
+				judged={judged}
 				onChange={handleChange}
 				onPaste={drop.handlePaste}
 				required={required}

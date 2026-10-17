@@ -81,6 +81,21 @@ describe("saveRunCaseStepResults：保存分步判定和实际结果", () => {
 		await memoryDb().close();
 	});
 
+	it("rejects an actual result, text or actual attachment, on a step without a verdict, and writes nothing", async () => {
+		await memoryDb().query(
+			`INSERT INTO test_run_attachments (run_case_id, step_id, file_name, content_type, size_bytes, storage_key)
+			VALUES ($1, 's2', 'shot.png', 'image/png', 1, 'k/shot.png')`,
+			[RUN_CASE]
+		);
+		const outcome = await save({ s1: "passed" }, { s3: "没测到这里" });
+		expect(outcome).toEqual({ kind: "verdict-required", stepNumbers: [2, 3] });
+		const rows = await memoryDb().query<{ result: string }>(
+			"SELECT result FROM test_run_cases WHERE id = $1",
+			[RUN_CASE]
+		);
+		expect(rows.rows).toEqual([{ result: "untested" }]);
+	});
+
 	it("rejects failed and blocked steps without an actual result, and writes nothing", async () => {
 		const outcome = await save(
 			{ s1: "failed", s2: "passed", s3: "blocked" },

@@ -1,4 +1,5 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
+import type { TestRunStepResult } from "@automationstack/db/schema/test-runs";
 import {
 	fireEvent,
 	render,
@@ -42,7 +43,9 @@ function saved(
 
 function renderStep(
 	overrides: Partial<RunStepAttachmentsValue> = {},
-	editing = true
+	editing = true,
+	/** null 表示步骤还没有判定。 */
+	result: TestRunStepResult | null = "failed"
 ) {
 	const value: RunStepAttachmentsValue = {
 		canEdit: editing,
@@ -67,7 +70,7 @@ function renderStep(
 				index={1}
 				onActualResultChange={vi.fn()}
 				onPick={vi.fn()}
-				result="failed"
+				result={result ?? undefined}
 				step={STEP}
 			/>
 		</RunStepAttachmentsProvider>
@@ -106,6 +109,16 @@ describe("实际结果一栏中的实际附件", () => {
 			);
 		}
 	);
+
+	it("does not add actual attachments to a step without a verdict, but still shows the saved ones", () => {
+		const value = renderStep({}, true, null);
+		expect(screen.queryByRole("button", { name: ADD })).toBeNull();
+		fireEvent.drop(column(), { dataTransfer: filesOf(PNG) });
+		expect(value.upload).not.toHaveBeenCalled();
+		expect(
+			within(strip()).getAllByRole("button", { name: THUMB_NAME })
+		).toHaveLength(2);
+	});
 
 	it.each([
 		[

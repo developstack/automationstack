@@ -1,4 +1,7 @@
-import { stepsMissingActualResult } from "@automationstack/db/repositories/test-run-step-results-core";
+import {
+	stepsMissingActualResult,
+	unjudgedStepsWithActualResult,
+} from "@automationstack/db/repositories/test-run-step-results-core";
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import type {
 	TestRunCaseResult,
@@ -12,6 +15,8 @@ import { useSaveRunCaseStepResults } from "@/components/test-runs/use-test-run-m
 
 export interface RunStepSaveOptions {
 	actualResults: Record<string, string>;
+	/** 已有实际附件的步骤 id。 */
+	attachedStepIds: ReadonlySet<string>;
 	caseVersion: number;
 	judged: Record<string, TestRunStepResult>;
 	onSaved: () => void;
@@ -23,7 +28,34 @@ export interface RunStepSaveHandle {
 	handleSave: () => void;
 	/** 判为失败或阻塞、但没有填写实际结果的步骤序号。不为空时不能保存。 */
 	missingActualResult: number[];
+	/** 有实际结果（文字或实际附件）但没有判定的步骤序号。不为空时不能保存，与服务端的规则相同。 */
+	missingVerdict: number[];
 	saving: boolean;
+}
+
+/** 阻止保存的步骤：失败或阻塞但没有实际结果的步骤，以及有实际结果但没有判定的步骤。 */
+function useStepsBlockingSave(
+	options: Pick<
+		RunStepSaveOptions,
+		"actualResults" | "attachedStepIds" | "judged" | "steps"
+	>
+): Pick<RunStepSaveHandle, "missingActualResult" | "missingVerdict"> {
+	const { actualResults, attachedStepIds, judged, steps } = options;
+	const missingActualResult = useMemo(
+		() => stepsMissingActualResult(steps, judged, actualResults),
+		[actualResults, judged, steps]
+	);
+	const missingVerdict = useMemo(
+		() =>
+			unjudgedStepsWithActualResult(
+				steps,
+				judged,
+				actualResults,
+				attachedStepIds
+			),
+		[actualResults, attachedStepIds, judged, steps]
+	);
+	return { missingActualResult, missingVerdict };
 }
 
 export function useRunStepSave(options: RunStepSaveOptions): RunStepSaveHandle {
@@ -31,13 +63,10 @@ export function useRunStepSave(options: RunStepSaveOptions): RunStepSaveHandle {
 		options;
 	const mutation = useSaveRunCaseStepResults();
 	const { mutate } = mutation;
-	const missingActualResult = useMemo(
-		() => stepsMissingActualResult(steps, judged, actualResults),
-		[actualResults, judged, steps]
-	);
+	const { missingActualResult, missingVerdict } = useStepsBlockingSave(options);
 
 	const handleSave = useCallback(() => {
-		if (missingActualResult.length > 0) {
+		if (missingActualResult.length > 0 || missingVerdict.length > 0) {
 			return;
 		}
 		mutate(
@@ -53,13 +82,19 @@ export function useRunStepSave(options: RunStepSaveOptions): RunStepSaveHandle {
 		caseVersion,
 		judged,
 		missingActualResult,
+		missingVerdict,
 		mutate,
 		onSaved,
 		runCaseId,
 		steps,
 	]);
 
-	return { handleSave, missingActualResult, saving: mutation.isPending };
+	return {
+		handleSave,
+		missingActualResult,
+		missingVerdict,
+		saving: mutation.isPending,
+	};
 }
 
 export interface RunStepShortcutOptions {

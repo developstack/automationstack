@@ -94,7 +94,7 @@ export function useRunStepAttachments(): RunStepAttachmentsValue {
 
 export interface StepAttachments {
 	addFiles: (files: readonly File[]) => void;
-	/** 可以再添加实际附件：编辑中、存储可用，并且没有达到上限。 */
+	/** 可以再添加实际附件：编辑中、存储可用、步骤已有判定，并且没有达到上限。 */
 	canAdd: boolean;
 	canRemove: boolean;
 	items: MediaItem[];
@@ -112,9 +112,16 @@ function keepUploadable(files: readonly File[]): File[] {
 	});
 }
 
-/** 一个步骤的实际附件。超过上限的文件不上传，并提示没有上传的数量。 */
-export function useStepAttachments(stepId: string): StepAttachments {
+/**
+ * 一个步骤的实际附件。超过上限的文件不上传，并提示没有上传的数量。
+ * 没有判定的步骤不能保存实际结果，所以 judged 为 false 时不能添加；已有的实际附件仍然可以删除。
+ */
+export function useStepAttachments(
+	stepId: string,
+	judged: boolean
+): StepAttachments {
 	const { canEdit, list, pending, remove, upload } = useRunStepAttachments();
+	const canUpload = canEdit && judged;
 	const items = useMemo(
 		() => stepAttachmentItems(list, stepId, pending),
 		[list, pending, stepId]
@@ -122,7 +129,7 @@ export function useStepAttachments(stepId: string): StepAttachments {
 	const count = items.length;
 	const addFiles = useCallback(
 		(files: readonly File[]) => {
-			if (!canEdit || files.length === 0) {
+			if (!canUpload || files.length === 0) {
 				return;
 			}
 			const { accepted, skipped } = takeUploadable(
@@ -138,11 +145,11 @@ export function useStepAttachments(stepId: string): StepAttachments {
 				upload({ files: accepted, stepId });
 			}
 		},
-		[canEdit, count, stepId, upload]
+		[canUpload, count, stepId, upload]
 	);
 	return {
 		addFiles,
-		canAdd: canEdit && count < MAX_STEP_ATTACHMENTS,
+		canAdd: canUpload && count < MAX_STEP_ATTACHMENTS,
 		canRemove: canEdit,
 		items,
 		remove,

@@ -21,6 +21,7 @@ const UPLOAD_NAME = /添加|上传/;
 const ACTUAL_TEXT = /支付超时/;
 const OLD_REASON_LABELS = /失败原因|阻塞原因/;
 const FAILED_NAME = /失败/;
+const VERDICT_FIRST_HINT = /先选择这一步的判定/;
 
 const STEP: CaseStep = {
 	actionScreenshots: [SHOT_A],
@@ -99,7 +100,6 @@ describe("RunStepCard：执行页的步骤卡片", () => {
 		["failed", "支付超时", true, false],
 		["passed", "", false, false],
 		["skipped", "", false, false],
-		[undefined, "", false, false],
 	])(
 		"verdict %s with actual result %j: required %s, invalid %s",
 		(result, actualResult, required, invalid) => {
@@ -109,6 +109,23 @@ describe("RunStepCard：执行页的步骤卡片", () => {
 			expect(field.getAttribute("aria-invalid")).toBe(String(invalid));
 		}
 	);
+
+	it("asks for a verdict first, without an input, on a step without a verdict", () => {
+		renderCard({ editing: true, result: undefined });
+		expect(screen.queryByRole("textbox")).toBeNull();
+		expect(screen.getByText(VERDICT_FIRST_HINT)).toBeTruthy();
+	});
+
+	it("keeps text from an earlier draft read-only on a step without a verdict", () => {
+		renderCard({
+			actualResult: "没测到这里",
+			editing: true,
+			result: undefined,
+		});
+		expect(screen.queryByRole("textbox")).toBeNull();
+		expect(screen.getByText("没测到这里")).toBeTruthy();
+		expect(screen.getByText(VERDICT_FIRST_HINT)).toBeTruthy();
+	});
 
 	it("shows the actual result read-only, without the verdict picker or the old reason labels, when not editing", () => {
 		renderCard({ actualResult: "支付超时\n订单没回滚", result: "failed" });

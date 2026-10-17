@@ -6,6 +6,7 @@ import {
 	deriveCaseResult,
 	fillStepResults,
 	stepsMissingActualResult,
+	unjudgedStepsWithActualResult,
 	unknownStepIds,
 } from "./test-run-step-results-core";
 
@@ -67,6 +68,54 @@ describe("stepsMissingActualResult", () => {
 		expect(stepsMissingActualResult(steps, judged, actualResults)).toEqual(
 			expected
 		);
+	});
+});
+
+describe("unjudgedStepsWithActualResult", () => {
+	it.each<{
+		actualResults: Record<string, string>;
+		attached: string[];
+		expected: number[];
+		judged: Record<string, "failed" | "passed" | "skipped">;
+		name: string;
+	}>([
+		{
+			actualResults: { s1: "没测到这里" },
+			attached: [],
+			expected: [1],
+			judged: { s2: "passed" },
+			name: "没有判定的步骤写了文字",
+		},
+		{
+			actualResults: {},
+			attached: ["s3"],
+			expected: [3],
+			judged: {},
+			name: "没有判定的步骤有实际附件",
+		},
+		{
+			actualResults: { s1: "  " },
+			attached: [],
+			expected: [],
+			judged: {},
+			name: "只有空白的文字不算实际结果",
+		},
+		{
+			actualResults: { s1: "没环境", s2: "超时" },
+			attached: ["s1", "s2"],
+			expected: [],
+			judged: { s1: "skipped", s2: "failed" },
+			name: "有判定的步骤可以有文字和实际附件",
+		},
+	])("$name", ({ actualResults, attached, expected, judged }) => {
+		expect(
+			unjudgedStepsWithActualResult(
+				steps,
+				judged,
+				actualResults,
+				new Set(attached)
+			)
+		).toEqual(expected);
 	});
 });
 

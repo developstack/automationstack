@@ -32,13 +32,10 @@ describe("buildStepPayload：保存判定时提交的步骤", () => {
 			],
 		],
 		[
-			"sends an unjudged step only when it has an actual result, as a skipped step",
+			"never sends an unjudged step, even when it has an actual result",
 			{ s2: "passed" },
 			{ s1: "没测到这里", s3: "" },
-			[
-				{ actualResult: "没测到这里", result: "skipped", stepId: "s1" },
-				{ actualResult: null, result: "passed", stepId: "s2" },
-			],
+			[{ actualResult: null, result: "passed", stepId: "s2" }],
 		],
 	] as const)("%s", (_name, judged, actualResults, expected) => {
 		expect(buildStepPayload(steps, judged, actualResults)).toEqual(expected);

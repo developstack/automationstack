@@ -11,7 +11,7 @@ import {
 } from "../lib/test-run-errors";
 import { testRunStepResultSchema } from "../schemas/test-run";
 
-/** 一个步骤的判定和实际结果。失败和阻塞必须填写实际结果，由仓库层检查。 */
+/** 一个步骤的判定和实际结果。实际结果必须和判定一起提交；失败和阻塞必须填写实际结果，由仓库层检查。 */
 const stepVerdictSchema = z.object({
 	actualResult: z.string().nullable(),
 	result: testRunStepResultSchema,
@@ -76,6 +76,11 @@ export const testRunStepExecutionProcedures = {
 			if (result.kind === "actual-result-required") {
 				throw errors.BAD_REQUEST({
 					message: `步骤 ${result.stepNumbers.join("、")} 判为失败或阻塞，必须填写实际结果`,
+				});
+			}
+			if (result.kind === "verdict-required") {
+				throw errors.BAD_REQUEST({
+					message: `步骤 ${result.stepNumbers.join("、")} 没有判定，不能保存实际结果，请先选择判定`,
 				});
 			}
 			if (result.kind !== "ok") {

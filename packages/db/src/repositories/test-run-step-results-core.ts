@@ -55,6 +55,29 @@ export function stepsMissingActualResult(
 	return numbers;
 }
 
+/**
+ * 有实际结果（文字或实际附件）但没有判定的步骤的序号（从 1 开始）。
+ * 没有判定的步骤不能保存实际结果：服务端拒绝保存，web 阻止保存。
+ * attachedStepIds 是已有实际附件的步骤 id。
+ */
+export function unjudgedStepsWithActualResult(
+	steps: readonly CaseStep[],
+	judged: JudgedSteps,
+	actualResults: StepActualResults,
+	attachedStepIds: ReadonlySet<string>
+): number[] {
+	const numbers: number[] = [];
+	for (const [index, step] of steps.entries()) {
+		const hasActualResult =
+			normalizeActualResult(actualResults[step.id]) !== null ||
+			attachedStepIds.has(step.id);
+		if (judged[step.id] === undefined && hasActualResult) {
+			numbers.push(index + 1);
+		}
+	}
+	return numbers;
+}
+
 export function deriveCaseResult(
 	stepResults: readonly RunCaseStepResult[]
 ): TestRunCaseResult {

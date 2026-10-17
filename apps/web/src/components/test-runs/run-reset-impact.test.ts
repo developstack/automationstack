@@ -19,10 +19,11 @@ describe("resetWarning", () => {
 		expect(warning).not.toContain("分步判定");
 	});
 
-	it("有分步判定就拦一下，且说明要恢复只能重判一遍", () => {
+	it("有分步判定就拦一下，说明要恢复只能重判一遍，并说明实际附件保留", () => {
 		const warning = resetWarning({ comment: null, stepResultCount: 3 });
-		expect(warning).toContain("分步判定和实际结果");
+		expect(warning).toContain("分步判定和实际结果的文字");
 		expect(warning).toContain("重新判");
+		expect(warning).toContain("实际附件会保留");
 	});
 
 	it("两样都有时一句话里两样都点名", () => {
@@ -32,5 +33,6 @@ describe("resetWarning", () => {
 		});
 		expect(warning).toContain("说明");
 		expect(warning).toContain("分步判定");
+		expect(warning).toContain("实际附件会保留");
 	});
 });
