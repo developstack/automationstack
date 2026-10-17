@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CaseListBatchActions } from "@/components/cases/case-list-batch-actions";
+import { caseListFilter } from "@/components/cases/case-list-query";
 import type { CaseSelection } from "@/components/cases/use-case-selection";
 
 const api = vi.hoisted(() => ({
@@ -51,14 +52,20 @@ let queryClient = new QueryClient();
 function renderActions(ids: string[]) {
 	queryClient = new QueryClient();
 	const selection: CaseSelection = {
+		allMatching: false,
 		clear: vi.fn(),
 		ids: new Set(ids),
+		selectAllMatching: vi.fn(),
 		toggle: vi.fn(),
 		togglePage: vi.fn(),
 	};
 	render(
 		<QueryClientProvider client={queryClient}>
-			<CaseListBatchActions selection={selection} />
+			<CaseListBatchActions
+				filter={caseListFilter("project-1", {})}
+				page={{ items: [], total: ids.length }}
+				selection={selection}
+			/>
 		</QueryClientProvider>
 	);
 	return selection;

@@ -218,4 +218,17 @@ describe("CaseTable：勾选用例", () => {
 		);
 		expect(rowCheckbox("退出登录").getAttribute("aria-checked")).toBe("true");
 	});
+
+	it("选择全部符合筛选：翻到其他页时所有行和表头也显示为勾选；取消一行后不再是全部", async () => {
+		const controls = await renderTable([LOGIN, LOGOUT]);
+		fireEvent.click(pageCheckbox());
+		act(() => controls.selection().selectAllMatching());
+		act(() => controls.setCases([RESET]));
+		expect(rowCheckbox("重置密码").getAttribute("aria-checked")).toBe("true");
+		expect(pageCheckbox().getAttribute("aria-checked")).toBe("true");
+
+		fireEvent.click(rowCheckbox("重置密码"));
+		expect(controls.selection().allMatching).toBe(false);
+		expect(pageCheckbox().getAttribute("aria-checked")).toBe("false");
+	});
 });

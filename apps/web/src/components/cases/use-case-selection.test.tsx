@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
+	type CaseSelection,
 	caseSelectionScope,
 	useCaseSelection,
 } from "@/components/cases/use-case-selection";
@@ -53,5 +54,31 @@ describe("useCaseSelection：勾选的用例跨页保留，切换筛选条件时
 		view.rerender({ search: { status: "draft" } });
 		view.rerender({ search: {} });
 		expect(selected()).toEqual([]);
+	});
+
+	it("选择全部符合筛选：取消全部选择时清空；切换筛选条件时也清空", () => {
+		const { selected, view } = renderSelection({});
+		act(() => view.result.current.togglePage(["a", "b"]));
+		act(() => view.result.current.selectAllMatching());
+		expect(view.result.current.allMatching).toBe(true);
+		act(() => view.result.current.clear());
+		expect(view.result.current.allMatching).toBe(false);
+		expect(selected()).toEqual([]);
+
+		act(() => view.result.current.selectAllMatching());
+		view.rerender({ search: { status: "draft" } });
+		expect(view.result.current.allMatching).toBe(false);
+	});
+
+	it.each<[string, (selection: CaseSelection) => void, string[]]>([
+		["取消一行：只保留本页其他勾选的行", (s) => s.toggle("a"), ["b"]],
+		["表头勾选框：取消本页", (s) => s.togglePage(["a", "b"]), []],
+	])("选择全部符合筛选后，%s，不再是全部", (_name, change, expected) => {
+		const { selected, view } = renderSelection({});
+		act(() => view.result.current.togglePage(["a", "b"]));
+		act(() => view.result.current.selectAllMatching());
+		act(() => change(view.result.current));
+		expect(view.result.current.allMatching).toBe(false);
+		expect(selected()).toEqual(expected);
 	});
 });

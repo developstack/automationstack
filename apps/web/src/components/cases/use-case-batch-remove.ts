@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 
 import { useInvalidateCases } from "@/components/cases/use-case-mutations";
+import type { CaseBatchTarget } from "@/components/cases/use-case-selection";
 import { orpc } from "@/utils/orpc";
 
 interface BatchRemoveResult {
@@ -27,13 +28,14 @@ function batchRemoveMessage({
 }
 
 /**
- * 用例表格中批量删除勾选的用例，一个请求完成。被测试任务用到的用例由服务端跳过，
- * 提示删除和跳过的条数；有跳过的用例时用警告提示。完成后重新载入用例列表和脑图。
- * 一次最多 MAX_BATCH_CASES 条，由批量操作栏在请求前检查。
+ * 用例表格中批量删除用例：勾选的用例，或全部符合筛选的用例（见 CaseBatchTarget）。
+ * 一个请求完成。被测试任务用到的用例由服务端跳过，提示服务端实际删除和跳过的条数；
+ * 有跳过的用例时用警告提示。完成后重新载入用例列表和脑图。
+ * 一次最多的条数（MAX_BATCH_CASES、MAX_FILTER_BATCH_CASES）由批量操作栏在请求前检查。
  * 返回是否删除成功。失败的原因由全局的失败提示显示。
  */
 export function useCaseBatchRemove(): (
-	ids: readonly string[]
+	target: CaseBatchTarget
 ) => Promise<boolean> {
 	const invalidateCases = useInvalidateCases();
 	const { mutateAsync } = useMutation(
@@ -44,8 +46,8 @@ export function useCaseBatchRemove(): (
 	);
 
 	return useCallback(
-		async (ids: readonly string[]) => {
-			const result = await mutateAsync({ ids: [...ids] }).catch(() => null);
+		async (target: CaseBatchTarget) => {
+			const result = await mutateAsync(target).catch(() => null);
 			if (result === null) {
 				return false;
 			}

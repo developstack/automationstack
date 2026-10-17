@@ -18,22 +18,29 @@ import {
 } from "../schema/test-cases";
 import { containsPattern, prefixPattern } from "./case-list-filter-core";
 import { getModuleSubtreeIds } from "./module-subtree";
+import type { DbTransaction } from "./repository-types";
 
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
-export interface ListTestCasesFilter {
+/** 用例列表的筛选条件，不含分页。按筛选条件的批量操作使用同一个筛选。 */
+export interface CaseListFilter {
 	includeDescendants?: boolean;
 	keyword?: string;
 	moduleId?: string;
-	page?: number;
-	pageSize?: number;
 	priority?: CasePriority[];
 	projectId: string;
 	sourceRefPrefix?: string;
 	status?: CaseStatus;
 	tags?: string[];
 }
+
+export interface ListTestCasesFilter extends CaseListFilter {
+	page?: number;
+	pageSize?: number;
+}
+
+type ListExecutor = DbTransaction | typeof db;
 
 export interface ListTestCasesResult {
 	items: TestCase[];
@@ -43,13 +50,14 @@ export interface ListTestCasesResult {
 }
 
 async function buildModuleCondition(
-	filter: ListTestCasesFilter
+	executor: ListExecutor,
+	filter: CaseListFilter
 ): Promise<SQL | undefined> {
 	if (!filter.moduleId) {
 		return undefined;
 	}
 	if (filter.includeDescendants) {
-		const ids = await getModuleSubtreeIds(db, filter.moduleId);
+		const ids = await getModuleSubtreeIds(executor, filter.moduleId);
 		return inArray(testCases.moduleId, ids);
 	}
 	return eq(testCases.moduleId, filter.moduleId);
@@ -59,11 +67,13 @@ function buildTagsCondition(tags: string[]): SQL {
 	return sql`${testCases.tags} ?| ${sql.param(tags)}::text[]`;
 }
 
-async function buildListConditions(
-	filter: ListTestCasesFilter
+/** 筛选条件对应的查询条件。批量操作在自己的事务中查询，所以传入执行查询的事务。 */
+export async function buildCaseListConditions(
+	executor: ListExecutor,
+	filter: CaseListFilter
 ): Promise<SQL[]> {
 	const conditions: SQL[] = [eq(testCases.projectId, filter.projectId)];
-	const moduleCondition = await buildModuleCondition(filter);
+	const moduleCondition = await buildModuleCondition(executor, filter);
 	if (moduleCondition) {
 		conditions.push(moduleCondition);
 	}
@@ -90,7 +100,7 @@ async function buildListConditions(
 export async function listTestCases(
 	filter: ListTestCasesFilter
 ): Promise<ListTestCasesResult> {
-	const conditions = await buildListConditions(filter);
+	const conditions = await buildCaseListConditions(db, filter);
 	const where = and(...conditions);
 	const page = Math.max(filter.page ?? 1, 1);
 	const pageSize = Math.min(

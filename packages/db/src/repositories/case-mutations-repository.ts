@@ -189,7 +189,7 @@ export type ChangeCaseStatusResult =
 	| { changes: CaseStatusChange[]; kind: "ok" }
 	| { kind: "not-found"; missingIds: string[] };
 
-async function changeCaseStatusInTx(
+export async function changeCaseStatusInTx(
 	tx: DbTransaction,
 	input: ChangeCaseStatusInput
 ): Promise<ChangeCaseStatusResult> {

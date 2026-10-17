@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { CaseListBatchActions } from "@/components/cases/case-list-batch-actions";
 import { CaseListError } from "@/components/cases/case-list-error";
 import { CaseListFooter } from "@/components/cases/case-list-footer";
+import type { CaseListFilter } from "@/components/cases/case-list-query";
 import { CaseTable } from "@/components/cases/case-table";
 import { CaseTableEmpty } from "@/components/cases/case-table-empty";
 import { CASE_LIST_PANEL_CLASS } from "@/components/cases/case-table-layout";
@@ -25,6 +26,8 @@ type CaseListQuery = Pick<
 
 interface CaseListResultProps {
 	canCreate: boolean;
+	/** 当前的筛选条件，选择全部符合筛选的用例时用于批量操作。 */
+	filter: CaseListFilter;
 	filtered: boolean;
 	navigation: WorkspaceNavigation;
 	query: CaseListQuery;
@@ -40,6 +43,7 @@ interface CaseListBodyProps extends CaseListResultProps {
 
 function CaseListBody({
 	canCreate,
+	filter,
 	filtered,
 	navigation,
 	panelShown,
@@ -67,7 +71,7 @@ function CaseListBody({
 	}
 	return (
 		<>
-			<CaseListBatchActions selection={selection} />
+			<CaseListBatchActions filter={filter} page={data} selection={selection} />
 			<CaseTable
 				animateFirst={panelShown}
 				cases={data.items}

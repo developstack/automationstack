@@ -170,7 +170,7 @@ export interface RemoveTestCasesResult {
 	skipped: SkippedCaseRemoval<TestCase>[];
 }
 
-async function removeTestCasesInTx(
+export async function removeTestCasesInTx(
 	tx: DbTransaction,
 	input: RemoveTestCasesInput
 ): Promise<RemoveTestCasesResult> {

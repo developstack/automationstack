@@ -1,4 +1,4 @@
-import type { changeCaseStatusSchema } from "@automationstack/api/schemas/case";
+import type { changeCaseStatusInputSchema } from "@automationstack/api/schemas/case";
 import type {
 	CaseStatus,
 	TestCase,
@@ -10,6 +10,7 @@ import type { z } from "zod";
 
 import { STATUS_LABELS } from "@/components/cases/case-meta";
 import { useInvalidateCases } from "@/components/cases/use-case-mutations";
+import type { CaseBatchTarget } from "@/components/cases/use-case-selection";
 import { orpc } from "@/utils/orpc";
 
 export interface CaseStatusChangeRequest {
@@ -22,7 +23,10 @@ interface CaseListPage {
 	items: TestCase[];
 }
 
-type StatusChangeInput = z.infer<typeof changeCaseStatusSchema>;
+type StatusChangeInput = z.infer<typeof changeCaseStatusInputSchema>;
+
+/** 按 id 修改的输入（一条用例、勾选的用例和撤销）。 */
+type StatusChangeByIdsInput = Extract<StatusChangeInput, { ids: string[] }>;
 
 /** 提示中的「撤销」。撤销失败的原因由全局的失败提示显示。 */
 function undoAction(undo: () => Promise<void>) {
@@ -38,7 +42,7 @@ function undoAction(undo: () => Promise<void>) {
 
 function withStatus(
 	page: CaseListPage | undefined,
-	{ ids, status }: StatusChangeInput
+	{ ids, status }: StatusChangeByIdsInput
 ): CaseListPage | undefined {
 	if (page === undefined) {
 		return page;
@@ -53,7 +57,8 @@ function withStatus(
 }
 
 /**
- * 只改用例状态。列表中的状态立刻更新，保存后重新载入用例。
+ * 只改用例状态。按 id 修改时列表中的状态立刻更新；按筛选条件修改时不知道哪些用例符合筛选，
+ * 列表不立刻更新。保存后都重新载入用例。
  * 失败的原因由全局的失败提示显示，重新载入后列表恢复为服务端的状态。
  */
 function useChangeStatusMutation() {
@@ -63,6 +68,9 @@ function useChangeStatusMutation() {
 		orpc.cases.changeStatus.mutationOptions({
 			meta: { failureAction: "修改用例状态" },
 			onMutate: async (input: StatusChangeInput) => {
+				if ("filter" in input) {
+					return;
+				}
 				const queryKey = orpc.cases.list.key();
 				await queryClient.cancelQueries({ queryKey });
 				queryClient.setQueriesData<CaseListPage>({ queryKey }, (page) =>
@@ -111,8 +119,11 @@ interface ChangedCase {
 	version: { version: number } | null;
 }
 
-/** 撤销批量修改的请求：按原来的状态分组，每组一个请求。状态没有变化的用例不在其中。 */
-function restoreInputs(changes: readonly ChangedCase[]): StatusChangeInput[] {
+/**
+ * 撤销批量修改的请求：按原来的状态分组，每组一个请求。状态没有变化的用例不在其中。
+ * 带 undo：按筛选条件修改的用例可以超过 MAX_BATCH_CASES 条，一组仍然是一个请求、一个事务。
+ */
+function undoInputs(changes: readonly ChangedCase[]): StatusChangeByIdsInput[] {
 	const idsByStatus = new Map<CaseStatus, string[]>();
 	for (const change of changes) {
 		if (change.version === null) {
@@ -122,7 +133,11 @@ function restoreInputs(changes: readonly ChangedCase[]): StatusChangeInput[] {
 		ids.push(change.testCase.id);
 		idsByStatus.set(change.previousStatus, ids);
 	}
-	return [...idsByStatus].map(([status, ids]) => ({ ids, status }));
+	return [...idsByStatus].map(([status, ids]) => ({
+		ids,
+		status,
+		undo: true,
+	}));
 }
 
 function batchMessage(changes: readonly ChangedCase[], to: CaseStatus): string {
@@ -135,20 +150,21 @@ function batchMessage(changes: readonly ChangedCase[], to: CaseStatus): string {
 }
 
 /**
- * 用例表格中批量改勾选用例的状态，一个请求完成（一个事务，要么都改，要么都不改）。
+ * 用例表格中批量改用例的状态：勾选的用例，或全部符合筛选的用例（见 CaseBatchTarget）。
+ * 一个请求完成（一个事务，要么都改，要么都不改）。按筛选条件修改时提示服务端实际修改的条数。
  * 提示修改结果，带「撤销」：撤销把每条用例恢复为它自己原来的状态，也记录新版本。
  * 撤销按原来的状态分组，每组一个请求（最多三个）。一组失败时停下，已恢复的组不回退，重新载入后列表显示实际的状态。
- * 一次最多 MAX_BATCH_CASES 条，由批量操作栏在请求前检查。
+ * 一次最多的条数（MAX_BATCH_CASES、MAX_FILTER_BATCH_CASES）由批量操作栏在请求前检查。
  * 返回是否修改成功。失败的原因由全局的失败提示显示。
  */
 export function useCaseBatchStatusChange(): (
-	ids: readonly string[],
+	target: CaseBatchTarget,
 	to: CaseStatus
 ) => Promise<boolean> {
 	const { mutateAsync } = useChangeStatusMutation();
 
 	const undo = useCallback(
-		async (inputs: readonly StatusChangeInput[]) => {
+		async (inputs: readonly StatusChangeByIdsInput[]) => {
 			for (const input of inputs) {
 				// biome-ignore lint/performance/noAwaitInLoops: 一组恢复成功后再恢复下一组，失败时停下
 				await mutateAsync(input);
@@ -160,14 +176,14 @@ export function useCaseBatchStatusChange(): (
 	);
 
 	return useCallback(
-		async (ids: readonly string[], to: CaseStatus) => {
+		async (target: CaseBatchTarget, to: CaseStatus) => {
 			let changes: ChangedCase[];
 			try {
-				({ changes } = await mutateAsync({ ids: [...ids], status: to }));
+				({ changes } = await mutateAsync({ ...target, status: to }));
 			} catch {
 				return false;
 			}
-			const restore = restoreInputs(changes);
+			const restore = undoInputs(changes);
 			toast.success(
 				batchMessage(changes, to),
 				restore.length === 0 ? undefined : undoAction(() => undo(restore))

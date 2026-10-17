@@ -141,7 +141,7 @@ interface CaseTableProps {
 	animateFirst: boolean;
 	cases: TestCase[];
 	selectedCaseId: string | undefined;
-	/** 勾选的用例，跨页保留。 */
+	/** 勾选的用例，跨页保留。选择了全部符合筛选的用例时，所有行都显示为勾选。 */
 	selection: CaseSelection;
 	/** 正在加载新的筛选结果或新的一页。表格留在原位，只标记为忙碌。 */
 	stale: boolean;
@@ -158,7 +158,7 @@ export function CaseTable({
 	const changeStatus = useCaseStatusChange();
 	const pageIds = useMemo(() => cases.map((testCase) => testCase.id), [cases]);
 	const enteringIds = useEnteringRowIds(pageIds, { animateFirst });
-	const { ids: checkedIds, toggle, togglePage } = selection;
+	const { allMatching, ids: checkedIds, toggle, togglePage } = selection;
 	const toggleThisPage = useCallback(
 		() => togglePage(pageIds),
 		[pageIds, togglePage]
@@ -168,12 +168,14 @@ export function CaseTable({
 		<Table aria-busy={stale} aria-label="用例列表">
 			<CaseTableHeader
 				onTogglePage={toggleThisPage}
-				pageState={pageSelectionState(checkedIds, pageIds)}
+				pageState={
+					allMatching ? "all" : pageSelectionState(checkedIds, pageIds)
+				}
 			/>
 			<TableBody>
 				{cases.map((testCase) => (
 					<CaseRow
-						checked={checkedIds.has(testCase.id)}
+						checked={allMatching || checkedIds.has(testCase.id)}
 						collaborators={collaboratorsByCaseId.get(testCase.id)}
 						entering={enteringIds.has(testCase.id)}
 						key={testCase.id}

@@ -7,7 +7,10 @@ import { useCallback } from "react";
 
 import { CaseFilters } from "@/components/cases/case-filters";
 import { CaseListOverlays } from "@/components/cases/case-list-overlays";
-import { caseListInput } from "@/components/cases/case-list-query";
+import {
+	caseListFilter,
+	caseListInput,
+} from "@/components/cases/case-list-query";
 import { CaseListResult } from "@/components/cases/case-list-result";
 import {
 	caseSelectionScope,
@@ -112,6 +115,7 @@ export function CaseListView({ projectId }: CaseListViewProps) {
 			/>
 			<CaseListResult
 				canCreate={canCreate}
+				filter={caseListFilter(projectId, search)}
 				filtered={filtered}
 				navigation={navigation}
 				query={listQuery}

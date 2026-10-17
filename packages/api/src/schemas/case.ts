@@ -39,6 +39,50 @@ export const removeCasesSchema = z.object({
 		),
 });
 
+/**
+ * 按筛选条件批量处理时最多的用例数（用例列表 50 页）。一次批量操作是一个事务，事务中的用例
+ * 逐条加锁和写入，改状态时每条还记录一个新版本。上限让事务的大小和加锁的时间有界：
+ * 其他人保存这些用例时，最多等这一个事务完成。超过上限时缩小筛选范围，分几次处理。
+ */
+export const MAX_FILTER_BATCH_CASES = 1000;
+
+export const FILTER_BATCH_TOO_MANY_MESSAGE = `符合筛选的用例超过 ${MAX_FILTER_BATCH_CASES} 条，一次最多处理 ${MAX_FILTER_BATCH_CASES} 条，请缩小筛选范围`;
+
+/** 用例列表的筛选条件。cases.list 和按筛选条件的批量操作使用同一个筛选，所以条数和处理的用例一致。 */
+export const caseListFilterSchema = z.object({
+	includeDescendants: z.boolean().optional(),
+	keyword: z.string().optional(),
+	moduleId: z.uuid().optional(),
+	priority: z.array(casePrioritySchema).optional(),
+	projectId: z.uuid(),
+	sourceRefPrefix: z.string().min(1).optional(),
+	status: caseStatusSchema.optional(),
+	tags: z.array(z.string()).optional(),
+});
+
+/**
+ * cases.changeStatus 的输入，三种之一：
+ * - 勾选的用例 { ids, status }，最多 MAX_BATCH_CASES 条；
+ * - 撤销 { ids, status, undo: true }：恢复按筛选条件修改的用例，最多 MAX_FILTER_BATCH_CASES 条。
+ *   服务端不核对这是不是撤销：按筛选条件本来就可以一次修改这么多条，事务的上限相同；
+ * - 全部符合筛选的用例 { filter, status }，由服务端按筛选条件找出用例。
+ */
+export const changeCaseStatusInputSchema = z.union([
+	changeCaseStatusSchema,
+	z.object({
+		ids: z.array(z.uuid()).min(1).max(MAX_FILTER_BATCH_CASES),
+		status: caseStatusSchema,
+		undo: z.literal(true),
+	}),
+	z.object({ filter: caseListFilterSchema, status: caseStatusSchema }),
+]);
+
+/** cases.removeMany 的输入：勾选的用例 { ids }，或全部符合筛选的用例 { filter }。 */
+export const removeCasesInputSchema = z.union([
+	removeCasesSchema,
+	z.object({ filter: caseListFilterSchema }),
+]);
+
 /** 每个步骤最多的步骤截图数量。 */
 export const MAX_STEP_SCREENSHOTS = 9;
 

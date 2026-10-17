@@ -2,28 +2,30 @@ import type { WorkspaceSearch } from "@/components/workspace/workspace-search";
 
 export const CASE_PAGE_SIZE = 20;
 
-export interface CaseListInput {
+/** 用例列表的筛选条件，不含分页。列表查询和「选择全部符合筛选的用例」的批量操作使用同一个筛选。 */
+export interface CaseListFilter {
 	includeDescendants: boolean;
 	keyword: string | undefined;
 	moduleId: string | undefined;
-	page: number;
-	pageSize: number;
 	priority: WorkspaceSearch["priority"];
 	projectId: string;
 	status: WorkspaceSearch["status"];
 	tags: string[] | undefined;
 }
 
-export function caseListInput(
+export interface CaseListInput extends CaseListFilter {
+	page: number;
+	pageSize: number;
+}
+
+export function caseListFilter(
 	projectId: string,
 	search: WorkspaceSearch
-): CaseListInput {
+): CaseListFilter {
 	return {
 		includeDescendants: true,
 		keyword: search.kw === "" ? undefined : search.kw,
 		moduleId: search.moduleId,
-		page: search.page ?? 1,
-		pageSize: CASE_PAGE_SIZE,
 		priority:
 			search.priority && search.priority.length > 0
 				? search.priority
@@ -31,6 +33,17 @@ export function caseListInput(
 		projectId,
 		status: search.status,
 		tags: search.tags && search.tags.length > 0 ? search.tags : undefined,
+	};
+}
+
+export function caseListInput(
+	projectId: string,
+	search: WorkspaceSearch
+): CaseListInput {
+	return {
+		...caseListFilter(projectId, search),
+		page: search.page ?? 1,
+		pageSize: CASE_PAGE_SIZE,
 	};
 }
 

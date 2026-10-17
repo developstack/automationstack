@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { caseListFilter } from "@/components/cases/case-list-query";
 import {
 	useCaseBatchStatusChange,
 	useCaseStatusChange,
@@ -160,7 +161,7 @@ describe("useCaseBatchStatusChange：批量改用例状态，撤销恢复每条�
 		const { listedStatuses, view } = renderBatch();
 		let succeeded: boolean | undefined;
 		await act(async () => {
-			succeeded = await view.result.current(BATCH_IDS, "deprecated");
+			succeeded = await view.result.current({ ids: BATCH_IDS }, "deprecated");
 		});
 		expect(api.changeStatus.mock.calls).toEqual([
 			[{ ids: BATCH_IDS, status: "deprecated" }, expect.anything()],
@@ -182,14 +183,14 @@ describe("useCaseBatchStatusChange：批量改用例状态，撤销恢复每条�
 		api.changeStatus.mockResolvedValueOnce(batchResult("deprecated"));
 		const { listedStatuses, view } = renderBatch();
 		await act(async () => {
-			await view.result.current(BATCH_IDS, "deprecated");
+			await view.result.current({ ids: BATCH_IDS }, "deprecated");
 		});
 		await act(async () => successToast(0).undo?.());
 		expect(
 			api.changeStatus.mock.calls.slice(1).map(([input]) => input)
 		).toEqual([
-			{ ids: ["case-a", "case-c"], status: "draft" },
-			{ ids: ["case-b"], status: "active" },
+			{ ids: ["case-a", "case-c"], status: "draft", undo: true },
+			{ ids: ["case-b"], status: "active", undo: true },
 		]);
 		expect(listedStatuses()).toEqual([
 			"draft",
@@ -215,7 +216,7 @@ describe("useCaseBatchStatusChange：批量改用例状态，撤销恢复每条�
 		});
 		const { view } = renderBatch();
 		await act(async () => {
-			await view.result.current(["case-a"], "draft");
+			await view.result.current({ ids: ["case-a"] }, "draft");
 		});
 		expect(successToast(0)).toEqual({
 			message: "已将 1 条用例改为草稿，其中 1 条原来就是草稿",
@@ -228,9 +229,34 @@ describe("useCaseBatchStatusChange：批量改用例状态，撤销恢复每条�
 		const { view } = renderBatch();
 		let succeeded: boolean | undefined;
 		await act(async () => {
-			succeeded = await view.result.current(BATCH_IDS, "active");
+			succeeded = await view.result.current({ ids: BATCH_IDS }, "active");
 		});
 		expect(succeeded).toBe(false);
 		expect(toast.success).not.toHaveBeenCalled();
+	});
+
+	it("全部符合筛选：按筛选条件修改，提示实际条数；撤销超过 100 条时也是一个请求", async () => {
+		const ids = Array.from({ length: 150 }, (_, index) => `case-${index}`);
+		api.changeStatus.mockResolvedValueOnce({
+			changes: ids.map((id) => ({
+				previousStatus: "draft",
+				testCase: { id, status: "active" },
+				version: { version: 2 },
+			})),
+		});
+		const filter = caseListFilter("project-1", { status: "draft" });
+		const { listedStatuses, view } = renderBatch();
+		await act(async () => {
+			await view.result.current({ filter }, "active");
+		});
+		// 不知道哪些用例符合筛选，所以列表不立刻更新，保存后重新载入
+		expect(listedStatuses()).toEqual(BATCH.map((testCase) => testCase.status));
+		expect(successToast(0).message).toBe("已将 150 条用例改为生效");
+		await act(async () => successToast(0).undo?.());
+		expect(api.changeStatus.mock.calls.map(([input]) => input)).toEqual([
+			{ filter, status: "active" },
+			{ ids, status: "draft", undo: true },
+		]);
+		expect(successToast(1).message).toBe("已恢复 150 条用例原来的状态");
 	});
 });
