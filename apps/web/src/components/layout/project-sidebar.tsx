@@ -1,41 +1,50 @@
 import {
 	Sidebar,
 	SidebarContent,
-	SidebarGroup,
 	SidebarRail,
 } from "@automationstack/ui/components/sidebar";
-import {
-	SidebarMenu,
-	SidebarMenuItem,
-} from "@automationstack/ui/components/sidebar-menu";
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 
+import { ProjectMark } from "@/components/layout/project-mark";
 import { ProjectNavGroup } from "@/components/layout/project-nav-group";
 import { ProjectSwitcher } from "@/components/layout/project-switcher";
-import { SidebarBrand } from "@/components/layout/sidebar-brand";
+import { SidebarExpandButton } from "@/components/layout/sidebar-expand-button";
+import { SidebarTopRow } from "@/components/layout/sidebar-top-row";
 import { SidebarUser } from "@/components/layout/sidebar-user";
 
-interface ProjectSwitcherRowProps {
+const PROJECT_FALLBACK_LABEL = "项目";
+
+interface ProjectSidebarHeaderProps {
 	projectId: string;
 	projectName: string | undefined;
 }
 
-function ProjectSwitcherRow({
+/** 项目以内的侧栏顶部只显示项目切换器，不显示平台的名称和图标。 */
+function ProjectSidebarHeader({
 	projectId,
 	projectName,
-}: ProjectSwitcherRowProps) {
+}: ProjectSidebarHeaderProps) {
+	const isLoading = projectName === undefined;
 	return (
-		<SidebarGroup className="group-data-[collapsible=icon]:hidden">
-			<SidebarMenu>
-				<SidebarMenuItem>
-					{projectName === undefined ? (
-						<Skeleton aria-hidden="true" className="h-14 w-full rounded-lg" />
+		<SidebarTopRow>
+			<div className="w-full group-data-[collapsible=icon]:hidden">
+				{isLoading ? (
+					<Skeleton aria-hidden="true" className="h-12 w-full rounded-md" />
+				) : (
+					<ProjectSwitcher projectId={projectId} projectName={projectName} />
+				)}
+			</div>
+			<SidebarExpandButton
+				label={projectName ?? PROJECT_FALLBACK_LABEL}
+				mark={
+					isLoading ? (
+						<Skeleton aria-hidden="true" className="size-8 rounded-sm" />
 					) : (
-						<ProjectSwitcher projectId={projectId} projectName={projectName} />
-					)}
-				</SidebarMenuItem>
-			</SidebarMenu>
-		</SidebarGroup>
+						<ProjectMark projectName={projectName} />
+					)
+				}
+			/>
+		</SidebarTopRow>
 	);
 }
 
@@ -50,9 +59,8 @@ export function ProjectSidebar({
 }: ProjectSidebarProps) {
 	return (
 		<Sidebar>
-			<SidebarBrand />
+			<ProjectSidebarHeader projectId={projectId} projectName={projectName} />
 			<SidebarContent>
-				<ProjectSwitcherRow projectId={projectId} projectName={projectName} />
 				<ProjectNavGroup projectId={projectId} />
 			</SidebarContent>
 			<SidebarUser />

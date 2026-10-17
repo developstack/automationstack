@@ -2,27 +2,11 @@ import { DropdownMenuTrigger } from "@automationstack/ui/components/dropdown-men
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { ChevronsUpDownIcon } from "lucide-react";
 
+import { ProjectMark } from "@/components/layout/project-mark";
 import {
 	useViewerProjectRole,
 	type ViewerProjectRole,
 } from "@/components/project-members/use-viewer-project-role";
-
-const EMPTY_NAME_INITIAL = "?";
-
-/** 项目名的第一个字符。项目名为空时显示问号。 */
-const projectInitial = (projectName: string): string =>
-	[...projectName][0] ?? EMPTY_NAME_INITIAL;
-
-function ProjectMark({ projectName }: { projectName: string }) {
-	return (
-		<span
-			aria-hidden="true"
-			className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary font-semibold text-primary-foreground text-xs"
-		>
-			{projectInitial(projectName)}
-		</span>
-	);
-}
 
 function ProjectRoleLine({ isPending, label }: ViewerProjectRole) {
 	if (isPending) {
@@ -52,7 +36,7 @@ export function ProjectSwitcherTrigger({
 			render={
 				<button
 					aria-label={`切换项目：当前是 ${projectName}${roleSuffix}`}
-					className="flex w-full items-center gap-2.5 rounded-lg border bg-card p-2 text-left text-card-foreground shadow-card outline-none transition-control hover:bg-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring aria-expanded:bg-accent"
+					className="flex h-12 w-full items-center gap-2.5 rounded-md border bg-card pr-2 pl-bordered-inset text-left text-card-foreground shadow-card outline-none transition-control hover:bg-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring aria-expanded:bg-accent"
 					type="button"
 				>
 					<ProjectMark projectName={projectName} />

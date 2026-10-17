@@ -29,6 +29,16 @@
 	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 7rem 12rem;
 }
 
+/* 侧栏顶部的上内边距：内容面板的 8px 外边距加 1px 边框，使侧栏顶部与内容区顶栏同一条中线。等价于 pt-[calc(--spacing(2)+1px)] */
+@utility pt-sidebar-top {
+	padding-top: calc(var(--spacing) * 2 + 1px);
+}
+
+/* 带 1px 边框的卡片的左内边距：减去边框，使里面的图标与侧栏导航图标左对齐。等价于 pl-[calc(--spacing(2)-1px)] */
+@utility pl-bordered-inset {
+	padding-left: calc(var(--spacing) * 2 - 1px);
+}
+
 @utility text-kbd-hint {
 	font-size: 0.625rem;
 	line-height: 1rem;
