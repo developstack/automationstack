@@ -9,13 +9,22 @@ interface CaseTableColumn {
 	width: string;
 }
 
+/** 勾选列：表头是选中当前页的勾选框，每行是这一行的勾选框。 */
+export const CASE_SELECT_COLUMN: CaseTableColumn = {
+	bars: { head: "size-4 rounded-sm", value: "size-4 rounded-sm" },
+	grow: false,
+	label: "勾选",
+	width: "w-10 pl-4",
+};
+
 /** 用例表格和它的骨架屏共用的列，让骨架屏与最终布局一致。 */
 export const CASE_TABLE_COLUMNS: readonly CaseTableColumn[] = [
+	CASE_SELECT_COLUMN,
 	{
 		bars: { head: "w-7", value: "w-4/5" },
 		grow: true,
 		label: "名称",
-		width: "pl-4",
+		width: "",
 	},
 	{
 		bars: { head: "w-10", value: "w-2/3" },

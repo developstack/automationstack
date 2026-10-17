@@ -7,6 +7,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 
 import { caseListInput } from "@/components/cases/case-list-query";
+import {
+	type PageSelectionState,
+	pageSelectionState,
+	toggleId,
+	togglePageIds,
+} from "@/components/interaction/page-selection";
 import type { WorkspaceSearch } from "@/components/workspace/workspace-search";
 import { orpc } from "@/utils/orpc";
 
@@ -101,7 +107,7 @@ interface CasePickerSelectionInput {
 
 export interface CasePickerSelection {
 	clearSelection: () => void;
-	pageAllSelected: boolean;
+	pageState: PageSelectionState;
 	toggleOne: (caseId: string) => void;
 	togglePage: () => void;
 }
@@ -113,34 +119,17 @@ export function useCasePickerSelection({
 	selectedSet,
 }: CasePickerSelectionInput): CasePickerSelection {
 	const toggleOne = useCallback(
-		(caseId: string) => {
-			const next = new Set(selectedIds);
-			if (next.has(caseId)) {
-				next.delete(caseId);
-			} else {
-				next.add(caseId);
-			}
-			onChange([...next]);
-		},
-		[onChange, selectedIds]
+		(caseId: string) => onChange([...toggleId(selectedSet, caseId)]),
+		[onChange, selectedSet]
 	);
 
-	const pageAllSelected =
-		items.length > 0 && items.every((item) => selectedSet.has(item.id));
+	const pageIds = useMemo(() => items.map((item) => item.id), [items]);
+	const pageState = pageSelectionState(selectedSet, pageIds);
 
-	const togglePage = useCallback(() => {
-		const next = new Set(selectedIds);
-		const allSelected =
-			items.length > 0 && items.every((item) => next.has(item.id));
-		for (const item of items) {
-			if (allSelected) {
-				next.delete(item.id);
-			} else {
-				next.add(item.id);
-			}
-		}
-		onChange([...next]);
-	}, [items, onChange, selectedIds]);
+	const togglePage = useCallback(
+		() => onChange([...togglePageIds(selectedSet, pageIds)]),
+		[onChange, pageIds, selectedSet]
+	);
 
 	const clearSelection = useCallback(() => {
 		if (selectedIds.length === 0) {
@@ -149,5 +138,5 @@ export function useCasePickerSelection({
 		onChange([]);
 	}, [onChange, selectedIds.length]);
 
-	return { clearSelection, pageAllSelected, toggleOne, togglePage };
+	return { clearSelection, pageState, toggleOne, togglePage };
 }

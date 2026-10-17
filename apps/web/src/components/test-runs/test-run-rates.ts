@@ -18,6 +18,7 @@ export const TEST_RUN_STATUS_VALUES: readonly TestRunStatus[] = [
 	"in_progress",
 	"completed",
 	"submitted",
+	"voided",
 ];
 
 export function formatPassRate(counts: RunCounts): string {
@@ -39,8 +40,7 @@ export function testRunProgress(counts: RunCounts): TestRunProgress {
 	};
 }
 
+/** 已提交和已作废的测试任务只读。 */
 export function isTestRunLocked(status: TestRunStatus): boolean {
-	return status === "submitted";
+	return status === "submitted" || status === "voided";
 }
-
-export const TEST_RUN_LOCKED_DELETE_HINT = "已提交的报告不可删除";

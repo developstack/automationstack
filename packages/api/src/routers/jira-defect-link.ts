@@ -12,6 +12,7 @@ import { describeJiraFailure } from "../lib/jira/failure";
 import { resolveJiraClient } from "../lib/jira/get-client";
 import { parseIssueKey } from "../lib/jira/issue-key";
 import { publishInvalidate } from "../lib/realtime-publish";
+import { rejectedWriteMessage, runLockMessage } from "../lib/test-run-errors";
 
 export const linkDefectErrorMap = {
 	BAD_GATEWAY: {},
@@ -82,8 +83,9 @@ export async function handleLinkDefect(
 	if (defect === null) {
 		throw errors.NOT_FOUND({ message: "用例执行记录不存在" });
 	}
-	if (defect.submittedAt !== null) {
-		throw errors.CONFLICT({ message: "该测试任务已提交并锁定，不可修改" });
+	const lockMessage = runLockMessage(defect);
+	if (lockMessage !== null) {
+		throw errors.CONFLICT({ message: lockMessage });
 	}
 	const resolution = await resolveJiraClient(defect.projectId);
 	const view =
@@ -92,7 +94,12 @@ export async function handleLinkDefect(
 			: viewFromExternalUrl(input.reference, errors);
 	const written = await setRunCaseDefect(input.runCaseId, view);
 	if (written.kind !== "ok") {
-		throw errors.CONFLICT({ message: "该测试任务已提交并锁定，不可修改" });
+		throw errors.CONFLICT({
+			message:
+				written.kind === "not-found"
+					? "用例执行记录不存在"
+					: rejectedWriteMessage(written),
+		});
 	}
 	publishInvalidate({
 		action: "update",

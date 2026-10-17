@@ -31,25 +31,18 @@ import {
 	caseConflictDataSchema,
 	caseContentPatchSchema,
 	caseContentSchema,
-	casePrioritySchema,
-	caseStatusSchema,
+	caseListFilterSchema,
 	createCaseAttachmentSchema,
 	MAX_NEW_CASE_ATTACHMENTS,
 } from "../schemas/case";
 import { caseImportProcedures } from "./case-import";
+import { caseRemoveProcedures } from "./case-remove";
+import { caseStatusProcedures } from "./case-status";
 import { caseVersionProcedures } from "./case-versions";
 
-const listCasesSchema = z.object({
-	includeDescendants: z.boolean().optional(),
-	keyword: z.string().optional(),
-	moduleId: z.uuid().optional(),
+const listCasesSchema = caseListFilterSchema.extend({
 	page: z.number().int().min(1).optional(),
 	pageSize: z.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
-	priority: z.array(casePrioritySchema).optional(),
-	projectId: z.uuid(),
-	sourceRefPrefix: z.string().min(1).optional(),
-	status: caseStatusSchema.optional(),
-	tags: z.array(z.string()).optional(),
 });
 
 const createCaseSchema = caseContentSchema.extend({
@@ -89,6 +82,8 @@ function actorName(context: Context): string | null {
 
 export const casesRouter = {
 	...caseImportProcedures,
+	...caseRemoveProcedures,
+	...caseStatusProcedures,
 	...caseVersionProcedures,
 	create: protectedProcedure
 		.errors({ BAD_REQUEST: {}, CONFLICT: {} })

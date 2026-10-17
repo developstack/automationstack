@@ -10,6 +10,7 @@ import { mcpContext } from "./identity";
 import { registerCaseTools } from "./tools/cases";
 import { registerModuleTools } from "./tools/modules";
 import { registerProjectTools } from "./tools/projects";
+import { registerTestRunTools } from "./tools/test-runs";
 
 const MCP_SERVER_INFO = { name: "testcase-platform", version: "0.1.0" };
 
@@ -35,6 +36,7 @@ function createMcpServer(context: Context): McpServer {
 	registerProjectTools(server, client);
 	registerModuleTools(server, client);
 	registerCaseTools(server, client);
+	registerTestRunTools(server, client);
 	return server;
 }
 

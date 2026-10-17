@@ -49,7 +49,7 @@ export function CasePickerResults({
 						cases={cases}
 						onToggle={selection.toggleOne}
 						onTogglePage={selection.togglePage}
-						pageAllSelected={selection.pageAllSelected}
+						pageState={selection.pageState}
 						selectedIds={selectedIds}
 					/>
 				) : (

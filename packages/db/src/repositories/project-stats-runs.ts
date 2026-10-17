@@ -1,14 +1,15 @@
-import { and, eq, isNull, max } from "drizzle-orm";
+import { and, eq, max } from "drizzle-orm";
 
 import { db } from "../index";
 import { testRunCases, testRuns } from "../schema/test-runs";
+import { activeRunConditions } from "./project-stats-filter-core";
 import {
 	type ActiveRunsStats,
 	buildActiveRuns,
 } from "./project-stats-runs-core";
 import { countWhere } from "./project-stats-sql";
 
-/** M3：还没有提交的测试任务，每个测试任务按执行结果计数，并取最后的执行时间。 */
+/** M3：还没有提交、也没有作废的测试任务，每个测试任务按执行结果计数，并取最后的执行时间。 */
 export async function getActiveRuns(
 	projectId: string,
 	now: Date = new Date()
@@ -28,7 +29,7 @@ export async function getActiveRuns(
 		})
 		.from(testRuns)
 		.leftJoin(testRunCases, eq(testRunCases.runId, testRuns.id))
-		.where(and(eq(testRuns.projectId, projectId), isNull(testRuns.submittedAt)))
+		.where(and(...activeRunConditions(projectId)))
 		.groupBy(testRuns.id);
 	return buildActiveRuns({
 		now,

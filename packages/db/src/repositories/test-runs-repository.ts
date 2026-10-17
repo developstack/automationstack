@@ -5,7 +5,7 @@ import {
 	desc,
 	eq,
 	getTableColumns,
-	ilike,
+	inArray,
 	type SQL,
 	sql,
 } from "drizzle-orm";
@@ -14,13 +14,16 @@ import { db } from "../index";
 import {
 	type TestRun,
 	type TestRunCaseResult,
-	type TestRunStatus,
 	testRunCases,
 	testRuns,
 } from "../schema/test-runs";
 import { users } from "../schema/users";
 import type { DbTransaction } from "./repository-types";
 import { settleAutoSubmitForProject } from "./test-run-auto-submit-repository";
+import {
+	buildTestRunListConditions,
+	type ListTestRunsFilter,
+} from "./test-run-list-filter-core";
 
 export interface TestRunResultCounts {
 	blocked: number;
@@ -37,28 +40,10 @@ export interface TestRunListItem {
 	run: TestRun;
 }
 
-export interface ListTestRunsFilter {
-	keyword?: string;
-	projectId: string;
-	status?: TestRunStatus;
-}
-
 function resultCount(result: TestRunCaseResult): SQL<number> {
 	return sql<number>`count(${testRunCases.id}) filter (where ${testRunCases.result} = ${result}::test_run_case_result)`.mapWith(
 		Number
 	);
-}
-
-function buildListConditions(filter: ListTestRunsFilter): SQL[] {
-	const conditions: SQL[] = [eq(testRuns.projectId, filter.projectId)];
-	if (filter.status) {
-		conditions.push(eq(testRuns.status, filter.status));
-	}
-	if (filter.keyword) {
-		const escaped = filter.keyword.replace(/[%_\\]/g, "\\$&");
-		conditions.push(ilike(testRuns.name, `%${escaped}%`));
-	}
-	return conditions;
 }
 
 export async function listTestRuns(
@@ -80,7 +65,7 @@ export async function listTestRuns(
 		.from(testRuns)
 		.leftJoin(testRunCases, eq(testRunCases.runId, testRuns.id))
 		.leftJoin(users, eq(users.id, testRuns.createdBy))
-		.where(and(...buildListConditions({ ...filter, projectId })))
+		.where(and(...buildTestRunListConditions({ ...filter, projectId })))
 		.groupBy(testRuns.id, users.id)
 		.orderBy(desc(testRuns.createdAt));
 	return rows.map(
@@ -101,6 +86,15 @@ export async function listTestRuns(
 	);
 }
 
+export async function findTestRun(runId: string): Promise<TestRun | null> {
+	const [run] = await db
+		.select()
+		.from(testRuns)
+		.where(eq(testRuns.id, runId))
+		.limit(1);
+	return run ?? null;
+}
+
 export async function countCaseRunReferences(
 	tx: DbTransaction,
 	caseId: string
@@ -110,4 +104,23 @@ export async function countCaseRunReferences(
 		.from(testRunCases)
 		.where(eq(testRunCases.caseId, caseId));
 	return row?.value ?? 0;
+}
+
+/** 每条用例被几个测试任务用到。没有被用到的用例不在结果中。 */
+export async function countRunReferencesByCase(
+	tx: DbTransaction,
+	caseIds: readonly string[]
+): Promise<Map<string, number>> {
+	if (caseIds.length === 0) {
+		return new Map();
+	}
+	const rows = await tx
+		.select({
+			caseId: testRunCases.caseId,
+			value: countDistinct(testRunCases.runId),
+		})
+		.from(testRunCases)
+		.where(inArray(testRunCases.caseId, [...caseIds]))
+		.groupBy(testRunCases.caseId);
+	return new Map(rows.map((row) => [row.caseId, row.value]));
 }

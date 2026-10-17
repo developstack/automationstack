@@ -6,6 +6,7 @@ export const testRunStatusEnum = pgEnum("test_run_status", [
 	"in_progress",
 	"completed",
 	"submitted",
+	"voided",
 ]);
 
 export const testRunCaseResultEnum = pgEnum("test_run_case_result", [

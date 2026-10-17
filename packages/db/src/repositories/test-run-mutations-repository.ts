@@ -5,7 +5,7 @@ import { testCases } from "../schema/test-cases";
 import { testRunEvents } from "../schema/test-run-events";
 import { type TestRun, testRunCases, testRuns } from "../schema/test-runs";
 import type { DbTransaction } from "./repository-types";
-import type { RunLocked } from "./test-run-status-core";
+import type { RunWriteLock } from "./test-run-status-core";
 import { ensureRunWritable } from "./test-run-status-repository";
 
 export interface CreateTestRunInput {
@@ -96,7 +96,7 @@ export interface UpdateTestRunInput {
 }
 
 export type UpdateTestRunResult =
-	| RunLocked
+	| RunWriteLock
 	| { kind: "not-found" }
 	| { kind: "ok"; run: TestRun };
 
@@ -127,28 +127,6 @@ export function updateTestRun(
 			throw new Error("updateTestRun: update returned no row");
 		}
 		return { kind: "ok" as const, run: updated };
-	});
-}
-
-export type RemoveTestRunResult =
-	| RunLocked
-	| { kind: "not-found" }
-	| { kind: "ok"; run: TestRun };
-
-export function removeTestRun(runId: string): Promise<RemoveTestRunResult> {
-	return db.transaction(async (tx) => {
-		const writable = await ensureRunWritable(tx, runId);
-		if (writable.kind !== "ok") {
-			return writable;
-		}
-		const [removed] = await tx
-			.delete(testRuns)
-			.where(eq(testRuns.id, runId))
-			.returning();
-		if (!removed) {
-			throw new Error("removeTestRun: delete returned no row");
-		}
-		return { kind: "ok" as const, run: removed };
 	});
 }
 

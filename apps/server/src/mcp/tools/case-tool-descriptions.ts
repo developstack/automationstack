@@ -69,16 +69,36 @@ export const SEARCH_CASES_DESCRIPTION =
 	"project writes cases and cannot be used to judge whether a new case " +
 	"duplicates an existing one — use read_cases with detail 'full' for that.";
 
-export const DELETE_CASE_DESCRIPTION =
-	"Permanently delete ONE test case by id. This is a hard delete with no trash " +
-	"and no restore, so only call it when the user has explicitly asked to remove " +
-	"that case (e.g. a duplicate or a wrongly imported row) — never as cleanup " +
-	"you decided on your own, and confirm which case when the request is at all " +
-	"ambiguous. Get the id from read_cases or search_cases first. " +
-	"Retiring a case that is part of the project's real suite is NOT a delete: " +
-	"set its status to 'deprecated' via import_test_cases (onDuplicate 'overwrite') " +
-	"so it stays visible and its history keeps working. " +
-	"Deletion is refused (CONFLICT) while any test run references the case — the " +
-	"error reports how many — because removing it would silently change past " +
-	"reports; the answer there is to deprecate instead. " +
-	"Returns {id} of the deleted case.";
+export const DELETE_CASES_DESCRIPTION =
+	"Permanently delete up to 100 test cases of ONE project in one call. " +
+	"This is a hard delete: there is no trash and no restore, and the version " +
+	"history of each case is also deleted. Call it only when the user explicitly " +
+	"asks to delete these cases. Examples are duplicates and rows that an import " +
+	"added by mistake. Do not delete cases as cleanup that you decide on. If the " +
+	"request is not clear, ask the user which cases to delete. Get the ids from " +
+	"read_cases or search_cases first. " +
+	"Do not delete a case to retire it from the real suite. Instead, set its " +
+	"status to 'deprecated' with change_case_status. " +
+	"A case that a test run uses cannot be deleted, because test runs are " +
+	"permanent. The tool skips these cases and deletes the other cases in one " +
+	"transaction. If an id does not exist, the tool puts it in missingIds and " +
+	"continues. If the ids belong to different projects, the tool deletes nothing. " +
+	"Any member of the project can call it. Split larger sets into calls of at " +
+	"most 100 ids. " +
+	"Returns {deleted[] (id, name), skipped[] (id, name, referencedByRunCount), " +
+	"missingIds[]}. Tell the user about each skipped case and offer to set it to " +
+	"'deprecated'.";
+
+export const CHANGE_CASE_STATUS_DESCRIPTION =
+	"Change the status (draft | active | deprecated) of up to 100 cases of ONE " +
+	"project in one call — e.g. promote reviewed drafts to 'active', or retire " +
+	"cases with 'deprecated'. Only the status changes: steps and other fields " +
+	"stay as they are, and there is no version check. The call is all-or-nothing: " +
+	"if any id does not exist, or the ids belong to different projects, nothing " +
+	"changes. Any member of the project may call it. Split larger sets into calls " +
+	"of at most 100 ids. " +
+	"Every case whose status actually changes gets a new version in its history; " +
+	"a case already in the target status is left alone. " +
+	"Returns {changed[] (id, name, previousStatus, status, version), unchanged[] " +
+	"(id, name, status)}. To undo, call again once per distinct previousStatus " +
+	"with the ids that had it.";

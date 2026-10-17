@@ -17,6 +17,21 @@ export async function getProjectIdByCaseId(
 	return row?.projectId ?? null;
 }
 
+export interface CaseProject {
+	caseId: string;
+	projectId: string;
+}
+
+/** 每条用例所在的项目。不存在的用例不在结果中。 */
+export function listCaseProjects(
+	caseIds: readonly string[]
+): Promise<CaseProject[]> {
+	return db
+		.select({ caseId: testCases.id, projectId: testCases.projectId })
+		.from(testCases)
+		.where(inArray(testCases.id, [...caseIds]));
+}
+
 export async function getProjectIdByModuleId(
 	moduleId: string
 ): Promise<string | null> {

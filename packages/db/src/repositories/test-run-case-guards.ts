@@ -4,9 +4,9 @@ import type { TestRunExecutedVia } from "../schema/test-runs";
 import { testRunCases } from "../schema/test-runs";
 import type { DbTransaction } from "./repository-types";
 import type { RunCaseVerdictSnapshot } from "./test-run-case-events-core";
-import type { RunLocked } from "./test-run-status-core";
+import type { RunWriteLock } from "./test-run-status-core";
 
-export type RunCaseWriteRejection = RunLocked | { kind: "not-found" };
+export type RunCaseWriteRejection = RunWriteLock | { kind: "not-found" };
 
 export interface RunReviewPending {
 	kind: "review-pending";

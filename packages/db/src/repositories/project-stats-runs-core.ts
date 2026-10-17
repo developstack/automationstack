@@ -42,7 +42,7 @@ export interface ActiveRunsStats {
 
 export interface ActiveRunsInput {
 	now: Date;
-	/** 进行中的测试任务，即还没有提交的测试任务。 */
+	/** 进行中的测试任务，即还没有提交、也没有作废的测试任务。 */
 	runs: readonly ActiveRunRow[];
 }
 

@@ -9,15 +9,39 @@ import { RunExecutionHeader } from "@/components/test-runs/run-execution-header"
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
 import type { RunExecutionState } from "@/components/test-runs/run-execution-state";
 import { RunLockedBanner } from "@/components/test-runs/run-locked-banner";
+import { RunVoidedBanner } from "@/components/test-runs/run-voided-banner";
 
 export interface RunExecutionLayoutProps extends RunExecutionState {
 	projectId: string;
 }
 
+function RunExecutionBanner({ data }: Pick<RunExecutionLayoutProps, "data">) {
+	const { run } = data;
+	if (run.voidedAt !== null) {
+		return (
+			<RunVoidedBanner
+				voidedAt={run.voidedAt}
+				voidedByName={data.voidedByName}
+				voidReason={run.voidReason}
+			/>
+		);
+	}
+	if (run.submittedAt !== null) {
+		return (
+			<RunLockedBanner
+				submittedAt={run.submittedAt}
+				submittedBy={run.submittedBy}
+				submittedByName={data.submittedByName}
+			/>
+		);
+	}
+	return null;
+}
+
 export function RunExecutionLayout(props: RunExecutionLayoutProps) {
 	const { data } = props;
-	const { submittedAt } = data.run;
-	const showBanner = data.permissions.locked && submittedAt !== null;
+	// 已提交或已作废的测试任务在顶栏下显示只读说明。
+	const showBanner = data.permissions.locked;
 	return (
 		<div
 			className={cn(
@@ -32,13 +56,7 @@ export function RunExecutionLayout(props: RunExecutionLayoutProps) {
 				projectId={props.projectId}
 				run={data.run}
 			/>
-			{showBanner ? (
-				<RunLockedBanner
-					submittedAt={submittedAt}
-					submittedBy={data.run.submittedBy}
-					submittedByName={data.submittedByName}
-				/>
-			) : null}
+			{showBanner ? <RunExecutionBanner data={data} /> : null}
 			<RunExecutionBody {...props} />
 			<RunEvents runId={data.run.id} />
 			<AddRunCasesSheet

@@ -53,4 +53,7 @@ test("拿不到任务名时说「该测试任务」，不在文案里念 uuid", 
 			"冒烟"
 		)
 	).toContain("测试任务「冒烟」已于");
+	expect(
+		describeRunUnwritable({ kind: "voided", voidedAt: new Date() }, "冒烟")
+	).toBe("测试任务「冒烟」已作废，附件未受理");
 });

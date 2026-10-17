@@ -2,7 +2,6 @@ import { getTestRunDetail } from "@automationstack/db/repositories/test-run-deta
 import {
 	createTestRun,
 	createTestRunFromFailed,
-	removeTestRun,
 	updateTestRun,
 } from "@automationstack/db/repositories/test-run-mutations-repository";
 import { getTestRunReport } from "@automationstack/db/repositories/test-run-report-repository";
@@ -22,6 +21,7 @@ import { runIdSchema, testRunStatusSchema } from "../schemas/test-run";
 import { testRunEventProcedures } from "./test-run-events";
 import { testRunExecutionProcedures } from "./test-run-execution";
 import { testRunStepExecutionProcedures } from "./test-run-step-execution";
+import { testRunVoidProcedures } from "./test-run-void";
 
 const listTestRunsSchema = z.object({
 	keyword: z.string().optional(),
@@ -56,6 +56,7 @@ export const testRunsRouter = {
 	...testRunEventProcedures,
 	...testRunExecutionProcedures,
 	...testRunStepExecutionProcedures,
+	...testRunVoidProcedures,
 	create: protectedProcedure
 		.errors(testRunErrors)
 		.input(createTestRunSchema)
@@ -160,24 +161,6 @@ export const testRunsRouter = {
 			});
 			return result.run;
 		}),
-	remove: protectedProcedure
-		.errors(testRunErrors)
-		.input(runIdSchema)
-		.use(requireRunMember)
-		.handler(async ({ context, errors, input }) => {
-			const result = await removeTestRun(input.runId);
-			if (result.kind !== "ok") {
-				rejectRunWrite(result, errors);
-			}
-			publishInvalidate({
-				action: "delete",
-				context,
-				entity: "testRun",
-				ids: [result.run.id],
-				projectId: result.run.projectId,
-			});
-			return { id: result.run.id };
-		}),
 	report: protectedProcedure
 		.errors({ NOT_FOUND: {} })
 		.input(runIdSchema)
@@ -198,8 +181,8 @@ export const testRunsRouter = {
 				actorId: context.user.id,
 				runId: input.runId,
 			});
-			if (result.kind === "not-found") {
-				throw errors.NOT_FOUND({ message: "测试任务不存在" });
+			if (result.kind === "not-found" || result.kind === "voided") {
+				rejectRunWrite(result, errors);
 			}
 			if (result.kind === "invalid-status") {
 				throw errors.CONFLICT({

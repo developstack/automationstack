@@ -129,6 +129,17 @@ All corners use one scale of four steps. The maximum radius is 8px. The tokens a
 
 The tokens `--radius-xl` to `--radius-4xl` point to `--radius-lg`. Thus a vendored class that is not changed also stops at 8px.
 
+### Menus
+
+A menu shows only the items that the user can use at that time. This rule applies to all dropdown menus and context menus.
+
+1. Do not show a menu item that the user cannot use.
+2. Do not show an item as disabled. Do not write the reason next to the item.
+3. Use the same rule as the server to find if the user can use an item. The server must also check each action.
+4. If the user cannot use any item in a menu, do not show the button that opens the menu.
+5. If you remove all items of a group, also remove the separator and the label of that group.
+6. Write a test for each condition that removes an item from a menu.
+
 ## Testing
 
 - Write assertions inside `it()` or `test()` blocks

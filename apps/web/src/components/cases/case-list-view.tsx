@@ -7,13 +7,23 @@ import { useCallback } from "react";
 
 import { CaseFilters } from "@/components/cases/case-filters";
 import { CaseListOverlays } from "@/components/cases/case-list-overlays";
-import { caseListInput } from "@/components/cases/case-list-query";
+import {
+	caseListFilter,
+	caseListInput,
+} from "@/components/cases/case-list-query";
 import { CaseListResult } from "@/components/cases/case-list-result";
+import {
+	caseSelectionScope,
+	useCaseSelection,
+} from "@/components/cases/use-case-selection";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
 import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import { useWorkspaceNavigation } from "@/components/workspace/use-workspace-navigation";
-import { hasCaseFilters } from "@/components/workspace/workspace-search";
+import {
+	hasCaseFilters,
+	type WorkspaceSearch,
+} from "@/components/workspace/workspace-search";
 import { orpc } from "@/utils/orpc";
 
 const routeApi = getRouteApi("/projects/$projectId/");
@@ -60,16 +70,22 @@ interface CaseListViewProps {
 
 export const CASE_LIST_MAIN = "flex min-h-0 flex-col gap-4 overflow-y-auto p-4";
 
-export function CaseListView({ projectId }: CaseListViewProps) {
-	const search = routeApi.useSearch();
-	const navigation = useWorkspaceNavigation();
-	const listQuery = useQuery(
+/** 当前页的用例。改筛选条件和翻页时，旧结果一直显示到新结果到达。 */
+function useCaseListQuery(projectId: string, search: WorkspaceSearch) {
+	return useQuery(
 		orpc.cases.list.queryOptions({
 			input: caseListInput(projectId, search),
 			placeholderData: keepPreviousData,
 		})
 	);
+}
 
+export function CaseListView({ projectId }: CaseListViewProps) {
+	const search = routeApi.useSearch();
+	const navigation = useWorkspaceNavigation();
+	const listQuery = useCaseListQuery(projectId, search);
+
+	const selection = useCaseSelection(caseSelectionScope(projectId, search));
 	const canCreate = search.moduleId !== undefined;
 	const filtered = hasCaseFilters(search);
 
@@ -99,10 +115,12 @@ export function CaseListView({ projectId }: CaseListViewProps) {
 			/>
 			<CaseListResult
 				canCreate={canCreate}
+				filter={caseListFilter(projectId, search)}
 				filtered={filtered}
 				navigation={navigation}
 				query={listQuery}
 				selectedCaseId={search.caseId}
+				selection={selection}
 			/>
 			<CaseListOverlays
 				navigation={navigation}

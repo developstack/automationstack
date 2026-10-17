@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	commentFieldText,
 	needsVerdictDetails,
+	runPermissions,
 } from "@/components/test-runs/test-run-meta";
 
 describe("needsVerdictDetails", () => {
@@ -37,5 +38,19 @@ describe("commentFieldText", () => {
 			expect(text.label).toBe("说明");
 			expect(text.placeholder).toBeUndefined();
 		}
+	});
+});
+
+describe("runPermissions", () => {
+	it.each([
+		[
+			"pending_review",
+			{ canConclude: false, canEditCases: true, locked: false },
+		],
+		["in_progress", { canConclude: true, canEditCases: true, locked: false }],
+		["submitted", { canConclude: false, canEditCases: false, locked: true }],
+		["voided", { canConclude: false, canEditCases: false, locked: true }],
+	] as const)("%s", (status, expected) => {
+		expect(runPermissions(status)).toEqual(expected);
 	});
 });

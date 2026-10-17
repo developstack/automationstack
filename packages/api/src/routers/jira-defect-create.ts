@@ -16,6 +16,7 @@ import {
 import { describeJiraFailure } from "../lib/jira/failure";
 import { resolveJiraClient } from "../lib/jira/get-client";
 import { publishInvalidate } from "../lib/realtime-publish";
+import { rejectedWriteMessage, runLockMessage } from "../lib/test-run-errors";
 
 export const createDefectErrorMap = {
 	BAD_GATEWAY: {},
@@ -39,8 +40,9 @@ function requireCreatableContext(
 	if (defect === null) {
 		throw errors.NOT_FOUND({ message: "用例执行记录不存在" });
 	}
-	if (defect.submittedAt !== null) {
-		throw errors.CONFLICT({ message: "该测试任务已提交并锁定，不可修改" });
+	const lockMessage = runLockMessage(defect);
+	if (lockMessage !== null) {
+		throw errors.CONFLICT({ message: lockMessage });
 	}
 	if (defect.defectKey !== null) {
 		throw errors.CONFLICT({
@@ -115,11 +117,12 @@ export async function handleCreateDefect(
 	};
 	const written = await setRunCaseDefect(input.runCaseId, view);
 	if (written.kind !== "ok") {
+		const reason =
+			written.kind === "not-found"
+				? "用例执行记录已不存在"
+				: rejectedWriteMessage(written);
 		throw errors.CONFLICT({
-			message:
-				written.kind === "locked"
-					? `该测试任务已提交并锁定，不可修改；刚创建的 ${created.key} 需要手工处理`
-					: `用例执行记录已不存在；刚创建的 ${created.key} 需要手工处理`,
+			message: `${reason}；刚创建的 ${created.key} 需要手工处理`,
 		});
 	}
 	publishInvalidate({

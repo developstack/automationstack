@@ -2,6 +2,10 @@ import {
 	importBatchSchema,
 	searchCasesSchema,
 } from "@automationstack/api/routers/case-import";
+import {
+	changeCaseStatusSchema,
+	removeCasesSchema,
+} from "@automationstack/api/schemas/case";
 import { MAX_PAGE_SIZE } from "@automationstack/db/repositories/case-list-repository";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -12,7 +16,8 @@ import {
 	shapeReadCases,
 } from "./case-read-shape";
 import {
-	DELETE_CASE_DESCRIPTION,
+	CHANGE_CASE_STATUS_DESCRIPTION,
+	DELETE_CASES_DESCRIPTION,
 	IMPORT_TEST_CASES_DESCRIPTION,
 	LIST_CASE_TAGS_DESCRIPTION,
 	READ_CASES_DESCRIPTION,
@@ -94,6 +99,47 @@ async function readCases(
 	return jsonResult(shapeReadCases(result, detail));
 }
 
+type ChangeCaseStatusInput = z.infer<typeof changeCaseStatusSchema>;
+
+/** 批量改状态的结果：只带 id、名称和状态，不带用例正文。 */
+async function changeCaseStatus(
+	client: ApiClient,
+	input: ChangeCaseStatusInput
+): Promise<ToolResult> {
+	const { changes } = await client.cases.changeStatus(input);
+	const changed = changes
+		.filter((change) => change.version !== null)
+		.map(({ previousStatus, testCase, version }) => ({
+			id: testCase.id,
+			name: testCase.name,
+			previousStatus,
+			status: testCase.status,
+			version: version?.version,
+		}));
+	const unchanged = changes
+		.filter((change) => change.version === null)
+		.map(({ testCase }) => ({
+			id: testCase.id,
+			name: testCase.name,
+			status: testCase.status,
+		}));
+	return jsonResult({ changed, unchanged });
+}
+
+function registerChangeCaseStatusTool(
+	server: McpServer,
+	client: ApiClient
+): void {
+	server.registerTool(
+		"change_case_status",
+		{
+			description: CHANGE_CASE_STATUS_DESCRIPTION,
+			inputSchema: changeCaseStatusSchema,
+		},
+		(input) => safeToolCall(() => changeCaseStatus(client, input))
+	);
+}
+
 export function registerCaseTools(server: McpServer, client: ApiClient): void {
 	server.registerTool(
 		"read_cases",
@@ -128,15 +174,11 @@ export function registerCaseTools(server: McpServer, client: ApiClient): void {
 		(input) =>
 			safeToolCall(async () => jsonResult(await client.cases.search(input)))
 	);
+	registerChangeCaseStatusTool(server, client);
 	server.registerTool(
 		"delete_cases",
-		{
-			description: DELETE_CASE_DESCRIPTION,
-			inputSchema: {
-				id: z.uuid().describe("Id of the case to delete (from read_cases)."),
-			},
-		},
-		({ id }) =>
-			safeToolCall(async () => jsonResult(await client.cases.remove({ id })))
+		{ description: DELETE_CASES_DESCRIPTION, inputSchema: removeCasesSchema },
+		(input) =>
+			safeToolCall(async () => jsonResult(await client.cases.removeMany(input)))
 	);
 }

@@ -49,6 +49,7 @@ export async function resolveAutomationTargets(
 			-- 在 test_runs 上多一个项目谓词。
 			and tr.project_id = ${projectId}
 			and tr.submitted_at is null
+			and tr.voided_at is null
 			-- 这里**刻意没有** runIds 白名单谓词：收窄在 api 层做，理由见
 			-- ResolveAutomationTargetsInput 的注释；模板字符串里不能写反引号。
 		where tc.project_id = ${projectId}

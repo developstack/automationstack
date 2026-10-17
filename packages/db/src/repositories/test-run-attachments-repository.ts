@@ -15,7 +15,7 @@ import {
 	type AttachmentScope,
 	findRunIdInTx,
 } from "./test-run-attachment-scopes";
-import type { RunLocked } from "./test-run-status-core";
+import type { RunWriteLock } from "./test-run-status-core";
 import { ensureRunWritable } from "./test-run-status-repository";
 
 // biome-ignore lint/performance/noBarrelFile: 兼容性 re-export，不是 barrel——presign 那几个函数本来就定义在本文件里，拆去 test-run-attachment-scopes.ts 只为行数上限，调用方的导入路径必须保持不变
@@ -41,7 +41,7 @@ export interface RegisterAttachmentInput {
 }
 
 export type RegisterAttachmentResult =
-	| RunLocked
+	| RunWriteLock
 	| RepositoryNotFound
 	| {
 			attachment: TestRunAttachment;
@@ -101,7 +101,7 @@ export function listAttachments(
 }
 
 export type RemoveAttachmentResult =
-	| RunLocked
+	| RunWriteLock
 	| RepositoryNotFound
 	| {
 			attachment: TestRunAttachment;

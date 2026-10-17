@@ -116,6 +116,26 @@ describe("useCaseEditor：保存时先上传步骤截图，再保存用例", () 
 	});
 });
 
+describe("useCaseEditor：编辑中用例被他人修改", () => {
+	it("载入了新版本（例如有人在表格中改了状态）：保存时仍用开始编辑时的版本，由服务端返回保存冲突", async () => {
+		mutate.mockClear();
+		const hook = renderHook(
+			({ testCase }: { testCase: TestCase }) =>
+				useCaseEditor("case-1", testCase),
+			{ initialProps: { testCase: TEST_CASE } }
+		);
+		act(() => hook.result.current.startEditing());
+		hook.rerender({
+			testCase: { ...TEST_CASE, currentVersion: 5, status: "deprecated" },
+		});
+		await act(async () => {
+			hook.result.current.handleSave();
+			await Promise.resolve();
+		});
+		expect(mutate.mock.calls[0]?.[0]).toMatchObject({ expectedVersion: 4 });
+	});
+});
+
 describe("useCaseEditor：在只读视图中删除步骤截图", () => {
 	function removeSaved() {
 		mutate.mockClear();
