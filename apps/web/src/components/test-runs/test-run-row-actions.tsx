@@ -13,6 +13,7 @@ import { Button } from "@automationstack/ui/components/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@automationstack/ui/components/dropdown-menu";
 import { MoreHorizontalIcon } from "lucide-react";
@@ -20,9 +21,6 @@ import { useCallback, useState } from "react";
 
 import { CreateFromFailedDialog } from "@/components/test-runs/create-from-failed-dialog";
 import { isTestRunLocked } from "@/components/test-runs/test-run-rates";
-import { TestRunRowDeleteItem } from "@/components/test-runs/test-run-row-delete-item";
-import { TestRunRowEditItem } from "@/components/test-runs/test-run-row-edit-item";
-import { TestRunRowRetestItem } from "@/components/test-runs/test-run-row-retest-item";
 import { useRemoveTestRun } from "@/components/test-runs/use-test-run-list-mutations";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 
@@ -94,8 +92,9 @@ export function TestRunRowActions({ item, onEdit }: TestRunRowActionsProps) {
 	const { counts, run } = item;
 	const [deleting, setDeleting] = useState(false);
 	const [retesting, setRetesting] = useState(false);
+	// 不能用的操作不放进菜单。已提交的测试任务不能编辑和删除。
 	const locked = isTestRunLocked(run.status);
-	const noFailed = counts.failed === 0;
+	const canRetest = counts.failed > 0;
 
 	const handleEdit = useCallback(() => onEdit(run.id), [onEdit, run.id]);
 	const openDelete = useCallback(() => setDeleting(true), []);
@@ -103,14 +102,29 @@ export function TestRunRowActions({ item, onEdit }: TestRunRowActionsProps) {
 	const openRetest = useCallback(() => setRetesting(true), []);
 	const closeRetest = useCallback(() => setRetesting(false), []);
 
+	// 一项都不能用时，不显示「更多操作」按钮。
+	if (locked && !canRetest) {
+		return null;
+	}
+
 	return (
 		<>
 			<DropdownMenu>
 				<RowActionsTrigger runName={run.name} />
 				<DropdownMenuContent align="end">
-					<TestRunRowEditItem locked={locked} onEdit={handleEdit} />
-					<TestRunRowRetestItem noFailed={noFailed} onOpen={openRetest} />
-					<TestRunRowDeleteItem locked={locked} onOpen={openDelete} />
+					{locked ? null : (
+						<DropdownMenuItem onClick={handleEdit}>编辑</DropdownMenuItem>
+					)}
+					{canRetest ? (
+						<DropdownMenuItem onClick={openRetest}>
+							从失败用例创建
+						</DropdownMenuItem>
+					) : null}
+					{locked ? null : (
+						<DropdownMenuItem onClick={openDelete} variant="destructive">
+							删除
+						</DropdownMenuItem>
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 			<DeleteRunDialog

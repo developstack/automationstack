@@ -1,18 +1,17 @@
 import type { ProjectMemberView } from "@automationstack/db/repositories/project-members-repository";
 import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { UserRole } from "@automationstack/db/schema/users";
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ProjectMembersView } from "@/components/project-members/project-members-view";
-import { renderWithQuery } from "@/test-dom-fixtures";
+import { openMenuItems, renderWithQuery } from "@/test-dom-fixtures";
 
 const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
 const MEMBERS_KEY = ["projectMembers", "list", PROJECT_ID];
 const SELF_ID = "11111111-1111-4111-8111-111111111111";
 const SUSPENDED_HINT = /项目拥有者的管理权限已暂停/;
-const PROMOTE_BLOCKED = "设为拥有者（普通用户不能成为拥有者）";
 
 const session = vi.hoisted(() => ({ role: "member" as UserRole }));
 
@@ -89,12 +88,6 @@ function renderAs(role: UserRole) {
 	]);
 }
 
-function openMenuFor(username: string) {
-	fireEvent.click(
-		screen.getByRole("button", { name: `成员「${username}」操作` })
-	);
-}
-
 describe("ProjectMembersView：管理项目必须是项目 owner，并且平台角色至少是项目管理员", () => {
 	it("项目管理员 + 项目 owner：可以添加成员", () => {
 		renderAs("project_admin");
@@ -115,17 +108,10 @@ describe("ProjectMembersView：管理项目必须是项目 owner，并且平台�
 
 describe("ProjectMembersView：不能把普通用户设为项目拥有者", () => {
 	it.each([
-		[
-			"普通用户的「设为拥有者」被禁用，并说明原因",
-			"bob",
-			PROMOTE_BLOCKED,
-			true,
-		],
-		["项目管理员的「设为拥有者」可以选择", "carol", "设为拥有者", false],
-	])("%s", async (_name, username, itemName, disabled) => {
+		["普通用户：菜单里没有「设为拥有者」", "bob", ["移出项目"]],
+		["项目管理员：菜单里有「设为拥有者」", "carol", ["设为拥有者", "移出项目"]],
+	])("%s", async (_name, username, items) => {
 		renderAs("project_admin");
-		openMenuFor(username);
-		const item = await screen.findByRole("menuitem", { name: itemName });
-		expect(item.getAttribute("aria-disabled") === "true").toBe(disabled);
+		expect(await openMenuItems(`成员「${username}」操作`)).toEqual(items);
 	});
 });

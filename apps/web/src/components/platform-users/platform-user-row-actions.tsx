@@ -1,3 +1,4 @@
+import { isManagedByCasdoor } from "@automationstack/api/auth/casdoor/managed-users";
 import type { UserProjectMembership } from "@automationstack/db/repositories/users-with-projects-core";
 import type { PublicUser, UserRole } from "@automationstack/db/schema/users";
 import { Button } from "@automationstack/ui/components/button";
@@ -6,7 +7,6 @@ import {
 	DropdownMenuContent,
 	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@automationstack/ui/components/dropdown-menu";
@@ -14,7 +14,6 @@ import { MoreHorizontalIcon } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { ManageUserProjectsDialog } from "@/components/platform-users/manage-user-projects-dialog";
-import type { PlatformUserActionAccess } from "@/components/platform-users/platform-user-access";
 import { PlatformUserConfirmDialog } from "@/components/platform-users/platform-user-confirm-dialog";
 import { roleChangeTargets } from "@/components/platform-users/platform-user-meta";
 import { PlatformUserRoleChangeItem } from "@/components/platform-users/platform-user-role-change-item";
@@ -22,7 +21,6 @@ import { ResetPasswordDialog } from "@/components/platform-users/reset-password-
 import { usePlatformUserActions } from "@/components/platform-users/use-platform-user-actions";
 
 interface PlatformUserActionsMenuProps {
-	access: PlatformUserActionAccess;
 	onDisable: () => void;
 	onManageProjects: () => void;
 	onReset: () => void;
@@ -36,44 +34,30 @@ type AccountActionItemsProps = Omit<
 	"onManageProjects"
 >;
 
-/** 重置密码、修改平台角色、停用和恢复。Casdoor 管理的用户只显示提示，菜单项不可用。 */
+/** 重置密码、修改平台角色、停用和恢复。 */
 function AccountActionItems({
-	access,
 	onDisable,
 	onReset,
 	onRestore,
 	onSetRole,
 	user,
 }: AccountActionItemsProps) {
-	const locked = !access.accountActions;
 	return (
 		<DropdownMenuGroup>
-			{access.hint === null ? null : (
-				<DropdownMenuLabel>{access.hint}</DropdownMenuLabel>
-			)}
-			<DropdownMenuItem disabled={locked} onClick={onReset}>
-				重置密码
-			</DropdownMenuItem>
+			<DropdownMenuItem onClick={onReset}>重置密码</DropdownMenuItem>
 			{roleChangeTargets(user.role).map((role) => (
 				<PlatformUserRoleChangeItem
-					disabled={locked}
 					key={role}
 					onSetRole={onSetRole}
 					role={role}
 				/>
 			))}
 			{user.disabledAt === null ? (
-				<DropdownMenuItem
-					disabled={locked}
-					onClick={onDisable}
-					variant="destructive"
-				>
+				<DropdownMenuItem onClick={onDisable} variant="destructive">
 					停用
 				</DropdownMenuItem>
 			) : (
-				<DropdownMenuItem disabled={locked} onClick={onRestore}>
-					恢复
-				</DropdownMenuItem>
+				<DropdownMenuItem onClick={onRestore}>恢复</DropdownMenuItem>
 			)}
 		</DropdownMenuGroup>
 	);
@@ -101,21 +85,24 @@ function PlatformUserActionsMenu({
 				<DropdownMenuItem onClick={onManageProjects}>
 					管理项目归属
 				</DropdownMenuItem>
-				<DropdownMenuSeparator />
-				<AccountActionItems {...items} />
+				{/* Casdoor 用户在任何模式下都不能做账号操作，菜单里不出现这些项。服务端也检查（managed-users.ts）。 */}
+				{isManagedByCasdoor(user) ? null : (
+					<>
+						<DropdownMenuSeparator />
+						<AccountActionItems {...items} />
+					</>
+				)}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
 }
 
 interface PlatformUserRowActionsProps {
-	access: PlatformUserActionAccess;
 	projects: readonly UserProjectMembership[];
 	user: PublicUser;
 }
 
 export function PlatformUserRowActions({
-	access,
 	projects,
 	user,
 }: PlatformUserRowActionsProps) {
@@ -137,7 +124,6 @@ export function PlatformUserRowActions({
 	return (
 		<>
 			<PlatformUserActionsMenu
-				access={access}
 				onDisable={askDisable}
 				onManageProjects={openManage}
 				onReset={openReset}

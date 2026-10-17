@@ -20,7 +20,6 @@ import {
 	AUTH_SOURCE_LABEL,
 	accountSourceNote,
 	type KnownProvider,
-	platformUserActionAccess,
 } from "@/components/platform-users/platform-user-access";
 import { PLATFORM_ROLE_LABEL } from "@/components/platform-users/platform-user-meta";
 import { PlatformUserRowActions } from "@/components/platform-users/platform-user-row-actions";
@@ -65,11 +64,7 @@ function PlatformUserRow({
 				{formatDateTime(row.user.createdAt)}
 			</TableCell>
 			<TableCell className="text-right">
-				<PlatformUserRowActions
-					access={platformUserActionAccess(row.user, provider)}
-					projects={row.projects}
-					user={row.user}
-				/>
+				<PlatformUserRowActions projects={row.projects} user={row.user} />
 			</TableCell>
 		</TableRow>
 	);

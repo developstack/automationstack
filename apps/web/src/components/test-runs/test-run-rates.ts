@@ -42,5 +42,3 @@ export function testRunProgress(counts: RunCounts): TestRunProgress {
 export function isTestRunLocked(status: TestRunStatus): boolean {
 	return status === "submitted";
 }
-
-export const TEST_RUN_LOCKED_DELETE_HINT = "已提交的报告不可删除";

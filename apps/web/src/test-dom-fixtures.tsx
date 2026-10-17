@@ -13,7 +13,7 @@ import {
 	type RouteComponent,
 	RouterProvider,
 } from "@tanstack/react-router";
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { vi } from "vitest";
 
@@ -82,4 +82,11 @@ export function stubMatchMedia() {
 export function isBefore(a: Element, b: Element): boolean {
 	const ordered = [...document.querySelectorAll("*")];
 	return ordered.indexOf(a) < ordered.indexOf(b);
+}
+
+/** 点击按钮打开菜单，返回菜单里各项的文字。 */
+export async function openMenuItems(buttonName: string): Promise<string[]> {
+	fireEvent.click(screen.getByRole("button", { name: buttonName }));
+	await screen.findByRole("menu");
+	return screen.getAllByRole("menuitem").map((item) => item.textContent ?? "");
 }

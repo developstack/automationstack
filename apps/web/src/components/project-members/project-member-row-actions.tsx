@@ -29,13 +29,9 @@ function RoleChangeItem({
 	if (member.role === "owner") {
 		return <DropdownMenuItem onClick={onDemote}>设为成员</DropdownMenuItem>;
 	}
-	// 普通用户不能成为项目拥有者：禁用这一项，并在名称里说明原因。服务端也检查。
+	// 普通用户不能成为项目拥有者：菜单里不出现这一项。服务端也检查。
 	if (!canBecomeProjectOwner(member.platformRole)) {
-		return (
-			<DropdownMenuItem disabled={true}>
-				设为拥有者（普通用户不能成为拥有者）
-			</DropdownMenuItem>
-		);
+		return null;
 	}
 	return <DropdownMenuItem onClick={onPromote}>设为拥有者</DropdownMenuItem>;
 }
