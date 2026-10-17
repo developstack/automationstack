@@ -9,7 +9,10 @@ import {
 } from "@automationstack/ui/components/select";
 import { type ChangeEvent, useCallback, useEffect, useState } from "react";
 
-import { RUN_STATUS_LABELS } from "@/components/test-runs/test-run-meta";
+import {
+	DEFAULT_RUN_STATUS_FILTER_LABEL,
+	RUN_STATUS_LABELS,
+} from "@/components/test-runs/test-run-meta";
 import { TEST_RUN_STATUS_VALUES } from "@/components/test-runs/test-run-rates";
 import type { TestRunsSearch } from "@/components/test-runs/test-runs-search";
 
@@ -56,7 +59,7 @@ interface StatusOption {
 }
 
 const STATUS_FILTER_OPTIONS: readonly StatusOption[] = [
-	{ label: "全部状态", value: ALL_STATUS },
+	{ label: DEFAULT_RUN_STATUS_FILTER_LABEL, value: ALL_STATUS },
 	...TEST_RUN_STATUS_VALUES.map((value) => ({
 		label: RUN_STATUS_LABELS[value],
 		value,

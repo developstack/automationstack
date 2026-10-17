@@ -23,6 +23,9 @@ export const RUN_STATUS_LABELS: Record<TestRunStatus, string> = {
 	voided: "已作废",
 };
 
+/** 状态筛选的默认选项。不选状态时列表不显示已作废的测试任务，所以名称写明不含已作废。 */
+export const DEFAULT_RUN_STATUS_FILTER_LABEL = `全部（不含${RUN_STATUS_LABELS.voided}）`;
+
 export const RESULT_LABELS: Record<TestRunCaseResult, string> = {
 	blocked: "阻塞",
 	failed: "失败",

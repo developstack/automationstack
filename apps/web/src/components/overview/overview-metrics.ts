@@ -6,6 +6,7 @@ import {
 	TREND_BUCKET_COUNT,
 	TREND_BUCKET_DAYS,
 } from "@automationstack/db/repositories/project-stats-definitions";
+import type { ActiveRunsStats } from "@automationstack/db/repositories/project-stats-runs-core";
 
 /** 趋势图的一个区间，例如「7 天区间」。 */
 export const TREND_BUCKET_TEXT = `${TREND_BUCKET_DAYS} 天区间`;
@@ -65,6 +66,18 @@ export function overviewSummary({
 		return "本项目还没有用例";
 	}
 	return `${casesClause(activeCount, executedCount)}；${runsClause(activeRunCount, stalledRunCount)}。`;
+}
+
+/** M3 卡片的说明。进行中的测试任务没有提交，也没有作废，所以条数写明不含已作废。 */
+export function activeRunsDescription({
+	stalledCount,
+	totalCount,
+}: Pick<ActiveRunsStats, "stalledCount" | "totalCount">): string {
+	const total = `${formatCount(totalCount)} 个测试任务还没有提交（不含已作废）`;
+	if (stalledCount === 0) {
+		return `${total}，停滞的测试任务排在最前面`;
+	}
+	return `${total}，${formatCount(stalledCount)} 个超过 ${STALLED_RUN_DAYS} 天没有新的执行结果，排在最前面`;
 }
 
 /** 过去 7 天与前 7 天的差值。 */
