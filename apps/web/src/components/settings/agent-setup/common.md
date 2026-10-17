@@ -112,7 +112,7 @@ curl --fail --silent --show-error -X PUT -H 'Content-Type: image/png' --upload-f
 - 给出的一组截图替换这个步骤原有的整组截图。空列表 `[]` 删除这一组的所有图片。
 - 不给某一组时，`id` 相同的步骤保留原有的这一组。
 - 每组最多 9 张图片。每个文件最多 10 MB，类型是 png、jpeg 或 webp。这些限制与界面相同。
-- 一行最多引用 50 个上传凭证。上传凭证更多时，分几次调用。已经写入的步骤不给截图字段。
+- 一行最多引用 200 个上传凭证。上传凭证更多时，分几次调用。已经写入的步骤不给截图字段。
 - 上传凭证只能用于取得它的那条用例。项目的任何成员都可以调用 `create_screenshot_upload`，权限与 `import_test_cases` 相同。
 - 只有取得上传凭证的用户可以使用它。另一个用户使用这个凭证时，这一行进入 `errors`。
 - 上传凭证无效或过期、文件没有上传，或者文件与声明的类型和大小不同时，这一行进入 `errors`。错误信息说明原因。
@@ -139,7 +139,7 @@ curl --fail --silent --show-error -X PUT -H 'Content-Type: image/png' --upload-f
 | --- | --- |
 | `read_cases` | `detail: "full"` 每页默认 10、最多 **20**；`summary` 档每页最多 100 |
 | `ensure_module_path` | 路径最多 **10 段** |
-| `import_test_cases` | 每批最多 **50 条**，超了整批被拒；一行最多引用 **50** 个上传凭证 |
+| `import_test_cases` | 每批最多 **50 条**，超了整批被拒；一行最多引用 **200** 个上传凭证 |
 | `create_screenshot_upload` | 每次一张图片；每个文件最多 **10 MB**，每组最多 **9** 张 |
 | `change_case_status` | 每次最多 **100 条**，超了整批被拒 |
 | `delete_cases` | 每次最多 **100 条**，超了整批被拒 |
