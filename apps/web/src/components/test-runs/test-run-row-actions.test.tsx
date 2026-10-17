@@ -13,9 +13,6 @@ vi.mock("@/components/test-runs/create-from-failed-dialog", () => ({
 vi.mock("@/components/test-runs/void-run-dialog", () => ({
 	VoidRunDialog: () => null,
 }));
-vi.mock("@/components/test-runs/use-test-run-list-mutations", () => ({
-	useRemoveTestRun: () => ({ isPending: false, mutate: vi.fn() }),
-}));
 vi.mock("@/components/test-runs/use-run-viewer", () => ({
 	useRunViewer: () => viewerState.current,
 }));
@@ -77,43 +74,25 @@ const projectOwner: RunViewer = {
 describe("TestRunRowActions：菜单里只有能用的操作", () => {
 	it.each<[string, TestRunStatus, number, RunViewer | null, string[]]>([
 		[
-			"创建者看测试中、有失败用例：四项都能用",
+			"创建者看测试中、有失败用例：三项都能用，没有「删除」",
 			"in_progress",
 			2,
 			creator,
-			["编辑", "从失败用例创建", "作废", "删除"],
+			["编辑", "从失败用例创建", "作废"],
 		],
 		[
 			"没有失败用例：没有「从失败用例创建」",
 			"in_progress",
 			0,
 			creator,
-			["编辑", "作废", "删除"],
+			["编辑", "作废"],
 		],
-		[
-			"待评审：可以作废",
-			"pending_review",
-			0,
-			creator,
-			["编辑", "作废", "删除"],
-		],
-		["待测试：可以作废", "ready", 0, creator, ["编辑", "作废", "删除"]],
-		[
-			"项目 owner：可以作废",
-			"ready",
-			0,
-			projectOwner,
-			["编辑", "作废", "删除"],
-		],
-		[
-			"其他项目成员：没有「作废」",
-			"in_progress",
-			0,
-			otherMember,
-			["编辑", "删除"],
-		],
-		["成员列表加载中：没有「作废」", "in_progress", 0, null, ["编辑", "删除"]],
-		["已完成：没有「作废」", "completed", 0, creator, ["编辑", "删除"]],
+		["待评审：可以作废", "pending_review", 0, creator, ["编辑", "作废"]],
+		["待测试：可以作废", "ready", 0, creator, ["编辑", "作废"]],
+		["项目 owner：可以作废", "ready", 0, projectOwner, ["编辑", "作废"]],
+		["其他项目成员：没有「作废」", "in_progress", 0, otherMember, ["编辑"]],
+		["成员列表加载中：没有「作废」", "in_progress", 0, null, ["编辑"]],
+		["已完成：没有「作废」", "completed", 0, creator, ["编辑"]],
 		[
 			"已提交：只有「从失败用例创建」",
 			"submitted",

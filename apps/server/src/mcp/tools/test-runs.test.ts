@@ -11,7 +11,7 @@ type ToolHandler = (input: {
 	runId: string;
 }) => Promise<ToolResult>;
 
-function registerWith(voidRun: ReturnType<typeof vi.fn>) {
+function registerAll(voidRun: ReturnType<typeof vi.fn>) {
 	const handlers = new Map<string, ToolHandler>();
 	const server = {
 		registerTool: (name: string, _config: unknown, toolHandler: ToolHandler) =>
@@ -19,7 +19,11 @@ function registerWith(voidRun: ReturnType<typeof vi.fn>) {
 	} as unknown as McpServer;
 	const client = { testRuns: { void: voidRun } } as unknown as ApiClient;
 	registerTestRunTools(server, client);
-	const handler = handlers.get("void_test_run");
+	return handlers;
+}
+
+function registerWith(voidRun: ReturnType<typeof vi.fn>) {
+	const handler = registerAll(voidRun).get("void_test_run");
 	if (handler === undefined) {
 		throw new Error("void_test_run 没有注册");
 	}
@@ -49,4 +53,8 @@ describe("void_test_run：MCP 作废测试任务，权限由 testRuns.void 检�
 			isError: true,
 		});
 	});
+});
+
+it("测试任务不能删除，只能作废：只注册 void_test_run", () => {
+	expect([...registerAll(vi.fn()).keys()]).toEqual(["void_test_run"]);
 });

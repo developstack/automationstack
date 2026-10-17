@@ -2,7 +2,6 @@ import { getTestRunDetail } from "@automationstack/db/repositories/test-run-deta
 import {
 	createTestRun,
 	createTestRunFromFailed,
-	removeTestRun,
 	updateTestRun,
 } from "@automationstack/db/repositories/test-run-mutations-repository";
 import { getTestRunReport } from "@automationstack/db/repositories/test-run-report-repository";
@@ -161,24 +160,6 @@ export const testRunsRouter = {
 				projectId: result.run.projectId,
 			});
 			return result.run;
-		}),
-	remove: protectedProcedure
-		.errors(testRunErrors)
-		.input(runIdSchema)
-		.use(requireRunMember)
-		.handler(async ({ context, errors, input }) => {
-			const result = await removeTestRun(input.runId);
-			if (result.kind !== "ok") {
-				rejectRunWrite(result, errors);
-			}
-			publishInvalidate({
-				action: "delete",
-				context,
-				entity: "testRun",
-				ids: [result.run.id],
-				projectId: result.run.projectId,
-			});
-			return { id: result.run.id };
 		}),
 	report: protectedProcedure
 		.errors({ NOT_FOUND: {} })

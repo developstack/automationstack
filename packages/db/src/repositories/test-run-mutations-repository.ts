@@ -130,28 +130,6 @@ export function updateTestRun(
 	});
 }
 
-export type RemoveTestRunResult =
-	| RunWriteLock
-	| { kind: "not-found" }
-	| { kind: "ok"; run: TestRun };
-
-export function removeTestRun(runId: string): Promise<RemoveTestRunResult> {
-	return db.transaction(async (tx) => {
-		const writable = await ensureRunWritable(tx, runId);
-		if (writable.kind !== "ok") {
-			return writable;
-		}
-		const [removed] = await tx
-			.delete(testRuns)
-			.where(eq(testRuns.id, runId))
-			.returning();
-		if (!removed) {
-			throw new Error("removeTestRun: delete returned no row");
-		}
-		return { kind: "ok" as const, run: removed };
-	});
-}
-
 export interface CreateTestRunFromFailedInput {
 	createdBy: string | null;
 	description?: string | null;

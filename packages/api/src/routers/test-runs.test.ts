@@ -12,7 +12,6 @@ const mocks = vi.hoisted(() => ({
 	getProjectRole: vi.fn(),
 	markTestRunReviewed: vi.fn(),
 	publishInvalidate: vi.fn(),
-	removeTestRun: vi.fn(),
 	submitTestRun: vi.fn(),
 	unmarkTestRunReviewed: vi.fn(),
 	updateTestRun: vi.fn(),
@@ -35,7 +34,6 @@ vi.mock(
 	() => ({
 		createTestRun: vi.fn(),
 		createTestRunFromFailed: vi.fn(),
-		removeTestRun: mocks.removeTestRun,
 		updateTestRun: mocks.updateTestRun,
 	})
 );
@@ -214,11 +212,6 @@ describe("已作废的测试任务拒绝所有写操作", () => {
 			mocks.submitTestRun,
 			() => call(testRunsRouter.submit, byRunId, callOptions("submit")),
 		],
-		[
-			"remove",
-			mocks.removeTestRun,
-			() => call(testRunsRouter.remove, byRunId, callOptions("remove")),
-		],
 	] as const)(
 		"%s：CONFLICT「测试任务已作废，不能修改」",
 		async (_name, repo, invoke) => {
@@ -230,4 +223,9 @@ describe("已作废的测试任务拒绝所有写操作", () => {
 			});
 		}
 	);
+});
+
+it("测试任务不能删除，只能作废：没有 remove 接口", () => {
+	expect(testRunsRouter).not.toHaveProperty("remove");
+	expect(testRunsRouter).toHaveProperty("void");
 });

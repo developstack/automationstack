@@ -27,7 +27,6 @@ export interface TestRunRowActionsMenuProps {
 	canEdit: boolean;
 	canRetest: boolean;
 	canVoid: boolean;
-	onDelete: () => void;
 	onEdit: () => void;
 	onRetest: () => void;
 	onVoid: () => void;
@@ -50,11 +49,6 @@ export function TestRunRowActionsMenu(props: TestRunRowActionsMenuProps) {
 				{props.canVoid ? (
 					<DropdownMenuItem onClick={props.onVoid} variant="destructive">
 						作废
-					</DropdownMenuItem>
-				) : null}
-				{props.canEdit ? (
-					<DropdownMenuItem onClick={props.onDelete} variant="destructive">
-						删除
 					</DropdownMenuItem>
 				) : null}
 			</DropdownMenuContent>
