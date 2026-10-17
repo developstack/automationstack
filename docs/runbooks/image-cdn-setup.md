@@ -171,7 +171,7 @@
    ```json
    [
      {
-       "AllowedOrigins": ["http://localhost:5173"],
+       "AllowedOrigins": ["http://localhost:3001"],
        "AllowedMethods": ["PUT", "GET"],
        "AllowedHeaders": ["content-type"],
        "MaxAgeSeconds": 3600
@@ -181,7 +181,7 @@
 
 5. 点击 **Save**。
 
-`https://testcase.trendf.top` 是生产前端的来源。这个值必须与 ConfigMap 中的 `CORS_ORIGIN` 相同，末尾没有 `/`。`http://localhost:5173` 是本地开发的前端来源。
+`https://testcase.trendf.top` 是生产前端的来源。这个值必须与 ConfigMap 中的 `CORS_ORIGIN` 相同，末尾没有 `/`。`http://localhost:3001` 是本地开发的前端来源。
 
 浏览器上传图片时使用 PUT。上报 SDK 用 GET 下载附件。
 
