@@ -81,6 +81,20 @@
 
 第 9 节说明怎样推送修改。你可以在第 9 节一起推送全部修改。
 
+### 4.4 配置本地开发
+
+本地开发使用同一组 `R2_*` 环境变量。建议本地开发使用单独的 bucket，例如 `automationstack-dev`。
+
+1. 按第 4.1 节创建本地开发的 bucket。
+2. 按第 4.2 节为这个 bucket 创建 API token。
+3. 打开 `apps/server/.env`。
+4. 填写 `R2_BUCKET`、`R2_ACCOUNT_ID`、`R2_ACCESS_KEY_ID` 和 `R2_SECRET_ACCESS_KEY`。
+5. 不要填写 `IMAGE_PUBLIC_BASE_URL`。本地开发使用 R2 签名链接。
+6. 按第 5 节配置这个 bucket 的 CORS。`AllowedOrigins` 只填写 `http://localhost:5173`。
+7. 重新启动服务端。
+
+本地开发的 bucket 不需要第 6 节到第 9 节的配置。
+
 ## 5. 配置 R2 的 CORS
 
 浏览器直接把图片上传到 bucket。上传使用 PUT 请求和 `content-type` 请求头。所以 bucket 必须允许生产前端的来源。
