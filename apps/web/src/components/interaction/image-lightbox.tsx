@@ -8,6 +8,11 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { type KeyboardEvent, useCallback, useEffect, useState } from "react";
 
+import {
+	IMAGE_NOTICE_CLASS,
+	LoadingImage,
+} from "@/components/interaction/loading-image";
+
 export interface LightboxImage {
 	fileName: string;
 	/** 图片的地址。地址还没有准备好或者无法签发时为 null。 */
@@ -72,20 +77,10 @@ function LightboxNav({ count, index, onNext, onPrevious }: LightboxNavProps) {
 
 function LightboxImageView({ image }: { image: LightboxImage }) {
 	if (image.url === null) {
-		return (
-			<p className="flex h-40 items-center justify-center rounded-lg border border-dashed text-muted-foreground">
-				图片暂时无法显示
-			</p>
-		);
+		return <p className={IMAGE_NOTICE_CLASS}>图片暂时无法显示</p>;
 	}
 	return (
-		<img
-			alt={image.fileName}
-			className="mx-auto max-h-160 w-auto max-w-full rounded-lg object-contain"
-			height={600}
-			src={image.url}
-			width={800}
-		/>
+		<LoadingImage fileName={image.fileName} key={image.url} url={image.url} />
 	);
 }
 
