@@ -32,6 +32,8 @@ interface CaseSaveInput {
 	caseId: string;
 	checkName: (values: CaseFormValues) => boolean;
 	conflict: CaseSaveConflict | null;
+	/** 开始编辑时载入的版本。编辑中载入了别人保存的新版本时，保存仍按这个版本检查冲突。 */
+	editingVersion: number | null;
 	form: CaseFormValues | null;
 	mutation: ReturnType<typeof useUpdateCase>["mutation"];
 	screenshots: StepScreenshotStore | null;
@@ -40,8 +42,16 @@ interface CaseSaveInput {
 
 /** 保存：先检查名称和正文图片，再上传新的步骤截图，最后保存用例。 */
 function useCaseSave(input: CaseSaveInput) {
-	const { caseId, checkName, conflict, form, mutation, screenshots, testCase } =
-		input;
+	const {
+		caseId,
+		checkName,
+		conflict,
+		editingVersion,
+		form,
+		mutation,
+		screenshots,
+		testCase,
+	} = input;
 	const save = useCallback(async () => {
 		if (!(testCase && form) || screenshots?.progress) {
 			return;
@@ -58,11 +68,23 @@ function useCaseSave(input: CaseSaveInput) {
 			return;
 		}
 		mutation.mutate({
-			expectedVersion: caseSaveBaseVersion(testCase.currentVersion, conflict),
+			expectedVersion: caseSaveBaseVersion(
+				editingVersion ?? testCase.currentVersion,
+				conflict
+			),
 			id: caseId,
 			patch: { ...formValuesToContent(form), steps: uploaded.steps },
 		});
-	}, [caseId, checkName, conflict, form, mutation, screenshots, testCase]);
+	}, [
+		caseId,
+		checkName,
+		conflict,
+		editingVersion,
+		form,
+		mutation,
+		screenshots,
+		testCase,
+	]);
 
 	return useCallback(() => {
 		save().catch(reportSaveError);
@@ -81,21 +103,39 @@ function useCaseSaveActions(
 	return { handleSave, removeScreenshot };
 }
 
+/** 编辑区的内容，以及开始编辑时载入的版本。 */
+function useEditingForm(
+	testCase: TestCase | undefined,
+	screenshots: StepScreenshotStore | null
+) {
+	const [form, setForm] = useState<CaseFormValues | null>(null);
+	const [editingVersion, setEditingVersion] = useState<number | null>(null);
+	const leaveForm = useCallback(() => {
+		setForm(null);
+		setEditingVersion(null);
+		screenshots?.clear();
+	}, [screenshots]);
+	const startEditing = useCallback(() => {
+		if (testCase) {
+			setForm(caseToFormValues(testCase));
+			setEditingVersion(testCase.currentVersion);
+		}
+	}, [testCase]);
+	return { editingVersion, form, leaveForm, setForm, startEditing };
+}
+
 export function useCaseEditor(
 	caseId: string,
 	testCase: TestCase | undefined,
 	screenshots: StepScreenshotStore | null = null
 ) {
-	const [form, setForm] = useState<CaseFormValues | null>(null);
+	const { editingVersion, form, leaveForm, setForm, startEditing } =
+		useEditingForm(testCase, screenshots);
 	const {
 		check: checkName,
 		errorFor: nameErrorFor,
 		reset: resetNameCheck,
 	} = useCaseNameCheck();
-	const leaveForm = useCallback(() => {
-		setForm(null);
-		screenshots?.clear();
-	}, [screenshots]);
 	const { clearConflict, conflict, mutation } = useUpdateCase(leaveForm);
 
 	const stopEditing = useCallback(() => {
@@ -104,16 +144,11 @@ export function useCaseEditor(
 		clearConflict();
 	}, [clearConflict, leaveForm, resetNameCheck]);
 
-	const startEditing = useCallback(() => {
-		if (testCase) {
-			setForm(caseToFormValues(testCase));
-		}
-	}, [testCase]);
-
 	const { handleSave, removeScreenshot } = useCaseSaveActions({
 		caseId,
 		checkName,
 		conflict,
+		editingVersion,
 		form,
 		mutation,
 		screenshots,

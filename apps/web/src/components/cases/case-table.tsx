@@ -1,4 +1,7 @@
-import type { TestCase } from "@automationstack/db/schema/test-cases";
+import type {
+	CaseStatus,
+	TestCase,
+} from "@automationstack/db/schema/test-cases";
 import { Badge } from "@automationstack/ui/components/badge";
 import {
 	Table,
@@ -9,16 +12,22 @@ import {
 	TableRow,
 } from "@automationstack/ui/components/table";
 import { cn } from "@automationstack/ui/lib/utils";
+import { useCallback } from "react";
 
 import { CaseCollaboratorsCell } from "@/components/cases/case-collaborators-cell";
 import { CASE_TYPE_LABELS, formatDateTime } from "@/components/cases/case-meta";
 import { CaseNameCell } from "@/components/cases/case-name-cell";
 import { useEnteringRowIds } from "@/components/cases/case-row-enter";
+import { CaseStatusPicker } from "@/components/cases/case-status-picker";
 import {
 	CASE_TABLE_COLUMNS,
 	CASE_TABLE_HEAD_CLASS,
 	CASE_TABLE_ROW_HEIGHT,
 } from "@/components/cases/case-table-layout";
+import {
+	type CaseStatusChangeRequest,
+	useCaseStatusChange,
+} from "@/components/cases/use-case-status-change";
 import { StatusBadge } from "@/components/status/status-badge";
 import {
 	type CaseCollaborators,
@@ -42,9 +51,32 @@ function CaseTags({ tags }: { tags: string[] }) {
 	);
 }
 
+interface CaseStatusCellProps {
+	onChangeStatus: (request: CaseStatusChangeRequest) => void;
+	testCase: TestCase;
+}
+
+function CaseStatusCell({ onChangeStatus, testCase }: CaseStatusCellProps) {
+	const changeStatus = useCallback(
+		(to: CaseStatus) =>
+			onChangeStatus({ caseId: testCase.id, from: testCase.status, to }),
+		[onChangeStatus, testCase.id, testCase.status]
+	);
+	return (
+		<TableCell>
+			<CaseStatusPicker
+				caseName={testCase.name}
+				onChange={changeStatus}
+				status={testCase.status}
+			/>
+		</TableCell>
+	);
+}
+
 interface CaseRowProps {
 	collaborators: CaseCollaborators | undefined;
 	entering: boolean;
+	onChangeStatus: (request: CaseStatusChangeRequest) => void;
 	selected: boolean;
 	testCase: TestCase;
 }
@@ -58,6 +90,7 @@ const ROW_ENTER = "animate-in fade-in-0 duration-200";
 function CaseRow({
 	collaborators,
 	entering,
+	onChangeStatus,
 	selected,
 	testCase,
 }: CaseRowProps) {
@@ -80,9 +113,7 @@ function CaseRow({
 				<StatusBadge kind="priority" value={testCase.priority} />
 			</TableCell>
 			<TableCell>{CASE_TYPE_LABELS[testCase.caseType]}</TableCell>
-			<TableCell>
-				<StatusBadge kind="caseStatus" value={testCase.status} />
-			</TableCell>
+			<CaseStatusCell onChangeStatus={onChangeStatus} testCase={testCase} />
 			<TableCell>
 				<CaseTags tags={testCase.tags} />
 			</TableCell>
@@ -113,6 +144,7 @@ export function CaseTable({
 	stale,
 }: CaseTableProps) {
 	const collaboratorsByCaseId = useCollaboratorsByCaseId();
+	const changeStatus = useCaseStatusChange();
 	const enteringIds = useEnteringRowIds(
 		cases.map((testCase) => testCase.id),
 		{ animateFirst }
@@ -138,6 +170,7 @@ export function CaseTable({
 						collaborators={collaboratorsByCaseId.get(testCase.id)}
 						entering={enteringIds.has(testCase.id)}
 						key={testCase.id}
+						onChangeStatus={changeStatus}
 						selected={testCase.id === selectedCaseId}
 						testCase={testCase}
 					/>

@@ -1,10 +1,43 @@
 import type { TestCase } from "@automationstack/db/schema/test-cases";
-import { act, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Outlet } from "@tanstack/react-router";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { CaseTable } from "@/components/cases/case-table";
 import { renderRoutes } from "@/test-dom-fixtures";
+
+const api = vi.hoisted(() => ({
+	changeStatus: vi.fn<(input: unknown) => Promise<unknown>>(),
+}));
+
+vi.mock("sonner", () => ({ toast: { success: vi.fn() } }));
+vi.mock("@/utils/orpc", () => ({
+	orpc: {
+		cases: {
+			changeStatus: {
+				mutationOptions: (options: object) => ({
+					...options,
+					mutationFn: api.changeStatus,
+				}),
+			},
+			key: () => ["cases"],
+			list: { key: () => ["cases", "list"] },
+		},
+		mindmap: { key: () => ["mindmap"] },
+	},
+}));
+
+const queryClient = new QueryClient();
+
+function QueryLayout() {
+	return (
+		<QueryClientProvider client={queryClient}>
+			<Outlet />
+		</QueryClientProvider>
+	);
+}
 
 const PROJECT_ID = "00000000-0000-4000-8000-000000000001";
 const UPDATED_AT = new Date("2026-10-01T08:00:00Z");
@@ -43,7 +76,9 @@ interface HarnessControls {
 async function renderTable(
 	initial: TestCase[],
 	animateFirst = false
-): Promise<HarnessControls> {
+): Promise<
+	HarnessControls & { router: ReturnType<typeof renderRoutes>["router"] }
+> {
 	const controls: Partial<HarnessControls> = {};
 	function Harness() {
 		const [cases, setCases] = useState(initial);
@@ -59,12 +94,13 @@ async function renderTable(
 			/>
 		);
 	}
-	renderRoutes({
+	const { router } = renderRoutes({
 		initialPath: `/projects/${PROJECT_ID}`,
+		layout: QueryLayout,
 		routes: { "/projects/$projectId": Harness },
 	});
 	await screen.findByRole("table");
-	return controls as HarnessControls;
+	return { ...(controls as HarnessControls), router };
 }
 
 const rowOf = (name: string) => screen.getByText(name).closest("tr");
@@ -97,5 +133,25 @@ describe("CaseTable：改筛选条件和翻页时，表格保留在原位", () =
 		expect(rowOf("重置密码")?.dataset.entering).toBe("true");
 		expect(screen.queryByText("登录成功")).toBeNull();
 		expect(screen.getByRole("table").getAttribute("aria-busy")).toBe("false");
+	});
+});
+
+describe("CaseTable：点状态标签直接修改用例状态", () => {
+	it("点状态标签打开状态菜单，不打开用例详情；选中后立刻保存这条用例", async () => {
+		api.changeStatus.mockResolvedValue({ changes: [] });
+		const { router } = await renderTable([LOGIN, LOGOUT]);
+		fireEvent.click(
+			screen.getByRole("button", {
+				name: "修改用例「退出登录」的状态，当前为生效",
+			})
+		);
+		fireEvent.click(await screen.findByRole("menuitemradio", { name: "废弃" }));
+		await waitFor(() =>
+			expect(api.changeStatus.mock.calls[0]?.[0]).toEqual({
+				ids: ["case-logout"],
+				status: "deprecated",
+			})
+		);
+		expect(router.state.location.search).not.toHaveProperty("caseId");
 	});
 });

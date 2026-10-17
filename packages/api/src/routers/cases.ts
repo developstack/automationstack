@@ -37,6 +37,7 @@ import {
 	MAX_NEW_CASE_ATTACHMENTS,
 } from "../schemas/case";
 import { caseImportProcedures } from "./case-import";
+import { caseStatusProcedures } from "./case-status";
 import { caseVersionProcedures } from "./case-versions";
 
 const listCasesSchema = z.object({
@@ -89,6 +90,7 @@ function actorName(context: Context): string | null {
 
 export const casesRouter = {
 	...caseImportProcedures,
+	...caseStatusProcedures,
 	...caseVersionProcedures,
 	create: protectedProcedure
 		.errors({ BAD_REQUEST: {}, CONFLICT: {} })

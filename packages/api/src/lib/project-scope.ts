@@ -6,6 +6,7 @@ import {
 	getProjectIdByRunAttachmentId,
 	getProjectIdByRunCaseId,
 	getProjectIdByRunId,
+	listCaseProjects,
 	listProjectIdsByMindmapNodes,
 } from "@automationstack/db/repositories/project-scope-repository";
 import { ORPCError } from "@orpc/server";
@@ -44,6 +45,18 @@ function onlyProjectId(projectIds: readonly string[]): string | null {
 export const requireCaseMember = projectScopeMiddleware(
 	(input: { caseId: string }) => getProjectIdByCaseId(input.caseId),
 	"用例不存在"
+);
+
+/** 一组用例都存在、都在同一个项目中，并且当前用户可以进入这个项目。 */
+export const requireCasesMember = projectScopeMiddleware(
+	async (input: { caseIds: string[] }) => {
+		const rows = await listCaseProjects(input.caseIds);
+		if (rows.length !== new Set(input.caseIds).size) {
+			return null;
+		}
+		return onlyProjectId([...new Set(rows.map((row) => row.projectId))]);
+	},
+	"用例不存在，或分属不同项目"
 );
 
 export const requireModuleMember = projectScopeMiddleware(
