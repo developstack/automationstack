@@ -1,14 +1,13 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
-import { cn } from "@automationstack/ui/lib/utils";
 import { DndContext } from "@dnd-kit/core";
 import { PlusIcon } from "lucide-react";
 import { useMemo } from "react";
 
-import { CASE_TABLE_HEAD_CLASS } from "@/components/cases/case-table-layout";
 import { useStepDrag } from "@/components/cases/step-drag";
+import { StepGridHeader } from "@/components/cases/step-grid-header";
 import { moveStep } from "@/components/cases/step-order";
-import { STEP_GRID_CLASS, StepRow } from "@/components/cases/step-row";
+import { StepRow } from "@/components/cases/step-row";
 
 function useStepActions(
 	steps: CaseStep[],
@@ -32,25 +31,6 @@ function useStepActions(
 	);
 }
 
-/** 表头使用表格的表头样式（CASE_TABLE_HEAD_CLASS）：小标签、灰色。窄屏不显示。 */
-function StepsHeader() {
-	return (
-		<div
-			aria-hidden="true"
-			className={cn(
-				STEP_GRID_CLASS,
-				CASE_TABLE_HEAD_CLASS,
-				"hidden items-center border-b sm:grid"
-			)}
-		>
-			<span className="pl-1">#</span>
-			<span>操作步骤</span>
-			<span>预期结果</span>
-			<span className="w-6" />
-		</div>
-	);
-}
-
 interface StepsListProps {
 	actions: ReturnType<typeof useStepActions>;
 	onChange: (steps: CaseStep[]) => void;
@@ -61,7 +41,7 @@ function StepsList({ actions, onChange, steps }: StepsListProps) {
 	const drag = useStepDrag(steps, onChange);
 	return (
 		<DndContext {...drag}>
-			<StepsHeader />
+			<StepGridHeader />
 			<ol>
 				{steps.map((step, index) => (
 					<StepRow

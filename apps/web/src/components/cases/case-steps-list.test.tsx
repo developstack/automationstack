@@ -25,7 +25,7 @@ const STEPS: CaseStep[] = [
 		screenshots: [SHOT_A, SHOT_B],
 		step: "输入账号密码",
 	},
-	{ expected: "", id: "s2", step: "点击退出" },
+	{ expected: "", id: "s2", step: "" },
 ];
 
 function renderList(onRemoveScreenshot?: (s: string, a: string) => void) {
@@ -42,25 +42,58 @@ const THUMB_NAME = /^放大查看/;
 
 const thumbs = () => screen.getAllByRole("button", { name: THUMB_NAME });
 
+const EDITOR_GRID = "sm:grid-cols-case-step";
+
+function stepItems(container: HTMLElement): HTMLElement[] {
+	return within(container.querySelector("ol") as HTMLElement)
+		.getAllByRole("listitem")
+		.filter((item) => item.parentElement?.tagName === "OL");
+}
+
 describe("CaseStepsList：只读的步骤是编号列表", () => {
 	it("shows each step as a numbered list item, not a table", () => {
 		const { container } = renderList();
 		expect(container.querySelector("table")).toBeNull();
-		const items = within(container.querySelector("ol") as HTMLElement)
-			.getAllByRole("listitem")
-			.filter((item) => item.parentElement?.tagName === "OL");
-		expect(items).toHaveLength(2);
+		const items = stepItems(container);
 		expect(items.map((item) => item.firstElementChild?.textContent)).toEqual([
 			"1",
 			"2",
 		]);
-		expect(within(items[0] as HTMLElement).getByText("预期结果")).toBeTruthy();
-		expect(within(items[1] as HTMLElement).getByText("—")).toBeTruthy();
+	});
+
+	it.each([
+		[0, "输入账号密码", "进入工作台"],
+		[1, "—", "—"],
+	])(
+		"step %i shows 操作步骤 and 预期结果 side by side in the editor columns",
+		(index, stepText, expectedText) => {
+			const { container } = renderList();
+			const item = stepItems(container)[index] as HTMLElement;
+			expect(item.className).toContain(EDITOR_GRID);
+			const [, stepCell, expectedCell] = [...item.children];
+			expect(stepCell?.textContent).toBe(`操作步骤${stepText}`);
+			expect(expectedCell?.textContent).toBe(`预期结果${expectedText}`);
+			// 宽屏时列标题在表头，单元格的标签只留给读屏软件
+			for (const cell of [stepCell, expectedCell]) {
+				expect(cell?.firstElementChild?.className).toContain("sm:sr-only");
+			}
+		}
+	);
+
+	it("puts the editor's column headers above the steps", () => {
+		const { container } = renderList();
+		const [header, list] = [...(container.firstElementChild?.children ?? [])];
+		expect(header?.className).toContain(EDITOR_GRID);
+		expect(header?.textContent).toBe("#操作步骤预期结果");
+		expect(list?.tagName).toBe("OL");
 	});
 
 	it("shows a screenshot strip only for steps with screenshots", () => {
 		renderList();
-		expect(screen.getByRole("list", { name: "第 1 步截图" })).toBeTruthy();
+		// 截图在两栏文字的下面，与编辑模式一致
+		expect(
+			screen.getByRole("list", { name: "第 1 步截图" }).className
+		).toContain("sm:col-span-2 sm:col-start-2");
 		expect(screen.queryByRole("list", { name: "第 2 步截图" })).toBeNull();
 	});
 

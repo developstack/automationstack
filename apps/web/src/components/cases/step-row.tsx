@@ -8,14 +8,11 @@ import {
 	type StepDropEdge,
 	useStepRowDrag,
 } from "@/components/cases/step-drag";
+import { STEP_GRID_CLASS } from "@/components/cases/step-grid-header";
 import { StepRowActions } from "@/components/cases/step-row-actions";
 import { StepScreenshotStrip } from "@/components/cases/step-screenshot-strip";
 import { stepScreenshots } from "@/components/cases/step-screenshots";
 import { useStepScreenshotEdit } from "@/components/cases/use-step-screenshot-edit";
-
-/** 步骤编辑器的表头和每一行共用的列：编号、操作步骤、预期结果、操作。 */
-export const STEP_GRID_CLASS =
-	"grid grid-cols-1 gap-3 px-3 sm:grid-cols-case-step";
 
 const DROP_EDGE_CLASS: Record<Exclude<StepDropEdge, null>, string> = {
 	after: "before:bottom-0",
