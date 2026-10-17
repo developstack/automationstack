@@ -16,8 +16,6 @@ const DEFAULT_DATABASE_POOL_MAX = 5;
 
 const SESSION_SECRET_MIN_LENGTH = 32;
 
-const IMAGE_CDN_SIGNING_SECRET_MIN_LENGTH = 32;
-
 // 与 packages/db/src/password.ts 和 users 路由的账号规则一致。
 const ADMIN_PASSWORD_MIN_LENGTH = 8;
 const ADMIN_PASSWORD_MAX_LENGTH = 128;
@@ -118,14 +116,9 @@ export const env = createEnv({
 			.positive()
 			.default(DEFAULT_DATABASE_POOL_MAX),
 		DATABASE_URL: z.string().min(1),
-		// 用例图片的 Worker 地址，例如 https://img.trendf.top（#63）。
-		// 和 IMAGE_CDN_SIGNING_SECRET 都设置时，用例图片使用 Worker 链接，否则使用 R2 签名链接。
-		IMAGE_CDN_BASE_URL: z.url().optional(),
-		// 服务端和 Worker 共用的签名密钥，至少 32 个字符（openssl rand -base64 32）。
-		IMAGE_CDN_SIGNING_SECRET: z
-			.string()
-			.min(IMAGE_CDN_SIGNING_SECRET_MIN_LENGTH)
-			.optional(),
+		// 用例图片的公开基础地址，例如 https://img.trendf.top（#63，ADR-0003）。
+		// 设置时，用例图片使用 <基础地址>/<对象键> 的公开链接，否则使用 R2 签名链接。
+		IMAGE_PUBLIC_BASE_URL: z.url().optional(),
 		NODE_ENV: z
 			.enum(["development", "production", "test"])
 			.default("development"),
