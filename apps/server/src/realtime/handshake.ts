@@ -5,6 +5,8 @@ import { getProjectRole } from "@automationstack/db/repositories/project-members
 import { env } from "@automationstack/env/server";
 import type { Context as HonoContext } from "hono";
 
+import { isAllowedOrigin } from "../middleware/allowed-origin";
+
 const DEFAULT_VIEW = "list";
 
 export interface ConnectionParams {
@@ -23,9 +25,15 @@ export type HandshakeResult =
 export const INVALID_HANDSHAKE_REASON = "invalid realtime handshake";
 export const NOT_PROJECT_MEMBER_REASON = "not a project member";
 
-function isAllowedOrigin(context: HonoContext): boolean {
+function hasAllowedOrigin(context: HonoContext): boolean {
 	const origin = context.req.header("origin");
-	return !origin || origin === env.CORS_ORIGIN;
+	return (
+		!origin ||
+		isAllowedOrigin(origin, {
+			corsOrigin: env.CORS_ORIGIN,
+			nodeEnv: env.NODE_ENV,
+		})
+	);
 }
 
 export async function resolveHandshake(
@@ -33,7 +41,7 @@ export async function resolveHandshake(
 ): Promise<HandshakeResult> {
 	const clientId = context.req.query("clientId");
 	const projectId = context.req.query("projectId");
-	if (!(clientId && projectId && isAllowedOrigin(context))) {
+	if (!(clientId && projectId && hasAllowedOrigin(context))) {
 		return { kind: "rejected", reason: INVALID_HANDSHAKE_REASON };
 	}
 	const user = await resolveUserFromCookies(context.req.header("cookie"));

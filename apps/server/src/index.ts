@@ -22,6 +22,7 @@ import { registerIngestRoutes } from "./ingest/routes";
 import { registerJiraWebhook } from "./jira/webhook";
 import { getJobsStatus, startJobs, stopJobs } from "./jobs/boss";
 import { handleMcpRequest } from "./mcp/server";
+import { isAllowedOrigin } from "./middleware/allowed-origin";
 import { requestBodyLimit } from "./middleware/request-body-limit";
 import { responseCompression } from "./middleware/response-compression";
 import {
@@ -41,7 +42,13 @@ app.use(
 	cors({
 		allowMethods: ["GET", "POST", "OPTIONS"],
 		credentials: true,
-		origin: env.CORS_ORIGIN,
+		origin: (origin) =>
+			isAllowedOrigin(origin, {
+				corsOrigin: env.CORS_ORIGIN,
+				nodeEnv: env.NODE_ENV,
+			})
+				? origin
+				: null,
 	})
 );
 
