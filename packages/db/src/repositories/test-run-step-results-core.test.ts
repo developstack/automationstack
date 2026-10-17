@@ -151,20 +151,26 @@ describe("deriveCaseResult", () => {
 });
 
 describe("buildCaseComment", () => {
-	it("按步骤序号把实际结果折成多行，只收写了实际结果的那几步", () => {
+	it("只收失败和阻塞的步骤，按用例的步骤顺序和序号折成多行", () => {
 		const filled = fillStepResults(
 			steps,
-			{ s1: "passed", s2: "failed", s3: "blocked" },
-			{ s1: "登录页正常出现", s3: "沙箱账号没开通" }
+			{ s1: "blocked", s2: "passed", s3: "failed" },
+			{ s1: "沙箱账号没开通", s2: "页面正常", s3: "支付超时" }
 		);
 		expect(buildCaseComment(steps, filled)).toBe(
-			"步骤 1：登录页正常出现\n步骤 3：沙箱账号没开通"
+			"步骤 1：沙箱账号没开通\n步骤 3：支付超时"
 		);
 	});
 
-	it("一条实际结果都没有时返回 null，而不是空字符串", () => {
-		const filled = fillStepResults(steps, { s1: "passed" });
-		expect(buildCaseComment(steps, filled)).toBeNull();
+	it.each([
+		["只有通过和跳过的步骤写了实际结果", "skipped", "没测"],
+		["失败的步骤没有实际结果", "failed", null],
+	] as const)("没有可收的步骤时返回 null：%s", (_name, result, text) => {
+		const stepResults = [
+			{ actualResult: "页面正常", result: "passed" as const, stepId: "s1" },
+			{ actualResult: text, result, stepId: "s2" },
+		];
+		expect(buildCaseComment(steps, stepResults)).toBeNull();
 	});
 
 	it("用例改过、指不到人的那条结果不丢，落成「已删除的步骤」", () => {

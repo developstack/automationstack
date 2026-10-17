@@ -99,7 +99,15 @@ function stepNumbers(steps: readonly CaseStep[]): Map<string, number> {
 	return new Map(steps.map((step, index) => [step.id, index + 1]));
 }
 
-/** 用例说明：把各步骤的实际结果按步骤序号折成多行。这段文字也带进 Jira 缺陷的「实际结果」。 */
+/** 收进用例说明的步骤结果：只有失败和阻塞。 */
+function summarisedInCaseComment(result: TestRunStepResult): boolean {
+	return result === "failed" || result === "blocked";
+}
+
+/**
+ * 用例说明：把失败和阻塞步骤的实际结果按步骤顺序折成多行，每行带步骤序号。
+ * 通过和跳过的步骤不收。这段文字也带进 Jira 缺陷的「实际结果」。没有可收的步骤时为 null。
+ */
 export function buildCaseComment(
 	steps: readonly CaseStep[],
 	stepResults: readonly RunCaseStepResult[]
@@ -107,7 +115,7 @@ export function buildCaseComment(
 	const numbers = stepNumbers(steps);
 	const lines: string[] = [];
 	for (const item of stepResults) {
-		if (item.actualResult === null) {
+		if (item.actualResult === null || !summarisedInCaseComment(item.result)) {
 			continue;
 		}
 		const number = numbers.get(item.stepId);

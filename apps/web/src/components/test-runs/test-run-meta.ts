@@ -86,7 +86,7 @@ export interface CommentFieldText {
 	placeholder?: string;
 }
 
-/** 用例说明的标签和提示。有步骤的用例，说明由各步骤的实际结果汇总而成。 */
+/** 用例说明的标签和提示。有步骤的用例，说明由失败和阻塞步骤的实际结果汇总而成。 */
 export function commentFieldText(result: TestRunCaseResult): CommentFieldText {
 	if (result === "failed") {
 		return {

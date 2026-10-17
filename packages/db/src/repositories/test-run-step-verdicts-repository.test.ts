@@ -112,7 +112,7 @@ describe("saveRunCaseStepResults：保存分步判定和实际结果", () => {
 		expect(rows.rows).toEqual([{ result: "untested" }]);
 	});
 
-	it("saves the actual result of every step and summarises it into the case comment", async () => {
+	it("saves the actual result of every step, and summarises only failed and blocked steps into the case comment", async () => {
 		const outcome = await save(
 			{ s1: "passed", s2: "failed" },
 			{ s1: "页面正常", s2: "支付超时" }
@@ -120,7 +120,7 @@ describe("saveRunCaseStepResults：保存分步判定和实际结果", () => {
 		expect(outcome.kind).toBe("ok");
 		const runCase = outcome.kind === "ok" ? outcome.runCase : null;
 		expect(runCase).toMatchObject({
-			comment: "步骤 1：页面正常\n步骤 2：支付超时",
+			comment: "步骤 2：支付超时",
 			result: "failed",
 			stepResults: [
 				{ actualResult: "页面正常", result: "passed", stepId: "s1" },
