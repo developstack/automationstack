@@ -63,21 +63,31 @@ export const caseListFilterSchema = z.object({
 });
 
 /**
- * cases.changeStatus 的输入，三种之一：
+ * cases.changeStatus 的输入，两种之一：
  * - 勾选的用例 { ids, status }，最多 MAX_BATCH_CASES 条；
- * - 撤销 { ids, status, undo: true }：恢复按筛选条件修改的用例，最多 MAX_FILTER_BATCH_CASES 条。
- *   服务端不核对这是不是撤销：按筛选条件本来就可以一次修改这么多条，事务的上限相同；
  * - 全部符合筛选的用例 { filter, status }，由服务端按筛选条件找出用例。
+ * 撤销不用这个输入，用 cases.undoStatusChange 和修改时返回的撤销凭证（见 undoCaseStatusChangeSchema）。
  */
 export const changeCaseStatusInputSchema = z.union([
 	changeCaseStatusSchema,
-	z.object({
-		ids: z.array(z.uuid()).min(1).max(MAX_FILTER_BATCH_CASES),
-		status: caseStatusSchema,
-		undo: z.literal(true),
-	}),
 	z.object({ filter: caseListFilterSchema, status: caseStatusSchema }),
 ]);
+
+/**
+ * 撤销凭证最多的字符数。凭证中有改过的用例和各自原来的状态，按筛选条件修改时最多
+ * MAX_FILTER_BATCH_CASES 条，约 52 KB。上限留出余量，并让校验签名的工作量有界。
+ */
+const MAX_UNDO_TOKEN_KIB = 128;
+const CHARS_PER_KIB = 1024;
+export const MAX_UNDO_TOKEN_LENGTH = MAX_UNDO_TOKEN_KIB * CHARS_PER_KIB;
+
+/** cases.undoStatusChange 的输入：cases.changeStatus 返回的撤销凭证（undoToken）。 */
+export const undoCaseStatusChangeSchema = z.object({
+	token: z.string().min(1, "撤销凭证不能为空").max(MAX_UNDO_TOKEN_LENGTH),
+});
+
+export const CASE_STATUS_UNDO_EXPIRED_MESSAGE =
+	"撤销已过期，请手动修改用例状态";
 
 /** cases.removeMany 的输入：勾选的用例 { ids }，或全部符合筛选的用例 { filter }。 */
 export const removeCasesInputSchema = z.union([

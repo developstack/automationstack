@@ -39,6 +39,17 @@ async function enterProject(
 	return projectAccess;
 }
 
+/**
+ * 当前用户可以进入这个项目，否则抛出 FORBIDDEN。用于项目不在输入中、要先从输入中解出的过程，
+ * 例如撤销用例状态修改时项目在撤销凭证中。
+ */
+export function requireProjectMember(
+	context: Context,
+	projectId: string
+): Promise<ProjectAccess> {
+	return enterProject(requireUser(context), projectId);
+}
+
 function projectScopeMiddleware<TInput>(
 	resolveProjectId: (input: TInput) => Promise<string | null>,
 	notFoundMessage: string

@@ -28,6 +28,7 @@ vi.mock("@/utils/orpc", () => ({
 			},
 			key: () => ["cases"],
 			list: { key: () => ["cases", "list"] },
+			undoStatusChange: { mutationOptions: (options: object) => options },
 		},
 		mindmap: { key: () => ["mindmap"] },
 	},
@@ -155,7 +156,7 @@ describe("CaseTable：改筛选条件和翻页时，表格保留在原位", () =
 
 describe("CaseTable：点状态标签直接修改用例状态", () => {
 	it("点状态标签打开状态菜单，不打开用例详情；选中后立刻保存这条用例", async () => {
-		api.changeStatus.mockResolvedValue({ changes: [] });
+		api.changeStatus.mockResolvedValue({ changes: [], undoToken: null });
 		const { router } = await renderTable([LOGIN, LOGOUT]);
 		fireEvent.click(
 			screen.getByRole("button", {

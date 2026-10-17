@@ -37,6 +37,7 @@ vi.mock("@/utils/orpc", () => ({
 					mutationFn: api.removeMany,
 				}),
 			},
+			undoStatusChange: { mutationOptions: (options: object) => options },
 		},
 		mindmap: { key: () => ["mindmap"] },
 	},
@@ -108,7 +109,7 @@ describe("CaseListBatchActions：有勾选时才出现批量操作栏", () => {
 	});
 
 	it("改状态：菜单中有草稿、生效、废弃；选中后一次修改所有勾选的用例，成功后清空勾选", async () => {
-		api.changeStatus.mockResolvedValue({ changes: [] });
+		api.changeStatus.mockResolvedValue({ changes: [], undoToken: null });
 		const selection = renderActions(caseIds(2));
 		fireEvent.click(screen.getByRole("button", { name: "改状态" }));
 		const items = await screen.findAllByRole("menuitem");

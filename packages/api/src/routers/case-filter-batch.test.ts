@@ -7,7 +7,7 @@ import {
 	FILTER_BATCH_TOO_MANY_MESSAGE,
 	MAX_FILTER_BATCH_CASES,
 } from "../schemas/case";
-import { callContext, testUser } from "../test-fixtures";
+import { callContext, testCaseId as caseId, testUser } from "../test-fixtures";
 import { caseRemoveProcedures } from "./case-remove";
 import { caseStatusProcedures } from "./case-status";
 
@@ -22,6 +22,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@automationstack/db", () => ({ db: {} }));
+vi.mock("@automationstack/env/server", () => ({
+	env: { SESSION_SECRET: "test-session-secret-0123456789abcdef" },
+}));
 vi.mock("@automationstack/db/repositories/case-mutations-repository", () => ({
 	changeCaseStatus: mocks.changeCaseStatus,
 }));
@@ -57,10 +60,6 @@ const FILTER = {
 	projectId: PROJECT_ID,
 	status: "draft" as const,
 };
-
-function caseId(index: number): string {
-	return `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
-}
 
 function testCase(index: number): TestCase {
 	return {
@@ -123,7 +122,7 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 
 		await expect(
 			changeAs("member", { filter: FILTER, status: "deprecated" })
-		).resolves.toEqual({ changes });
+		).resolves.toEqual({ changes, undoToken: expect.any(String) });
 		expect(mocks.changeCaseStatusByFilter).toHaveBeenCalledWith({
 			actorName: "bob",
 			filter: FILTER,
@@ -183,35 +182,4 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 			expect(byFilter[procedure]).not.toHaveBeenCalled();
 		}
 	);
-});
-
-describe("撤销：按筛选条件修改的用例可以超过 MAX_BATCH_CASES 条", () => {
-	function existAll(ids: string[]) {
-		mocks.listCaseProjects.mockResolvedValue(
-			ids.map((id) => ({ caseId: id, projectId: PROJECT_ID }))
-		);
-	}
-
-	it(`带 undo 时一个请求恢复最多 ${MAX_FILTER_BATCH_CASES} 条`, async () => {
-		const ids = Array.from({ length: MAX_FILTER_BATCH_CASES }, (_, index) =>
-			caseId(index)
-		);
-		existAll(ids);
-		mocks.changeCaseStatus.mockResolvedValue({ changes: [], kind: "ok" });
-		await changeAs("member", { ids, status: "active", undo: true });
-		expect(mocks.changeCaseStatus).toHaveBeenCalledWith(
-			expect.objectContaining({ caseIds: ids, status: "active" })
-		);
-	});
-
-	it(`带 undo 超过 ${MAX_FILTER_BATCH_CASES} 条：BAD_REQUEST，不写数据库`, async () => {
-		const ids = Array.from({ length: MAX_FILTER_BATCH_CASES + 1 }, (_, index) =>
-			caseId(index)
-		);
-		existAll(ids);
-		await expect(
-			changeAs("member", { ids, status: "active", undo: true })
-		).rejects.toMatchObject({ code: "BAD_REQUEST" });
-		expect(mocks.changeCaseStatus).not.toHaveBeenCalled();
-	});
 });

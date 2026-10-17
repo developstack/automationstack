@@ -19,6 +19,14 @@ export function testUser(overrides: Partial<User> = {}): User {
 	};
 }
 
+/** UUID 最后一组的位数。 */
+const UUID_LAST_GROUP_LENGTH = 12;
+
+/** 测试用的第 index 条用例的 id（合法的 UUID）。 */
+export function testCaseId(index: number): string {
+	return `00000000-0000-4000-8000-${String(index).padStart(UUID_LAST_GROUP_LENGTH, "0")}`;
+}
+
 /** oRPC 过程的调用上下文。user 为 null 表示没有登录。 */
 export function callContext(user: User | null) {
 	return {
