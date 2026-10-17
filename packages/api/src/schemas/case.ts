@@ -189,7 +189,11 @@ export const createCaseAttachmentSchema = z.object({
 	storageKey: z.string().min(1),
 });
 
-export const MAX_NEW_CASE_ATTACHMENTS = 50;
+/**
+ * 新建一条用例时一次可以引用的附件数量（正文图片、操作截图和预期截图），MCP 导入的一行也使用这个上限。
+ * 每组截图最多 MAX_COLUMN_SCREENSHOTS 张，步骤数量不限，所以上限要足够大。
+ */
+export const MAX_NEW_CASE_ATTACHMENTS = 200;
 
 export const caseConflictDataSchema = z.object({
 	currentVersion: z.number().int(),

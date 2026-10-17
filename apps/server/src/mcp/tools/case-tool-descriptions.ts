@@ -1,3 +1,5 @@
+import { MAX_NEW_CASE_ATTACHMENTS } from "@automationstack/api/schemas/case";
+
 export const READ_CASES_DESCRIPTION =
 	"Read existing test cases of a project, with their bodies. This is the tool " +
 	"to call BEFORE writing any new case: it is the only way to learn how this " +
@@ -47,8 +49,8 @@ export const IMPORT_TEST_CASES_DESCRIPTION =
 	"screenshots. All uploadToken values of a row must belong to that case. " +
 	"A group that you give replaces the stored group of the step. An empty list " +
 	"removes all images of the group. If you do not give a group, the stored " +
-	"group of a step with the same id stays. One row can refer to at most 50 " +
-	"uploadToken values; write more in more calls. A bad or expired " +
+	"group of a step with the same id stays. One row can refer to at most " +
+	`${MAX_NEW_CASE_ATTACHMENTS} uploadToken values; write more in more calls. A bad or expired ` +
 	"uploadToken, or a file that is not in storage, is an error of that row. " +
 	"A skipped row writes no screenshots, and its reason says so. " +
 	"Newly designed cases go in as status 'draft' (the default): the platform's " +

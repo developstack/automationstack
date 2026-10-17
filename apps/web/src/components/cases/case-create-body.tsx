@@ -22,6 +22,7 @@ import {
 	CASE_SHEET_HEADER_CLASS,
 	CASE_SHEET_TITLE_CLASS,
 } from "@/components/cases/case-sheet-layout";
+import { caseFormImageCount } from "@/components/cases/case-submit-checks";
 import {
 	type CaseCreateDraft,
 	useCaseCreateDraft,
@@ -30,6 +31,7 @@ import {
 	useCaseCreateMutation,
 	useCaseCreateSubmit,
 } from "@/components/cases/use-case-create-submit";
+import { useNewCaseImageLimit } from "@/components/cases/use-new-case-image-limit";
 
 const CASE_CREATE_FORM_ID = "case-create-form";
 
@@ -100,13 +102,17 @@ function CaseCreateContent({
 	projectId,
 }: CaseCreateContentProps) {
 	const { attachments, caseId, discard, setValues, values } = draft;
+	const limitedAttachments = useNewCaseImageLimit(
+		attachments,
+		caseFormImageCount(values)
+	);
 
 	if (caseId === null) {
 		return null;
 	}
 
 	return (
-		<CaseAttachmentProvider value={attachments}>
+		<CaseAttachmentProvider value={limitedAttachments}>
 			<CaseCreateHeader
 				caseId={caseId}
 				onCancel={onCancel}

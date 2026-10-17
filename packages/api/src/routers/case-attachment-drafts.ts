@@ -13,12 +13,14 @@ import {
 } from "../lib/case-attachment-policy";
 import { caseImageDownloadUrl } from "../lib/case-image-url";
 import { getR2Storage } from "../lib/r2";
+import { MAX_NEW_CASE_ATTACHMENTS } from "../schemas/case";
 
 const sizeBytesSchema = z.number().int().positive();
 
 const fileNameSchema = z.string().min(1).max(255);
 
-const MAX_DRAFT_DOWNLOAD_KEYS = 50;
+/** 恢复草稿时一次签发的下载地址：与新用例一次可以保存的图片数量相同。 */
+const MAX_DRAFT_DOWNLOAD_KEYS = MAX_NEW_CASE_ATTACHMENTS;
 
 const presignDraftUploadSchema = z.object({
 	caseId: z.uuid(),

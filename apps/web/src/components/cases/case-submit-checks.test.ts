@@ -6,6 +6,7 @@ import {
 	emptyCaseFormValues,
 } from "@/components/cases/case-meta";
 import {
+	caseFormImageCount,
 	hasUnfinishedCaseUploads,
 	referencedCaseAttachments,
 } from "@/components/cases/case-submit-checks";
@@ -116,5 +117,30 @@ describe("referencedCaseAttachments", () => {
 		expect(referencedCaseAttachments(valuesWith(patch), both)).toEqual(
 			expected
 		);
+	});
+});
+
+describe("caseFormImageCount", () => {
+	const refA = buildCaseAttachmentRef(ID_A);
+
+	it.each([
+		["没有图片时为 0", {}, 0],
+		[
+			"正文图片、两组截图和上传中的图片都算数",
+			{
+				preconditions: `${refA}${UPLOADING}`,
+				steps: [
+					stepWith({ actionScreenshots: [ID_B], expectedScreenshots: [ID_A] }),
+				],
+			},
+			3,
+		],
+		[
+			"同一张图出现多次只算一张",
+			{ steps: [stepWith({ expected: refA, step: `${refA}${refA}` })] },
+			1,
+		],
+	])("%s", (_name, patch, count) => {
+		expect(caseFormImageCount(valuesWith(patch))).toBe(count);
 	});
 });

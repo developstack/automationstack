@@ -196,19 +196,21 @@ describe("resolveColumnScreenshotUploads：把截图中的上传凭证换成用�
 		});
 	});
 
-	it("rejects more than 50 uploads in one case with a clear message", async () => {
+	it("rejects more than 200 uploads in one case with a clear message", async () => {
 		const tokens = await Promise.all(
-			Array.from({ length: 51 }, (_, n) => token(n))
+			Array.from({ length: 201 }, (_, n) => token(n))
 		);
-		const steps = Array.from({ length: 6 }, (_, index) =>
+		// 每个步骤两组截图都放满 9 张，12 个步骤可以放 216 张
+		const steps = Array.from({ length: 12 }, (_, index) =>
 			step(`s${index}`, {
-				actionScreenshots: tokens.slice(index * 9, index * 9 + 9),
+				actionScreenshots: tokens.slice(index * 18, index * 18 + 9),
+				expectedScreenshots: tokens.slice(index * 18 + 9, index * 18 + 18),
 			})
 		);
 		expect(await resolveColumnScreenshotUploads(steps, context())).toEqual({
 			kind: "error",
 			message:
-				"一条用例一次最多引用 50 个截图上传凭证，这一行有 51 个。请分几次写入：已经写入的步骤不给截图字段，截图保持不变",
+				"一条用例一次最多引用 200 个截图上传凭证，这一行有 201 个。请分几次写入：已经写入的步骤不给截图字段，截图保持不变",
 		});
 	});
 });

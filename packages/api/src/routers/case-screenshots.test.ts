@@ -85,22 +85,45 @@ describe("cases.update：操作截图和预期截图只能引用这个用例的�
 	});
 });
 
+const newAttachment = (n: number) => ({
+	fileName: `${n}.png`,
+	id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
+	storageKey: `k${n}`,
+});
+
+function create(
+	attachments: ReturnType<typeof newAttachment>[],
+	steps = [step([])]
+) {
+	return call(
+		casesRouter.create,
+		{
+			attachments,
+			id: CASE_ID,
+			moduleId: MODULE_ID,
+			name: "登录",
+			projectId: PROJECT_ID,
+			steps,
+		},
+		{ context, path: ["cases", "create"] }
+	);
+}
+
 describe("cases.create：截图只能引用一起提交的新附件", () => {
 	it("rejects a screenshot that is not in the new attachments", async () => {
 		await expect(
-			call(
-				casesRouter.create,
-				{
-					attachments: [{ fileName: "a.png", id: OWNED, storageKey: "k" }],
-					id: CASE_ID,
-					moduleId: MODULE_ID,
-					name: "登录",
-					projectId: PROJECT_ID,
-					steps: [step([FOREIGN])],
-				},
-				{ context, path: ["cases", "create"] }
-			)
+			create([newAttachment(1)], [step([FOREIGN])])
 		).rejects.toMatchObject({ code: "BAD_REQUEST" });
+		expect(mocks.createTestCase).not.toHaveBeenCalled();
+	});
+
+	it("rejects more than 200 new attachments with a message that says the limit", async () => {
+		const attachments = Array.from({ length: 201 }, (_, n) => newAttachment(n));
+		await expect(create(attachments)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+			message:
+				"新用例一次最多保存 200 张图片，这次有 201 张。请减少图片后再保存",
+		});
 		expect(mocks.createTestCase).not.toHaveBeenCalled();
 	});
 });
