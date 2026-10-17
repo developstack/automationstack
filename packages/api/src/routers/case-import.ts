@@ -3,54 +3,18 @@ import type {
 	ImportCaseRow,
 	ImportErrorItem,
 } from "@automationstack/db/repositories/case-import-repository";
-import {
-	IMPORT_BATCH_LIMIT,
-	importTestCases,
-} from "@automationstack/db/repositories/case-import-repository";
-import {
-	SEARCH_MAX_LIMIT,
-	searchTestCases,
-} from "@automationstack/db/repositories/case-search-repository";
+import { importTestCases } from "@automationstack/db/repositories/case-import-repository";
+import { searchTestCases } from "@automationstack/db/repositories/case-search-repository";
+import { env } from "@automationstack/env/server";
 import { z } from "zod";
 
 import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
+import { resolveStepScreenshotUploads } from "../lib/case-screenshot-uploads";
+import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
-import { importCaseSchema, importOnDuplicateSchema } from "../schemas/case";
-
-const CASES_DESCRIPTION =
-	"Cases to import (1-50 per call). Each row: moduleId (uuid, required), " +
-	"name (non-empty, required), priority P0-P3, caseType, status, " +
-	"preconditions, steps [{id, step, expected}], tags, maintainer, sourceRef. " +
-	"Rows are validated one by one: an invalid row is reported in `errors` " +
-	"with its index and never blocks the rest of the batch.";
-
-export const importBatchSchema = z.object({
-	cases: z
-		.array(z.unknown())
-		.min(1)
-		.max(IMPORT_BATCH_LIMIT)
-		.describe(CASES_DESCRIPTION),
-	onDuplicate: importOnDuplicateSchema.describe(
-		"How to handle a case whose sourceRef already exists in the project."
-	),
-	projectId: z.uuid().describe("Target project id."),
-});
-
-export const searchCasesSchema = z.object({
-	keyword: z
-		.string()
-		.min(1)
-		.describe("Substring to match against case names (case-insensitive)."),
-	limit: z
-		.number()
-		.int()
-		.min(1)
-		.max(SEARCH_MAX_LIMIT)
-		.optional()
-		.describe("Max results (default 20, max 50)."),
-	projectId: z.uuid().describe("Project id to search in."),
-});
+import { importCaseSchema } from "../schemas/case";
+import { importBatchSchema, searchCasesSchema } from "../schemas/case-import";
 
 const rowLabelSchema = z.object({
 	name: z.string().catch(""),
@@ -97,6 +61,49 @@ function parseRows(cases: unknown[]): ParsedRows {
 	return { invalidRows, rows };
 }
 
+/**
+ * 把每行步骤中的截图上传凭证换成附件 id。凭证无效、过期或文件不存在的行放进错误，
+ * 不影响其他行。
+ */
+async function resolveRowScreenshots(
+	parsed: ParsedRows,
+	target: { createdBy: string | null; projectId: string }
+): Promise<ParsedRows> {
+	const context = {
+		...target,
+		now: Date.now(),
+		secret: env.SESSION_SECRET,
+		storage: getR2Storage(),
+	};
+	const resolved = await Promise.all(
+		parsed.rows.map(async (row) => ({
+			result: await resolveStepScreenshotUploads(row.item.steps ?? [], context),
+			row,
+		}))
+	);
+	const rows: ImportCaseRow[] = [];
+	const invalidRows = [...parsed.invalidRows];
+	for (const { result, row } of resolved) {
+		if (result.kind === "none") {
+			rows.push(row);
+		} else if (result.kind === "error") {
+			invalidRows.push({
+				index: row.index,
+				message: result.message,
+				...rowLabel(row.item),
+			});
+		} else {
+			const { attachments, caseId, steps } = result;
+			rows.push({
+				...row,
+				item: { ...row.item, steps },
+				screenshots: { attachments, caseId },
+			});
+		}
+	}
+	return { invalidRows, rows };
+}
+
 function actorName(context: Context): string | null {
 	return context.actor?.name ?? null;
 }
@@ -105,7 +112,10 @@ async function runImportBatch(
 	context: Context,
 	input: z.infer<typeof importBatchSchema>
 ): Promise<ImportBatchResult> {
-	const { invalidRows, rows } = parseRows(input.cases);
+	const { invalidRows, rows } = await resolveRowScreenshots(
+		parseRows(input.cases),
+		{ createdBy: context.user?.id ?? null, projectId: input.projectId }
+	);
 	const result = await importTestCases({
 		actorName: actorName(context),
 		onDuplicate: input.onDuplicate,

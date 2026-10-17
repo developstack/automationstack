@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MAX_FILE_NAME_LENGTH } from "./case-attachment";
+
 export const casePrioritySchema = z.enum(["P0", "P1", "P2", "P3"]);
 
 export const caseTypeSchema = z.enum([
@@ -87,8 +89,8 @@ export const removeCasesInputSchema = z.union([
 export const MAX_STEP_SCREENSHOTS = 9;
 
 /**
- * 外部工具（导入、MCP）写入的步骤：不带截图，多余的字段被丢弃。
- * id 相同的步骤保留现有的截图（见 mergeStepScreenshots）。
+ * 步骤的文字部分，多余的字段被丢弃。没有截图字段时，id 相同的步骤保留现有的截图
+ * （见 mergeStepScreenshots）。
  */
 export const caseStepSchema = z.object({
 	expected: z.string(),
@@ -96,22 +98,54 @@ export const caseStepSchema = z.object({
 	step: z.string(),
 });
 
-function screenshotGroupSchema(label: string) {
+function screenshotGroupSchema(
+	label: string,
+	item: { schema: z.ZodType<string>; unit: string }
+) {
 	return z
-		.array(z.uuid())
+		.array(item.schema)
 		.max(
 			MAX_STEP_SCREENSHOTS,
 			`每个步骤最多 ${MAX_STEP_SCREENSHOTS} 张${label}`
 		)
 		.refine((ids) => new Set(ids).size === ids.length, {
-			message: `${label}中有重复的附件 id`,
+			message: `${label}中有重复的${item.unit}`,
 		});
 }
 
+const attachmentIdItem = { schema: z.uuid(), unit: "附件 id" };
+
+/** MCP 写入截图时引用的上传凭证（见 lib/case-screenshot-upload-token）。 */
+const uploadTokenItem = {
+	schema: z.string().min(1, "上传凭证不能为空"),
+	unit: "上传凭证",
+};
+
 /** 用例编辑区写入的步骤：可以带操作截图和预期截图（用例附件 id）。不带的一组保留现有的截图。 */
 export const caseStepWithScreenshotsSchema = caseStepSchema.extend({
-	actionScreenshots: screenshotGroupSchema("操作截图").optional(),
-	expectedScreenshots: screenshotGroupSchema("预期截图").optional(),
+	actionScreenshots: screenshotGroupSchema(
+		"操作截图",
+		attachmentIdItem
+	).optional(),
+	expectedScreenshots: screenshotGroupSchema(
+		"预期截图",
+		attachmentIdItem
+	).optional(),
+});
+
+/**
+ * 导入（MCP 的 import_test_cases）写入的步骤：截图是上传凭证，写入前换成附件 id。
+ * 给出的一组整组替换，不给的一组保留现有的截图。
+ */
+export const importCaseStepSchema = caseStepSchema.extend({
+	actionScreenshots: screenshotGroupSchema(
+		"操作截图",
+		uploadTokenItem
+	).optional(),
+	expectedScreenshots: screenshotGroupSchema(
+		"预期截图",
+		uploadTokenItem
+	).optional(),
 });
 
 export const caseContentSchema = z.object({
@@ -140,7 +174,7 @@ export const caseContentPatchSchema = z.object({
 
 export const importCaseSchema = caseContentSchema.extend({
 	moduleId: z.uuid(),
-	steps: z.array(caseStepSchema).default([]),
+	steps: z.array(importCaseStepSchema).default([]),
 });
 
 export const importOnDuplicateSchema = z.enum([
@@ -150,7 +184,7 @@ export const importOnDuplicateSchema = z.enum([
 ]);
 
 export const createCaseAttachmentSchema = z.object({
-	fileName: z.string().min(1).max(255),
+	fileName: z.string().min(1).max(MAX_FILE_NAME_LENGTH),
 	id: z.uuid(),
 	storageKey: z.string().min(1),
 });

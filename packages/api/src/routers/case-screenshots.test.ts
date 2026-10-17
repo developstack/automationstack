@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@automationstack/db", () => ({ db: {} }));
+vi.mock("@automationstack/env/server", () => ({ env: {} }));
 vi.mock("@automationstack/db/repositories/case-mutations-repository", () => ({
 	createTestCase: mocks.createTestCase,
 	updateTestCase: mocks.updateTestCase,

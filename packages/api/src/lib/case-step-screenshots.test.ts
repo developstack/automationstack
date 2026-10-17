@@ -73,14 +73,30 @@ describe("step screenshot schema", () => {
 		expect(parsed.error?.issues[0]?.message).toBe("每个步骤最多 9 张预期截图");
 	});
 
-	it("import drops both groups, so external writers keep the stored screenshots", () => {
+	it("import keeps both groups as upload tokens, so a missing group keeps the stored screenshots", () => {
+		const groups = { actionScreenshots: ["token-1"], expectedScreenshots: [] };
 		const parsed = importCaseSchema.parse({
 			moduleId: shot(0),
 			name: "导入的用例",
-			steps: [
-				step({ actionScreenshots: [shot(1)], expectedScreenshots: [shot(2)] }),
-			],
+			steps: [step(groups), { ...step({}), extra: 1 }],
 		});
-		expect(parsed.steps).toEqual([step({})]);
+		expect(parsed.steps).toEqual([step(groups), step({})]);
+	});
+
+	it.each([
+		[
+			"10 tokens",
+			Array.from({ length: 10 }, (_, n) => `t${n}`),
+			"每个步骤最多 9 张操作截图",
+		],
+		["a duplicate token", ["t1", "t1"], "操作截图中有重复的上传凭证"],
+		["an empty token", [""], "上传凭证不能为空"],
+	])("import rejects %s in a group", (_name, actionScreenshots, message) => {
+		const parsed = importCaseSchema.safeParse({
+			moduleId: shot(0),
+			name: "导入的用例",
+			steps: [step({ actionScreenshots })],
+		});
+		expect(parsed.error?.issues[0]?.message).toBe(message);
 	});
 });
