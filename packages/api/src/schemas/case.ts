@@ -13,19 +13,30 @@ export const caseTypeSchema = z.enum([
 
 export const caseStatusSchema = z.enum(["draft", "active", "deprecated"]);
 
-/** 一次最多修改状态的用例数，与用例列表一页的上限相同。批量修改时前端按这个上限检查。 */
-export const MAX_STATUS_CHANGE_CASES = 100;
+/** 一次批量操作（改状态、删除）最多的用例数，与用例列表一页的上限相同。前端在请求前按这个上限检查。 */
+export const MAX_BATCH_CASES = 100;
 
 /** 只改一组用例的状态（cases.changeStatus 和 MCP 的 change_case_status）。 */
 export const changeCaseStatusSchema = z.object({
 	ids: z
 		.array(z.uuid())
 		.min(1)
-		.max(MAX_STATUS_CHANGE_CASES)
+		.max(MAX_BATCH_CASES)
 		.describe(
-			`Ids of the cases to change (from read_cases or search_cases), 1-${MAX_STATUS_CHANGE_CASES}, all in one project.`
+			`Ids of the cases to change (from read_cases or search_cases), 1-${MAX_BATCH_CASES}, all in one project.`
 		),
 	status: caseStatusSchema.describe("The new status of every listed case."),
+});
+
+/** 批量删除用例（cases.removeMany 和 MCP 的 delete_cases）。 */
+export const removeCasesSchema = z.object({
+	ids: z
+		.array(z.uuid())
+		.min(1)
+		.max(MAX_BATCH_CASES)
+		.describe(
+			`Ids of the cases to delete (from read_cases or search_cases), 1-${MAX_BATCH_CASES}, all in one project.`
+		),
 });
 
 /** 每个步骤最多的步骤截图数量。 */

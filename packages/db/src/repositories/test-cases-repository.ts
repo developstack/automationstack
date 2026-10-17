@@ -1,10 +1,14 @@
-import { and, count, eq, gt, gte, ne, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, gte, inArray, ne, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import { modules } from "../schema/modules";
 import { type TestCase, testCases } from "../schema/test-cases";
+import { planCaseRemoval, type SkippedCaseRemoval } from "./case-remove-core";
 import type { DbTransaction, RemoveTestCaseResult } from "./repository-types";
-import { countCaseRunReferences } from "./test-runs-repository";
+import {
+	countCaseRunReferences,
+	countRunReferencesByCase,
+} from "./test-runs-repository";
 
 export type ReorderCasesResult =
 	| { kind: "invalid-set" }
@@ -154,6 +158,52 @@ export async function removeTestCaseInTx(
 	return { kind: "removed", testCase: current };
 }
 
+export interface RemoveTestCasesInput {
+	caseIds: readonly string[];
+	/** 只删除这个项目中的用例。其他项目的 id 与不存在的 id 一样处理。 */
+	projectId: string;
+}
+
+export interface RemoveTestCasesResult {
+	missingIds: string[];
+	removed: TestCase[];
+	skipped: SkippedCaseRemoval<TestCase>[];
+}
+
+async function removeTestCasesInTx(
+	tx: DbTransaction,
+	input: RemoveTestCasesInput
+): Promise<RemoveTestCasesResult> {
+	// 按 id 的顺序加锁。两个同时进行的批量操作按同一个顺序等待，不会死锁。
+	// 加锁后，测试任务不能再加入这些用例，所以下面的引用数在提交前不会变
+	const locked = await tx
+		.select()
+		.from(testCases)
+		.where(
+			and(
+				inArray(testCases.id, [...new Set(input.caseIds)]),
+				eq(testCases.projectId, input.projectId)
+			)
+		)
+		.orderBy(asc(testCases.id))
+		.for("update");
+	const runCounts = await countRunReferencesByCase(
+		tx,
+		locked.map((testCase) => testCase.id)
+	);
+	const plan = planCaseRemoval(input.caseIds, locked, runCounts);
+	for (const testCase of plan.removable) {
+		// biome-ignore lint/performance/noAwaitInLoops: 同一个事务中的写入只能串行
+		await tx.delete(testCases).where(eq(testCases.id, testCase.id));
+		await closeCaseSlot(tx, testCase.moduleId, testCase.sortOrder);
+	}
+	return {
+		missingIds: plan.missingIds,
+		removed: plan.removable,
+		skipped: plan.skipped,
+	};
+}
+
 export function moveTestCase(input: {
 	id: string;
 	index?: number;
@@ -171,4 +221,14 @@ export function reorderTestCases(input: {
 
 export function removeTestCase(id: string): Promise<RemoveTestCaseResult> {
 	return db.transaction((tx) => removeTestCaseInTx(tx, id));
+}
+
+/**
+ * 批量删除用例，在一个事务中完成。被测试任务用到的用例跳过（只能改为废弃），
+ * 不存在的用例当作已经删除，其余的用例删除。版本历史和附件记录随用例一起删除。
+ */
+export function removeTestCases(
+	input: RemoveTestCasesInput
+): Promise<RemoveTestCasesResult> {
+	return db.transaction((tx) => removeTestCasesInTx(tx, input));
 }

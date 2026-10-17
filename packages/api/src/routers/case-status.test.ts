@@ -6,7 +6,7 @@ import type {
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { MAX_STATUS_CHANGE_CASES } from "../schemas/case";
+import { MAX_BATCH_CASES } from "../schemas/case";
 import { callContext, testUser } from "../test-fixtures";
 import { caseStatusProcedures } from "./case-status";
 
@@ -155,8 +155,8 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 	it.each<[string, string[]]>([
 		["没有用例", []],
 		[
-			`超过 ${MAX_STATUS_CHANGE_CASES} 条用例`,
-			Array.from({ length: MAX_STATUS_CHANGE_CASES + 1 }, () => CASE_ID),
+			`超过 ${MAX_BATCH_CASES} 条用例`,
+			Array.from({ length: MAX_BATCH_CASES + 1 }, () => CASE_ID),
 		],
 	])("%s：BAD_REQUEST，不写数据库", async (_name, ids) => {
 		await expect(changeAs("member", "draft", ids)).rejects.toMatchObject({

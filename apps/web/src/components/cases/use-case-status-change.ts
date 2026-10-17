@@ -138,7 +138,7 @@ function batchMessage(changes: readonly ChangedCase[], to: CaseStatus): string {
  * 用例表格中批量改勾选用例的状态，一个请求完成（一个事务，要么都改，要么都不改）。
  * 提示修改结果，带「撤销」：撤销把每条用例恢复为它自己原来的状态，也记录新版本。
  * 撤销按原来的状态分组，每组一个请求（最多三个）。一组失败时停下，已恢复的组不回退，重新载入后列表显示实际的状态。
- * 一次最多 MAX_STATUS_CHANGE_CASES 条，由批量操作栏在请求前检查。
+ * 一次最多 MAX_BATCH_CASES 条，由批量操作栏在请求前检查。
  * 返回是否修改成功。失败的原因由全局的失败提示显示。
  */
 export function useCaseBatchStatusChange(): (

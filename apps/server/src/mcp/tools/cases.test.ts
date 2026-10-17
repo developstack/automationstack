@@ -12,24 +12,32 @@ const LOGOUT_ID = "55555555-5555-4555-8555-555555555555";
 
 type ToolHandler = (input: {
 	ids: string[];
-	status: string;
+	status?: string;
 }) => Promise<ToolResult>;
 
-function changeStatusTool(changeStatus: ReturnType<typeof vi.fn>) {
+/** 注册用例工具，返回其中一个工具。cases 是假的 client.cases。 */
+function caseTool(name: string, cases: Record<string, unknown>) {
 	const handlers = new Map<string, ToolHandler>();
 	const server = {
-		registerTool: (name: string, _config: unknown, toolHandler: ToolHandler) =>
-			handlers.set(name, toolHandler),
+		registerTool: (
+			toolName: string,
+			_config: unknown,
+			toolHandler: ToolHandler
+		) => handlers.set(toolName, toolHandler),
 	} as unknown as McpServer;
-	registerCaseTools(server, {
-		cases: { changeStatus },
-	} as unknown as ApiClient);
-	const handler = handlers.get("change_case_status");
+	registerCaseTools(server, { cases } as unknown as ApiClient);
+	const handler = handlers.get(name);
 	if (handler === undefined) {
-		throw new Error("change_case_status 没有注册");
+		throw new Error(`${name} 没有注册`);
 	}
 	return handler;
 }
+
+const changeStatusTool = (changeStatus: ReturnType<typeof vi.fn>) =>
+	caseTool("change_case_status", { changeStatus });
+
+const parsed = (result: ToolResult) =>
+	JSON.parse(result.content[0]?.text ?? "");
 
 function caseChange(
 	id: string,
@@ -60,7 +68,7 @@ describe("change_case_status：MCP 批量改用例状态，权限由 cases.chang
 			ids: [LOGIN_ID, LOGOUT_ID],
 			status: "deprecated",
 		});
-		expect(JSON.parse(result.content[0]?.text ?? "")).toEqual({
+		expect(parsed(result)).toEqual({
 			changed: [
 				{
 					id: LOGIN_ID,
@@ -86,5 +94,21 @@ describe("change_case_status：MCP 批量改用例状态，权限由 cases.chang
 			content: [{ text: "Error: 用例不存在，或分属不同项目" }],
 			isError: true,
 		});
+	});
+});
+
+describe("delete_cases：MCP 一次批量删除用例，报告删除和跳过的用例", () => {
+	const deleted = { id: LOGIN_ID, name: "登录成功" };
+	const skipped = { id: LOGOUT_ID, name: "退出登录", referencedByRunCount: 2 };
+
+	it("一次调用 cases.removeMany，原样返回删除、跳过和不存在的用例", async () => {
+		const response = { deleted: [deleted], missingIds: [], skipped: [skipped] };
+		const removeMany = vi.fn().mockResolvedValue(response);
+		const result = await caseTool("delete_cases", { removeMany })({
+			ids: [LOGIN_ID, LOGOUT_ID],
+		});
+		expect(removeMany).toHaveBeenCalledTimes(1);
+		expect(removeMany).toHaveBeenCalledWith({ ids: [LOGIN_ID, LOGOUT_ID] });
+		expect(parsed(result)).toEqual(response);
 	});
 });

@@ -1,15 +1,9 @@
 import { changeCaseStatus } from "@automationstack/db/repositories/case-mutations-repository";
 import { protectedProcedure } from "../index";
-import { requireCasesMember } from "../lib/project-scope";
+import { onlyValue } from "../lib/only-value";
+import { requireCasesMember, toCasesScope } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
 import { changeCaseStatusSchema } from "../schemas/case";
-
-const toCasesScope = (input: { ids: string[] }) => ({ caseIds: input.ids });
-
-function onlyValue(values: readonly string[]): string | undefined {
-	const distinct = [...new Set(values)];
-	return distinct.length === 1 ? distinct[0] : undefined;
-}
 
 export const caseStatusProcedures = {
 	/**

@@ -37,6 +37,7 @@ import {
 	MAX_NEW_CASE_ATTACHMENTS,
 } from "../schemas/case";
 import { caseImportProcedures } from "./case-import";
+import { caseRemoveProcedures } from "./case-remove";
 import { caseStatusProcedures } from "./case-status";
 import { caseVersionProcedures } from "./case-versions";
 
@@ -90,6 +91,7 @@ function actorName(context: Context): string | null {
 
 export const casesRouter = {
 	...caseImportProcedures,
+	...caseRemoveProcedures,
 	...caseStatusProcedures,
 	...caseVersionProcedures,
 	create: protectedProcedure

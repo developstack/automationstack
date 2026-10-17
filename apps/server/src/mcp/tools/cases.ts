@@ -2,7 +2,10 @@ import {
 	importBatchSchema,
 	searchCasesSchema,
 } from "@automationstack/api/routers/case-import";
-import { changeCaseStatusSchema } from "@automationstack/api/schemas/case";
+import {
+	changeCaseStatusSchema,
+	removeCasesSchema,
+} from "@automationstack/api/schemas/case";
 import { MAX_PAGE_SIZE } from "@automationstack/db/repositories/case-list-repository";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -14,7 +17,7 @@ import {
 } from "./case-read-shape";
 import {
 	CHANGE_CASE_STATUS_DESCRIPTION,
-	DELETE_CASE_DESCRIPTION,
+	DELETE_CASES_DESCRIPTION,
 	IMPORT_TEST_CASES_DESCRIPTION,
 	LIST_CASE_TAGS_DESCRIPTION,
 	READ_CASES_DESCRIPTION,
@@ -174,13 +177,8 @@ export function registerCaseTools(server: McpServer, client: ApiClient): void {
 	registerChangeCaseStatusTool(server, client);
 	server.registerTool(
 		"delete_cases",
-		{
-			description: DELETE_CASE_DESCRIPTION,
-			inputSchema: {
-				id: z.uuid().describe("Id of the case to delete (from read_cases)."),
-			},
-		},
-		({ id }) =>
-			safeToolCall(async () => jsonResult(await client.cases.remove({ id })))
+		{ description: DELETE_CASES_DESCRIPTION, inputSchema: removeCasesSchema },
+		(input) =>
+			safeToolCall(async () => jsonResult(await client.cases.removeMany(input)))
 	);
 }

@@ -5,6 +5,7 @@ import {
 	desc,
 	eq,
 	getTableColumns,
+	inArray,
 	type SQL,
 	sql,
 } from "drizzle-orm";
@@ -103,4 +104,23 @@ export async function countCaseRunReferences(
 		.from(testRunCases)
 		.where(eq(testRunCases.caseId, caseId));
 	return row?.value ?? 0;
+}
+
+/** 每条用例被几个测试任务用到。没有被用到的用例不在结果中。 */
+export async function countRunReferencesByCase(
+	tx: DbTransaction,
+	caseIds: readonly string[]
+): Promise<Map<string, number>> {
+	if (caseIds.length === 0) {
+		return new Map();
+	}
+	const rows = await tx
+		.select({
+			caseId: testRunCases.caseId,
+			value: countDistinct(testRunCases.runId),
+		})
+		.from(testRunCases)
+		.where(inArray(testRunCases.caseId, [...caseIds]))
+		.groupBy(testRunCases.caseId);
+	return new Map(rows.map((row) => [row.caseId, row.value]));
 }
