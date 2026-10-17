@@ -8,7 +8,7 @@ export function ProjectCardSkeleton() {
 	return (
 		<div
 			className={cn(
-				"flex flex-col gap-1 rounded-xl border bg-card p-6 shadow-card",
+				"flex flex-col gap-1 rounded-lg border bg-card p-6 shadow-card",
 				PROJECT_CARD_SIZE
 			)}
 		>

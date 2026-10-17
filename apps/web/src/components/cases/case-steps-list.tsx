@@ -39,7 +39,7 @@ function CaseStepItem({
 		[onRemoveScreenshot, step.id]
 	);
 	return (
-		<li className="flex gap-3 rounded-xl border bg-card p-4 text-card-foreground text-sm shadow-card">
+		<li className="flex gap-3 rounded-lg border bg-card p-4 text-card-foreground text-sm shadow-card">
 			<span className="numeric flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">
 				{position}
 			</span>

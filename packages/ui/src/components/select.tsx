@@ -79,7 +79,7 @@ function SelectContent({
 			>
 				<SelectPrimitive.Popup
 					className={cn(
-						"popup-transition relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-y-auto overflow-x-hidden overscroll-contain rounded-md bg-popover text-popover-foreground shadow-popover ring-1 ring-foreground/10",
+						"popup-transition relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-y-auto overflow-x-hidden overscroll-contain rounded-lg bg-popover text-popover-foreground shadow-popover ring-1 ring-foreground/10",
 						className
 					)}
 					data-align-trigger={alignItemWithTrigger}

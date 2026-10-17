@@ -16,7 +16,7 @@ export function AppShell({ children, sidebar }: AppShellProps) {
 			{sidebar}
 			<SidebarInset className="h-svh bg-sidebar lg:py-2 lg:pr-2">
 				<div
-					className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-card lg:rounded-xl lg:border lg:shadow-card"
+					className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden bg-card lg:rounded-lg lg:border lg:shadow-card"
 					data-slot="content-panel"
 				>
 					{children}

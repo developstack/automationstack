@@ -28,7 +28,7 @@ export function MindmapSkeleton({ scoped }: MindmapSkeletonProps) {
 					aria-hidden="true"
 					className="flex flex-1 items-center justify-center gap-16"
 				>
-					<Skeleton className="h-11 w-36 rounded-xl" />
+					<Skeleton className="h-11 w-36 rounded-lg" />
 					<div className="flex flex-col gap-6">
 						{BRANCH_WIDTHS.map((width) => (
 							<Skeleton className={`h-9 ${width}`} key={width} />

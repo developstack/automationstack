@@ -19,7 +19,7 @@ function renderInline(
 			return node.text;
 		case "code":
 			return (
-				<code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
+				<code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-xs">
 					{node.text}
 				</code>
 			);

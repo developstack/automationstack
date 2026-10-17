@@ -39,7 +39,7 @@ function DocPre({ children, node }: JSX.IntrinsicElements["pre"] & ExtraProps) {
 	const fenced = readFencedCode(node);
 	if (fenced === null) {
 		return (
-			<pre className="overflow-x-auto rounded-md border bg-muted p-3 font-mono text-xs">
+			<pre className="overflow-x-auto rounded-lg border bg-muted p-3 font-mono text-xs">
 				{children}
 			</pre>
 		);
@@ -51,7 +51,7 @@ const COMPONENTS: Components = {
 	a: DocLink,
 	blockquote: DocCallout,
 	code: ({ children }) => (
-		<code className="rounded bg-muted px-1 py-0.5 font-mono text-foreground text-xs">
+		<code className="rounded-sm bg-muted px-1 py-0.5 font-mono text-foreground text-xs">
 			{children}
 		</code>
 	),

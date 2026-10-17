@@ -52,7 +52,7 @@ export function NotFoundActions({
 			)}
 		>
 			<motion.a
-				className="inline-flex h-11 select-none items-center justify-center rounded-full bg-primary px-6 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
+				className="inline-flex h-11 select-none items-center justify-center rounded-md bg-primary px-6 font-medium text-primary-foreground text-sm transition-colors hover:bg-primary/90"
 				href={homeHref}
 				transition={SPRING_PRESS}
 				whileHover={whileHover}
@@ -61,7 +61,7 @@ export function NotFoundActions({
 				{homeLabel}
 			</motion.a>
 			<motion.a
-				className="inline-flex h-11 select-none items-center justify-center rounded-full border border-border bg-card px-6 font-medium text-foreground text-sm transition-colors hover:bg-primary/5"
+				className="inline-flex h-11 select-none items-center justify-center rounded-md border border-border bg-card px-6 font-medium text-foreground text-sm transition-colors hover:bg-primary/5"
 				href={browseHref}
 				transition={SPRING_PRESS}
 				whileHover={whileHover}

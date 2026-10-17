@@ -77,7 +77,7 @@ export const CASE_TABLE_ROW_HEIGHT = "h-11";
 
 /** 表格、空状态、出错和底部分页所在的卡片面板。骨架屏使用同一个面板。 */
 export const CASE_LIST_PANEL_CLASS =
-	"flex min-w-0 flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-card";
+	"flex min-w-0 flex-col overflow-hidden rounded-lg border bg-card text-card-foreground shadow-card";
 
 /** 面板底部的条数和分页。骨架屏使用同一个布局。 */
 export const CASE_LIST_FOOTER_CLASS =

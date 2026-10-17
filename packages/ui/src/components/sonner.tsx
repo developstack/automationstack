@@ -22,7 +22,7 @@ const Toaster = ({ theme = "system", ...props }: ToasterProps) => (
 		}}
 		style={
 			{
-				"--border-radius": "var(--radius)",
+				"--border-radius": "var(--radius-lg)",
 				"--normal-bg": "var(--popover)",
 				"--normal-border": "var(--border)",
 				"--normal-text": "var(--popover-foreground)",
