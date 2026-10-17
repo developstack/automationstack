@@ -5,7 +5,6 @@ import {
 	desc,
 	eq,
 	getTableColumns,
-	ilike,
 	type SQL,
 	sql,
 } from "drizzle-orm";
@@ -14,13 +13,16 @@ import { db } from "../index";
 import {
 	type TestRun,
 	type TestRunCaseResult,
-	type TestRunStatus,
 	testRunCases,
 	testRuns,
 } from "../schema/test-runs";
 import { users } from "../schema/users";
 import type { DbTransaction } from "./repository-types";
 import { settleAutoSubmitForProject } from "./test-run-auto-submit-repository";
+import {
+	buildTestRunListConditions,
+	type ListTestRunsFilter,
+} from "./test-run-list-filter-core";
 
 export interface TestRunResultCounts {
 	blocked: number;
@@ -37,28 +39,10 @@ export interface TestRunListItem {
 	run: TestRun;
 }
 
-export interface ListTestRunsFilter {
-	keyword?: string;
-	projectId: string;
-	status?: TestRunStatus;
-}
-
 function resultCount(result: TestRunCaseResult): SQL<number> {
 	return sql<number>`count(${testRunCases.id}) filter (where ${testRunCases.result} = ${result}::test_run_case_result)`.mapWith(
 		Number
 	);
-}
-
-function buildListConditions(filter: ListTestRunsFilter): SQL[] {
-	const conditions: SQL[] = [eq(testRuns.projectId, filter.projectId)];
-	if (filter.status) {
-		conditions.push(eq(testRuns.status, filter.status));
-	}
-	if (filter.keyword) {
-		const escaped = filter.keyword.replace(/[%_\\]/g, "\\$&");
-		conditions.push(ilike(testRuns.name, `%${escaped}%`));
-	}
-	return conditions;
 }
 
 export async function listTestRuns(
@@ -80,7 +64,7 @@ export async function listTestRuns(
 		.from(testRuns)
 		.leftJoin(testRunCases, eq(testRunCases.runId, testRuns.id))
 		.leftJoin(users, eq(users.id, testRuns.createdBy))
-		.where(and(...buildListConditions({ ...filter, projectId })))
+		.where(and(...buildTestRunListConditions({ ...filter, projectId })))
 		.groupBy(testRuns.id, users.id)
 		.orderBy(desc(testRuns.createdAt));
 	return rows.map(

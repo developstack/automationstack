@@ -18,6 +18,7 @@ export const TEST_RUN_STATUS_VALUES: readonly TestRunStatus[] = [
 	"in_progress",
 	"completed",
 	"submitted",
+	"voided",
 ];
 
 export function formatPassRate(counts: RunCounts): string {
