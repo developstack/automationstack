@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0003
+---
+
 # 用例图片经过签名校验的 Cloudflare Worker 在边缘缓存
 
 用例图片可能包含测试环境的真实业务数据，所以 R2 bucket 保持私有。我们在 `trendf.top` 下部署一个 Cloudflare Worker，Worker 绑定 R2 bucket。服务端给每张图片签发短期链接，Worker 校验签名后返回图片。Worker 在边缘缓存图片，缓存键不包含签名。
