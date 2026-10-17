@@ -74,8 +74,8 @@ describe("caseAttachments.presignColumnScreenshotUpload：为一个用例的一�
 			tokenExpiresInSeconds: 3600,
 			uploadUrl: UPLOAD_URL,
 		});
-		const [storageKey, contentType] = mocks.presignUpload.mock.calls[0] ?? [];
-		expect(contentType).toBe("image/png");
+		const [storageKey, object] = mocks.presignUpload.mock.calls[0] ?? [];
+		expect(object).toEqual({ contentLength: 2048, contentType: "image/png" });
 		expect(storageKey).toMatch(`test-cases/${PROJECT_ID}/${CASE_ID}/`);
 		expect(
 			await readScreenshotUploadToken(result.uploadToken, {
@@ -87,8 +87,10 @@ describe("caseAttachments.presignColumnScreenshotUpload：为一个用例的一�
 			upload: {
 				attachmentId: expect.any(String),
 				caseId: CASE_ID,
+				contentType: "image/png",
 				fileName: "登录页.png",
 				projectId: PROJECT_ID,
+				sizeBytes: 2048,
 				storageKey,
 				userId: user.id,
 			},

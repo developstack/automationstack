@@ -106,14 +106,30 @@ beforeEach(() => {
 });
 
 describe("testRunAttachments：每个步骤的实际附件", () => {
-	it("presigns an upload for one step of the run case", async () => {
-		const result = await presign();
-		expect(mocks.prepareAttachmentUpload).toHaveBeenCalledWith(
-			RUN_CASE_ID,
-			"s2"
-		);
-		expect(result.storageKey.startsWith(`test-runs/${PROJECT_ID}/`)).toBe(true);
-	});
+	it.each([
+		["a screenshot", { contentType: "image/png", kind: "screenshot" }, 2048],
+		[
+			"a video of exactly 20 MB",
+			{ contentType: "video/mp4", kind: "video" },
+			20 * 1024 * 1024,
+		],
+	])(
+		"presigns an upload of %s for one step that accepts only the declared type and size",
+		async (_name, overrides, sizeBytes) => {
+			const result = await presign({ ...overrides, sizeBytes });
+			expect(mocks.prepareAttachmentUpload).toHaveBeenCalledWith(
+				RUN_CASE_ID,
+				"s2"
+			);
+			expect(result.storageKey.startsWith(`test-runs/${PROJECT_ID}/`)).toBe(
+				true
+			);
+			expect(mocks.presignUpload).toHaveBeenCalledWith(result.storageKey, {
+				contentLength: sizeBytes,
+				contentType: overrides.contentType,
+			});
+		}
+	);
 
 	it.each([
 		["an upload without a step (the whole case)", { stepId: undefined }],

@@ -29,12 +29,18 @@ const createScreenshotUploadSchema = z.object({
 		.number()
 		.int()
 		.positive()
-		.describe("Size of the local image file in bytes. The maximum is 10 MB."),
+		.describe(
+			"Exact size of the local image file in bytes. The maximum is 10 MB. " +
+				"The upload URL accepts only a file of this size."
+		),
 });
 
 type CreateScreenshotUploadInput = z.infer<typeof createScreenshotUploadSchema>;
 
-/** 上传本地文件的 curl 命令。文件路径由 shell 变量 FILE 给出，所以文件名中的字符不会破坏命令。 */
+/**
+ * 上传本地文件的 curl 命令。文件路径由 shell 变量 FILE 给出，所以文件名中的字符不会破坏命令。
+ * --upload-file 按文件的大小发送 Content-Length。上传地址的签名包含声明的大小，大小不同时 R2 拒绝上传。
+ */
 function curlCommand(contentType: string, uploadUrl: string): string {
 	return `curl --fail --silent --show-error -X PUT -H 'Content-Type: ${contentType}' --upload-file "$FILE" '${uploadUrl}'`;
 }
@@ -48,7 +54,10 @@ async function createScreenshotUpload(
 	return jsonResult({
 		curl: curlCommand(upload.contentType, upload.uploadUrl),
 		expiresInSeconds: upload.expiresInSeconds,
-		headers: { "Content-Type": upload.contentType },
+		headers: {
+			"Content-Length": String(input.sizeBytes),
+			"Content-Type": upload.contentType,
+		},
 		method: "PUT",
 		tokenExpiresInSeconds: upload.tokenExpiresInSeconds,
 		uploadToken: upload.uploadToken,

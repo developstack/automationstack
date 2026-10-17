@@ -127,7 +127,10 @@ async function signGroup(
 				runName: group.runName,
 				sourceRef: item.sourceRef,
 				storageKey,
-				uploadUrl: await storage.presignUpload(storageKey, item.contentType),
+				uploadUrl: await storage.presignUpload(storageKey, {
+					contentLength: item.sizeBytes,
+					contentType: item.contentType,
+				}),
 			};
 		})
 	);

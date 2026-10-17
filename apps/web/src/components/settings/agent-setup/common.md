@@ -80,8 +80,8 @@
 
 MCP 工具的参数是 JSON 文本，不能包含图片的字节。所以写入截图分三步：
 
-1. 调用 `create_screenshot_upload`。给出用例的 `caseId`，以及本地图片的文件名、类型和大小。
-2. 把 shell 变量 `FILE` 设为本地图片的路径。然后执行返回的 `curl` 命令。
+1. 调用 `create_screenshot_upload`。给出用例的 `caseId`，以及本地图片的文件名、类型和准确的字节数（`sizeBytes`）。例如用 `wc -c < ./images/login.png` 取得字节数。
+2. 把 shell 变量 `FILE` 设为本地图片的路径。然后执行返回的 `curl` 命令。这个命令用 `--upload-file` 上传文件，curl 按文件的大小发送 `Content-Length`。
 3. 调用 `import_test_cases`。`onDuplicate` 用 `"overwrite"`，`sourceRef` 用这条用例的 `sourceRef`。在步骤的 `actionScreenshots` 或 `expectedScreenshots` 中写入返回的上传凭证（`uploadToken`）。
 
 第 2 步的命令如下：
@@ -106,6 +106,8 @@ curl --fail --silent --show-error -X PUT -H 'Content-Type: image/png' --upload-f
 规则：
 
 - 每张图片调用一次 `create_screenshot_upload`。上传地址在 5 分钟后过期，上传凭证在 1 小时后过期。
+- 上传地址只接受声明的类型和大小。文件的大小与 `sizeBytes` 不同时，存储拒绝上传（HTTP 403）。取得上传地址后，不要修改文件。
+- 用其他工具上传时，发送返回的 `headers` 中的所有请求头，并且不要用分块传输（chunked）。
 - 只有已有的用例可以写入截图。新用例先用 `import_test_cases` 创建，再用第二次调用写入截图。没有 `sourceRef` 的用例不能用这个方法写入截图。
 - 给出的一组截图替换这个步骤原有的整组截图。空列表 `[]` 删除这一组的所有图片。
 - 不给某一组时，`id` 相同的步骤保留原有的这一组。
@@ -113,7 +115,7 @@ curl --fail --silent --show-error -X PUT -H 'Content-Type: image/png' --upload-f
 - 一行最多引用 50 个上传凭证。上传凭证更多时，分几次调用。已经写入的步骤不给截图字段。
 - 上传凭证只能用于取得它的那条用例。项目的任何成员都可以调用 `create_screenshot_upload`，权限与 `import_test_cases` 相同。
 - 只有取得上传凭证的用户可以使用它。另一个用户使用这个凭证时，这一行进入 `errors`。
-- 上传凭证无效或过期，或者文件没有上传时，这一行进入 `errors`。错误信息说明原因。
+- 上传凭证无效或过期、文件没有上传，或者文件与声明的类型和大小不同时，这一行进入 `errors`。错误信息说明原因。
 - 被跳过的行不写入截图，`skipped` 中的原因说明这一点。
 - `read_cases` 不返回截图。
 

@@ -69,7 +69,8 @@ describe("putFileToStorage：把图片 PUT 到预签名地址，并报告上传�
 		const { done, request } = startPut((fraction) => progress.push(fraction));
 		expect(request.method).toBe("PUT");
 		expect(request.url).toBe("https://r2.example/put");
-		expect(request.headers.get("Content-Type")).toBe("image/png");
+		// 只设置 Content-Type：浏览器按文件的大小设置 Content-Length，上传地址的签名包含这个大小
+		expect([...request.headers]).toEqual([["Content-Type", "image/png"]]);
 		expect(request.sent).toBe(FILE);
 
 		request.upload.onprogress?.({

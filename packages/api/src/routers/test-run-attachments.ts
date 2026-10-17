@@ -133,10 +133,10 @@ export const testRunAttachmentsRouter = {
 				rejectAttachmentWrite(prepared, errors, "用例行不存在");
 			}
 			const storageKey = buildAttachmentStorageKey(prepared.scope, input);
-			const uploadUrl = await storage.presignUpload(
-				storageKey,
-				input.contentType
-			);
+			const uploadUrl = await storage.presignUpload(storageKey, {
+				contentLength: input.sizeBytes,
+				contentType: input.contentType,
+			});
 			return { storageKey, uploadUrl };
 		}),
 

@@ -50,7 +50,7 @@ describe("create_screenshot_upload：为一个用例的一张截图取得上传�
 		expect(JSON.parse(result.content[0]?.text ?? "")).toEqual({
 			curl: `curl --fail --silent --show-error -X PUT -H 'Content-Type: image/png' --upload-file "$FILE" '${UPLOAD_URL}'`,
 			expiresInSeconds: 300,
-			headers: { "Content-Type": "image/png" },
+			headers: { "Content-Length": "2048", "Content-Type": "image/png" },
 			method: "PUT",
 			tokenExpiresInSeconds: 3600,
 			uploadToken: "token-1",

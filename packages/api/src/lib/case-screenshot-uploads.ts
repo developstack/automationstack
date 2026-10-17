@@ -9,6 +9,7 @@ import { MAX_NEW_CASE_ATTACHMENTS } from "../schemas/case";
 import type { AttachmentObjectStore } from "./attachment-ingest";
 import {
 	type CaseAttachmentErrorThrowers,
+	type VerifiedCaseImage,
 	verifyUploadedCaseImage,
 } from "./case-attachment-ingest";
 import {
@@ -20,7 +21,7 @@ import {
 /**
  * MCP 写用例步骤时，操作截图和预期截图中是上传凭证（uploadToken），不是附件 id。
  * 这里校验每个凭证，检查 R2 中的对象（HEAD），然后把凭证换成登记后的附件 id。
- * 凭证只能由取得它的用户使用。
+ * 凭证只能由取得它的用户使用。R2 中的对象必须是取得上传地址时声明的类型和大小。
  */
 
 const GROUP_LABELS: Record<ColumnScreenshotKey, string> = {
@@ -42,6 +43,13 @@ const FOREIGN_USER_MESSAGE =
 const FOREIGN_PROJECT_MESSAGE = "截图上传凭证属于另一个项目";
 
 const MIXED_CASES_MESSAGE = "一条用例的截图上传凭证必须属于同一个用例";
+
+function declaredMismatchMessage(
+	upload: ScreenshotUpload,
+	stored: VerifiedCaseImage
+): string {
+	return `实际上传的文件与取得上传地址时声明的不同（声明 ${upload.contentType}、${upload.sizeBytes} 字节，实际 ${stored.contentType}、${stored.sizeBytes} 字节）。请重新取得上传地址并上传`;
+}
 
 const MISSING_FILE_MESSAGE =
 	"截图文件不存在：上传没有完成，或上传地址已过期。请重新取得上传地址并上传";
@@ -136,6 +144,7 @@ function verifyUploads(
 ): Promise<NewCaseAttachmentRow[]> {
 	return Promise.all(
 		[...uploads].map(async ([token, upload]) => {
+			const location = locations.get(token) ?? "";
 			const verified = await verifyUploadedCaseImage(
 				{
 					missingMessage: MISSING_FILE_MESSAGE,
@@ -143,8 +152,14 @@ function verifyUploads(
 					storage: context.storage,
 					storageKey: upload.storageKey,
 				},
-				throwersAt(locations.get(token) ?? "")
+				throwersAt(location)
 			);
+			const isDeclaredObject =
+				verified.contentType === upload.contentType &&
+				verified.sizeBytes === upload.sizeBytes;
+			if (!isDeclaredObject) {
+				failAt(location, declaredMismatchMessage(upload, verified));
+			}
 			return {
 				...verified,
 				createdBy: context.userId,

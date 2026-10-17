@@ -73,22 +73,33 @@ export function presignR2Download(
 	);
 }
 
+/** 上传地址允许的对象：类型和准确的字节数。 */
+export interface R2UploadObject {
+	contentLength: number;
+	contentType: string;
+}
+
+/**
+ * 签发 PUT 上传地址。签名包含 content-type 和 content-length：类型或大小与声明不同的请求，
+ * R2 拒绝（403 SignatureDoesNotMatch）。所以在地址有效期内，不能用另一个大小的文件替换已经上传的文件。
+ */
 export function presignR2Upload(
 	client: S3Client,
 	bucket: string,
 	storageKey: string,
-	contentType: string
+	object: R2UploadObject
 ): Promise<string> {
 	return getSignedUrl(
 		client,
 		new PutObjectCommand({
 			Bucket: bucket,
-			ContentType: contentType,
+			ContentLength: object.contentLength,
+			ContentType: object.contentType,
 			Key: storageKey,
 		}),
 		{
 			expiresIn: UPLOAD_URL_TTL_SECONDS,
-			signableHeaders: new Set(["content-type"]),
+			signableHeaders: new Set(["content-length", "content-type"]),
 		}
 	);
 }

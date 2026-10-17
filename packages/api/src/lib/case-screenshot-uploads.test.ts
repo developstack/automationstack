@@ -38,8 +38,10 @@ function token(
 		{
 			attachmentId: attachmentId(n),
 			caseId,
+			contentType: VALID_HEAD.contentType,
 			fileName: `${n}.png`,
 			projectId: options.projectId ?? PROJECT,
+			sizeBytes: VALID_HEAD.contentLength,
 			storageKey: options.storageKey ?? keyOf(n, caseId),
 			userId: options.userId ?? USER,
 		},
@@ -177,6 +179,18 @@ describe("resolveColumnScreenshotUploads：把截图中的上传凭证换成用�
 				}),
 			},
 			"步骤 s1 的预期截图：实际上传的图片 10485761 字节，超过上限 10485760 字节",
+		],
+		[
+			"an uploaded file of another size than declared",
+			() => token(1),
+			{ storage: createStore({ ...VALID_HEAD, contentLength: 2048 }) },
+			"步骤 s1 的预期截图：实际上传的文件与取得上传地址时声明的不同（声明 image/png、1024 字节，实际 image/png、2048 字节）。请重新取得上传地址并上传",
+		],
+		[
+			"an uploaded file of another type than declared",
+			() => token(1),
+			{ storage: createStore({ ...VALID_HEAD, contentType: "image/webp" }) },
+			"步骤 s1 的预期截图：实际上传的文件与取得上传地址时声明的不同（声明 image/png、1024 字节，实际 image/webp、1024 字节）。请重新取得上传地址并上传",
 		],
 		[
 			"no object storage",

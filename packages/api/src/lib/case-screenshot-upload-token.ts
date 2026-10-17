@@ -21,12 +21,16 @@ export const SCREENSHOT_UPLOAD_TOKEN_TTL_SECONDS =
 /** 凭证的用途。同一个密钥也签名会话等其他数据，用途不同的签名值不能当作凭证。 */
 const TOKEN_PURPOSE = "case-step-screenshot-upload";
 
-/** 一次上传：上传到哪个用例的哪个对象键，登记后的附件 id 和文件名，以及取得凭证的用户。 */
+/** 一次上传：上传到哪个用例的哪个对象键，声明的类型和大小，登记后的附件 id 和文件名，以及取得凭证的用户。 */
 export interface ScreenshotUpload {
 	attachmentId: string;
 	caseId: string;
+	/** 取得上传地址时声明的类型。R2 中的对象必须是这个类型。 */
+	contentType: string;
 	fileName: string;
 	projectId: string;
+	/** 取得上传地址时声明的字节数。R2 中的对象必须是这个大小。 */
+	sizeBytes: number;
 	storageKey: string;
 	/** 取得凭证的用户。只有这个用户可以使用凭证。 */
 	userId: string;
@@ -35,10 +39,12 @@ export interface ScreenshotUpload {
 const tokenPayloadSchema = z.object({
 	attachmentId: z.uuid(),
 	caseId: z.uuid(),
+	contentType: z.string().min(1),
 	exp: z.number(),
 	fileName: z.string().min(1),
 	projectId: z.uuid(),
 	purpose: z.literal(TOKEN_PURPOSE),
+	sizeBytes: z.number().int().positive(),
 	storageKey: z.string().min(1),
 	userId: z.uuid(),
 });

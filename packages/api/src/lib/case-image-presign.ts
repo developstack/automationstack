@@ -41,7 +41,7 @@ export interface PresignedCaseImage {
 
 /**
  * 为一个已有用例的一张图片签发上传地址：先检查声明的类型和大小，再在这个用例的目录下
- * 生成对象键。界面贴图和 MCP 写入截图使用同一个方法。
+ * 生成对象键。上传地址只接受声明的类型和大小。界面贴图和 MCP 写入截图使用同一个方法。
  */
 export async function presignCaseImageUpload(
 	input: CaseImagePresignInput,
@@ -59,6 +59,9 @@ export async function presignCaseImageUpload(
 	const storageKey = buildCaseAttachmentStorageKey(prepared.scope, {
 		contentType: input.contentType,
 	});
-	const uploadUrl = await storage.presignUpload(storageKey, input.contentType);
+	const uploadUrl = await storage.presignUpload(storageKey, {
+		contentLength: input.sizeBytes,
+		contentType: input.contentType,
+	});
 	return { scope: prepared.scope, storageKey, uploadUrl };
 }

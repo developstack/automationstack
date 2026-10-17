@@ -119,13 +119,17 @@ export const CREATE_SCREENSHOT_UPLOAD_DESCRIPTION =
 	"write action screenshots (操作截图) or expected screenshots (预期截图) of " +
 	"case steps, for example when you migrate cases from Excel or XMind. Tool " +
 	"arguments cannot contain image bytes, so do these three steps. " +
-	"1. Call this tool with the caseId and the name, type and size of the local " +
-	"image file. " +
+	"1. Call this tool with the caseId and the name, type and exact size in " +
+	"bytes (sizeBytes) of the local image file. " +
 	"2. Set the shell variable FILE to the path of the local file. Then run the " +
-	"returned curl command. " +
+	"returned curl command. It uses curl --upload-file, which sends the " +
+	"Content-Length of the file. " +
 	"3. Call import_test_cases with onDuplicate 'overwrite' and the sourceRef of " +
 	"the same case. Put the uploadToken in actionScreenshots or " +
 	"expectedScreenshots of a step. " +
+	"The upload URL accepts only the declared type and size. The storage " +
+	"rejects a file of another size with HTTP 403. Thus do not change the " +
+	"file after you call this tool. " +
 	"Call this tool one time for each image. The upload URL expires after " +
 	"expiresInSeconds (5 minutes). The uploadToken expires after " +
 	"tokenExpiresInSeconds (1 hour). " +

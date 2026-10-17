@@ -90,10 +90,10 @@ export const caseAttachmentDraftProcedures = {
 				{ caseId: input.caseId, projectId: input.projectId },
 				{ contentType: input.contentType }
 			);
-			const uploadUrl = await storage.presignUpload(
-				storageKey,
-				input.contentType
-			);
+			const uploadUrl = await storage.presignUpload(storageKey, {
+				contentLength: input.sizeBytes,
+				contentType: input.contentType,
+			});
 			return { attachmentId: randomUUID(), storageKey, uploadUrl };
 		}),
 };

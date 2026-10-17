@@ -45,8 +45,10 @@ export const caseScreenshotUploadProcedures = {
 					{
 						attachmentId: randomUUID(),
 						caseId: scope.caseId,
+						contentType: input.contentType,
 						fileName: input.fileName,
 						projectId: scope.projectId,
+						sizeBytes: input.sizeBytes,
 						storageKey,
 						userId: context.user.id,
 					},

@@ -70,8 +70,10 @@ describe("cases.importBatch：步骤可以引用截图上传", () => {
 			{
 				attachmentId: ATTACHMENT_ID,
 				caseId: CASE_ID,
+				contentType: VALID_HEAD.contentType,
 				fileName: "a.png",
 				projectId: PROJECT_ID,
+				sizeBytes: VALID_HEAD.contentLength,
 				storageKey: STORAGE_KEY,
 				userId: user.id,
 			},
