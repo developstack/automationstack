@@ -10,6 +10,8 @@ import {
 } from "@automationstack/ui/components/table";
 import { useCallback } from "react";
 
+import type { PageSelectionState } from "@/components/interaction/page-selection";
+import { SelectPageCheckbox } from "@/components/interaction/select-page-checkbox";
 import { StatusBadge } from "@/components/status/status-badge";
 
 interface PickerRowProps {
@@ -48,7 +50,7 @@ interface CasePickerTableProps {
 	cases: TestCase[];
 	onToggle: (caseId: string) => void;
 	onTogglePage: () => void;
-	pageAllSelected: boolean;
+	pageState: PageSelectionState;
 	selectedIds: ReadonlySet<string>;
 }
 
@@ -56,7 +58,7 @@ export function CasePickerTable({
 	cases,
 	onToggle,
 	onTogglePage,
-	pageAllSelected,
+	pageState,
 	selectedIds,
 }: CasePickerTableProps) {
 	if (cases.length === 0) {
@@ -72,10 +74,10 @@ export function CasePickerTable({
 			<TableHeader>
 				<TableRow>
 					<TableHead className="w-8">
-						<Checkbox
-							aria-label="全选本页用例"
-							checked={pageAllSelected}
-							onCheckedChange={onTogglePage}
+						<SelectPageCheckbox
+							label="全选本页用例"
+							onToggle={onTogglePage}
+							state={pageState}
 						/>
 					</TableHead>
 					<TableHead>名称</TableHead>

@@ -6,6 +6,7 @@ import type {
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MAX_STATUS_CHANGE_CASES } from "../schemas/case";
 import { callContext, testUser } from "../test-fixtures";
 import { caseStatusProcedures } from "./case-status";
 
@@ -35,6 +36,8 @@ const OTHER_PROJECT_ID = "66666666-6666-4666-8666-666666666666";
 const MODULE_ID = "77777777-7777-4777-8777-777777777777";
 const CASE_ID = "44444444-4444-4444-8444-444444444444";
 const OTHER_CASE_ID = "88888888-8888-4888-8888-888888888888";
+const KEPT_CASE_ID = "99999999-9999-4999-8999-999999999999";
+const OTHER_MODULE_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const viewer = testUser({ role: "member", username: "bob" });
 
 const testCase = {
@@ -115,6 +118,50 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 		await expect(
 			changeAs("member", "draft", [CASE_ID, OTHER_CASE_ID])
 		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		expect(mocks.changeCaseStatus).not.toHaveBeenCalled();
+	});
+
+	it("批量修改：一次写入所有用例，只通知状态变化的用例；分属不同模块时不带模块", async () => {
+		const other = { ...testCase, id: OTHER_CASE_ID, moduleId: OTHER_MODULE_ID };
+		const kept = { ...testCase, id: KEPT_CASE_ID };
+		mocks.listCaseProjects.mockResolvedValue(
+			[CASE_ID, OTHER_CASE_ID, KEPT_CASE_ID].map((caseId) => ({
+				caseId,
+				projectId: PROJECT_ID,
+			}))
+		);
+		mocks.changeCaseStatus.mockResolvedValue({
+			changes: [
+				{ previousStatus: "active", testCase, version: { version: 2 } },
+				{ previousStatus: "draft", testCase: other, version: { version: 3 } },
+				{ previousStatus: "deprecated", testCase: kept, version: null },
+			],
+			kind: "ok",
+		});
+		const ids = [CASE_ID, OTHER_CASE_ID, KEPT_CASE_ID];
+
+		await changeAs("member", "deprecated", ids);
+		expect(mocks.changeCaseStatus).toHaveBeenCalledWith(
+			expect.objectContaining({ caseIds: ids })
+		);
+		expect(mocks.publishInvalidate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				ids: [CASE_ID, OTHER_CASE_ID],
+				moduleId: undefined,
+			})
+		);
+	});
+
+	it.each<[string, string[]]>([
+		["没有用例", []],
+		[
+			`超过 ${MAX_STATUS_CHANGE_CASES} 条用例`,
+			Array.from({ length: MAX_STATUS_CHANGE_CASES + 1 }, () => CASE_ID),
+		],
+	])("%s：BAD_REQUEST，不写数据库", async (_name, ids) => {
+		await expect(changeAs("member", "draft", ids)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
 		expect(mocks.changeCaseStatus).not.toHaveBeenCalled();
 	});
 

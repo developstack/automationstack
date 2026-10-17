@@ -1,18 +1,8 @@
 import { changeCaseStatus } from "@automationstack/db/repositories/case-mutations-repository";
-import { z } from "zod";
-
 import { protectedProcedure } from "../index";
 import { requireCasesMember } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
-import { caseStatusSchema } from "../schemas/case";
-
-/** 一次最多修改状态的用例数，与用例列表一页的上限相同。 */
-const MAX_STATUS_CHANGE_CASES = 100;
-
-const changeCaseStatusSchema = z.object({
-	ids: z.array(z.uuid()).min(1).max(MAX_STATUS_CHANGE_CASES),
-	status: caseStatusSchema,
-});
+import { changeCaseStatusSchema } from "../schemas/case";
 
 const toCasesScope = (input: { ids: string[] }) => ({ caseIds: input.ids });
 

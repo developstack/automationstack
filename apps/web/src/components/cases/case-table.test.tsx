@@ -6,6 +6,10 @@ import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { CaseTable } from "@/components/cases/case-table";
+import {
+	type CaseSelection,
+	useCaseSelection,
+} from "@/components/cases/use-case-selection";
 import { renderRoutes } from "@/test-dom-fixtures";
 
 const api = vi.hoisted(() => ({
@@ -69,6 +73,7 @@ const LOGOUT = makeCase("case-logout", "退出登录");
 const RESET = makeCase("case-reset", "重置密码");
 
 interface HarnessControls {
+	selection: () => CaseSelection;
 	setCases: (cases: TestCase[]) => void;
 	setStale: (stale: boolean) => void;
 }
@@ -79,17 +84,29 @@ async function renderTable(
 ): Promise<
 	HarnessControls & { router: ReturnType<typeof renderRoutes>["router"] }
 > {
-	const controls: Partial<HarnessControls> = {};
+	// 每次渲染记下最新的勾选，测试读到的不是第一次渲染时的值
+	let latestSelection: CaseSelection | undefined;
+	const controls: Partial<HarnessControls> = {
+		selection: () => {
+			if (latestSelection === undefined) {
+				throw new Error("表格还没有渲染");
+			}
+			return latestSelection;
+		},
+	};
 	function Harness() {
 		const [cases, setCases] = useState(initial);
 		const [stale, setStale] = useState(false);
+		const selection = useCaseSelection("scope");
 		controls.setCases = setCases;
 		controls.setStale = setStale;
+		latestSelection = selection;
 		return (
 			<CaseTable
 				animateFirst={animateFirst}
 				cases={cases}
 				selectedCaseId={undefined}
+				selection={selection}
 				stale={stale}
 			/>
 		);
@@ -153,5 +170,52 @@ describe("CaseTable：点状态标签直接修改用例状态", () => {
 			})
 		);
 		expect(router.state.location.search).not.toHaveProperty("caseId");
+	});
+});
+
+describe("CaseTable：勾选用例", () => {
+	const rowCheckbox = (name: string) =>
+		screen.getByRole("checkbox", { name: `选择用例「${name}」` });
+	const pageCheckbox = () =>
+		screen.getByRole("checkbox", { name: "全选本页用例" });
+
+	it("每行有勾选框；表头勾选框在部分选中时显示半选，点击后选中当前页，再点取消", async () => {
+		const controls = await renderTable([LOGIN, LOGOUT]);
+		fireEvent.click(rowCheckbox("登录成功"));
+		expect(rowCheckbox("登录成功").getAttribute("aria-checked")).toBe("true");
+		expect(pageCheckbox().getAttribute("aria-checked")).toBe("mixed");
+
+		fireEvent.click(pageCheckbox());
+		expect([...controls.selection().ids]).toEqual([
+			"case-login",
+			"case-logout",
+		]);
+		expect(pageCheckbox().getAttribute("aria-checked")).toBe("true");
+
+		fireEvent.click(pageCheckbox());
+		expect(controls.selection().ids.size).toBe(0);
+		expect(pageCheckbox().getAttribute("aria-checked")).toBe("false");
+	});
+
+	it("翻到下一页：表头只看当前页，其他页的勾选保留", async () => {
+		const controls = await renderTable([LOGIN, LOGOUT]);
+		fireEvent.click(pageCheckbox());
+		act(() => controls.setCases([RESET]));
+		expect(pageCheckbox().getAttribute("aria-checked")).toBe("false");
+		fireEvent.click(rowCheckbox("重置密码"));
+		expect(controls.selection().ids.size).toBe(3);
+	});
+
+	it("勾选不打开用例详情；勾选后点名称仍然打开详情", async () => {
+		const { router } = await renderTable([LOGIN, LOGOUT]);
+		fireEvent.click(rowCheckbox("退出登录"));
+		expect(router.state.location.search).not.toHaveProperty("caseId");
+		fireEvent.click(screen.getByRole("link", { name: "退出登录" }));
+		await waitFor(() =>
+			expect(router.state.location.search).toMatchObject({
+				caseId: "case-logout",
+			})
+		);
+		expect(rowCheckbox("退出登录").getAttribute("aria-checked")).toBe("true");
 	});
 });

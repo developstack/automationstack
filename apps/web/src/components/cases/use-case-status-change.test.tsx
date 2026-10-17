@@ -5,7 +5,10 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useCaseStatusChange } from "@/components/cases/use-case-status-change";
+import {
+	useCaseBatchStatusChange,
+	useCaseStatusChange,
+} from "@/components/cases/use-case-status-change";
 
 const api = vi.hoisted(() => ({
 	changeStatus: vi.fn<(input: unknown) => Promise<unknown>>(),
@@ -31,19 +34,28 @@ vi.mock("@/utils/orpc", () => ({
 const CASE_ID = "case-login";
 const LIST_KEY = ["cases", "list", { page: 1 }];
 
-function renderChange() {
+function renderWithList<T>(
+	useHook: () => T,
+	items: Pick<TestCase, "id" | "status">[]
+) {
 	const queryClient = new QueryClient();
-	queryClient.setQueryData(LIST_KEY, {
-		items: [{ id: CASE_ID, status: "active" } as TestCase],
-		total: 1,
-	});
+	queryClient.setQueryData(LIST_KEY, { items, total: items.length });
 	const wrapper = ({ children }: { children: ReactNode }) => (
 		<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
 	);
-	const view = renderHook(() => useCaseStatusChange(), { wrapper });
-	const listedStatus = () =>
-		queryClient.getQueryData<{ items: TestCase[] }>(LIST_KEY)?.items[0]?.status;
-	return { listedStatus, view };
+	const view = renderHook(useHook, { wrapper });
+	const listedStatuses = () =>
+		queryClient
+			.getQueryData<{ items: TestCase[] }>(LIST_KEY)
+			?.items.map((testCase) => testCase.status);
+	return { listedStatuses, view };
+}
+
+function renderChange() {
+	const { listedStatuses, view } = renderWithList(useCaseStatusChange, [
+		{ id: CASE_ID, status: "active" },
+	]);
+	return { listedStatus: () => listedStatuses()?.[0], view };
 }
 
 function successToast(index: number) {
@@ -115,6 +127,110 @@ describe("useCaseStatusChange：改用例状态，提示中可以撤销", () => 
 		await act(async () =>
 			view.result.current({ caseId: CASE_ID, from: "active", to: "draft" })
 		);
+		expect(toast.success).not.toHaveBeenCalled();
+	});
+});
+
+const BATCH = [
+	{ id: "case-a", status: "draft" },
+	{ id: "case-b", status: "active" },
+	{ id: "case-c", status: "draft" },
+	{ id: "case-d", status: "deprecated" },
+] as const;
+const BATCH_IDS = BATCH.map((testCase) => testCase.id);
+
+/** 服务端对批量改为 to 的返回：状态没有变化的用例没有新版本。 */
+function batchResult(to: string) {
+	return {
+		changes: BATCH.map(({ id, status }) => ({
+			previousStatus: status,
+			testCase: { id, status: to },
+			version: status === to ? null : { version: 2 },
+		})),
+	};
+}
+
+function renderBatch() {
+	return renderWithList(useCaseBatchStatusChange, [...BATCH]);
+}
+
+describe("useCaseBatchStatusChange：批量改用例状态，撤销恢复每条用例原来的状态", () => {
+	it("一个请求改所有勾选的用例，列表立刻更新；提示结果，带「撤销」", async () => {
+		api.changeStatus.mockResolvedValueOnce(batchResult("deprecated"));
+		const { listedStatuses, view } = renderBatch();
+		let succeeded: boolean | undefined;
+		await act(async () => {
+			succeeded = await view.result.current(BATCH_IDS, "deprecated");
+		});
+		expect(api.changeStatus.mock.calls).toEqual([
+			[{ ids: BATCH_IDS, status: "deprecated" }, expect.anything()],
+		]);
+		expect(listedStatuses()).toEqual([
+			"deprecated",
+			"deprecated",
+			"deprecated",
+			"deprecated",
+		]);
+		expect(succeeded).toBe(true);
+		expect(successToast(0).message).toBe(
+			"已将 4 条用例改为废弃，其中 1 条原来就是废弃"
+		);
+		expect(successToast(0).undo).toEqual(expect.any(Function));
+	});
+
+	it("撤销：按原来的状态分组恢复，原来就是目标状态的用例不动", async () => {
+		api.changeStatus.mockResolvedValueOnce(batchResult("deprecated"));
+		const { listedStatuses, view } = renderBatch();
+		await act(async () => {
+			await view.result.current(BATCH_IDS, "deprecated");
+		});
+		await act(async () => successToast(0).undo?.());
+		expect(
+			api.changeStatus.mock.calls.slice(1).map(([input]) => input)
+		).toEqual([
+			{ ids: ["case-a", "case-c"], status: "draft" },
+			{ ids: ["case-b"], status: "active" },
+		]);
+		expect(listedStatuses()).toEqual([
+			"draft",
+			"active",
+			"draft",
+			"deprecated",
+		]);
+		expect(successToast(1)).toEqual({
+			message: "已恢复 3 条用例原来的状态",
+			undo: undefined,
+		});
+	});
+
+	it("勾选的用例原来都是目标状态：只提示，没有「撤销」", async () => {
+		api.changeStatus.mockResolvedValueOnce({
+			changes: [
+				{
+					previousStatus: "draft",
+					testCase: { id: "case-a", status: "draft" },
+					version: null,
+				},
+			],
+		});
+		const { view } = renderBatch();
+		await act(async () => {
+			await view.result.current(["case-a"], "draft");
+		});
+		expect(successToast(0)).toEqual({
+			message: "已将 1 条用例改为草稿，其中 1 条原来就是草稿",
+			undo: undefined,
+		});
+	});
+
+	it("保存失败：返回 false，不提示修改成功", async () => {
+		api.changeStatus.mockRejectedValueOnce(new Error("断网"));
+		const { view } = renderBatch();
+		let succeeded: boolean | undefined;
+		await act(async () => {
+			succeeded = await view.result.current(BATCH_IDS, "active");
+		});
+		expect(succeeded).toBe(false);
 		expect(toast.success).not.toHaveBeenCalled();
 	});
 });

@@ -2,12 +2,14 @@ import type { TestCase } from "@automationstack/db/schema/test-cases";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { CaseListBatchActions } from "@/components/cases/case-list-batch-actions";
 import { CaseListError } from "@/components/cases/case-list-error";
 import { CaseListFooter } from "@/components/cases/case-list-footer";
 import { CaseTable } from "@/components/cases/case-table";
 import { CaseTableEmpty } from "@/components/cases/case-table-empty";
 import { CASE_LIST_PANEL_CLASS } from "@/components/cases/case-table-layout";
 import { CaseTableSkeleton } from "@/components/cases/case-table-skeleton";
+import type { CaseSelection } from "@/components/cases/use-case-selection";
 import type { WorkspaceNavigation } from "@/components/workspace/use-workspace-navigation";
 
 export interface CaseListPage {
@@ -27,6 +29,8 @@ interface CaseListResultProps {
 	navigation: WorkspaceNavigation;
 	query: CaseListQuery;
 	selectedCaseId: string | undefined;
+	/** 勾选的用例。有勾选时表格上方出现批量操作栏。 */
+	selection: CaseSelection;
 }
 
 interface CaseListBodyProps extends CaseListResultProps {
@@ -41,6 +45,7 @@ function CaseListBody({
 	panelShown,
 	query,
 	selectedCaseId,
+	selection,
 }: CaseListBodyProps) {
 	const { data } = query;
 	if (data === undefined) {
@@ -62,10 +67,12 @@ function CaseListBody({
 	}
 	return (
 		<>
+			<CaseListBatchActions selection={selection} />
 			<CaseTable
 				animateFirst={panelShown}
 				cases={data.items}
 				selectedCaseId={selectedCaseId}
+				selection={selection}
 				stale={query.isPlaceholderData}
 			/>
 			<CaseListFooter

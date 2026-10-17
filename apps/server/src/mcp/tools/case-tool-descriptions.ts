@@ -76,9 +76,23 @@ export const DELETE_CASE_DESCRIPTION =
 	"you decided on your own, and confirm which case when the request is at all " +
 	"ambiguous. Get the id from read_cases or search_cases first. " +
 	"Retiring a case that is part of the project's real suite is NOT a delete: " +
-	"set its status to 'deprecated' via import_test_cases (onDuplicate 'overwrite') " +
-	"so it stays visible and its history keeps working. " +
+	"set its status to 'deprecated' with change_case_status, so it stays visible " +
+	"and its history keeps working. " +
 	"Deletion is refused (CONFLICT) while any test run references the case — the " +
 	"error reports how many — because removing it would silently change past " +
 	"reports; the answer there is to deprecate instead. " +
 	"Returns {id} of the deleted case.";
+
+export const CHANGE_CASE_STATUS_DESCRIPTION =
+	"Change the status (draft | active | deprecated) of up to 100 cases of ONE " +
+	"project in one call — e.g. promote reviewed drafts to 'active', or retire " +
+	"cases with 'deprecated'. Only the status changes: steps and other fields " +
+	"stay as they are, and there is no version check. The call is all-or-nothing: " +
+	"if any id does not exist, or the ids belong to different projects, nothing " +
+	"changes. Any member of the project may call it. Split larger sets into calls " +
+	"of at most 100 ids. " +
+	"Every case whose status actually changes gets a new version in its history; " +
+	"a case already in the target status is left alone. " +
+	"Returns {changed[] (id, name, previousStatus, status, version), unchanged[] " +
+	"(id, name, status)}. To undo, call again once per distinct previousStatus " +
+	"with the ids that had it.";
