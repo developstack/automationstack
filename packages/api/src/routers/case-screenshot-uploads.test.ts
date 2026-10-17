@@ -44,11 +44,11 @@ const input = {
 
 function presign(overrides: Partial<typeof input> = {}, user = testUser()) {
 	return call(
-		caseScreenshotUploadProcedures.presignStepScreenshotUpload,
+		caseScreenshotUploadProcedures.presignColumnScreenshotUpload,
 		{ ...input, ...overrides },
 		{
 			context: callContext(user),
-			path: ["caseAttachments", "presignStepScreenshotUpload"],
+			path: ["caseAttachments", "presignColumnScreenshotUpload"],
 		}
 	);
 }
@@ -64,7 +64,7 @@ beforeEach(() => {
 	mocks.presignUpload.mockResolvedValue(UPLOAD_URL);
 });
 
-describe("caseAttachments.presignStepScreenshotUpload：为一个用例的一张截图取得上传地址", () => {
+describe("caseAttachments.presignColumnScreenshotUpload：为一个用例的一张截图取得上传地址", () => {
 	it("returns a 5-minute upload URL and a token for this case only", async () => {
 		const result = await presign();
 		expect(result).toMatchObject({

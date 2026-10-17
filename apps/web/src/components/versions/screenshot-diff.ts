@@ -1,7 +1,7 @@
 import {
-	CASE_STEP_SCREENSHOT_KEYS,
 	type CaseStep,
-	type CaseStepScreenshotKey,
+	COLUMN_SCREENSHOT_KEYS,
+	type ColumnScreenshotKey,
 } from "@automationstack/db/schema/test-cases";
 
 import type { ChangeKind } from "./change-kind.ts";
@@ -91,17 +91,17 @@ function hasScreenshotChanges(
 }
 
 /** 一个步骤的两组截图各自的变化，见 CONTEXT.md：操作截图和预期截图。 */
-export type StepScreenshotsDiff = Record<
-	CaseStepScreenshotKey,
+export type ColumnScreenshotsDiff = Record<
+	ColumnScreenshotKey,
 	ScreenshotDiffEntry[]
 >;
 
 /** 对比一个步骤的两组截图。新增的步骤 oldStep 为 null，删除的步骤 newStep 为 null；没有字段等于空列表。 */
-export function diffStepScreenshots(
+export function diffColumnScreenshots(
 	oldStep: CaseStep | null,
 	newStep: CaseStep | null
-): StepScreenshotsDiff {
-	const group = (key: CaseStepScreenshotKey) =>
+): ColumnScreenshotsDiff {
+	const group = (key: ColumnScreenshotKey) =>
 		diffScreenshots(oldStep?.[key] ?? [], newStep?.[key] ?? []);
 	return {
 		actionScreenshots: group("actionScreenshots"),
@@ -109,8 +109,8 @@ export function diffStepScreenshots(
 	};
 }
 
-export function hasStepScreenshotChanges(diff: StepScreenshotsDiff): boolean {
-	return CASE_STEP_SCREENSHOT_KEYS.some((key) =>
-		hasScreenshotChanges(diff[key])
-	);
+export function hasColumnScreenshotChanges(
+	diff: ColumnScreenshotsDiff
+): boolean {
+	return COLUMN_SCREENSHOT_KEYS.some((key) => hasScreenshotChanges(diff[key]));
 }

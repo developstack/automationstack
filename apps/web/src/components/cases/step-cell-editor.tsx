@@ -1,19 +1,18 @@
 import type {
 	CaseStep,
-	CaseStepScreenshotKey,
+	ColumnScreenshotKey,
 } from "@automationstack/db/schema/test-cases";
-
+import { ColumnScreenshotEditor } from "@/components/cases/column-screenshot-editor";
 import { MarkdownField } from "@/components/cases/markdown-field";
-import { StepScreenshotEditor } from "@/components/cases/step-screenshot-editor";
 import {
 	type StepChange,
-	useStepScreenshotGroup,
-} from "@/components/cases/use-step-screenshot-group";
+	useColumnScreenshotGroup,
+} from "@/components/cases/use-column-screenshot-group";
 
 interface StepCellEditorProps {
 	ariaLabel: string;
 	/** 这一栏的截图：操作步骤一栏是操作截图，预期结果一栏是预期截图。 */
-	group: CaseStepScreenshotKey;
+	group: ColumnScreenshotKey;
 	onChange: StepChange;
 	onTextChange: (value: string) => void;
 	placeholder: string;
@@ -35,7 +34,7 @@ export function StepCellEditor({
 	step,
 	value,
 }: StepCellEditorProps) {
-	const edit = useStepScreenshotGroup(step, group, onChange);
+	const edit = useColumnScreenshotGroup(step, group, onChange);
 	return (
 		<div className="flex min-w-0 flex-col gap-1.5">
 			<MarkdownField
@@ -46,7 +45,7 @@ export function StepCellEditor({
 				preview={preview}
 				value={value}
 			/>
-			<StepScreenshotEditor edit={edit} group={group} position={position} />
+			<ColumnScreenshotEditor edit={edit} group={group} position={position} />
 		</div>
 	);
 }

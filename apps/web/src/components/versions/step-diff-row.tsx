@@ -1,4 +1,4 @@
-import type { CaseStepScreenshotKey } from "@automationstack/db/schema/test-cases";
+import type { ColumnScreenshotKey } from "@automationstack/db/schema/test-cases";
 import { TableCell, TableRow } from "@automationstack/ui/components/table";
 
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
@@ -9,7 +9,7 @@ import type { StepDiffEntry, StepDiffField } from "./step-diff.ts";
 import { StepTextCell } from "./step-text-cell.tsx";
 
 /** 每一栏的文字和这一栏的截图，见 CONTEXT.md：操作截图和预期截图。 */
-const COLUMN_SCREENSHOTS: Record<StepDiffField, CaseStepScreenshotKey> = {
+const COLUMN_SCREENSHOTS: Record<StepDiffField, ColumnScreenshotKey> = {
 	expected: "expectedScreenshots",
 	step: "actionScreenshots",
 };

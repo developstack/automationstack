@@ -15,7 +15,7 @@ import {
 import { requireCaseMember } from "../lib/project-scope";
 import { caseImagePresignSchema } from "../schemas/case-attachment";
 
-export interface StepScreenshotUpload {
+export interface ColumnScreenshotUpload {
 	contentType: string;
 	/** 上传地址的有效秒数。 */
 	expiresInSeconds: number;
@@ -31,11 +31,11 @@ export const caseScreenshotUploadProcedures = {
 	 * MCP 写入截图的第一步：为一个用例的一张截图取得上传地址和上传凭证。
 	 * 权限与修改这个用例相同。上传凭证只能用于这个用例。
 	 */
-	presignStepScreenshotUpload: protectedProcedure
+	presignColumnScreenshotUpload: protectedProcedure
 		.errors(caseAttachmentErrors)
 		.input(caseImagePresignSchema)
 		.use(requireCaseMember)
-		.handler(async ({ errors, input }): Promise<StepScreenshotUpload> => {
+		.handler(async ({ errors, input }): Promise<ColumnScreenshotUpload> => {
 			const { scope, storageKey, uploadUrl } = await presignCaseImageUpload(
 				input,
 				errors

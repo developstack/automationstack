@@ -1,11 +1,10 @@
-import type { CaseStepScreenshotKey } from "@automationstack/db/schema/test-cases";
+import type { ColumnScreenshotKey } from "@automationstack/db/schema/test-cases";
 import { useCallback, useMemo } from "react";
-
-import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import {
 	screenshotGroupNames,
 	screenshotMediaItems,
-} from "@/components/cases/step-screenshot-group";
+} from "@/components/cases/column-screenshot-group";
+import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import type { MediaItem } from "@/components/media/media-item";
 import { MediaLightbox } from "@/components/media/media-lightbox";
 import { MediaThumb } from "@/components/media/media-thumb";
@@ -18,7 +17,7 @@ const NO_UPLOADS = new Map();
 
 interface ScreenshotDiffStripProps {
 	entries: readonly ScreenshotDiffEntry[];
-	group: CaseStepScreenshotKey;
+	group: ColumnScreenshotKey;
 	imageUrls: MarkdownImageUrls;
 	/** 步骤的序号，从 1 开始。 */
 	position: number;

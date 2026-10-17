@@ -1,17 +1,17 @@
-import type { CaseStepScreenshotKey } from "@automationstack/db/schema/test-cases";
+import type { ColumnScreenshotKey } from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
 import { Trash2Icon } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
 import { AddScreenshotButton } from "@/components/cases/add-screenshot-button";
 import { useCaseAttachments } from "@/components/cases/case-attachment-context";
-import { MarkdownFieldUploads } from "@/components/cases/markdown-field-uploads";
-import { ScreenshotRemoveDialog } from "@/components/cases/screenshot-remove-dialog";
 import {
 	screenshotGroupNames,
 	screenshotMediaItems,
-} from "@/components/cases/step-screenshot-group";
-import type { StepScreenshotGroupEdit } from "@/components/cases/use-step-screenshot-group";
+} from "@/components/cases/column-screenshot-group";
+import { MarkdownFieldUploads } from "@/components/cases/markdown-field-uploads";
+import { ScreenshotRemoveDialog } from "@/components/cases/screenshot-remove-dialog";
+import type { ColumnScreenshotGroupEdit } from "@/components/cases/use-column-screenshot-group";
 import { MediaGallery } from "@/components/media/media-gallery";
 import type { MediaItem } from "@/components/media/media-item";
 import { useRemoveConfirm } from "@/components/media/use-remove-confirm";
@@ -46,9 +46,9 @@ function useEditorItems(
 	);
 }
 
-interface StepScreenshotEditorProps {
-	edit: StepScreenshotGroupEdit;
-	group: CaseStepScreenshotKey;
+interface ColumnScreenshotEditorProps {
+	edit: ColumnScreenshotGroupEdit;
+	group: ColumnScreenshotKey;
 	position: number;
 }
 
@@ -56,11 +56,11 @@ interface StepScreenshotEditorProps {
  * 编辑区中输入框下方的一组截图：缩略图条，末尾是「+」按钮。
  * 大图浏览中可以删除当前的截图，删除前确认。上传中和上传失败的截图列在缩略图条下方。
  */
-export function StepScreenshotEditor({
+export function ColumnScreenshotEditor({
 	edit,
 	group,
 	position,
-}: StepScreenshotEditorProps) {
+}: ColumnScreenshotEditorProps) {
 	const removal = useRemoveConfirm(edit.remove);
 	const { groupLabel, label, titlePrefix } = screenshotGroupNames(
 		position,

@@ -1,15 +1,14 @@
 import type {
 	CaseStep,
-	CaseStepScreenshotKey,
+	ColumnScreenshotKey,
 } from "@automationstack/db/schema/test-cases";
-
+import { ColumnScreenshotGallery } from "@/components/cases/column-screenshot-gallery";
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
-import { StepScreenshotGallery } from "@/components/cases/step-screenshot-gallery";
 import { RUN_STEP_COLUMN_TITLE } from "@/components/test-runs/run-panel-typography";
 
 interface RunStepColumnProps {
-	group: CaseStepScreenshotKey;
+	group: ColumnScreenshotKey;
 	imageUrls: MarkdownImageUrls;
 	position: number;
 	step: CaseStep;
@@ -34,7 +33,7 @@ export function RunStepColumn({
 			) : (
 				<p className="text-muted-foreground text-sm">—</p>
 			)}
-			<StepScreenshotGallery
+			<ColumnScreenshotGallery
 				group={group}
 				imageUrls={imageUrls}
 				position={position}

@@ -1,8 +1,8 @@
 import type { NewCaseAttachmentRow } from "@automationstack/db/repositories/case-attachments-repository";
 import {
-	CASE_STEP_SCREENSHOT_KEYS,
 	type CaseStep,
-	type CaseStepScreenshotKey,
+	COLUMN_SCREENSHOT_KEYS,
+	type ColumnScreenshotKey,
 } from "@automationstack/db/schema/test-cases";
 
 import { MAX_NEW_CASE_ATTACHMENTS } from "../schemas/case";
@@ -22,7 +22,7 @@ import {
  * 这里校验每个凭证，检查 R2 中的对象（HEAD），然后把凭证换成登记后的附件 id。
  */
 
-const GROUP_LABELS: Record<CaseStepScreenshotKey, string> = {
+const GROUP_LABELS: Record<ColumnScreenshotKey, string> = {
 	actionScreenshots: "操作截图",
 	expectedScreenshots: "预期截图",
 };
@@ -50,7 +50,7 @@ export interface ScreenshotUploadContext {
 	storage: AttachmentObjectStore | null;
 }
 
-export type ResolveStepScreenshotUploadsResult =
+export type ResolveColumnScreenshotUploadsResult =
 	| { kind: "none" }
 	| { kind: "error"; message: string }
 	| {
@@ -67,7 +67,7 @@ class UploadReferenceError extends Error {}
 function tokenLocations(steps: readonly CaseStep[]): Map<string, string> {
 	const locations = new Map<string, string>();
 	for (const step of steps) {
-		for (const key of CASE_STEP_SCREENSHOT_KEYS) {
+		for (const key of COLUMN_SCREENSHOT_KEYS) {
 			for (const token of step[key] ?? []) {
 				if (!locations.has(token)) {
 					locations.set(token, `步骤 ${step.id} 的${GROUP_LABELS[key]}`);
@@ -154,7 +154,7 @@ function replaceTokens(
 ): CaseStep[] {
 	return steps.map((step) => {
 		const replaced: CaseStep = { ...step };
-		for (const key of CASE_STEP_SCREENSHOT_KEYS) {
+		for (const key of COLUMN_SCREENSHOT_KEYS) {
 			const tokens = step[key];
 			if (tokens !== undefined) {
 				replaced[key] = tokens.map(
@@ -170,10 +170,10 @@ function tooManyUploadsMessage(count: number): string {
 	return `一条用例一次最多引用 ${MAX_NEW_CASE_ATTACHMENTS} 个截图上传凭证，这一行有 ${count} 个。请分几次写入：已经写入的步骤不给截图字段，截图保持不变`;
 }
 
-export async function resolveStepScreenshotUploads(
+export async function resolveColumnScreenshotUploads(
 	steps: readonly CaseStep[],
 	context: ScreenshotUploadContext
-): Promise<ResolveStepScreenshotUploadsResult> {
+): Promise<ResolveColumnScreenshotUploadsResult> {
 	const locations = tokenLocations(steps);
 	if (locations.size === 0) {
 		return { kind: "none" };

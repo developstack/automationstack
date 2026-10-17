@@ -1,13 +1,13 @@
 import { eq, sql } from "drizzle-orm";
 
 import {
-	CASE_STEP_SCREENSHOT_KEYS,
 	type CasePriority,
 	type CaseSnapshot,
 	type CaseStatus,
 	type CaseStep,
 	type CaseType,
 	type CaseVersion,
+	COLUMN_SCREENSHOT_KEYS,
 	caseVersions,
 	type TestCase,
 	testCases,
@@ -102,7 +102,7 @@ function sameSteps(
 				step.id === other.id &&
 				step.step === other.step &&
 				step.expected === other.expected &&
-				CASE_STEP_SCREENSHOT_KEYS.every((key) =>
+				COLUMN_SCREENSHOT_KEYS.every((key) =>
 					sameList(step[key] ?? [], other[key] ?? [])
 				)
 			);
@@ -115,7 +115,7 @@ function sameSteps(
  * 这时 id 相同的步骤保留现有的这一组截图；新的步骤 id 没有截图。
  * 两组截图分别处理：步骤只带一组时，另一组保留现有的截图。
  */
-export function mergeStepScreenshots(
+export function mergeColumnScreenshots(
 	stored: readonly CaseStep[],
 	patched: readonly CaseStep[]
 ): CaseStep[] {
@@ -126,7 +126,7 @@ export function mergeStepScreenshots(
 			return step;
 		}
 		const merged: CaseStep = { ...step };
-		for (const key of CASE_STEP_SCREENSHOT_KEYS) {
+		for (const key of COLUMN_SCREENSHOT_KEYS) {
 			const kept = previous[key];
 			if (merged[key] === undefined && kept !== undefined) {
 				merged[key] = kept;
@@ -145,7 +145,7 @@ export function withExplicitScreenshots(
 ): CaseStep[] {
 	return steps.map((step) => {
 		const explicit: CaseStep = { ...step };
-		for (const key of CASE_STEP_SCREENSHOT_KEYS) {
+		for (const key of COLUMN_SCREENSHOT_KEYS) {
 			explicit[key] = step[key] ?? [];
 		}
 		return explicit;
@@ -159,7 +159,7 @@ function withMergedScreenshots(
 	if (patch.steps === undefined) {
 		return patch;
 	}
-	return { ...patch, steps: mergeStepScreenshots(row.steps, patch.steps) };
+	return { ...patch, steps: mergeColumnScreenshots(row.steps, patch.steps) };
 }
 
 export function isNoopCasePatch(

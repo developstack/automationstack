@@ -10,7 +10,7 @@ import { z } from "zod";
 
 import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
-import { resolveStepScreenshotUploads } from "../lib/case-screenshot-uploads";
+import { resolveColumnScreenshotUploads } from "../lib/case-screenshot-uploads";
 import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
 import { importCaseSchema } from "../schemas/case";
@@ -77,7 +77,10 @@ async function resolveRowScreenshots(
 	};
 	const resolved = await Promise.all(
 		parsed.rows.map(async (row) => ({
-			result: await resolveStepScreenshotUploads(row.item.steps ?? [], context),
+			result: await resolveColumnScreenshotUploads(
+				row.item.steps ?? [],
+				context
+			),
 			row,
 		}))
 	);

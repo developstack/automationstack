@@ -1,16 +1,15 @@
 import type {
 	CaseStep,
-	CaseStepScreenshotKey,
+	ColumnScreenshotKey,
 } from "@automationstack/db/schema/test-cases";
 import { cn } from "@automationstack/ui/lib/utils";
-
+import { ColumnScreenshotGallery } from "@/components/cases/column-screenshot-gallery";
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
 import {
 	STEP_GRID_CLASS,
 	StepGridHeader,
 } from "@/components/cases/step-grid-header";
-import { StepScreenshotGallery } from "@/components/cases/step-screenshot-gallery";
 
 const DEFAULT_EMPTY_TEXT = "还没有步骤。点击「编辑」添加操作步骤和预期结果。";
 
@@ -28,7 +27,7 @@ interface CaseStepItemProps {
 }
 
 interface StepCellProps {
-	group: CaseStepScreenshotKey;
+	group: ColumnScreenshotKey;
 	imageUrls: MarkdownImageUrls;
 	label: string;
 	position: number;
@@ -56,7 +55,7 @@ function StepCell({
 			) : (
 				<p className="text-muted-foreground">—</p>
 			)}
-			<StepScreenshotGallery
+			<ColumnScreenshotGallery
 				group={group}
 				imageUrls={imageUrls}
 				position={position}

@@ -44,7 +44,7 @@ async function createScreenshotUpload(
 	input: CreateScreenshotUploadInput
 ): Promise<ToolResult> {
 	const upload =
-		await client.caseAttachments.presignStepScreenshotUpload(input);
+		await client.caseAttachments.presignColumnScreenshotUpload(input);
 	return jsonResult({
 		curl: curlCommand(upload.contentType, upload.uploadUrl),
 		expiresInSeconds: upload.expiresInSeconds,

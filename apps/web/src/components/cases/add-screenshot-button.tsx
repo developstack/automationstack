@@ -2,7 +2,7 @@ import { Button } from "@automationstack/ui/components/button";
 import { PlusIcon } from "lucide-react";
 import { type ChangeEvent, useCallback, useRef } from "react";
 
-import { SCREENSHOT_ACCEPT } from "@/components/cases/step-screenshot-group";
+import { SCREENSHOT_ACCEPT } from "@/components/cases/column-screenshot-group";
 
 interface AddScreenshotButtonProps {
 	/** 可以选择的文件类型。默认只有图片；实际附件还可以选择录屏。 */

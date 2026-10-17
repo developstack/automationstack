@@ -1,6 +1,6 @@
 import {
-	CASE_STEP_SCREENSHOT_KEYS,
 	type CaseStep,
+	COLUMN_SCREENSHOT_KEYS,
 } from "@automationstack/db/schema/test-cases";
 
 import {
@@ -49,7 +49,7 @@ function pickOption<T extends string>(
 /** 草稿中步骤的两组截图：附件 id 或上传占位。没有的一组不写。 */
 function pickScreenshots(raw: Record<string, unknown>): Partial<CaseStep> {
 	const groups: Partial<CaseStep> = {};
-	for (const key of CASE_STEP_SCREENSHOT_KEYS) {
+	for (const key of COLUMN_SCREENSHOT_KEYS) {
 		const value = raw[key];
 		if (Array.isArray(value)) {
 			groups[key] = value.filter(

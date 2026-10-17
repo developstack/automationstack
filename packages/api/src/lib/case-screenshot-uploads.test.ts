@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { signScreenshotUploadToken } from "./case-screenshot-upload-token";
 import {
-	resolveStepScreenshotUploads,
+	resolveColumnScreenshotUploads,
 	type ScreenshotUploadContext,
 } from "./case-screenshot-uploads";
 import { createStore, VALID_HEAD } from "./object-store-fixtures";
@@ -64,7 +64,7 @@ function context(
 	};
 }
 
-describe("resolveStepScreenshotUploads：把截图中的上传凭证换成用例附件", () => {
+describe("resolveColumnScreenshotUploads：把截图中的上传凭证换成用例附件", () => {
 	it.each([
 		["no screenshot fields", [step("s1")]],
 		[
@@ -74,7 +74,7 @@ describe("resolveStepScreenshotUploads：把截图中的上传凭证换成用例
 	])("does nothing for %s", async (_name, steps) => {
 		const storage = createStore();
 		expect(
-			await resolveStepScreenshotUploads(steps, context({ storage }))
+			await resolveColumnScreenshotUploads(steps, context({ storage }))
 		).toEqual({ kind: "none" });
 		expect(storage.calls).toEqual([]);
 	});
@@ -82,7 +82,7 @@ describe("resolveStepScreenshotUploads：把截图中的上传凭证换成用例
 	it("replaces each token with its attachment id, keeps the order and registers each upload once", async () => {
 		const [one, two] = await Promise.all([token(1), token(2)]);
 		const storage = createStore();
-		const result = await resolveStepScreenshotUploads(
+		const result = await resolveColumnScreenshotUploads(
 			[
 				step("s1", { actionScreenshots: [two, one] }),
 				step("s2", { expectedScreenshots: [one] }),
@@ -170,7 +170,7 @@ describe("resolveStepScreenshotUploads：把截图中的上传凭证换成用例
 			"附件存储（R2）未配置，无法写入操作截图或预期截图",
 		],
 	])("rejects %s", async (_name, makeToken, overrides, message) => {
-		const result = await resolveStepScreenshotUploads(
+		const result = await resolveColumnScreenshotUploads(
 			[step("s1", { expectedScreenshots: [await makeToken()] })],
 			context(overrides)
 		);
@@ -183,7 +183,7 @@ describe("resolveStepScreenshotUploads：把截图中的上传凭证换成用例
 			token(2, { caseId: OTHER_CASE }),
 		]);
 		expect(
-			await resolveStepScreenshotUploads(
+			await resolveColumnScreenshotUploads(
 				[
 					step("s1", { actionScreenshots: [own] }),
 					step("s2", { actionScreenshots: [other] }),
@@ -205,7 +205,7 @@ describe("resolveStepScreenshotUploads：把截图中的上传凭证换成用例
 				actionScreenshots: tokens.slice(index * 9, index * 9 + 9),
 			})
 		);
-		expect(await resolveStepScreenshotUploads(steps, context())).toEqual({
+		expect(await resolveColumnScreenshotUploads(steps, context())).toEqual({
 			kind: "error",
 			message:
 				"一条用例一次最多引用 50 个截图上传凭证，这一行有 51 个。请分几次写入：已经写入的步骤不给截图字段，截图保持不变",

@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { caseContentPatchSchema, importCaseSchema } from "../schemas/case";
 import {
+	columnScreenshotIds,
 	foreignScreenshotIds,
-	stepScreenshotIds,
-} from "./case-step-screenshots";
+} from "./case-column-screenshots";
 
 const shot = (n: number) =>
 	`00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -14,7 +14,7 @@ const step = (groups: {
 	expectedScreenshots?: string[];
 }) => ({ expected: "", id: "s1", step: "", ...groups });
 
-describe("stepScreenshotIds / foreignScreenshotIds", () => {
+describe("columnScreenshotIds / foreignScreenshotIds", () => {
 	const steps = [
 		step({ actionScreenshots: [shot(1)], expectedScreenshots: [shot(2)] }),
 		step({}),
@@ -22,8 +22,8 @@ describe("stepScreenshotIds / foreignScreenshotIds", () => {
 	];
 
 	it("lists every id of both groups once, in order, and treats a missing group as empty", () => {
-		expect(stepScreenshotIds(steps)).toEqual([shot(1), shot(2), shot(3)]);
-		expect(stepScreenshotIds(undefined)).toEqual([]);
+		expect(columnScreenshotIds(steps)).toEqual([shot(1), shot(2), shot(3)]);
+		expect(columnScreenshotIds(undefined)).toEqual([]);
 	});
 
 	it.each([

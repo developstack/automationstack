@@ -20,10 +20,10 @@ import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
 import { resolveNewCaseAttachments } from "../lib/case-attachment-draft-ingest";
 import {
+	columnScreenshotIds,
 	FOREIGN_SCREENSHOT_MESSAGE,
 	foreignScreenshotIds,
-	stepScreenshotIds,
-} from "../lib/case-step-screenshots";
+} from "../lib/case-column-screenshots";
 import { requireCaseMember, requireModuleMember } from "../lib/project-scope";
 import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
@@ -229,7 +229,7 @@ export const casesRouter = {
 		.input(updateCaseSchema)
 		.use(requireCaseMember, toCaseScope)
 		.handler(async ({ context, errors, input }) => {
-			const screenshotIds = stepScreenshotIds(input.patch.steps);
+			const screenshotIds = columnScreenshotIds(input.patch.steps);
 			const owned = await findCaseAttachmentIds(input.id, screenshotIds);
 			if (foreignScreenshotIds(input.patch.steps, owned).length > 0) {
 				throw errors.BAD_REQUEST({ message: FOREIGN_SCREENSHOT_MESSAGE });

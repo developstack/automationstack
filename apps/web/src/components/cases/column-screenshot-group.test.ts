@@ -7,7 +7,7 @@ import {
 	planScreenshotAdd,
 	replaceScreenshotEntry,
 	screenshotMediaItems,
-} from "@/components/cases/step-screenshot-group";
+} from "@/components/cases/column-screenshot-group";
 import type { CaseUploadJob } from "@/components/cases/use-case-upload-jobs";
 
 const ID_A = "aaaaaaaa-1111-4222-8333-444444444444";

@@ -86,11 +86,11 @@ export const removeCasesInputSchema = z.union([
 ]);
 
 /** 每个步骤每组截图（操作截图、预期截图）最多的数量。 */
-export const MAX_STEP_SCREENSHOTS = 9;
+export const MAX_COLUMN_SCREENSHOTS = 9;
 
 /**
  * 步骤的文字部分，多余的字段被丢弃。没有截图字段时，id 相同的步骤保留现有的截图
- * （见 mergeStepScreenshots）。
+ * （见 mergeColumnScreenshots）。
  */
 export const caseStepSchema = z.object({
 	expected: z.string(),
@@ -105,8 +105,8 @@ function screenshotGroupSchema(
 	return z
 		.array(item.schema)
 		.max(
-			MAX_STEP_SCREENSHOTS,
-			`每个步骤最多 ${MAX_STEP_SCREENSHOTS} 张${label}`
+			MAX_COLUMN_SCREENSHOTS,
+			`每个步骤最多 ${MAX_COLUMN_SCREENSHOTS} 张${label}`
 		)
 		.refine((ids) => new Set(ids).size === ids.length, {
 			message: `${label}中有重复的${item.unit}`,

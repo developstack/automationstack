@@ -2,10 +2,10 @@ import {
 	extractCaseAttachmentIds,
 	isCaseAttachmentRef,
 } from "@automationstack/api/lib/case-attachment-ref";
-import { MAX_STEP_SCREENSHOTS } from "@automationstack/api/schemas/case";
+import { MAX_COLUMN_SCREENSHOTS } from "@automationstack/api/schemas/case";
 import type {
 	CaseStep,
-	CaseStepScreenshotKey,
+	ColumnScreenshotKey,
 } from "@automationstack/db/schema/test-cases";
 
 import {
@@ -23,7 +23,7 @@ import type { MediaItem } from "@/components/media/media-item";
 export type ScreenshotEntry = string;
 
 /** 两组截图的名称，见 CONTEXT.md。 */
-export const SCREENSHOT_GROUP_LABELS: Record<CaseStepScreenshotKey, string> = {
+export const SCREENSHOT_GROUP_LABELS: Record<ColumnScreenshotKey, string> = {
 	actionScreenshots: "操作截图",
 	expectedScreenshots: "预期截图",
 };
@@ -35,7 +35,7 @@ const NO_ENTRIES: readonly ScreenshotEntry[] = [];
 
 export function screenshotEntries(
 	step: CaseStep,
-	key: CaseStepScreenshotKey
+	key: ColumnScreenshotKey
 ): readonly ScreenshotEntry[] {
 	return step[key] ?? NO_ENTRIES;
 }
@@ -92,7 +92,7 @@ export function planScreenshotAdd(
 		const precheck = precheckCaseImage(file);
 		if (!precheck.ok) {
 			reasons.push(`${file.name || "图片"}：${precheck.reason}`);
-		} else if (existing + accepted.length >= MAX_STEP_SCREENSHOTS) {
+		} else if (existing + accepted.length >= MAX_COLUMN_SCREENSHOTS) {
 			overLimit += 1;
 		} else {
 			accepted.push(file);
@@ -100,7 +100,7 @@ export function planScreenshotAdd(
 	}
 	if (overLimit > 0) {
 		reasons.push(
-			`每个步骤最多 ${MAX_STEP_SCREENSHOTS} 张${label}，${overLimit} 张没有加入`
+			`每个步骤最多 ${MAX_COLUMN_SCREENSHOTS} 张${label}，${overLimit} 张没有加入`
 		);
 	}
 	return { accepted, error: reasons.length === 0 ? null : reasons.join("；") };
@@ -141,7 +141,7 @@ export function screenshotMediaItems(
 /** 缩略图条的无障碍名称和大图浏览标题的前一部分，例如「第 2 步操作截图」和「第 2 步 · 操作截图」。 */
 export function screenshotGroupNames(
 	position: number,
-	key: CaseStepScreenshotKey
+	key: ColumnScreenshotKey
 ): { groupLabel: string; label: string; titlePrefix: string } {
 	const groupLabel = SCREENSHOT_GROUP_LABELS[key];
 	return {

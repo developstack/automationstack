@@ -1,33 +1,32 @@
 import type {
 	CaseStep,
-	CaseStepScreenshotKey,
+	ColumnScreenshotKey,
 } from "@automationstack/db/schema/test-cases";
 import { useMemo } from "react";
-
-import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import {
 	screenshotEntries,
 	screenshotGroupNames,
 	screenshotMediaItems,
-} from "@/components/cases/step-screenshot-group";
+} from "@/components/cases/column-screenshot-group";
+import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { MediaGallery } from "@/components/media/media-gallery";
 
 const NO_UPLOADS = new Map();
 
-interface StepScreenshotGalleryProps {
-	group: CaseStepScreenshotKey;
+interface ColumnScreenshotGalleryProps {
+	group: ColumnScreenshotKey;
 	imageUrls: MarkdownImageUrls;
 	position: number;
 	step: CaseStep;
 }
 
 /** 只读的一组截图（操作截图或预期截图）：单元格文字下方的缩略图条和大图浏览。没有截图时不占位置。 */
-export function StepScreenshotGallery({
+export function ColumnScreenshotGallery({
 	group,
 	imageUrls,
 	position,
 	step,
-}: StepScreenshotGalleryProps) {
+}: ColumnScreenshotGalleryProps) {
 	const { groupLabel, label, titlePrefix } = screenshotGroupNames(
 		position,
 		group

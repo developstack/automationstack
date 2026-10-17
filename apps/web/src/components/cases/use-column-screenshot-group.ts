@@ -1,7 +1,7 @@
-import { MAX_STEP_SCREENSHOTS } from "@automationstack/api/schemas/case";
+import { MAX_COLUMN_SCREENSHOTS } from "@automationstack/api/schemas/case";
 import type {
 	CaseStep,
-	CaseStepScreenshotKey,
+	ColumnScreenshotKey,
 } from "@automationstack/db/schema/test-cases";
 import { type RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
@@ -18,7 +18,7 @@ import {
 	SCREENSHOT_GROUP_LABELS,
 	type ScreenshotEntry,
 	screenshotEntries,
-} from "@/components/cases/step-screenshot-group";
+} from "@/components/cases/column-screenshot-group";
 import type { CasePasteTarget } from "@/components/cases/use-case-upload-commands";
 
 export type StepChange = (id: string, patch: Partial<CaseStep>) => void;
@@ -31,7 +31,7 @@ interface GroupEntries {
 
 interface GroupTargetRefs {
 	changeRef: RefObject<StepChange | null>;
-	group: CaseStepScreenshotKey;
+	group: ColumnScreenshotKey;
 	stepId: string;
 	textRef: RefObject<GroupEntries>;
 }
@@ -69,7 +69,7 @@ function groupTarget({
  */
 function useGroupTarget(
 	step: CaseStep,
-	group: CaseStepScreenshotKey,
+	group: ColumnScreenshotKey,
 	onChange: StepChange
 ) {
 	const entries = screenshotEntries(step, group);
@@ -94,7 +94,7 @@ function useGroupTarget(
 	);
 }
 
-export interface StepScreenshotGroupEdit {
+export interface ColumnScreenshotGroupEdit {
 	/** 检查后上传「+」选择的文件或粘贴的图片。超过数量的图片不加入，并提示。 */
 	addFiles: (files: File[]) => void;
 	/** 附件存储已配置，并且这一组没有满。为 false 时不显示「+」按钮。 */
@@ -107,11 +107,11 @@ export interface StepScreenshotGroupEdit {
 }
 
 /** 一个步骤的一组截图（操作截图或预期截图）：检查后上传、删除。上传使用正文图片的上传队列。 */
-export function useStepScreenshotGroup(
+export function useColumnScreenshotGroup(
 	step: CaseStep,
-	group: CaseStepScreenshotKey,
+	group: ColumnScreenshotKey,
 	onChange: StepChange
-): StepScreenshotGroupEdit {
+): ColumnScreenshotGroupEdit {
 	const { discardUpload, uploadPasted } = useCaseAttachments();
 	const target = useGroupTarget(step, group, onChange);
 	const entries = screenshotEntries(step, group);
@@ -154,7 +154,7 @@ export function useStepScreenshotGroup(
 
 	return {
 		addFiles,
-		canAdd: uploadPasted !== null && entries.length < MAX_STEP_SCREENSHOTS,
+		canAdd: uploadPasted !== null && entries.length < MAX_COLUMN_SCREENSHOTS,
 		entries,
 		remove,
 		removeUploadingRef,

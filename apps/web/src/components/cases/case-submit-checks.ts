@@ -1,5 +1,5 @@
 import { extractCaseAttachmentIds } from "@automationstack/api/lib/case-attachment-ref";
-import { CASE_STEP_SCREENSHOT_KEYS } from "@automationstack/db/schema/test-cases";
+import { COLUMN_SCREENSHOT_KEYS } from "@automationstack/db/schema/test-cases";
 
 import type { CaseDraftAttachment } from "@/components/cases/case-draft-parse";
 import type { CaseFormValues } from "@/components/cases/case-meta";
@@ -8,7 +8,7 @@ import { hasCaseUploadingRef } from "@/components/cases/case-upload-placeholder"
 /** 操作截图和预期截图的所有条目：附件 id，或者上传中的占位。 */
 function caseFormScreenshots(values: CaseFormValues): string[] {
 	return values.steps.flatMap((step) =>
-		CASE_STEP_SCREENSHOT_KEYS.flatMap((key) => step[key] ?? [])
+		COLUMN_SCREENSHOT_KEYS.flatMap((key) => step[key] ?? [])
 	);
 }
 

@@ -42,12 +42,12 @@ export type CaseType = (typeof caseTypeEnum.enumValues)[number];
 export type CaseStatus = (typeof caseStatusEnum.enumValues)[number];
 
 /** 步骤的两组截图，见 CONTEXT.md：操作截图和预期截图。 */
-export const CASE_STEP_SCREENSHOT_KEYS = [
+export const COLUMN_SCREENSHOT_KEYS = [
 	"actionScreenshots",
 	"expectedScreenshots",
 ] as const;
 
-export type CaseStepScreenshotKey = (typeof CASE_STEP_SCREENSHOT_KEYS)[number];
+export type ColumnScreenshotKey = (typeof COLUMN_SCREENSHOT_KEYS)[number];
 
 export interface CaseStep {
 	/** 操作截图：有序的用例附件 id 列表。没有这个字段等于空列表。 */

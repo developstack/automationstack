@@ -10,7 +10,7 @@ const UPLOAD_URL =
 
 type Handler = (input: Record<string, unknown>) => Promise<ToolResult>;
 
-/** 注册截图工具，返回 create_screenshot_upload。presign 是假的 caseAttachments.presignStepScreenshotUpload。 */
+/** 注册截图工具，返回 create_screenshot_upload。presign 是假的 caseAttachments.presignColumnScreenshotUpload。 */
 function uploadTool(presign: ReturnType<typeof vi.fn>): Handler {
 	let handler: Handler | undefined;
 	const server = {
@@ -21,7 +21,7 @@ function uploadTool(presign: ReturnType<typeof vi.fn>): Handler {
 		},
 	} as unknown as McpServer;
 	registerCaseScreenshotTools(server, {
-		caseAttachments: { presignStepScreenshotUpload: presign },
+		caseAttachments: { presignColumnScreenshotUpload: presign },
 	} as unknown as ApiClient);
 	if (handler === undefined) {
 		throw new Error("create_screenshot_upload 没有注册");
