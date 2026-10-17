@@ -1,14 +1,14 @@
 import type { MediaItem } from "@/components/media/media-item";
-import type { ReportFailedCase } from "@/components/test-runs/report-meta";
+import type { ReportFailedAndBlockedCase } from "@/components/test-runs/report-meta";
 import {
 	type RunAttachmentView,
 	stepAttachmentItems,
 } from "@/components/test-runs/run-step-attachment-items";
 
-/** 报告读取的一条失败用例的步骤和附件。 */
+/** 报告读取的一条失败或阻塞用例的步骤和附件。 */
 export interface ReportCaseSteps {
 	attachments: readonly RunAttachmentView[];
-	steps: readonly ReportFailedCase["steps"][number][];
+	steps: readonly ReportFailedAndBlockedCase["steps"][number][];
 }
 
 /** 报告中一个步骤的实际结果：文字和实际附件，至少有一项。 */

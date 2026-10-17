@@ -10,7 +10,7 @@ interface ReportStepResultsRowProps {
 	results: readonly ReportStepResult[];
 }
 
-/** 失败用例下面的一行：有实际结果的步骤。没有这样的步骤时不显示，不留空行。 */
+/** 失败或阻塞用例下面的一行：有实际结果的步骤。没有这样的步骤时不显示，不留空行。 */
 export function ReportStepResultsRow({
 	caseName,
 	columnCount,

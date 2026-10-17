@@ -172,15 +172,15 @@ export const testRunsRouter = {
 			if (!report) {
 				throw errors.NOT_FOUND({ message: "测试任务不存在" });
 			}
-			// 失败用例的附件随报告一起签发下载地址，页面不需要为每条用例另外请求附件列表
+			// 失败和阻塞用例的附件随报告一起签发下载地址，页面不需要为每条用例另外请求附件列表
 			const storage = getR2Storage();
-			const failedCases = await Promise.all(
-				report.failedCases.map(async (failedCase) => ({
-					...failedCase,
-					attachments: await withDownloadUrls(failedCase.attachments, storage),
+			const failedAndBlockedCases = await Promise.all(
+				report.failedAndBlockedCases.map(async (reportCase) => ({
+					...reportCase,
+					attachments: await withDownloadUrls(reportCase.attachments, storage),
 				}))
 			);
-			return { ...report, failedCases };
+			return { ...report, failedAndBlockedCases };
 		}),
 	submit: protectedProcedure
 		.errors(testRunErrors)

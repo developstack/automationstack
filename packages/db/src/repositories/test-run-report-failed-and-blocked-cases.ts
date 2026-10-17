@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "../index";
 import { automationExecutions } from "../schema/automation-executions";
@@ -9,12 +9,26 @@ import {
 	testCases,
 } from "../schema/test-cases";
 import type { TestRunAttachment } from "../schema/test-run-attachments";
-import type { RunCaseStepResult } from "../schema/test-run-enums";
+import type {
+	RunCaseStepResult,
+	TestRunCaseResult,
+} from "../schema/test-run-enums";
 import { type TestRunExecutedVia, testRunCases } from "../schema/test-runs";
 import { users } from "../schema/users";
 import { listAttachmentsForRunCases } from "./test-run-attachments-repository";
 
-export interface TestRunFailedCaseAutomation {
+/** 报告列出的执行结果：失败和阻塞。 */
+export type TestRunFailedAndBlockedResult = Extract<
+	TestRunCaseResult,
+	"blocked" | "failed"
+>;
+
+const FAILED_AND_BLOCKED_RESULTS: TestRunFailedAndBlockedResult[] = [
+	"failed",
+	"blocked",
+];
+
+export interface TestRunReportCaseAutomation {
 	branch: string | null;
 	ciUrl: string | null;
 	commitSha: string | null;
@@ -22,7 +36,7 @@ export interface TestRunFailedCaseAutomation {
 	finishedAt: Date | null;
 }
 
-/** 报告中失败用例的一个当前步骤，以及它在这个测试任务中的实际结果文字。 */
+/** 报告中失败或阻塞用例的一个当前步骤，以及它在这个测试任务中的实际结果文字。 */
 export interface TestRunReportStep {
 	actualResult: string | null;
 	id: string;
@@ -31,13 +45,14 @@ export interface TestRunReportStep {
 	step: string;
 }
 
-export interface TestRunFailedCase {
+/** 报告中一条失败或阻塞的用例。 */
+export interface TestRunFailedAndBlockedCase {
 	/**
 	 * 这条用例的全部附件，按上传顺序：当前步骤的实际附件、整条用例的附件，
 	 * 以及已删除步骤的实际附件。界面按 stepId 和 steps 分组。
 	 */
 	attachments: TestRunAttachment[];
-	automationExecution: TestRunFailedCaseAutomation | null;
+	automationExecution: TestRunReportCaseAutomation | null;
 	caseId: string;
 	comment: string | null;
 	defectKey: string | null;
@@ -50,11 +65,15 @@ export interface TestRunFailedCase {
 	moduleName: string;
 	name: string;
 	priority: CasePriority;
+	result: TestRunFailedAndBlockedResult;
 	runCaseId: string;
 	steps: TestRunReportStep[];
 }
 
-function selectFailedCaseRows(runId: string) {
+/** 先列失败，再列阻塞；各自按优先级和用例在测试任务中的顺序。 */
+const FAILED_FIRST_ORDER = sql`case when ${testRunCases.result} = 'failed' then 0 else 1 end`;
+
+function selectFailedAndBlockedCaseRows(runId: string) {
 	return db
 		.select({
 			automationBranch: automationExecutions.branch,
@@ -75,6 +94,7 @@ function selectFailedCaseRows(runId: string) {
 			moduleName: modules.name,
 			name: testCases.name,
 			priority: testCases.priority,
+			result: testRunCases.result,
 			runCaseId: testRunCases.id,
 			stepResults: testRunCases.stepResults,
 		})
@@ -87,12 +107,27 @@ function selectFailedCaseRows(runId: string) {
 			eq(automationExecutions.id, testRunCases.lastAutomationExecutionId)
 		)
 		.where(
-			and(eq(testRunCases.runId, runId), eq(testRunCases.result, "failed"))
+			and(
+				eq(testRunCases.runId, runId),
+				inArray(testRunCases.result, FAILED_AND_BLOCKED_RESULTS)
+			)
 		)
-		.orderBy(asc(testCases.priority), asc(testRunCases.sortOrder));
+		.orderBy(
+			FAILED_FIRST_ORDER,
+			asc(testCases.priority),
+			asc(testRunCases.sortOrder)
+		);
 }
 
-type FailedCaseRow = Awaited<ReturnType<typeof selectFailedCaseRows>>[number];
+type FailedAndBlockedCaseRow = Awaited<
+	ReturnType<typeof selectFailedAndBlockedCaseRows>
+>[number];
+
+function isFailedOrBlocked(
+	result: TestRunCaseResult
+): result is TestRunFailedAndBlockedResult {
+	return FAILED_AND_BLOCKED_RESULTS.some((item) => item === result);
+}
 
 /** 用例当前的步骤，按顺序，每个步骤带上这个测试任务中的实际结果文字。 */
 function toReportSteps(
@@ -110,10 +145,10 @@ function toReportSteps(
 	}));
 }
 
-function toFailedCase(
-	row: FailedCaseRow,
+function toFailedAndBlockedCase(
+	row: FailedAndBlockedCaseRow,
 	attachments: TestRunAttachment[]
-): TestRunFailedCase {
+): TestRunFailedAndBlockedCase {
 	const {
 		automationBranch,
 		automationCiUrl,
@@ -121,9 +156,13 @@ function toFailedCase(
 		automationExecutionId,
 		automationFinishedAt,
 		caseSteps,
+		result,
 		stepResults,
 		...rest
 	} = row;
+	if (!isFailedOrBlocked(result)) {
+		throw new Error(`loadFailedAndBlockedCases: unexpected result ${result}`);
+	}
 	return {
 		...rest,
 		attachments,
@@ -137,15 +176,16 @@ function toFailedCase(
 						executionId: automationExecutionId,
 						finishedAt: automationFinishedAt,
 					},
+		result,
 		steps: toReportSteps(caseSteps, stepResults),
 	};
 }
 
-/** 失败用例和它们的全部附件：两次查询，与失败用例的数量无关。 */
-export async function loadFailedCases(
+/** 失败和阻塞的用例和它们的全部附件：两次查询，与用例的数量无关。 */
+export async function loadFailedAndBlockedCases(
 	runId: string
-): Promise<TestRunFailedCase[]> {
-	const rows = await selectFailedCaseRows(runId);
+): Promise<TestRunFailedAndBlockedCase[]> {
+	const rows = await selectFailedAndBlockedCaseRows(runId);
 	const attachments = await listAttachmentsForRunCases(
 		rows.map((row) => row.runCaseId)
 	);
@@ -156,6 +196,6 @@ export async function loadFailedCases(
 		byRunCase.set(attachment.runCaseId, group);
 	}
 	return rows.map((row) =>
-		toFailedCase(row, byRunCase.get(row.runCaseId) ?? [])
+		toFailedAndBlockedCase(row, byRunCase.get(row.runCaseId) ?? [])
 	);
 }

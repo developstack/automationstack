@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
 import { StatusBadge } from "@/components/status/status-badge";
 import { ReportAutomationCard } from "@/components/test-runs/report-automation-card";
-import { ReportFailedCasesCard } from "@/components/test-runs/report-failed-cases-card";
+import { ReportFailedAndBlockedCasesCard } from "@/components/test-runs/report-failed-and-blocked-cases-card";
 import type { TestRunReportView } from "@/components/test-runs/report-meta";
 import { ReportModuleCard } from "@/components/test-runs/report-module-card";
 import { ReportOutOfScopeCard } from "@/components/test-runs/report-out-of-scope-card";
@@ -65,9 +65,9 @@ export function ReportView({ projectId, runId }: ReportViewProps) {
 			</div>
 
 			<div className={FULL_WIDTH_ROW}>
-				<ReportFailedCasesCard
+				<ReportFailedAndBlockedCasesCard
+					cases={report.failedAndBlockedCases}
 					counts={report.counts}
-					failedCases={report.failedCases}
 				/>
 			</div>
 

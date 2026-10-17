@@ -1,5 +1,5 @@
 import { PageHeaderSkeleton } from "@/components/layout/page-header-skeleton";
-import { ReportFailedCasesCardSkeleton } from "@/components/test-runs/report-failed-cases-card-skeleton";
+import { ReportFailedAndBlockedCasesCardSkeleton } from "@/components/test-runs/report-failed-and-blocked-cases-card-skeleton";
 import { ReportModuleCardSkeleton } from "@/components/test-runs/report-module-card-skeleton";
 import { ReportPriorityCardSkeleton } from "@/components/test-runs/report-priority-card-skeleton";
 import { ReportResultCardSkeleton } from "@/components/test-runs/report-result-card-skeleton";
@@ -20,7 +20,7 @@ export function ReportSkeleton() {
 				<ReportModuleCardSkeleton />
 			</div>
 			<div className="grid xl:col-span-3">
-				<ReportFailedCasesCardSkeleton />
+				<ReportFailedAndBlockedCasesCardSkeleton />
 			</div>
 		</>
 	);

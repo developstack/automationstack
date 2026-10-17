@@ -2,9 +2,9 @@ import { Badge } from "@automationstack/ui/components/badge";
 
 import { formatDateTime } from "@/components/cases/case-meta";
 import { ReportCommitLink } from "@/components/test-runs/report-commit-link";
-import type { ReportFailedCase } from "@/components/test-runs/report-meta";
+import type { ReportFailedAndBlockedCase } from "@/components/test-runs/report-meta";
 
-function SourceCell({ row }: { row: ReportFailedCase }) {
+function SourceCell({ row }: { row: ReportFailedAndBlockedCase }) {
 	if (row.executedVia !== "automation") {
 		return null;
 	}
@@ -30,7 +30,11 @@ function SourceCell({ row }: { row: ReportFailedCase }) {
 }
 
 /** 「执行人 / 来源」一栏：执行人、执行时间；脚本执行的用例还显示分支和 commit。 */
-export function ReportExecutorCell({ row }: { row: ReportFailedCase }) {
+export function ReportExecutorCell({
+	row,
+}: {
+	row: ReportFailedAndBlockedCase;
+}) {
 	return (
 		<>
 			{row.executedByName ?? (

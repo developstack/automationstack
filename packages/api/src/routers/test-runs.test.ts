@@ -231,16 +231,16 @@ describe("已作废的测试任务拒绝所有写操作", () => {
 	);
 });
 
-describe("testRuns.report：失败用例的附件带下载地址", () => {
+describe("testRuns.report：失败和阻塞用例的附件带下载地址", () => {
 	const attachment = (storageKey: string, stepId: string | null) => ({
 		fileName: `${storageKey}.png`,
 		stepId,
 		storageKey,
 	});
-	const failedCase = (attachments: ReturnType<typeof attachment>[]) => ({
-		attachments,
-		steps: [],
-	});
+	const failedOrBlockedCase = (
+		result: "blocked" | "failed",
+		attachments: ReturnType<typeof attachment>[]
+	) => ({ attachments, result, steps: [] });
 
 	const report = () =>
 		call(testRunsRouter.report, byRunId, callOptions("report"));
@@ -248,9 +248,9 @@ describe("testRuns.report：失败用例的附件带下载地址", () => {
 	beforeEach(() => {
 		mocks.getProjectRole.mockResolvedValue("member");
 		mocks.getTestRunReport.mockResolvedValue({
-			failedCases: [
-				failedCase([attachment("actual", "s1"), attachment("auto", null)]),
-				failedCase([]),
+			failedAndBlockedCases: [
+				failedOrBlockedCase("failed", [attachment("actual", "s1")]),
+				failedOrBlockedCase("blocked", [attachment("auto", null)]),
 			],
 			run,
 		});
@@ -267,17 +267,18 @@ describe("testRuns.report：失败用例的附件带下载地址", () => {
 		["存储未配置：地址为 null", null, [null, null]],
 	])("%s", async (_name, storage, urls) => {
 		mocks.storage = storage;
-		const { failedCases } = await report();
+		const { failedAndBlockedCases } = await report();
 		expect(
-			failedCases.map((item) =>
-				item.attachments.map(({ attachment: { stepId }, url }) => [stepId, url])
-			)
+			failedAndBlockedCases.map((item) => [
+				item.result,
+				item.attachments.map(({ attachment: { stepId }, url }) => [
+					stepId,
+					url,
+				]),
+			])
 		).toEqual([
-			[
-				["s1", urls[0]],
-				[null, urls[1]],
-			],
-			[],
+			["failed", [["s1", urls[0]]]],
+			["blocked", [[null, urls[1]]]],
 		]);
 	});
 

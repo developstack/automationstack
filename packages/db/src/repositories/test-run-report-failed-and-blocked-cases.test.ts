@@ -2,7 +2,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { migrateAll } from "../migration-harness";
-import { loadFailedCases } from "./test-run-report-failed-cases";
+import { loadFailedAndBlockedCases } from "./test-run-report-failed-and-blocked-cases";
 
 // 仓库使用 ../index 的连接池。测试中换成内存数据库（PGlite），执行仓库中的全部迁移。
 const memory = vi.hoisted(() => ({ client: null as PGlite | null }));
@@ -25,7 +25,7 @@ const EMPTY_RUN = "31000000-0000-4000-8000-000000000004";
 interface SeedCase {
 	id: string;
 	name: string;
-	result: "failed" | "passed";
+	result: "blocked" | "failed" | "passed";
 	runCaseId: string;
 	sortOrder: number;
 	stepIds: string[];
@@ -37,7 +37,7 @@ const CHECKOUT: SeedCase = {
 	name: "下单支付",
 	result: "failed",
 	runCaseId: "31000000-0000-4000-8000-000000000021",
-	sortOrder: 0,
+	sortOrder: 1,
 	stepIds: ["s1", "s2", "s3"],
 	stepResults: [
 		{ comment: null, result: "passed", stepId: "s1" },
@@ -50,7 +50,7 @@ const REFUND: SeedCase = {
 	name: "退款",
 	result: "failed",
 	runCaseId: "31000000-0000-4000-8000-000000000022",
-	sortOrder: 1,
+	sortOrder: 2,
 	stepIds: ["r1"],
 	stepResults: [],
 };
@@ -60,9 +60,20 @@ const LOGIN: SeedCase = {
 	name: "登录",
 	result: "passed",
 	runCaseId: "31000000-0000-4000-8000-000000000023",
-	sortOrder: 2,
+	sortOrder: 3,
 	stepIds: ["l1"],
 	stepResults: [{ comment: null, result: "passed", stepId: "l1" }],
+};
+
+/** 排在失败用例前面的阻塞用例：报告中仍然排在失败用例后面。 */
+const SANDBOX: SeedCase = {
+	id: "31000000-0000-4000-8000-000000000014",
+	name: "沙箱支付",
+	result: "blocked",
+	runCaseId: "31000000-0000-4000-8000-000000000024",
+	sortOrder: 0,
+	stepIds: ["b1"],
+	stepResults: [{ comment: "沙箱账号没开通", result: "blocked", stepId: "b1" }],
 };
 
 /** 附件：[用例行, 步骤 id（null 是整条用例的附件）, 文件名]，按这个顺序上传。 */
@@ -71,6 +82,7 @@ const ATTACHMENTS: [string, string | null, string][] = [
 	[LOGIN.runCaseId, "l1", "登录.png"],
 	[CHECKOUT.runCaseId, null, "自动化.log"],
 	[CHECKOUT.runCaseId, "s9", "已删除步骤.mp4"],
+	[SANDBOX.runCaseId, "b1", "沙箱报错.png"],
 ];
 
 function memoryDb(): PGlite {
@@ -117,7 +129,7 @@ async function seed(db: PGlite): Promise<void> {
 		"INSERT INTO test_runs (id, project_id, name, status) VALUES ($1, $2, '回归', 'completed'), ($3, $2, '空任务', 'completed')",
 		[RUN, PROJECT, EMPTY_RUN]
 	);
-	for (const item of [CHECKOUT, REFUND, LOGIN]) {
+	for (const item of [CHECKOUT, REFUND, LOGIN, SANDBOX]) {
 		// biome-ignore lint/performance/noAwaitInLoops: 种子数据，顺序插入更容易读
 		await seedCase(db, item);
 	}
@@ -132,7 +144,7 @@ async function seed(db: PGlite): Promise<void> {
 	}
 }
 
-describe("报告中的失败用例：每个步骤的实际结果和全部附件", () => {
+describe("报告中的失败和阻塞用例：每个步骤的实际结果和全部附件", () => {
 	beforeAll(async () => {
 		await migrateAll(memoryDb());
 		await seed(memoryDb());
@@ -142,11 +154,12 @@ describe("报告中的失败用例：每个步骤的实际结果和全部附件"
 		await memoryDb().close();
 	});
 
-	it("returns the current steps in order with their actual result text", async () => {
-		const cases = await loadFailedCases(RUN);
-		expect(cases.map((item) => [item.name, item.steps])).toEqual([
+	it("returns failed cases first, then blocked cases, each with its result and current steps in order with their actual result text", async () => {
+		const cases = await loadFailedAndBlockedCases(RUN);
+		expect(cases.map((item) => [item.name, item.result, item.steps])).toEqual([
 			[
 				"下单支付",
+				"failed",
 				[
 					{ actualResult: null, id: "s1", position: 1, step: "s1 的操作" },
 					{
@@ -160,13 +173,26 @@ describe("报告中的失败用例：每个步骤的实际结果和全部附件"
 			],
 			[
 				"退款",
+				"failed",
 				[{ actualResult: null, id: "r1", position: 1, step: "r1 的操作" }],
+			],
+			[
+				"沙箱支付",
+				"blocked",
+				[
+					{
+						actualResult: "沙箱账号没开通",
+						id: "b1",
+						position: 1,
+						step: "b1 的操作",
+					},
+				],
 			],
 		]);
 	});
 
-	it("returns all attachments of each failed case in upload order, and none of other cases", async () => {
-		const cases = await loadFailedCases(RUN);
+	it("returns all attachments of each failed or blocked case in upload order, and none of other cases", async () => {
+		const cases = await loadFailedAndBlockedCases(RUN);
 		expect(
 			cases.map((item) =>
 				item.attachments.map(({ fileName, stepId }) => [fileName, stepId])
@@ -178,10 +204,11 @@ describe("报告中的失败用例：每个步骤的实际结果和全部附件"
 				["已删除步骤.mp4", "s9"],
 			],
 			[],
+			[["沙箱报错.png", "b1"]],
 		]);
 	});
 
-	it("returns no failed cases for a run without failed cases", async () => {
-		expect(await loadFailedCases(EMPTY_RUN)).toEqual([]);
+	it("returns no cases for a run without failed or blocked cases", async () => {
+		expect(await loadFailedAndBlockedCases(EMPTY_RUN)).toEqual([]);
 	});
 });
