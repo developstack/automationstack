@@ -21,7 +21,7 @@ describe("resetWarning", () => {
 
 	it("有分步判定就拦一下，且说明要恢复只能重判一遍", () => {
 		const warning = resetWarning({ comment: null, stepResultCount: 3 });
-		expect(warning).toContain("分步判定");
+		expect(warning).toContain("分步判定和实际结果");
 		expect(warning).toContain("重新判");
 	});
 

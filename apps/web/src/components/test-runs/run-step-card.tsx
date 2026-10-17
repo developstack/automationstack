@@ -6,18 +6,12 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@automationstack/ui/components/card";
-import { type ChangeEvent, useCallback, useMemo } from "react";
 
-import { parseMarkdownDoc } from "@/components/cases/markdown-doc";
-import type { MarkdownInline } from "@/components/cases/markdown-inline";
-import {
-	InlineNodes,
-	type MarkdownImageUrls,
-} from "@/components/cases/markdown-inline-render";
-import { MarkdownRender } from "@/components/cases/markdown-render";
-import { TEXT_FLOW_CLASS } from "@/components/cases/markdown-text-flow";
+import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { RunCaseResultBadge } from "@/components/test-runs/run-case-result-badge";
-import { StepCardFooter } from "@/components/test-runs/step-card-footer";
+import { RunStepColumn } from "@/components/test-runs/run-step-column";
+import { StepActualResultField } from "@/components/test-runs/step-actual-result-field";
+import { StepVerdictRow } from "@/components/test-runs/step-verdict-row";
 
 function StepResultBadge({
 	result,
@@ -34,103 +28,103 @@ function StepResultBadge({
 	return <RunCaseResultBadge result={result} size="sm" />;
 }
 
-function soleParagraphNodes(text: string): MarkdownInline[] | null {
-	const blocks = parseMarkdownDoc(text);
-	if (blocks.length > 1) {
-		return null;
-	}
-	const [only] = blocks;
-	if (only === undefined) {
-		return [];
-	}
-	return only.kind === "paragraph" ? only.children : null;
-}
-
-function StepCardBody({
-	imageUrls,
-	step,
-}: {
-	imageUrls: MarkdownImageUrls;
-	step: CaseStep;
-}) {
-	const inlineNodes = useMemo(
-		() => soleParagraphNodes(step.expected),
-		[step.expected]
-	);
-	return (
-		<>
-			<div className="text-foreground">
-				<MarkdownRender imageUrls={imageUrls} text={step.step} />
-			</div>
-			{inlineNodes === null ? (
-				<div className="mt-1 space-y-1 text-muted-foreground text-xs leading-relaxed">
-					<p>预期：</p>
-					<MarkdownRender
-						imageUrls={imageUrls}
-						text={step.expected}
-						textSize="xs"
-					/>
-				</div>
-			) : (
-				<p
-					className={`mt-1 text-muted-foreground text-xs leading-relaxed ${TEXT_FLOW_CLASS}`}
-				>
-					预期：
-					<InlineNodes imageUrls={imageUrls} nodes={inlineNodes} />
-				</p>
-			)}
-		</>
-	);
-}
-
 export interface RunStepCardProps {
-	comment: string;
+	actualResult: string;
 	editing: boolean;
 	imageUrls: MarkdownImageUrls;
 	index: number;
-	onCommentChange: (stepId: string, text: string) => void;
+	onActualResultChange: (stepId: string, text: string) => void;
 	onPick: (stepId: string, result: TestRunStepResult) => void;
 	result: TestRunStepResult | undefined;
 	step: CaseStep;
 }
 
+type StepColumnsProps = Omit<RunStepCardProps, "index" | "onPick"> & {
+	position: number;
+};
+
+/** 三栏：步骤（含操作截图）、预期结果（含预期截图）、实际结果。卡片够宽时并排，窄时堆叠。 */
+function StepColumns({
+	actualResult,
+	editing,
+	imageUrls,
+	onActualResultChange,
+	position,
+	result,
+	step,
+}: StepColumnsProps) {
+	return (
+		<div className="grid @2xl:grid-cols-3 grid-cols-1 gap-4">
+			<RunStepColumn
+				group="actionScreenshots"
+				imageUrls={imageUrls}
+				position={position}
+				step={step}
+				text={step.step}
+				title="步骤"
+			/>
+			<RunStepColumn
+				group="expectedScreenshots"
+				imageUrls={imageUrls}
+				position={position}
+				step={step}
+				text={step.expected}
+				title="预期结果"
+			/>
+			<StepActualResultField
+				editing={editing}
+				onChange={onActualResultChange}
+				result={result}
+				stepId={step.id}
+				value={actualResult}
+			/>
+		</div>
+	);
+}
+
+/**
+ * 执行页的步骤卡片：步骤、预期结果、实际结果三栏，编辑时下方是判定。
+ * 卡片够宽时三栏并排，窄时上下堆叠（按卡片的宽度，不按屏幕的宽度）。
+ */
 export function RunStepCard({
-	comment,
+	actualResult,
 	editing,
 	imageUrls,
 	index,
-	onCommentChange,
+	onActualResultChange,
 	onPick,
 	result,
 	step,
 }: RunStepCardProps) {
-	const handleCommentChange = useCallback(
-		(event: ChangeEvent<HTMLTextAreaElement>) =>
-			onCommentChange(step.id, event.target.value),
-		[onCommentChange, step.id]
-	);
-
+	const position = index + 1;
 	return (
 		<Card size="sm">
 			<CardHeader>
 				<CardTitle className="flex items-center justify-between gap-2">
 					<span className="text-muted-foreground tabular-nums">
-						步骤 {index + 1}
+						步骤 {position}
 					</span>
 					<StepResultBadge result={result} />
 				</CardTitle>
 			</CardHeader>
-			<CardContent>
-				<StepCardBody imageUrls={imageUrls} step={step} />
-				<StepCardFooter
-					comment={comment}
+			<CardContent className="@container">
+				<StepColumns
+					actualResult={actualResult}
 					editing={editing}
-					index={index}
-					onCommentChange={handleCommentChange}
-					onPick={onPick}
+					imageUrls={imageUrls}
+					onActualResultChange={onActualResultChange}
+					position={position}
 					result={result}
-					stepId={step.id}
+					step={step}
 				/>
+				{editing ? (
+					<StepVerdictRow
+						current={result}
+						index={index}
+						onPick={onPick}
+						stepId={step.id}
+					/>
+				) : null}
 			</CardContent>
 		</Card>
 	);

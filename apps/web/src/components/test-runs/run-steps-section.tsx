@@ -22,21 +22,21 @@ import {
 } from "@/components/test-runs/use-run-step-save";
 
 interface RunStepCardListProps {
-	comments: Record<string, string>;
+	actualResults: Record<string, string>;
 	editing: boolean;
 	imageUrls: MarkdownImageUrls;
 	judged: Record<string, TestRunStepResult>;
-	onCommentChange: (stepId: string, text: string) => void;
+	onActualResultChange: (stepId: string, text: string) => void;
 	onPick: (stepId: string, result: TestRunStepResult) => void;
 	steps: readonly CaseStep[];
 }
 
 function RunStepCardList({
-	comments,
+	actualResults,
 	editing,
 	imageUrls,
 	judged,
-	onCommentChange,
+	onActualResultChange,
 	onPick,
 	steps,
 }: RunStepCardListProps) {
@@ -44,12 +44,12 @@ function RunStepCardList({
 		<div className="flex flex-col gap-3">
 			{steps.map((step, index) => (
 				<RunStepCard
-					comment={comments[step.id] ?? ""}
+					actualResult={actualResults[step.id] ?? ""}
 					editing={editing}
 					imageUrls={imageUrls}
 					index={index}
 					key={step.id}
-					onCommentChange={onCommentChange}
+					onActualResultChange={onActualResultChange}
 					onPick={onPick}
 					result={judged[step.id]}
 					step={step}
@@ -61,13 +61,9 @@ function RunStepCardList({
 
 function useStepsPreview(
 	steps: readonly CaseStep[],
-	judged: Record<string, TestRunStepResult>,
-	comments: Record<string, string>
+	judged: Record<string, TestRunStepResult>
 ) {
-	const filled = useMemo(
-		() => fillStepResults(steps, judged, comments),
-		[comments, judged, steps]
-	);
+	const filled = useMemo(() => fillStepResults(steps, judged), [judged, steps]);
 	return {
 		derived: deriveCaseResult(filled),
 		unjudged: steps.filter((step) => judged[step.id] === undefined).length,
@@ -118,7 +114,7 @@ function useRunStepsSection(
 		stepResults: runCase.stepResults,
 		steps,
 	});
-	const { comments, judged } = draft;
+	const { actualResults, judged } = draft;
 	const { markSaved } = draft;
 	const { editing, startEditing, stopEditing } = editingMode;
 
@@ -135,8 +131,8 @@ function useRunStepsSection(
 	}, [markSaved, stopEditing]);
 
 	const save = useRunStepSave({
+		actualResults,
 		caseVersion: testCase.currentVersion,
-		comments,
 		judged,
 		onSaved,
 		runCaseId: runCase.id,
@@ -152,7 +148,7 @@ function useRunStepsSection(
 	return {
 		draft,
 		editing,
-		preview: useStepsPreview(steps, judged, comments),
+		preview: useStepsPreview(steps, judged),
 		save,
 		steps,
 	};
@@ -167,7 +163,7 @@ export function RunStepsSection({
 		item,
 		editingMode
 	);
-	const { comments, judged } = draft;
+	const { actualResults, judged } = draft;
 
 	return (
 		<section className="flex flex-col gap-3">
@@ -176,11 +172,11 @@ export function RunStepsSection({
 				staleDiscarded={draft.staleDiscarded}
 			/>
 			<RunStepCardList
-				comments={comments}
+				actualResults={actualResults}
 				editing={editing}
 				imageUrls={imageUrls}
 				judged={judged}
-				onCommentChange={draft.setComment}
+				onActualResultChange={draft.setActualResult}
 				onPick={draft.setResult}
 				steps={steps}
 			/>
@@ -188,6 +184,7 @@ export function RunStepsSection({
 				derived={preview.derived}
 				dirty={draft.dirty}
 				editing={editing}
+				missingActualResult={save.missingActualResult}
 				onPassAll={draft.passAll}
 				onReset={draft.reset}
 				onSave={save.handleSave}

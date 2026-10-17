@@ -65,7 +65,7 @@ export function ReportFailedCasesCard({
 									<TableHead>模块</TableHead>
 									<TableHead>优先级</TableHead>
 									<TableHead>执行人 / 来源</TableHead>
-									<TableHead>失败原因</TableHead>
+									<TableHead>说明</TableHead>
 									<TableHead>截图</TableHead>
 									<TableHead>Jira</TableHead>
 									<TableHead>Jira 状态</TableHead>

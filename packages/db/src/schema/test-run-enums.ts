@@ -39,8 +39,10 @@ export type TestRunExecutedVia =
 
 export type TestRunStepResult = Exclude<TestRunCaseResult, "untested">;
 
+/** 一个步骤在一个测试任务中的判定和实际结果。数据库中的存储形式见 run-step-results-column.ts。 */
 export interface RunCaseStepResult {
-	comment: string | null;
+	/** 实际结果的文字（见 CONTEXT.md）。没有填写时为 null。 */
+	actualResult: string | null;
 	result: TestRunStepResult;
 	stepId: string;
 }

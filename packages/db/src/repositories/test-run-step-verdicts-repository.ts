@@ -22,14 +22,16 @@ import {
 	deriveCaseResult,
 	fillStepResults,
 	type JudgedSteps,
-	type StepComments,
+	type StepActualResults,
+	stepsMissingActualResult,
 	unknownStepIds,
 } from "./test-run-step-results-core";
 
 export interface SaveRunCaseStepResultsInput {
 	actorId: string | null;
+	/** 每个步骤的实际结果文字，按步骤 id 索引。 */
+	actualResults: StepActualResults;
 	caseVersion: number;
-	comments: StepComments;
 	judged: JudgedSteps;
 	runCaseId: string;
 }
@@ -39,7 +41,20 @@ export interface RunCaseChanged {
 	kind: "case-changed";
 }
 
+/** 判为失败或阻塞的步骤没有填写实际结果。stepNumbers 是这些步骤的序号（从 1 开始）。 */
+export interface ActualResultRequired {
+	kind: "actual-result-required";
+	stepNumbers: number[];
+}
+
+type JudgementRejection =
+	| ActualResultRequired
+	| RunCaseChanged
+	| { kind: "no-steps" }
+	| { kind: "unknown-steps"; stepIds: string[] };
+
 export type SaveRunCaseStepResultsOutcome =
+	| ActualResultRequired
 	| RunCaseChanged
 	| RunCaseWriteRejection
 	| RunReviewPending
@@ -74,14 +89,10 @@ async function selectStepVerdictTarget(
 	return target ?? null;
 }
 
-function rejectStaleJudgement(
+function rejectJudgement(
 	input: SaveRunCaseStepResultsInput,
 	target: StepVerdictTarget
-):
-	| RunCaseChanged
-	| { kind: "no-steps" }
-	| { kind: "unknown-steps"; stepIds: string[] }
-	| null {
+): JudgementRejection | null {
 	if (target.steps.length === 0) {
 		return { kind: "no-steps" as const };
 	}
@@ -92,8 +103,16 @@ function rejectStaleJudgement(
 		};
 	}
 	const stepIds = unknownStepIds(target.steps, input.judged);
-	return stepIds.length > 0
-		? { kind: "unknown-steps" as const, stepIds }
+	if (stepIds.length > 0) {
+		return { kind: "unknown-steps" as const, stepIds };
+	}
+	const stepNumbers = stepsMissingActualResult(
+		target.steps,
+		input.judged,
+		input.actualResults
+	);
+	return stepNumbers.length > 0
+		? { kind: "actual-result-required" as const, stepNumbers }
 		: null;
 }
 
@@ -106,7 +125,7 @@ async function writeStepVerdict(
 	const stepResults = fillStepResults(
 		target.steps,
 		input.judged,
-		input.comments
+		input.actualResults
 	);
 	const result = deriveCaseResult(stepResults);
 	const comment = buildCaseComment(target.steps, stepResults);
@@ -157,9 +176,9 @@ export function saveRunCaseStepResults(
 		if (run.status === "pending_review") {
 			return { kind: "review-pending" as const };
 		}
-		const stale = rejectStaleJudgement(input, target);
-		if (stale !== null) {
-			return stale;
+		const rejection = rejectJudgement(input, target);
+		if (rejection !== null) {
+			return rejection;
 		}
 		const written = await writeStepVerdict(tx, input, target, run);
 		return { kind: "ok" as const, run: written.run, runCase: written.runCase };

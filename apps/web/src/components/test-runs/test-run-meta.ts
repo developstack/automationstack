@@ -86,16 +86,17 @@ export interface CommentFieldText {
 	placeholder?: string;
 }
 
+/** 用例说明的标签和提示。有步骤的用例，说明由各步骤的实际结果汇总而成。 */
 export function commentFieldText(result: TestRunCaseResult): CommentFieldText {
 	if (result === "failed") {
 		return {
-			label: "失败原因",
-			placeholder: "写清楚复现路径与实际现象，这段会带进 Jira issue 的描述里",
+			label: "说明",
+			placeholder: "写清楚复现路径和实际结果，这段会带进 Jira issue 的描述里",
 		};
 	}
 	if (result === "blocked") {
 		return {
-			label: "阻塞原因",
+			label: "说明",
 			placeholder: "写清楚卡在哪一步、缺什么环境或数据，解开后才知道从哪接着测",
 		};
 	}

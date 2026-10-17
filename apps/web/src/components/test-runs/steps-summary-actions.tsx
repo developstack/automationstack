@@ -6,6 +6,7 @@ import type { RunStepsSummaryProps } from "@/components/test-runs/run-steps-summ
 export function StepsSummaryActions({
 	dirty,
 	editing,
+	actualResultMissing,
 	onPassAll,
 	onReset,
 	onSave,
@@ -13,11 +14,14 @@ export function StepsSummaryActions({
 }: Pick<
 	RunStepsSummaryProps,
 	"dirty" | "editing" | "onPassAll" | "onReset" | "onSave" | "saving"
->) {
+> & {
+	/** 还有失败或阻塞的步骤没有填写实际结果。 */
+	actualResultMissing: boolean;
+}) {
 	if (!editing) {
 		return null;
 	}
-	const saveBlocked = !dirty || saving;
+	const saveBlocked = !dirty || saving || actualResultMissing;
 	return (
 		<div className="flex flex-wrap items-center gap-2">
 			<Button onClick={onPassAll} size="sm" type="button" variant="outline">

@@ -7,6 +7,8 @@ export interface RunStepsSummaryProps {
 	derived: TestRunCaseResult;
 	dirty: boolean;
 	editing: boolean;
+	/** 判为失败或阻塞、但没有填写实际结果的步骤序号。不为空时不能保存。 */
+	missingActualResult: readonly number[];
 	onPassAll: () => void;
 	onReset: () => void;
 	onSave: () => void;
@@ -17,8 +19,12 @@ export interface RunStepsSummaryProps {
 function StepsSummaryText({
 	derived,
 	dirty,
+	missingActualResult,
 	unjudged,
-}: Pick<RunStepsSummaryProps, "derived" | "dirty" | "unjudged">) {
+}: Pick<
+	RunStepsSummaryProps,
+	"derived" | "dirty" | "missingActualResult" | "unjudged"
+>) {
 	return (
 		<div className="flex flex-col gap-1">
 			{dirty ? (
@@ -26,6 +32,12 @@ function StepsSummaryText({
 					<span className="text-muted-foreground">保存后结论</span>
 					<StatusBadge kind="result" size="md" value={derived} />
 				</div>
+			) : null}
+			{missingActualResult.length > 0 ? (
+				<p className="text-destructive text-sm" role="status">
+					步骤 {missingActualResult.join("、")}{" "}
+					判为失败或阻塞，填写实际结果后才能保存
+				</p>
 			) : null}
 			{unjudged > 0 ? (
 				<p className="text-muted-foreground text-sm">
@@ -45,6 +57,7 @@ export function RunStepsSummary({
 	derived,
 	dirty,
 	editing,
+	missingActualResult,
 	onPassAll,
 	onReset,
 	onSave,
@@ -53,8 +66,14 @@ export function RunStepsSummary({
 }: RunStepsSummaryProps) {
 	return (
 		<div className="flex flex-wrap items-end justify-between gap-3">
-			<StepsSummaryText derived={derived} dirty={dirty} unjudged={unjudged} />
+			<StepsSummaryText
+				derived={derived}
+				dirty={dirty}
+				missingActualResult={missingActualResult}
+				unjudged={unjudged}
+			/>
 			<StepsSummaryActions
+				actualResultMissing={missingActualResult.length > 0}
 				dirty={dirty}
 				editing={editing}
 				onPassAll={onPassAll}

@@ -3,7 +3,6 @@ import {
 	check,
 	index,
 	integer,
-	jsonb,
 	pgTable,
 	text,
 	timestamp,
@@ -13,9 +12,9 @@ import {
 
 import { automationExecutions } from "./automation-executions";
 import { projects } from "./projects";
+import { runStepResultsJsonb } from "./run-step-results-column";
 import { testCases } from "./test-cases";
 import {
-	type RunCaseStepResult,
 	testRunCaseResultEnum,
 	testRunExecutedViaEnum,
 	testRunStatusEnum,
@@ -123,8 +122,7 @@ export const testRunCases = pgTable(
 			.notNull()
 			.references(() => testRuns.id, { onDelete: "cascade" }),
 		sortOrder: integer("sort_order").notNull().default(0),
-		stepResults: jsonb("step_results")
-			.$type<RunCaseStepResult[]>()
+		stepResults: runStepResultsJsonb("step_results")
 			.notNull()
 			.default(sql`'[]'::jsonb`),
 	},

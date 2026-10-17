@@ -20,24 +20,26 @@ describe("needsVerdictDetails", () => {
 });
 
 describe("commentFieldText", () => {
-	it("按结论给准确的词，不再两头兼顾", () => {
-		expect(commentFieldText("failed").label).toBe("失败原因");
-		expect(commentFieldText("blocked").label).toBe("阻塞原因");
-	});
+	it.each([
+		["failed", true],
+		["blocked", true],
+		["passed", false],
+		["skipped", false],
+		["untested", false],
+	] as const)(
+		"%s 的标签是说明（不再叫失败原因或阻塞原因），有 placeholder：%s",
+		(result, hasPlaceholder) => {
+			const text = commentFieldText(result);
+			expect(text.label).toBe("说明");
+			expect(text.placeholder !== undefined).toBe(hasPlaceholder);
+		}
+	);
 
 	it("两种结论的 placeholder 不同：复现路径对阻塞并不贴切", () => {
 		const failed = commentFieldText("failed").placeholder;
 		const blocked = commentFieldText("blocked").placeholder;
 		expect(failed).not.toBe(blocked);
 		expect(blocked).not.toContain("复现");
-	});
-
-	it("其余结论下就两个字：说明，不再在括号里补一遍来历", () => {
-		for (const result of ["passed", "skipped", "untested"] as const) {
-			const text = commentFieldText(result);
-			expect(text.label).toBe("说明");
-			expect(text.placeholder).toBeUndefined();
-		}
 	});
 });
 

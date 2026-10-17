@@ -21,22 +21,23 @@ import {
 const DRAFT_WRITE_DEBOUNCE_MS = 500;
 
 export interface RunStepDraftState {
-	comments: Record<string, string>;
+	/** 每个步骤的实际结果文字，按步骤 id 索引。 */
+	actualResults: Record<string, string>;
 	judged: Record<string, TestRunStepResult>;
 }
 
 function baselineOf(
 	stepResults: readonly RunCaseStepResult[]
 ): RunStepDraftState {
-	const comments: Record<string, string> = {};
+	const actualResults: Record<string, string> = {};
 	const judged: Record<string, TestRunStepResult> = {};
 	for (const item of stepResults) {
 		judged[item.stepId] = item.result;
-		if (item.comment !== null) {
-			comments[item.stepId] = item.comment;
+		if (item.actualResult !== null) {
+			actualResults[item.stepId] = item.actualResult;
 		}
 	}
-	return { comments, judged };
+	return { actualResults, judged };
 }
 
 export interface RunStepDraftOptions {
@@ -47,13 +48,13 @@ export interface RunStepDraftOptions {
 }
 
 export interface RunStepDraftHandle {
-	comments: Record<string, string>;
+	actualResults: Record<string, string>;
 	dirty: boolean;
 	judged: Record<string, TestRunStepResult>;
 	markSaved: () => void;
 	passAll: () => void;
 	reset: () => void;
-	setComment: (stepId: string, text: string) => void;
+	setActualResult: (stepId: string, text: string) => void;
 	setResult: (stepId: string, result: TestRunStepResult) => void;
 	staleDiscarded: boolean;
 }
@@ -71,8 +72,8 @@ function useDraftPersistence(input: {
 		const { current } = latest;
 		if (current.dirty) {
 			writeRunStepDraft(current.runCaseId, {
+				actualResults: current.draft.actualResults,
 				caseVersion: current.caseVersion,
-				comments: current.draft.comments,
 				judged: current.draft.judged,
 			});
 		}
@@ -90,14 +91,14 @@ function useDraftPersistence(input: {
 
 type DraftActions = Pick<
 	RunStepDraftHandle,
-	"markSaved" | "passAll" | "reset" | "setComment" | "setResult"
+	"markSaved" | "passAll" | "reset" | "setActualResult" | "setResult"
 >;
 
 function useDraftEdits(input: {
 	setDirty: Dispatch<SetStateAction<boolean>>;
 	setDraft: Dispatch<SetStateAction<RunStepDraftState>>;
 	steps: readonly CaseStep[];
-}): Pick<DraftActions, "passAll" | "setComment" | "setResult"> {
+}): Pick<DraftActions, "passAll" | "setActualResult" | "setResult"> {
 	const { setDirty, setDraft, steps } = input;
 
 	const setResult = useCallback(
@@ -111,17 +112,18 @@ function useDraftEdits(input: {
 		[setDirty, setDraft]
 	);
 
-	const setComment = useCallback(
+	const setActualResult = useCallback(
 		(stepId: string, text: string) => {
 			setDirty(true);
 			setDraft((prev) => ({
 				...prev,
-				comments: { ...prev.comments, [stepId]: text },
+				actualResults: { ...prev.actualResults, [stepId]: text },
 			}));
 		},
 		[setDirty, setDraft]
 	);
 
+	// 一键全部通过只设置判定，不改也不要求实际结果
 	const passAll = useCallback(() => {
 		setDirty(true);
 		setDraft((prev) => ({
@@ -132,7 +134,7 @@ function useDraftEdits(input: {
 		}));
 	}, [setDirty, setDraft, steps]);
 
-	return { passAll, setComment, setResult };
+	return { passAll, setActualResult, setResult };
 }
 
 function useDraftExits(input: {
@@ -185,7 +187,10 @@ export function useRunStepDraft(
 			return;
 		}
 		if (found.kind === "ok") {
-			setDraft({ comments: found.draft.comments, judged: found.draft.judged });
+			setDraft({
+				actualResults: found.draft.actualResults,
+				judged: found.draft.judged,
+			});
 			setDirty(true);
 		}
 	}, [caseVersion, runCaseId]);
@@ -204,7 +209,7 @@ export function useRunStepDraft(
 	return {
 		...edits,
 		...exits,
-		comments: draft.comments,
+		actualResults: draft.actualResults,
 		dirty,
 		judged: draft.judged,
 		staleDiscarded,

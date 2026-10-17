@@ -81,7 +81,7 @@ export function ReportFailedCaseRow({ row }: { row: ReportFailedCase }) {
 			</TableCell>
 			<TableCell className="max-w-xs whitespace-pre-wrap">
 				{row.comment ?? (
-					<span className="text-muted-foreground">未填写失败原因</span>
+					<span className="text-muted-foreground">未填写说明</span>
 				)}
 			</TableCell>
 			<TableCell>
