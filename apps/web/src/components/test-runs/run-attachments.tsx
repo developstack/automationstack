@@ -1,74 +1,37 @@
-import { useCallback } from "react";
-
 import { AttachmentList } from "@/components/test-runs/attachment-list";
-import { AttachmentDropZone } from "@/components/test-runs/run-attachment-dropzone";
 import {
 	AttachmentGallery,
 	isViewableImage,
 } from "@/components/test-runs/run-attachment-gallery";
-import { useAttachmentPicker } from "@/components/test-runs/run-attachment-picker";
 import { RUN_SECTION_TEXT } from "@/components/test-runs/run-panel-typography";
-import {
-	useAttachmentList,
-	useRemoveAttachment,
-	useUploadAttachments,
-} from "@/components/test-runs/use-attachment-upload";
+import { caseLevelAttachments } from "@/components/test-runs/run-step-attachment-items";
+import { useAttachmentList } from "@/components/test-runs/use-attachment-upload";
 
 export interface RunAttachmentsProps {
-	editing: boolean;
-	onStorageUnavailable: () => void;
 	runCaseId: string;
-	storageUnavailable: boolean;
+	/** 用例当前步骤的 id。属于这些步骤的实际附件显示在步骤中，不在这里显示。 */
+	stepIds: readonly string[];
 }
 
-export function RunAttachments({
-	editing,
-	onStorageUnavailable,
-	runCaseId,
-	storageUnavailable,
-}: RunAttachmentsProps) {
+/**
+ * 不属于当前任何步骤的附件：自动化上传的附件、以前人工上传的整条用例的附件，以及已删除步骤的实际附件。
+ * 只读，不能上传，也不能删除。当前步骤的实际附件显示在各个步骤的实际结果中。没有这样的附件时不显示。
+ */
+export function RunAttachments({ runCaseId, stepIds }: RunAttachmentsProps) {
 	const listQuery = useAttachmentList(runCaseId);
-	const upload = useUploadAttachments({ onStorageUnavailable, runCaseId });
-	const remove = useRemoveAttachment(onStorageUnavailable);
-
-	const canUpload = editing && !storageUnavailable;
-	const picker = useAttachmentPicker({ canUpload, upload });
-	const handleRemove = useCallback(
-		(attachmentId: string) => remove.mutate({ attachmentId }),
-		[remove]
-	);
-
-	const items = listQuery.data ?? [];
-	if (!(editing || items.length > 0)) {
+	const items = caseLevelAttachments(listQuery.data ?? [], stepIds);
+	if (items.length === 0) {
 		return null;
 	}
-
 	const images = items.filter(isViewableImage);
 	const files = items.filter((item) => !isViewableImage(item));
-
 	return (
-		<div className="flex flex-col gap-2">
-			{canUpload ? (
-				<AttachmentDropZone picker={picker} uploading={upload.isPending} />
-			) : null}
-			{editing && storageUnavailable ? (
-				<p
-					className={`rounded-md border border-dashed p-3 ${RUN_SECTION_TEXT}`}
-				>
-					附件存储（R2）未配置，暂时无法上传附件。结论、说明与缺陷关联都不受影响，
-					可以让管理员在服务端补上 R2 配置后再补传。
-				</p>
-			) : null}
-			<AttachmentGallery
-				items={images}
-				onRemove={handleRemove}
-				removable={editing}
-			/>
-			<AttachmentList
-				items={files}
-				onRemove={handleRemove}
-				removable={editing}
-			/>
-		</div>
+		<section aria-label="整条用例的附件" className="flex flex-col gap-2">
+			<p className={RUN_SECTION_TEXT}>
+				整条用例的附件（自动化上传、以前上传或已删除步骤的实际附件，只读）
+			</p>
+			<AttachmentGallery items={images} />
+			<AttachmentList items={files} />
+		</section>
 	);
 }

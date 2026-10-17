@@ -74,6 +74,7 @@ function StepColumns({
 			<StepActualResultField
 				editing={editing}
 				onChange={onActualResultChange}
+				position={position}
 				result={result}
 				stepId={step.id}
 				value={actualResult}

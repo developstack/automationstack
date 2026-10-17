@@ -15,6 +15,7 @@ import {
 import { RunStepCard } from "@/components/test-runs/run-step-card";
 import { RunStepsSummary } from "@/components/test-runs/run-steps-summary";
 import type { VerdictEditingMode } from "@/components/test-runs/run-verdict-editing-mode";
+import { StepAttachmentStorageNotice } from "@/components/test-runs/step-attachment-storage-notice";
 import { useRunStepDraft } from "@/components/test-runs/use-run-step-draft";
 import {
 	useRunStepSave,
@@ -171,6 +172,7 @@ export function RunStepsSection({
 				showShortcutHint={editing}
 				staleDiscarded={draft.staleDiscarded}
 			/>
+			<StepAttachmentStorageNotice />
 			<RunStepCardList
 				actualResults={actualResults}
 				editing={editing}

@@ -1,7 +1,7 @@
 import type { CaseStepScreenshotKey } from "@automationstack/db/schema/test-cases";
 import { Button } from "@automationstack/ui/components/button";
 import { Trash2Icon } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 
 import { AddScreenshotButton } from "@/components/cases/add-screenshot-button";
 import { useCaseAttachments } from "@/components/cases/case-attachment-context";
@@ -14,21 +14,9 @@ import {
 import type { StepScreenshotGroupEdit } from "@/components/cases/use-step-screenshot-group";
 import { MediaGallery } from "@/components/media/media-gallery";
 import type { MediaItem } from "@/components/media/media-item";
+import { useRemoveConfirm } from "@/components/media/use-remove-confirm";
 
 const NO_FOCUS_RETURN = (): void => undefined;
-
-/** 删除前确认：记录要删除的条目，确认后才删除。 */
-function useRemoveConfirm(remove: (entry: string) => void) {
-	const [pending, setPending] = useState<string | null>(null);
-	const cancel = useCallback(() => setPending(null), []);
-	const confirm = useCallback(() => {
-		if (pending !== null) {
-			remove(pending);
-		}
-		setPending(null);
-	}, [pending, remove]);
-	return { ask: setPending, cancel, confirm, open: pending !== null };
-}
 
 function RemoveAction({
 	entry,

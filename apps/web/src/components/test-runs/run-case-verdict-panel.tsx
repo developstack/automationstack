@@ -19,9 +19,7 @@ export interface RunCaseVerdictPanelProps {
 	locked: boolean;
 	onCommentSave: (comment: string | null) => void;
 	onPick: (result: TestRunCaseResult) => void;
-	onStorageUnavailable: () => void;
 	projectId: string;
-	storageUnavailable: boolean;
 }
 
 function VerdictPanelBody({
@@ -32,11 +30,9 @@ function VerdictPanelBody({
 	locked,
 	onCommentSave,
 	onPick,
-	onStorageUnavailable,
 	projectId,
-	storageUnavailable,
 }: RunCaseVerdictPanelProps) {
-	const { executedByName, runCase } = item;
+	const { executedByName, runCase, testCase } = item;
 	return (
 		<div className="flex flex-col gap-3 pb-2">
 			<VerdictPanelNotes
@@ -60,10 +56,9 @@ function VerdictPanelBody({
 			/>
 			<VerdictEvidence
 				editing={editing}
-				onStorageUnavailable={onStorageUnavailable}
 				projectId={projectId}
 				runCase={runCase}
-				storageUnavailable={storageUnavailable}
+				stepIds={testCase.steps.map((step) => step.id)}
 			/>
 		</div>
 	);

@@ -12,15 +12,10 @@ export interface AttachmentListItem {
 
 export interface AttachmentListProps {
 	items: readonly AttachmentListItem[];
-	onRemove: (id: string) => void;
-	removable: boolean;
 }
 
-export function AttachmentList({
-	items,
-	onRemove,
-	removable,
-}: AttachmentListProps) {
+/** 只读的文件附件（录屏、日志等）：每行一个文件，可以在新标签页中打开。 */
+export function AttachmentList({ items }: AttachmentListProps) {
 	if (items.length === 0) {
 		return null;
 	}
@@ -31,10 +26,7 @@ export function AttachmentList({
 				<AttachmentRow
 					contentType={attachment.contentType}
 					fileName={attachment.fileName}
-					id={attachment.id}
 					key={attachment.id}
-					onRemove={onRemove}
-					removable={removable}
 					sizeBytes={attachment.sizeBytes}
 					url={url}
 				/>

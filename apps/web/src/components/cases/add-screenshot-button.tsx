@@ -5,13 +5,16 @@ import { type ChangeEvent, useCallback, useRef } from "react";
 import { SCREENSHOT_ACCEPT } from "@/components/cases/step-screenshot-group";
 
 interface AddScreenshotButtonProps {
+	/** 可以选择的文件类型。默认只有图片；实际附件还可以选择录屏。 */
+	accept?: string;
 	/** 按钮的无障碍名称和鼠标悬停的提示，例如「给第 2 步添加操作截图」。 */
 	label: string;
 	onAdd: (files: File[]) => void;
 }
 
-/** 缩略图条末尾的「+」按钮：40×40，与缩略图同样大小，点击后选择图片。 */
+/** 缩略图条末尾的「+」按钮：40×40，与缩略图同样大小，点击后选择文件。 */
 export function AddScreenshotButton({
+	accept = SCREENSHOT_ACCEPT,
 	label,
 	onAdd,
 }: AddScreenshotButtonProps) {
@@ -41,7 +44,7 @@ export function AddScreenshotButton({
 				<PlusIcon />
 			</Button>
 			<input
-				accept={SCREENSHOT_ACCEPT}
+				accept={accept}
 				aria-hidden="true"
 				className="hidden"
 				multiple={true}

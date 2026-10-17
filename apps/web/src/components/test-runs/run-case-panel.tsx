@@ -9,6 +9,10 @@ import { RunCaseStepsBlock } from "@/components/test-runs/run-case-steps-block";
 import { RunCaseVerdictPanel } from "@/components/test-runs/run-case-verdict-panel";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
 import {
+	RunStepAttachmentsProvider,
+	useRunStepAttachmentsValue,
+} from "@/components/test-runs/run-step-attachments-context";
+import {
 	useVerdictEditingMode,
 	type VerdictEditingMode,
 } from "@/components/test-runs/run-verdict-editing-mode";
@@ -20,16 +24,27 @@ interface RunCaseBodyProps {
 	hasSteps: boolean;
 	imageUrls: MarkdownImageUrls;
 	item: RunCaseDetail;
+	onStorageUnavailable: () => void;
+	storageUnavailable: boolean;
 }
 
+/** 用例正文、步骤和事件。步骤的实际附件在编辑时可以上传和删除。 */
 function RunCaseBody({
 	editingMode,
 	hasSteps,
 	imageUrls,
 	item,
+	onStorageUnavailable,
+	storageUnavailable,
 }: RunCaseBodyProps) {
+	const stepAttachments = useRunStepAttachmentsValue({
+		editing: editingMode.editing,
+		onStorageUnavailable,
+		runCaseId: item.runCase.id,
+		storageUnavailable,
+	});
 	return (
-		<>
+		<RunStepAttachmentsProvider value={stepAttachments}>
 			<RunCaseContent imageUrls={imageUrls} testCase={item.testCase} />
 			<RunCaseStepsBlock
 				editingMode={editingMode}
@@ -38,7 +53,7 @@ function RunCaseBody({
 				item={item}
 			/>
 			<RunCaseEvents runCaseId={item.runCase.id} />
-		</>
+		</RunStepAttachmentsProvider>
 	);
 }
 
@@ -103,7 +118,6 @@ export function RunCasePanel({
 		item,
 		onPick,
 	});
-
 	return (
 		<div className="flex flex-col gap-4 p-4">
 			<RunCaseHeading
@@ -123,15 +137,15 @@ export function RunCasePanel({
 				locked={locked}
 				onCommentSave={onCommentSave}
 				onPick={onPick}
-				onStorageUnavailable={onStorageUnavailable}
 				projectId={projectId}
-				storageUnavailable={storageUnavailable}
 			/>
 			<RunCaseBody
 				editingMode={editingMode}
 				hasSteps={hasSteps}
 				imageUrls={imageUrls}
 				item={item}
+				onStorageUnavailable={onStorageUnavailable}
+				storageUnavailable={storageUnavailable}
 			/>
 		</div>
 	);
