@@ -8,6 +8,7 @@ import {
 import { cn } from "@automationstack/ui/lib/utils";
 
 import { CASE_TABLE_HEAD_CLASS } from "@/components/cases/case-table-layout";
+import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 
 import { CHANGE_KIND_LABELS, type ChangeKind } from "./change-kind.ts";
 import type { StepsDiff } from "./step-diff.ts";
@@ -41,7 +42,12 @@ function StepCountsSummary({ steps }: { steps: StepsDiff }) {
 	);
 }
 
-export function VersionDiffSteps({ steps }: { steps: StepsDiff }) {
+interface VersionDiffStepsProps {
+	imageUrls: MarkdownImageUrls;
+	steps: StepsDiff;
+}
+
+export function VersionDiffSteps({ imageUrls, steps }: VersionDiffStepsProps) {
 	return (
 		<VersionSection
 			aside={<StepCountsSummary steps={steps} />}
@@ -72,7 +78,11 @@ export function VersionDiffSteps({ steps }: { steps: StepsDiff }) {
 						</TableHeader>
 						<TableBody>
 							{steps.entries.map((entry) => (
-								<StepDiffRow entry={entry} key={entry.id} />
+								<StepDiffRow
+									entry={entry}
+									imageUrls={imageUrls}
+									key={entry.id}
+								/>
 							))}
 						</TableBody>
 					</Table>

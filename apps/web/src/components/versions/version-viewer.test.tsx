@@ -12,6 +12,14 @@ vi.mock("@/utils/orpc", async () => {
 	const { skipToken } = await import("@tanstack/react-query");
 	return {
 		orpc: {
+			caseAttachments: {
+				list: {
+					queryOptions: ({ input }: { input: unknown }) => ({
+						queryFn: () => Promise.resolve([]),
+						queryKey: ["caseAttachments", "list", input],
+					}),
+				},
+			},
 			cases: {
 				getVersion: {
 					queryOptions: ({ input }: { input: unknown }) => ({

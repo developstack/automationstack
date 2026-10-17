@@ -2,7 +2,7 @@ import type {
 	CaseSnapshot,
 	CaseStep,
 } from "@automationstack/db/schema/test-cases";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { diffCaseSnapshots } from "@/components/versions/field-diff";
@@ -47,9 +47,52 @@ function renderDiff(oldSnapshot = makeSnapshot()) {
 		<VersionDiff
 			baseVersion={3}
 			diff={diffCaseSnapshots(oldSnapshot, newSnapshot)}
+			imageUrls={IMAGE_URLS}
 			targetVersion={5}
 		/>
 	);
+}
+
+const IMAGE_URLS = new Map([["a", "https://r2.example/a.png"]]);
+
+type StepShots = Pick<CaseStep, "actionScreenshots" | "expectedScreenshots">;
+
+/** 只有第 1 步的截图不同的两个版本。 */
+function renderShots(oldShots: StepShots, newShots: StepShots) {
+	const base = makeSnapshot();
+	const [first, ...rest] = base.steps as [CaseStep, ...CaseStep[]];
+	const withShots = (shots: StepShots) => ({
+		...base,
+		steps: [{ ...first, ...shots }, ...rest],
+	});
+	render(
+		<VersionDiff
+			baseVersion={1}
+			diff={diffCaseSnapshots(withShots(oldShots), withShots(newShots))}
+			imageUrls={IMAGE_URLS}
+			targetVersion={2}
+		/>
+	);
+}
+
+const ACTION_LIST = "第 1 步操作截图";
+const EXPECTED_LIST = "第 1 步预期截图";
+
+/** 一组截图中每张缩略图的标签，没有标签是 null；这一组不显示时为 null。 */
+function shotBadges(name: string): (string | null)[] | null {
+	const list = screen.queryByRole("list", { name });
+	if (list === null) {
+		return null;
+	}
+	return within(list)
+		.getAllByRole("listitem")
+		.map((item) => item.querySelector("[data-tone]")?.textContent ?? null);
+}
+
+/** 截图所在的栏：2 是「操作步骤」，3 是「预期结果」。 */
+function columnOf(name: string): number | null {
+	const cell = screen.getByRole("list", { name }).closest("td");
+	return cell instanceof HTMLTableCellElement ? cell.cellIndex : null;
 }
 
 describe("VersionDiff：新增和删除的内容不只用颜色区分", () => {
@@ -102,6 +145,7 @@ describe("VersionDiff：新增和删除的内容不只用颜色区分", () => {
 			<VersionDiff
 				baseVersion={1}
 				diff={diffCaseSnapshots(base, { ...base, steps: [second, first] })}
+				imageUrls={IMAGE_URLS}
 				targetVersion={2}
 			/>
 		);
@@ -128,5 +172,53 @@ describe("VersionDiff：新增和删除的内容不只用颜色区分", () => {
 		renderDiff();
 		expect(screen.getByText("v3").className).toContain("numeric");
 		expect(screen.getByText("v5").className).toContain("numeric");
+	});
+});
+
+describe("VersionDiff：操作截图和预期截图的变化显示在各自一栏", () => {
+	it.each([
+		[
+			"只有操作截图变化，预期结果一栏不显示截图",
+			{ actionScreenshots: ["a", "b", "c"] },
+			{ actionScreenshots: ["b", "a", "d"] },
+			[null, "移动", "新增", "删除"],
+			null,
+		],
+		[
+			"只有预期截图变化，操作步骤一栏不显示截图",
+			{ expectedScreenshots: ["x"] },
+			{ expectedScreenshots: [] },
+			null,
+			["删除"],
+		],
+		[
+			"两组同时变化，没有变化的截图不加标签",
+			{ actionScreenshots: ["a"], expectedScreenshots: ["x", "y"] },
+			{ actionScreenshots: ["a", "b"], expectedScreenshots: ["y", "x"] },
+			[null, "新增"],
+			[null, "移动"],
+		],
+	])("%s", (...[, oldShots, newShots, action, expected]) => {
+		renderShots(oldShots, newShots);
+		expect(shotBadges(ACTION_LIST)).toEqual(action);
+		expect(shotBadges(EXPECTED_LIST)).toEqual(expected);
+		if (action !== null) {
+			expect(columnOf(ACTION_LIST)).toBe(2);
+		}
+		if (expected !== null) {
+			expect(columnOf(EXPECTED_LIST)).toBe(3);
+		}
+	});
+
+	it("大图浏览显示当前截图的变化", () => {
+		renderShots(
+			{ actionScreenshots: ["a", "b"] },
+			{ actionScreenshots: ["a"] }
+		);
+		fireEvent.click(screen.getByRole("button", { name: "查看操作截图 2" }));
+		const dialog = screen.getByRole("dialog", {
+			name: "第 1 步 · 操作截图 2/2",
+		});
+		expect(within(dialog).getByText("删除")).toBeTruthy();
 	});
 });

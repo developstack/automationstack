@@ -5,6 +5,11 @@ import {
 	buildWordDiffSegments,
 	type TextDiffSegment,
 } from "./diff-segments.ts";
+import {
+	diffStepScreenshots,
+	hasStepScreenshotChanges,
+	type StepScreenshotsDiff,
+} from "./screenshot-diff.ts";
 
 export interface StepDiffEntry {
 	expectedSegments: TextDiffSegment[] | null;
@@ -14,8 +19,13 @@ export interface StepDiffEntry {
 	newStep: CaseStep | null;
 	oldIndex: number | null;
 	oldStep: CaseStep | null;
+	/** 两组截图的变化。新增的步骤中所有截图都是新增，删除的步骤中所有截图都是删除。 */
+	screenshots: StepScreenshotsDiff;
 	stepSegments: TextDiffSegment[] | null;
 }
+
+/** 步骤对比表格中的一栏：操作步骤（step）或预期结果（expected）。 */
+export type StepDiffField = "expected" | "step";
 
 export type StepsDiffCounts = Record<ChangeKind, number>;
 
@@ -41,6 +51,7 @@ function createAddedEntry(newStep: CaseStep, newIndex: number): StepDiffEntry {
 		newStep,
 		oldIndex: null,
 		oldStep: null,
+		screenshots: diffStepScreenshots(null, newStep),
 		stepSegments: null,
 	};
 }
@@ -57,14 +68,18 @@ function createRemovedEntry(
 		newStep: null,
 		oldIndex,
 		oldStep,
+		screenshots: diffStepScreenshots(oldStep, null),
 		stepSegments: null,
 	};
 }
 
 function createPairedEntry(pair: PairedSteps): StepDiffEntry {
 	const { newIndex, newStep, oldIndex, oldStep } = pair;
+	const screenshots = diffStepScreenshots(oldStep, newStep);
 	const contentChanged =
-		oldStep.step !== newStep.step || oldStep.expected !== newStep.expected;
+		oldStep.step !== newStep.step ||
+		oldStep.expected !== newStep.expected ||
+		hasStepScreenshotChanges(screenshots);
 	const base = {
 		expectedSegments: null,
 		id: newStep.id,
@@ -72,6 +87,7 @@ function createPairedEntry(pair: PairedSteps): StepDiffEntry {
 		newStep,
 		oldIndex,
 		oldStep,
+		screenshots,
 		stepSegments: null,
 	};
 	if (contentChanged) {
