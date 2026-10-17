@@ -25,7 +25,12 @@ function valuesWith(patch: Partial<CaseFormValues>): CaseFormValues {
 	return { ...emptyCaseFormValues(), ...patch };
 }
 
-function stepWith(cells: { expected?: string; step?: string }) {
+function stepWith(cells: {
+	actionScreenshots?: string[];
+	expected?: string;
+	expectedScreenshots?: string[];
+	step?: string;
+}) {
 	return { expected: "", id: "s1", step: "", ...cells };
 }
 
@@ -41,6 +46,25 @@ describe("hasUnfinishedCaseUploads", () => {
 			"步骤预期格里的占位算数",
 			{ steps: [stepWith({ expected: UPLOADING })] },
 			true,
+		],
+		[
+			"操作截图里上传中的图片算数",
+			{ steps: [stepWith({ actionScreenshots: [ID_A, UPLOADING] })] },
+			true,
+		],
+		[
+			"预期截图里上传中的图片算数",
+			{ steps: [stepWith({ expectedScreenshots: [UPLOADING] })] },
+			true,
+		],
+		[
+			"截图都上传完成时不算未完成",
+			{
+				steps: [
+					stepWith({ actionScreenshots: [ID_A], expectedScreenshots: [ID_B] }),
+				],
+			},
+			false,
 		],
 		[
 			"已经换成 attachment: 的引用不算未完成",
@@ -76,6 +100,15 @@ describe("referencedCaseAttachments", () => {
 		[
 			"引用散落在步骤的两个格子里也都认得出来",
 			{ steps: [stepWith({ expected: refB, step: refA })] },
+			both,
+		],
+		[
+			"操作截图和预期截图中的图片也登记",
+			{
+				steps: [
+					stepWith({ actionScreenshots: [ID_A], expectedScreenshots: [ID_B] }),
+				],
+			},
 			both,
 		],
 		["正文一处引用都没有时返回空清单", { preconditions: "纯文本" }, []],

@@ -107,6 +107,20 @@ describe("parseCaseDraft", () => {
 		});
 	});
 
+	it("keeps both screenshot groups of a step, and drops entries that are not strings", () => {
+		const step = {
+			actionScreenshots: ["a1", 7],
+			expected: "",
+			expectedScreenshots: ["e1"],
+			id: "s1",
+			step: "",
+		};
+		expect(
+			parseCaseDraft(JSON.stringify({ caseId: "x", values: { steps: [step] } }))
+				?.values.steps
+		).toEqual([{ ...step, actionScreenshots: ["a1"] }]);
+	});
+
 	it("缺 caseId 直接判废：那批图的 object key 前缀全靠它", () => {
 		expect(parseCaseDraft(JSON.stringify({ moduleId: MODULE_A }))).toBeNull();
 	});

@@ -2,8 +2,7 @@ import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import { cn } from "@automationstack/ui/lib/utils";
 import { GripVerticalIcon } from "lucide-react";
 import { useCallback, useState } from "react";
-
-import { MarkdownField } from "@/components/cases/markdown-field";
+import { StepCellEditor } from "@/components/cases/step-cell-editor";
 import {
 	type StepDropEdge,
 	useStepRowDrag,
@@ -77,7 +76,7 @@ function stepRowClass(drag: ReturnType<typeof useStepRowDrag>): string {
 	);
 }
 
-/** 步骤编辑器的一行：拖动把手和编号、操作步骤、预期结果和行尾操作。 */
+/** 步骤编辑器的一行：拖动把手和编号、操作步骤和操作截图、预期结果和预期截图，以及行尾操作。 */
 export function StepRow(props: StepRowProps) {
 	const { index, step } = props;
 	const position = index + 1;
@@ -89,18 +88,26 @@ export function StepRow(props: StepRowProps) {
 	return (
 		<li className={stepRowClass(drag)} ref={drag.setRowRef} style={drag.style}>
 			<StepNumber handle={drag.handle} position={position} />
-			<MarkdownField
+			<StepCellEditor
 				ariaLabel={`第 ${position} 步操作`}
-				onChange={handlers.handleStepChange}
+				group="actionScreenshots"
+				onChange={props.onChange}
+				onTextChange={handlers.handleStepChange}
 				placeholder="操作步骤，支持 markdown"
+				position={position}
 				preview={previewOpen}
+				step={step}
 				value={step.step}
 			/>
-			<MarkdownField
+			<StepCellEditor
 				ariaLabel={`第 ${position} 步预期结果`}
-				onChange={handlers.handleExpectedChange}
+				group="expectedScreenshots"
+				onChange={props.onChange}
+				onTextChange={handlers.handleExpectedChange}
 				placeholder="预期结果，支持 markdown"
+				position={position}
 				preview={previewOpen}
+				step={step}
 				value={step.expected}
 			/>
 			<StepRowActions

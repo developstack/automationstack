@@ -1,5 +1,5 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { CaseStepsList } from "@/components/cases/case-steps-list";
@@ -22,6 +22,8 @@ function renderList(steps: CaseStep[] = STEPS) {
 }
 
 const EDITOR_GRID = "sm:grid-cols-case-step";
+
+const SCREENSHOT_STRIP = /截图/;
 
 function stepItems(container: HTMLElement): HTMLElement[] {
 	return within(container.querySelector("ol") as HTMLElement)
@@ -79,9 +81,46 @@ describe("CaseStepsList：只读的步骤是编号列表", () => {
 		expect(images.map((image) => image.getAttribute("src"))).toEqual([
 			"https://r2.example/a.png",
 		]);
-		expect(screen.queryByRole("list", { name: "第 1 步截图" })).toBeNull();
-		// 编号、操作步骤、预期结果和行尾占位，没有截图行
+		// 没有截图的步骤不显示缩略图条，不占位置
+		expect(screen.queryAllByRole("list", { name: SCREENSHOT_STRIP })).toEqual(
+			[]
+		);
 		expect(stepItems(container)[0]?.children).toHaveLength(4);
+	});
+
+	it("shows each screenshot group under the text of its own column, and opens the group's lightbox", () => {
+		const step: CaseStep = {
+			actionScreenshots: [
+				SHOT_A,
+				SHOT_B,
+				SHOT_A.replace("a", "c"),
+				SHOT_B.replace("b", "d"),
+			],
+			expected: "进入工作台",
+			expectedScreenshots: [SHOT_B],
+			id: "s1",
+			step: "输入账号",
+		};
+		const { container } = renderList([step]);
+		const [, stepCell, expectedCell] = [
+			...(stepItems(container)[0]?.children ?? []),
+		];
+		const actionStrip = within(stepCell as HTMLElement).getByRole("list", {
+			name: "第 1 步操作截图",
+		});
+		expect(within(actionStrip).getAllByRole("button")).toHaveLength(4);
+		expect(
+			within(actionStrip).getByRole("button", { name: "查看另外 1 个" })
+		).toBeTruthy();
+		within(expectedCell as HTMLElement).getByRole("list", {
+			name: "第 1 步预期截图",
+		});
+		fireEvent.click(
+			within(actionStrip).getByRole("button", { name: "查看操作截图 2" })
+		);
+		expect(
+			screen.getByRole("heading", { name: "第 1 步 · 操作截图 2/4" })
+		).toBeTruthy();
 	});
 
 	it("shows the empty text when there are no steps", () => {

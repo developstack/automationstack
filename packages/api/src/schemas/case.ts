@@ -83,11 +83,35 @@ export const removeCasesInputSchema = z.union([
 	z.object({ filter: caseListFilterSchema }),
 ]);
 
-/** 用例的一个步骤。多余的字段被丢弃，例如已经删除的 screenshots。 */
+/** 每个步骤每组截图（操作截图、预期截图）最多的数量。 */
+export const MAX_STEP_SCREENSHOTS = 9;
+
+/**
+ * 外部工具（导入、MCP）写入的步骤：不带截图，多余的字段被丢弃。
+ * id 相同的步骤保留现有的截图（见 mergeStepScreenshots）。
+ */
 export const caseStepSchema = z.object({
 	expected: z.string(),
 	id: z.string().min(1),
 	step: z.string(),
+});
+
+function screenshotGroupSchema(label: string) {
+	return z
+		.array(z.uuid())
+		.max(
+			MAX_STEP_SCREENSHOTS,
+			`每个步骤最多 ${MAX_STEP_SCREENSHOTS} 张${label}`
+		)
+		.refine((ids) => new Set(ids).size === ids.length, {
+			message: `${label}中有重复的附件 id`,
+		});
+}
+
+/** 用例编辑区写入的步骤：可以带操作截图和预期截图（用例附件 id）。不带的一组保留现有的截图。 */
+export const caseStepWithScreenshotsSchema = caseStepSchema.extend({
+	actionScreenshots: screenshotGroupSchema("操作截图").optional(),
+	expectedScreenshots: screenshotGroupSchema("预期截图").optional(),
 });
 
 export const caseContentSchema = z.object({
@@ -98,7 +122,7 @@ export const caseContentSchema = z.object({
 	priority: casePrioritySchema.default("P2"),
 	sourceRef: z.string().nullable().default(null),
 	status: caseStatusSchema.default("draft"),
-	steps: z.array(caseStepSchema).default([]),
+	steps: z.array(caseStepWithScreenshotsSchema).default([]),
 	tags: z.array(z.string()).default([]),
 });
 
@@ -110,12 +134,13 @@ export const caseContentPatchSchema = z.object({
 	priority: casePrioritySchema.optional(),
 	sourceRef: z.string().nullable().optional(),
 	status: caseStatusSchema.optional(),
-	steps: z.array(caseStepSchema).optional(),
+	steps: z.array(caseStepWithScreenshotsSchema).optional(),
 	tags: z.array(z.string()).optional(),
 });
 
 export const importCaseSchema = caseContentSchema.extend({
 	moduleId: z.uuid(),
+	steps: z.array(caseStepSchema).default([]),
 });
 
 export const importOnDuplicateSchema = z.enum([

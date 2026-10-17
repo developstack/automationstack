@@ -1,3 +1,4 @@
+import { findCaseAttachmentIds } from "@automationstack/db/repositories/case-attachments-repository";
 import {
 	listTestCases,
 	MAX_PAGE_SIZE,
@@ -18,6 +19,11 @@ import { z } from "zod";
 import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
 import { resolveNewCaseAttachments } from "../lib/case-attachment-draft-ingest";
+import {
+	FOREIGN_SCREENSHOT_MESSAGE,
+	foreignScreenshotIds,
+	stepScreenshotIds,
+} from "../lib/case-step-screenshots";
 import { requireCaseMember, requireModuleMember } from "../lib/project-scope";
 import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
@@ -84,6 +90,13 @@ export const casesRouter = {
 		.input(createCaseSchema)
 		.use(requireProjectMember)
 		.handler(async ({ context, errors, input }) => {
+			// 新用例的截图只能是这次一起提交的新附件
+			const newAttachmentIds = new Set(
+				(input.attachments ?? []).map((attachment) => attachment.id)
+			);
+			if (foreignScreenshotIds(input.steps, newAttachmentIds).length > 0) {
+				throw errors.BAD_REQUEST({ message: FOREIGN_SCREENSHOT_MESSAGE });
+			}
 			const attachments = await resolveNewCaseAttachments(
 				{
 					attachments: input.attachments,
@@ -209,12 +222,18 @@ export const casesRouter = {
 		}),
 	update: protectedProcedure
 		.errors({
+			BAD_REQUEST: {},
 			CONFLICT: { data: caseConflictDataSchema },
 			NOT_FOUND: {},
 		})
 		.input(updateCaseSchema)
 		.use(requireCaseMember, toCaseScope)
 		.handler(async ({ context, errors, input }) => {
+			const screenshotIds = stepScreenshotIds(input.patch.steps);
+			const owned = await findCaseAttachmentIds(input.id, screenshotIds);
+			if (foreignScreenshotIds(input.patch.steps, owned).length > 0) {
+				throw errors.BAD_REQUEST({ message: FOREIGN_SCREENSHOT_MESSAGE });
+			}
 			const result = await updateTestCase({
 				actorName: actorName(context),
 				changeNote: input.changeNote,

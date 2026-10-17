@@ -1,4 +1,7 @@
-import type { CaseStep } from "@automationstack/db/schema/test-cases";
+import type {
+	CaseStep,
+	CaseStepScreenshotKey,
+} from "@automationstack/db/schema/test-cases";
 import { cn } from "@automationstack/ui/lib/utils";
 
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
@@ -7,6 +10,7 @@ import {
 	STEP_GRID_CLASS,
 	StepGridHeader,
 } from "@/components/cases/step-grid-header";
+import { StepScreenshotGallery } from "@/components/cases/step-screenshot-gallery";
 
 const DEFAULT_EMPTY_TEXT = "还没有步骤。点击「编辑」添加操作步骤和预期结果。";
 
@@ -24,13 +28,26 @@ interface CaseStepItemProps {
 }
 
 interface StepCellProps {
+	group: CaseStepScreenshotKey;
 	imageUrls: MarkdownImageUrls;
 	label: string;
+	position: number;
+	step: CaseStep;
 	text: string;
 }
 
-/** 一栏的内容。宽屏时列标题在表头，这里的标签只给读屏软件；窄屏两栏堆叠时显示标签。 */
-function StepCell({ imageUrls, label, text }: StepCellProps) {
+/**
+ * 一栏的内容：文字和这一栏的截图。宽屏时列标题在表头，这里的标签只给读屏软件；
+ * 窄屏两栏堆叠时显示标签。
+ */
+function StepCell({
+	group,
+	imageUrls,
+	label,
+	position,
+	step,
+	text,
+}: StepCellProps) {
 	return (
 		<div className="flex min-w-0 flex-col gap-1">
 			<p className="text-muted-foreground text-xs sm:sr-only">{label}</p>
@@ -39,6 +56,12 @@ function StepCell({ imageUrls, label, text }: StepCellProps) {
 			) : (
 				<p className="text-muted-foreground">—</p>
 			)}
+			<StepScreenshotGallery
+				group={group}
+				imageUrls={imageUrls}
+				position={position}
+				step={step}
+			/>
 		</div>
 	);
 }
@@ -54,15 +77,29 @@ function CaseStepItem({ imageUrls, position, step }: CaseStepItemProps) {
 			<span className="numeric flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">
 				{position}
 			</span>
-			<StepCell imageUrls={imageUrls} label="操作步骤" text={step.step} />
-			<StepCell imageUrls={imageUrls} label="预期结果" text={step.expected} />
+			<StepCell
+				group="actionScreenshots"
+				imageUrls={imageUrls}
+				label="操作步骤"
+				position={position}
+				step={step}
+				text={step.step}
+			/>
+			<StepCell
+				group="expectedScreenshots"
+				imageUrls={imageUrls}
+				label="预期结果"
+				position={position}
+				step={step}
+				text={step.expected}
+			/>
 			{/* 编辑模式中这一栏放行尾操作。查看模式留出同样的宽度，切换模式时两栏不移动。 */}
 			<span aria-hidden="true" className="hidden w-6 sm:block" />
 		</li>
 	);
 }
 
-/** 只读的步骤列表：编号、操作步骤和预期结果。列与编辑模式一致：宽屏左右两栏，窄屏上下堆叠。用在用例详情和版本历史的快照查看中。 */
+/** 只读的步骤列表：编号、操作步骤和预期结果，每一栏文字下方是这一栏的截图。列与编辑模式一致：宽屏左右两栏，窄屏上下堆叠。用在用例详情和版本历史的快照查看中。 */
 export function CaseStepsList({
 	emptyText = DEFAULT_EMPTY_TEXT,
 	imageUrls,

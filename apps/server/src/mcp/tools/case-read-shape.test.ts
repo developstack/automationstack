@@ -25,7 +25,9 @@ const sampleCase: TestCase = {
 	status: "draft",
 	steps: [
 		{
+			actionScreenshots: ["55555555-5555-4555-8555-555555555555"],
 			expected: "提示「用户名长度需为 4–20 个字符」",
+			expectedScreenshots: ["66666666-6666-4666-8666-666666666666"],
 			id: "s1",
 			step: "输入 21 个字符",
 		},
@@ -78,11 +80,15 @@ it.each([
 	["summary", "drops case bodies", pick(SUMMARY_FIELDS)],
 	[
 		"full",
-		"keeps case bodies with only id, step and expected in each step (no screenshot field)",
+		"keeps case bodies with only id, step and expected in each step (no action or expected screenshots)",
 		{
 			...pick([...SUMMARY_FIELDS, "preconditions"]),
 			steps: [
-				sampleCase.steps[0],
+				{
+					expected: "提示「用户名长度需为 4–20 个字符」",
+					id: "s1",
+					step: "输入 21 个字符",
+				},
 				{ expected: "注册成功", id: "s2", step: "输入 20 个字符" },
 			],
 		},

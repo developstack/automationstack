@@ -5,6 +5,7 @@ import {
 	type CaseContentPatch,
 	isNoopCasePatch,
 	toCaseSnapshot,
+	withExplicitScreenshots,
 } from "./case-snapshot-core";
 
 const STEP_ONE: CaseStep = {
@@ -63,6 +64,16 @@ describe("isNoopCasePatch", () => {
 			},
 		],
 		[
+			"treats a missing screenshot group as an empty one",
+			row,
+			{ steps: [{ ...STEP_ONE, actionScreenshots: [] }, STEP_TWO] },
+		],
+		[
+			"compares screenshot groups by order",
+			makeCase({ steps: [{ ...STEP_ONE, expectedScreenshots: ["e1", "e2"] }] }),
+			{ steps: [{ ...STEP_ONE, expectedScreenshots: ["e1", "e2"] }] },
+		],
+		[
 			"ignores fields the patch omits",
 			makeCase({ maintainer: null }),
 			{ name: row.name },
@@ -85,6 +96,14 @@ describe("isNoopCasePatch", () => {
 			"edited expected text",
 			{ steps: [STEP_ONE, { ...STEP_TWO, expected: "退款单已创建" }] },
 		],
+		[
+			"an added action screenshot",
+			{ steps: [{ ...STEP_ONE, actionScreenshots: ["a1"] }, STEP_TWO] },
+		],
+		[
+			"a changed expected screenshot order",
+			{ steps: [STEP_ONE, { ...STEP_TWO, expectedScreenshots: ["e2", "e1"] }] },
+		],
 		["an added tag", { tags: ["退款", "核心链路", "冒烟"] }],
 		["reordered tags", { tags: ["核心链路", "退款"] }],
 	])("detects %s", (_name, patch) => {
@@ -106,5 +125,19 @@ describe("toCaseSnapshot", () => {
 			steps: STEPS,
 			tags: ["退款", "核心链路"],
 		});
+	});
+});
+
+describe("withExplicitScreenshots", () => {
+	it("writes a missing group as an empty list and keeps a stored group, so a rollback restores the exact screenshots", () => {
+		expect(
+			withExplicitScreenshots([
+				STEP_ONE,
+				{ ...STEP_TWO, actionScreenshots: ["a1"] },
+			])
+		).toEqual([
+			{ ...STEP_ONE, actionScreenshots: [], expectedScreenshots: [] },
+			{ ...STEP_TWO, actionScreenshots: ["a1"], expectedScreenshots: [] },
+		]);
 	});
 });

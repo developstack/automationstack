@@ -1,0 +1,117 @@
+import type { CaseStepScreenshotKey } from "@automationstack/db/schema/test-cases";
+import { Button } from "@automationstack/ui/components/button";
+import { Trash2Icon } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+
+import { AddScreenshotButton } from "@/components/cases/add-screenshot-button";
+import { useCaseAttachments } from "@/components/cases/case-attachment-context";
+import { MarkdownFieldUploads } from "@/components/cases/markdown-field-uploads";
+import { ScreenshotRemoveDialog } from "@/components/cases/screenshot-remove-dialog";
+import {
+	screenshotGroupNames,
+	screenshotMediaItems,
+} from "@/components/cases/step-screenshot-group";
+import type { StepScreenshotGroupEdit } from "@/components/cases/use-step-screenshot-group";
+import { MediaGallery } from "@/components/media/media-gallery";
+import type { MediaItem } from "@/components/media/media-item";
+
+const NO_FOCUS_RETURN = (): void => undefined;
+
+/** 删除前确认：记录要删除的条目，确认后才删除。 */
+function useRemoveConfirm(remove: (entry: string) => void) {
+	const [pending, setPending] = useState<string | null>(null);
+	const cancel = useCallback(() => setPending(null), []);
+	const confirm = useCallback(() => {
+		if (pending !== null) {
+			remove(pending);
+		}
+		setPending(null);
+	}, [pending, remove]);
+	return { ask: setPending, cancel, confirm, open: pending !== null };
+}
+
+function RemoveAction({
+	entry,
+	onAsk,
+}: {
+	entry: string;
+	onAsk: (entry: string) => void;
+}) {
+	const ask = useCallback(() => onAsk(entry), [entry, onAsk]);
+	return (
+		<Button onClick={ask} size="sm" type="button" variant="ghost">
+			<Trash2Icon data-icon="inline-start" />
+			删除这张截图
+		</Button>
+	);
+}
+
+/** 缩略图：已保存的截图用签发的地址，上传中的截图用本地的预览地址和上传状态。 */
+function useEditorItems(
+	entries: readonly string[],
+	groupLabel: string
+): MediaItem[] {
+	const { imageUrls, uploads } = useCaseAttachments();
+	return useMemo(
+		() => screenshotMediaItems(entries, groupLabel, imageUrls, uploads),
+		[entries, groupLabel, imageUrls, uploads]
+	);
+}
+
+interface StepScreenshotEditorProps {
+	edit: StepScreenshotGroupEdit;
+	group: CaseStepScreenshotKey;
+	position: number;
+}
+
+/**
+ * 编辑区中输入框下方的一组截图：缩略图条，末尾是「+」按钮。
+ * 大图浏览中可以删除当前的截图，删除前确认。上传中和上传失败的截图列在缩略图条下方。
+ */
+export function StepScreenshotEditor({
+	edit,
+	group,
+	position,
+}: StepScreenshotEditorProps) {
+	const removal = useRemoveConfirm(edit.remove);
+	const { groupLabel, label, titlePrefix } = screenshotGroupNames(
+		position,
+		group
+	);
+	const items = useEditorItems(edit.entries, groupLabel);
+	const { ask } = removal;
+	const renderActions = useCallback(
+		(item: MediaItem) => <RemoveAction entry={item.id} onAsk={ask} />,
+		[ask]
+	);
+
+	return (
+		<>
+			<MediaGallery
+				items={items}
+				label={label}
+				renderActions={renderActions}
+				titlePrefix={titlePrefix}
+			>
+				{edit.canAdd ? (
+					<AddScreenshotButton
+						label={`给第 ${position} 步添加${groupLabel}`}
+						onAdd={edit.addFiles}
+					/>
+				) : null}
+			</MediaGallery>
+			{/* 条目中上传中的截图就是上传占位，所以连起来就是上传列表需要的文字 */}
+			<MarkdownFieldUploads
+				onRemoveRef={edit.removeUploadingRef}
+				onReturnFocus={NO_FOCUS_RETURN}
+				text={edit.entries.join("\n")}
+			/>
+			<ScreenshotRemoveDialog
+				groupLabel={groupLabel}
+				onCancel={removal.cancel}
+				onConfirm={removal.confirm}
+				open={removal.open}
+			/>
+		</>
+	);
+}

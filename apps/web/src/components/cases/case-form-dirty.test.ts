@@ -25,6 +25,36 @@ describe("isCaseFormDirty：编辑区有没有没保存的修改", () => {
 			},
 			true,
 		],
+		...(["actionScreenshots", "expectedScreenshots"] as const).map(
+			(group): [string, CaseFormValues, boolean] => [
+				`an added ${group} entry`,
+				{
+					...BASELINE,
+					steps: [
+						{
+							...BASELINE.steps[0],
+							[group]: ["a1"],
+						} as CaseFormValues["steps"][number],
+					],
+				},
+				true,
+			]
+		),
+		[
+			"an empty screenshot group, the same as none",
+			{
+				...BASELINE,
+				steps: [
+					{
+						expected: "进入首页",
+						expectedScreenshots: [],
+						id: "s1",
+						step: "输入账号",
+					},
+				],
+			},
+			false,
+		],
 	])("%s → %s", (_name, values, dirty) => {
 		expect(isCaseFormDirty(values, BASELINE)).toBe(dirty);
 	});

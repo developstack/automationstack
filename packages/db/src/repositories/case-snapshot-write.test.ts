@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { migrateAll } from "../migration-harness";
+import type { CaseStep } from "../schema/test-cases";
 import {
 	type WriteCaseMutationOptions,
 	writeCaseMutation,
@@ -11,20 +12,31 @@ import type { DbTransaction } from "./repository-types";
 
 const PROJECT = "00000000-0000-4000-8000-000000000001";
 const MODULE = "00000000-0000-4000-8000-000000000002";
-const STEPS = [{ expected: "进入首页", id: "s1", step: "输入账号" }];
+const STEP: CaseStep = { expected: "进入首页", id: "s1", step: "输入账号" };
+const STEPS = [STEP];
+const SHOT_A = "00000000-0000-4000-8000-00000000000a";
+const SHOT_B = "00000000-0000-4000-8000-00000000000b";
+/** 带两组截图的步骤：操作截图 A，预期截图 B。 */
+const STEPS_WITH_SCREENSHOTS = [
+	{
+		...STEP,
+		actionScreenshots: [SHOT_A],
+		expectedScreenshots: [SHOT_B],
+	},
+];
 
 const client = new PGlite();
 const orm = drizzle({ client });
 
 let nextCase = 10;
 
-async function insertCase(): Promise<string> {
+async function insertCase(steps: unknown[] = STEPS): Promise<string> {
 	nextCase += 1;
 	const id = `00000000-0000-4000-8000-${String(nextCase).padStart(12, "0")}`;
 	await client.query(
 		`INSERT INTO test_cases (id, project_id, module_id, name, steps)
 		VALUES ($1, $2, $3, '登录', $4::jsonb)`,
-		[id, PROJECT, MODULE, JSON.stringify(STEPS)]
+		[id, PROJECT, MODULE, JSON.stringify(steps)]
 	);
 	return id;
 }
@@ -101,5 +113,48 @@ describe("writeCaseMutation：保存用例内容并记录版本", () => {
 				version: 2,
 			},
 		});
+	});
+
+	it.each([
+		[
+			"keeps both screenshot groups of a step that keeps its id when the patch has no screenshot fields",
+			[{ expected: "进入工作台", id: "s1", step: "输入账号" }],
+			[
+				{
+					actionScreenshots: [SHOT_A],
+					expected: "进入工作台",
+					expectedScreenshots: [SHOT_B],
+					id: "s1",
+					step: "输入账号",
+				},
+			],
+		],
+		[
+			"keeps only the group the patch omits",
+			[{ ...STEP, actionScreenshots: [] }],
+			[{ ...STEP, actionScreenshots: [], expectedScreenshots: [SHOT_B] }],
+		],
+		[
+			"gives no screenshots to a step with a new id",
+			[{ expected: "进入首页", id: "s2", step: "输入账号" }],
+			[{ expected: "进入首页", id: "s2", step: "输入账号" }],
+		],
+	] as [string, CaseStep[], CaseStep[]][])(
+		"%s",
+		async (_name, patchSteps, storedSteps) => {
+			const caseId = await insertCase(STEPS_WITH_SCREENSHOTS);
+			const result = await write({ caseId, patch: { steps: patchSteps } });
+			expect(result).toMatchObject({
+				kind: "written",
+				testCase: { steps: storedSteps },
+				version: { snapshot: { steps: storedSteps } },
+			});
+		}
+	);
+
+	it("does not write a patch without screenshot fields when the text is the same", async () => {
+		const caseId = await insertCase(STEPS_WITH_SCREENSHOTS);
+		const result = await write({ caseId, patch: { steps: STEPS } });
+		expect(result).toMatchObject({ kind: "unchanged" });
 	});
 });

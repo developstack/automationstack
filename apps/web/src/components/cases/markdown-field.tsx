@@ -52,6 +52,8 @@ interface MarkdownFieldControlProps {
 	ariaLabel: string;
 	id?: string;
 	onChange: (value: string) => void;
+	/** 传入时，粘贴的图片交给它处理（例如加入操作截图），不写入文字。 */
+	onPasteImages?: (files: File[]) => void;
 	placeholder: string;
 	preview?: boolean;
 	value: string;
@@ -120,6 +122,7 @@ function MarkdownFieldControl({
 	ariaLabel,
 	id,
 	onChange,
+	onPasteImages,
 	placeholder,
 	preview,
 	value,
@@ -129,6 +132,7 @@ function MarkdownFieldControl({
 	useFocusOut(container, activation.handleFocusOut);
 	const paste = useMarkdownFieldPaste({
 		onChange,
+		onPasteImages,
 		textareaRef: activation.textareaRef,
 		value,
 	});
