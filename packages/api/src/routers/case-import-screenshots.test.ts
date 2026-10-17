@@ -73,6 +73,7 @@ describe("cases.importBatch：步骤可以引用截图上传", () => {
 				fileName: "a.png",
 				projectId: PROJECT_ID,
 				storageKey: STORAGE_KEY,
+				userId: user.id,
 			},
 			{ now: Date.now(), secret: SECRET }
 		);

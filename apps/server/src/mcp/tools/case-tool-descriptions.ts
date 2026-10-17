@@ -135,7 +135,8 @@ export const CREATE_SCREENSHOT_UPLOAD_DESCRIPTION =
 	"The limits are the same as in the web page: png, jpeg or webp, at most 10 MB " +
 	"for each file, at most 9 images in each group. " +
 	"Any member of the project can call it, as for import_test_cases. The " +
-	"uploadToken is valid only for this case. The platform examines the " +
+	"uploadToken is valid only for this case and only for the user who got it. " +
+	"The platform examines the " +
 	"uploaded file when import_test_cases refers to the uploadToken. " +
 	"read_cases does not return screenshots. " +
 	"Returns {uploadToken, uploadUrl, method, headers, expiresInSeconds, " +

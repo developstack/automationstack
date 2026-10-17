@@ -20,6 +20,7 @@ import {
 /**
  * MCP 写用例步骤时，操作截图和预期截图中是上传凭证（uploadToken），不是附件 id。
  * 这里校验每个凭证，检查 R2 中的对象（HEAD），然后把凭证换成登记后的附件 id。
+ * 凭证只能由取得它的用户使用。
  */
 
 const GROUP_LABELS: Record<ColumnScreenshotKey, string> = {
@@ -35,6 +36,9 @@ const INVALID_TOKEN_MESSAGE =
 
 const EXPIRED_TOKEN_MESSAGE = `截图上传凭证已过期（签发后 ${SCREENSHOT_UPLOAD_TOKEN_TTL_HOURS} 小时内有效），请重新取得上传地址并上传`;
 
+const FOREIGN_USER_MESSAGE =
+	"截图上传凭证属于另一个用户，只能由取得它的用户使用";
+
 const FOREIGN_PROJECT_MESSAGE = "截图上传凭证属于另一个项目";
 
 const MIXED_CASES_MESSAGE = "一条用例的截图上传凭证必须属于同一个用例";
@@ -43,11 +47,12 @@ const MISSING_FILE_MESSAGE =
 	"截图文件不存在：上传没有完成，或上传地址已过期。请重新取得上传地址并上传";
 
 export interface ScreenshotUploadContext {
-	createdBy: string | null;
 	now: number;
 	projectId: string;
 	secret: string;
 	storage: AttachmentObjectStore | null;
+	/** 写用例的用户。凭证必须是这个用户取得的，登记的附件也记为这个用户上传。 */
+	userId: string | null;
 }
 
 export type ResolveColumnScreenshotUploadsResult =
@@ -103,6 +108,9 @@ async function readUploads(
 		if (read.kind === "expired") {
 			failAt(location, EXPIRED_TOKEN_MESSAGE);
 		}
+		if (read.upload.userId !== context.userId) {
+			failAt(location, FOREIGN_USER_MESSAGE);
+		}
 		if (read.upload.projectId !== context.projectId) {
 			failAt(location, FOREIGN_PROJECT_MESSAGE);
 		}
@@ -139,7 +147,7 @@ function verifyUploads(
 			);
 			return {
 				...verified,
-				createdBy: context.createdBy,
+				createdBy: context.userId,
 				fileName: upload.fileName,
 				id: upload.attachmentId,
 				storageKey: upload.storageKey,

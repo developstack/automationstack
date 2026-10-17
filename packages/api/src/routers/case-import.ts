@@ -62,12 +62,12 @@ function parseRows(cases: unknown[]): ParsedRows {
 }
 
 /**
- * 把每行步骤中的截图上传凭证换成附件 id。凭证无效、过期或文件不存在的行放进错误，
- * 不影响其他行。
+ * 把每行步骤中的截图上传凭证换成附件 id。凭证无效、过期、属于另一个用户或文件不存在的行
+ * 放进错误，不影响其他行。
  */
 async function resolveRowScreenshots(
 	parsed: ParsedRows,
-	target: { createdBy: string | null; projectId: string }
+	target: { projectId: string; userId: string | null }
 ): Promise<ParsedRows> {
 	const context = {
 		...target,
@@ -117,7 +117,7 @@ async function runImportBatch(
 ): Promise<ImportBatchResult> {
 	const { invalidRows, rows } = await resolveRowScreenshots(
 		parseRows(input.cases),
-		{ createdBy: context.user?.id ?? null, projectId: input.projectId }
+		{ projectId: input.projectId, userId: context.user?.id ?? null }
 	);
 	const result = await importTestCases({
 		actorName: actorName(context),

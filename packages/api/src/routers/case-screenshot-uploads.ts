@@ -29,33 +29,36 @@ export interface ColumnScreenshotUpload {
 export const caseScreenshotUploadProcedures = {
 	/**
 	 * MCP 写入截图的第一步：为一个用例的一张截图取得上传地址和上传凭证。
-	 * 权限与修改这个用例相同。上传凭证只能用于这个用例。
+	 * 权限与修改这个用例相同。上传凭证只能用于这个用例，并且只能由取得它的用户使用。
 	 */
 	presignColumnScreenshotUpload: protectedProcedure
 		.errors(caseAttachmentErrors)
 		.input(caseImagePresignSchema)
 		.use(requireCaseMember)
-		.handler(async ({ errors, input }): Promise<ColumnScreenshotUpload> => {
-			const { scope, storageKey, uploadUrl } = await presignCaseImageUpload(
-				input,
-				errors
-			);
-			const uploadToken = await signScreenshotUploadToken(
-				{
-					attachmentId: randomUUID(),
-					caseId: scope.caseId,
-					fileName: input.fileName,
-					projectId: scope.projectId,
-					storageKey,
-				},
-				{ now: Date.now(), secret: env.SESSION_SECRET }
-			);
-			return {
-				contentType: input.contentType,
-				expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
-				tokenExpiresInSeconds: SCREENSHOT_UPLOAD_TOKEN_TTL_SECONDS,
-				uploadToken,
-				uploadUrl,
-			};
-		}),
+		.handler(
+			async ({ context, errors, input }): Promise<ColumnScreenshotUpload> => {
+				const { scope, storageKey, uploadUrl } = await presignCaseImageUpload(
+					input,
+					errors
+				);
+				const uploadToken = await signScreenshotUploadToken(
+					{
+						attachmentId: randomUUID(),
+						caseId: scope.caseId,
+						fileName: input.fileName,
+						projectId: scope.projectId,
+						storageKey,
+						userId: context.user.id,
+					},
+					{ now: Date.now(), secret: env.SESSION_SECRET }
+				);
+				return {
+					contentType: input.contentType,
+					expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
+					tokenExpiresInSeconds: SCREENSHOT_UPLOAD_TOKEN_TTL_SECONDS,
+					uploadToken,
+					uploadUrl,
+				};
+			}
+		),
 };

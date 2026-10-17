@@ -15,6 +15,7 @@ const PROJECT = "55555555-5555-4555-8555-555555555555";
 const CASE = "44444444-4444-4444-8444-444444444444";
 const OTHER_CASE = "44444444-4444-4444-8444-000000000000";
 const USER = "11111111-1111-4111-8111-111111111111";
+const OTHER_USER = "11111111-1111-4111-8111-000000000000";
 
 const attachmentId = (n: number) =>
 	`00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -29,6 +30,7 @@ function token(
 		now?: number;
 		projectId?: string;
 		storageKey?: string;
+		userId?: string;
 	} = {}
 ): Promise<string> {
 	const caseId = options.caseId ?? CASE;
@@ -39,6 +41,7 @@ function token(
 			fileName: `${n}.png`,
 			projectId: options.projectId ?? PROJECT,
 			storageKey: options.storageKey ?? keyOf(n, caseId),
+			userId: options.userId ?? USER,
 		},
 		{ now: options.now ?? NOW, secret: SECRET }
 	);
@@ -55,11 +58,11 @@ function context(
 	overrides: Partial<ScreenshotUploadContext> = {}
 ): ScreenshotUploadContext {
 	return {
-		createdBy: USER,
 		now: NOW,
 		projectId: PROJECT,
 		secret: SECRET,
 		storage: createStore(),
+		userId: USER,
 		...overrides,
 	};
 }
@@ -133,6 +136,18 @@ describe("resolveColumnScreenshotUploads：把截图中的上传凭证换成用�
 			() => token(1, { projectId: CASE }),
 			{},
 			"步骤 s1 的预期截图：截图上传凭证属于另一个项目",
+		],
+		[
+			"a token that another user requested",
+			() => token(1, { userId: OTHER_USER }),
+			{},
+			"步骤 s1 的预期截图：截图上传凭证属于另一个用户，只能由取得它的用户使用",
+		],
+		[
+			"a token without a signed-in user",
+			() => token(1),
+			{ userId: null },
+			"步骤 s1 的预期截图：截图上传凭证属于另一个用户，只能由取得它的用户使用",
 		],
 		[
 			"a token whose object is not under the case",

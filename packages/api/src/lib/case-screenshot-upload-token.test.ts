@@ -19,6 +19,7 @@ const UPLOAD: ScreenshotUpload = {
 	projectId: "55555555-5555-4555-8555-555555555555",
 	storageKey:
 		"test-cases/55555555-5555-4555-8555-555555555555/44444444-4444-4444-8444-444444444444/k.png",
+	userId: "11111111-1111-4111-8111-111111111111",
 };
 
 const sign = () =>
@@ -60,6 +61,20 @@ describe("截图上传凭证：签名后只能用于这一个上传，过期后�
 		[
 			"another signed value of the same secret (for example a session)",
 			() => signJson({ exp: NOW + TTL_MS, userId: "u1" }, SECRET),
+		],
+		[
+			"a token without the user who requested it (issued before tokens carried the user)",
+			() => {
+				const { userId: _userId, ...withoutUser } = UPLOAD;
+				return signJson(
+					{
+						...withoutUser,
+						exp: NOW + TTL_MS,
+						purpose: "case-step-screenshot-upload",
+					},
+					SECRET
+				);
+			},
 		],
 		[
 			"an attachment id instead of a token",

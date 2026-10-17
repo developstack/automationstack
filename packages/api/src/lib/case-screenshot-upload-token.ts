@@ -4,7 +4,8 @@ import { signJson, verifySignedJson } from "../auth/hmac";
 
 /**
  * MCP 写入截图的上传凭证（uploadToken）。取得上传地址时由服务端签发，写用例步骤时在操作截图或
- * 预期截图中引用。凭证用 SESSION_SECRET 签名，客户端不能改变其中的用例、对象键或附件 id。
+ * 预期截图中引用。凭证用 SESSION_SECRET 签名，客户端不能改变其中的用例、对象键、附件 id 或用户。
+ * 凭证中有取得它的用户：只有这个用户可以使用它。没有用户的旧凭证无效。
  */
 
 const SECONDS_PER_HOUR = 3600;
@@ -20,13 +21,15 @@ export const SCREENSHOT_UPLOAD_TOKEN_TTL_SECONDS =
 /** 凭证的用途。同一个密钥也签名会话等其他数据，用途不同的签名值不能当作凭证。 */
 const TOKEN_PURPOSE = "case-step-screenshot-upload";
 
-/** 一次上传：上传到哪个用例的哪个对象键，登记后的附件 id 和文件名。 */
+/** 一次上传：上传到哪个用例的哪个对象键，登记后的附件 id 和文件名，以及取得凭证的用户。 */
 export interface ScreenshotUpload {
 	attachmentId: string;
 	caseId: string;
 	fileName: string;
 	projectId: string;
 	storageKey: string;
+	/** 取得凭证的用户。只有这个用户可以使用凭证。 */
+	userId: string;
 }
 
 const tokenPayloadSchema = z.object({
@@ -37,6 +40,7 @@ const tokenPayloadSchema = z.object({
 	projectId: z.uuid(),
 	purpose: z.literal(TOKEN_PURPOSE),
 	storageKey: z.string().min(1),
+	userId: z.uuid(),
 });
 
 export type ReadScreenshotUploadTokenResult =

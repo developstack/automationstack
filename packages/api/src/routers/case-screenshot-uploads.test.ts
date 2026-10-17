@@ -65,8 +65,9 @@ beforeEach(() => {
 });
 
 describe("caseAttachments.presignColumnScreenshotUpload：为一个用例的一张截图取得上传地址", () => {
-	it("returns a 5-minute upload URL and a token for this case only", async () => {
-		const result = await presign();
+	it("returns a 5-minute upload URL and a token for this case and this user only", async () => {
+		const user = testUser();
+		const result = await presign({}, user);
 		expect(result).toMatchObject({
 			contentType: "image/png",
 			expiresInSeconds: 300,
@@ -89,6 +90,7 @@ describe("caseAttachments.presignColumnScreenshotUpload：为一个用例的一�
 				fileName: "登录页.png",
 				projectId: PROJECT_ID,
 				storageKey,
+				userId: user.id,
 			},
 		});
 	});

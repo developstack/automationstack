@@ -111,7 +111,8 @@ curl --fail --silent --show-error -X PUT -H 'Content-Type: image/png' --upload-f
 - 不给某一组时，`id` 相同的步骤保留原有的这一组。
 - 每组最多 9 张图片。每个文件最多 10 MB，类型是 png、jpeg 或 webp。这些限制与界面相同。
 - 一行最多引用 50 个上传凭证。上传凭证更多时，分几次调用。已经写入的步骤不给截图字段。
-- 上传凭证只能用于取得它的那条用例。项目的任何成员都可以调用，权限与 `import_test_cases` 相同。
+- 上传凭证只能用于取得它的那条用例。项目的任何成员都可以调用 `create_screenshot_upload`，权限与 `import_test_cases` 相同。
+- 只有取得上传凭证的用户可以使用它。另一个用户使用这个凭证时，这一行进入 `errors`。
 - 上传凭证无效或过期，或者文件没有上传时，这一行进入 `errors`。错误信息说明原因。
 - 被跳过的行不写入截图，`skipped` 中的原因说明这一点。
 - `read_cases` 不返回截图。
