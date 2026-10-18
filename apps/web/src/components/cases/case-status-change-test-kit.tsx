@@ -6,13 +6,14 @@ import { toast } from "sonner";
 import { vi } from "vitest";
 
 /**
- * 改用例状态的 hook 测试共用的替身和构造函数（use-case-status-change.test.tsx 和
- * use-case-batch-status-change.test.tsx）。测试文件用 vi.mock 把 @/utils/orpc 换成 orpcMock，
+ * 改用例状态的 hook 测试共用的替身和构造函数（use-case-status-change.test.tsx、
+ * use-case-batch-status-change.test.tsx 和 use-case-batch-remove.test.tsx）。测试文件用 vi.mock 把 @/utils/orpc 换成 orpcMock，
  * 把 sonner 换成只有 success 和 warning 的 toast。
  */
 
 export const api = {
 	changeStatus: vi.fn<(input: unknown) => Promise<unknown>>(),
+	removeMany: vi.fn<(input: unknown) => Promise<unknown>>(),
 	undoStatusChange: vi.fn<(input: unknown) => Promise<unknown>>(),
 };
 
@@ -27,6 +28,12 @@ export const orpcMock = {
 			},
 			key: () => ["cases"],
 			list: { key: () => ["cases", "list"] },
+			removeMany: {
+				mutationOptions: (options: object) => ({
+					...options,
+					mutationFn: api.removeMany,
+				}),
+			},
 			undoStatusChange: {
 				mutationOptions: (options: object) => ({
 					...options,

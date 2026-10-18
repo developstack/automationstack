@@ -231,7 +231,15 @@ describe("CaseListBatchActions：批量删除，被测试任务用到的用例�
 			expect(invalidate).toHaveBeenCalledWith({ queryKey: ["mindmap"] });
 			expect(api.removeMany).toHaveBeenCalledTimes(1);
 			expect(api.removeMany.mock.calls[0]?.[0]).toEqual({ ids: caseIds(2) });
-			expect(toast[level]).toHaveBeenCalledWith(message);
+			// 有跳过的用例时才带「改为废弃」（点击后的行为见 use-case-batch-remove.test.tsx）
+			expect(vi.mocked(toast[level]).mock.calls[0]).toEqual(
+				skipped.length > 0
+					? [
+							message,
+							{ action: expect.objectContaining({ label: "改为废弃" }) },
+						]
+					: [message]
+			);
 		}
 	);
 
