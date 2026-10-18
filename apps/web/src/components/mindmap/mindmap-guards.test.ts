@@ -184,3 +184,37 @@ describe("existing module / case behaviour is unchanged", () => {
 		expect(host.setPendingKind).toHaveBeenCalledWith("module");
 	});
 });
+
+describe("moveUpNode / moveDownNode（PgUp、PgDn 和菜单的上移、下移）", () => {
+	/** 模块 m1 下有子模块 m2 和用例 c1、c2 */
+	function siblings() {
+		const parent = nodeOf(encodeModuleNodeId("m1"));
+		const children = [
+			encodeModuleNodeId("m2"),
+			encodeCaseNodeId("c1"),
+			encodeCaseNodeId("c2"),
+		].map((id) => ({ ...nodeOf(id), parent }));
+		parent.children = children;
+		const [subModule, firstCase, lastCase] = children.map(topicOf);
+		return { firstCase, lastCase, subModule };
+	}
+
+	it.each([
+		["moves a case up past a case", "moveUpNode", "lastCase", true],
+		["moves a case down past a case", "moveDownNode", "firstCase", true],
+		["does not move a case above a module", "moveUpNode", "firstCase", false],
+		["does not move a module below a case", "moveDownNode", "subModule", false],
+		["does not move the last node down", "moveDownNode", "lastCase", false],
+	] as const)("%s", (_name, operation, pick, allowed) => {
+		expect(before[operation]?.(siblings()[pick])).toBe(allowed);
+		expect(host.reject).not.toHaveBeenCalled();
+	});
+
+	it.each(["moveUpNode", "moveDownNode"] as const)(
+		"refuses %s of a step node",
+		(operation) => {
+			expect(before[operation]?.(topicOf(nodeOf(STEP_NODE_ID)))).toBe(false);
+			expect(host.reject).toHaveBeenCalledWith(STEP_READONLY_MESSAGE);
+		}
+	);
+});

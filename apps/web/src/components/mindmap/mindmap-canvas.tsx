@@ -7,7 +7,6 @@ import "./mindmap-theme.css";
 import { type RefObject, useEffect, useRef, useState } from "react";
 
 import { toMindElixirData } from "./mindmap-adapter.ts";
-import { pruneMindmapContextMenu } from "./mindmap-context-menu.ts";
 import { MindmapDeleteDialog } from "./mindmap-delete-dialog.tsx";
 import { useMindmapFullscreen } from "./mindmap-fullscreen.ts";
 import { bindMindmapKeyGuard } from "./mindmap-key-guard.ts";
@@ -59,7 +58,7 @@ function useMindElixirInstance(
 		const mind = new MindElixir({
 			allowUndo: false,
 			before,
-			contextMenu,
+			contextMenu: contextMenu.option,
 			direction: DIRECTION_RIGHT,
 			editable: true,
 			el,
@@ -68,11 +67,11 @@ function useMindElixirInstance(
 			toolBar: false,
 		});
 		instanceRef.current = mind;
+		const detachMenu = contextMenu.bind(mind);
 		const snapshot = snapshotRef.current;
 		mind.init(
 			toMindElixirData(toMindmapTreeInput(snapshot.project, snapshot.data))
 		);
-		pruneMindmapContextMenu(mind);
 		mind.container.setAttribute("role", "application");
 		mind.container.setAttribute("aria-label", CANVAS_LABEL);
 		const detachPan = bindMindmapPan(el, mind);
@@ -84,6 +83,7 @@ function useMindElixirInstance(
 			detach();
 			detachKeyGuard();
 			detachPan();
+			detachMenu();
 			mind.destroy();
 			instanceRef.current = null;
 		};
