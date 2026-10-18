@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { ProjectMemberFormError } from "@/components/project-members/project-member-form-error";
 import {
 	allowedProjectRole,
+	isOwnerIneligible,
 	OWNER_NOT_ELIGIBLE_HINT,
 	projectRoleOptionsFor,
 } from "@/components/project-members/project-member-meta";
@@ -92,7 +93,8 @@ interface RoleFieldProps {
 
 function RoleField({ onChange, platformRole, value }: RoleFieldProps) {
 	const options = projectRoleOptionsFor(platformRole);
-	const ownerBlocked = options.some((option) => option.disabled === true);
+	// 选了普通用户时没有「拥有者」，在字段下说明原因
+	const ownerBlocked = isOwnerIneligible(platformRole);
 	const handleValueChange = useCallback(
 		(next: string | null) => {
 			if (next === "member" || next === "owner") {
@@ -115,11 +117,7 @@ function RoleField({ onChange, platformRole, value }: RoleFieldProps) {
 				</SelectTrigger>
 				<SelectContent>
 					{options.map((option) => (
-						<SelectItem
-							disabled={option.disabled}
-							key={option.value}
-							value={option.value}
-						>
+						<SelectItem key={option.value} value={option.value}>
 							{option.label}
 						</SelectItem>
 					))}
@@ -173,7 +171,7 @@ function useMemberDraft(projectId: string) {
 	);
 	const { platformRole } =
 		options.find((option) => option.value === userId) ?? {};
-	// 普通用户只能设为成员：选了「拥有者」后再换成普通用户，实际提交「成员」。
+	// 只有能成为拥有者的账号可以提交「拥有者」：选了「拥有者」后再换成普通用户，实际提交「成员」。
 	const effectiveRole = allowedProjectRole(role, platformRole);
 	return { effectiveRole, options, platformRole, setRole, setUserId, userId };
 }

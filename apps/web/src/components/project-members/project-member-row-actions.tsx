@@ -1,4 +1,3 @@
-import { canBecomeProjectOwner } from "@automationstack/api/lib/project-access";
 import type { ProjectMemberView } from "@automationstack/db/repositories/project-members-repository";
 import { Button } from "@automationstack/ui/components/button";
 import {
@@ -11,37 +10,47 @@ import { MoreHorizontalIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import { ProjectMemberConfirmDialog } from "@/components/project-members/project-member-confirm-dialog";
+import {
+	type ProjectMemberConfirmKind,
+	projectMemberActionsFor,
+} from "@/components/project-members/project-member-meta";
 import { useProjectMemberActions } from "@/components/project-members/use-project-member-actions";
 
 interface ProjectMemberActionsMenuProps {
-	isSelf: boolean;
+	kinds: readonly ProjectMemberConfirmKind[];
 	member: ProjectMemberView;
-	onDemote: () => void;
-	onPromote: () => void;
-	onRemove: () => void;
+	onOpen: OpenConfirm;
 }
 
-function RoleChangeItem({
-	member,
-	onDemote,
-	onPromote,
-}: Pick<ProjectMemberActionsMenuProps, "member" | "onDemote" | "onPromote">) {
-	if (member.role === "owner") {
-		return <DropdownMenuItem onClick={onDemote}>设为成员</DropdownMenuItem>;
-	}
-	// 普通用户不能成为项目拥有者：菜单里不出现这一项。服务端也检查。
-	if (!canBecomeProjectOwner(member.platformRole)) {
-		return null;
-	}
-	return <DropdownMenuItem onClick={onPromote}>设为拥有者</DropdownMenuItem>;
+const ACTION_LABEL: Record<ProjectMemberConfirmKind, string> = {
+	demote: "设为成员",
+	promote: "设为拥有者",
+	remove: "移出项目",
+};
+
+type OpenConfirm = (kind: ProjectMemberConfirmKind) => void;
+
+interface ActionItemProps {
+	kind: ProjectMemberConfirmKind;
+	onOpen: OpenConfirm;
+}
+
+function ActionItem({ kind, onOpen }: ActionItemProps) {
+	const handleClick = useCallback(() => onOpen(kind), [kind, onOpen]);
+	return (
+		<DropdownMenuItem
+			onClick={handleClick}
+			variant={kind === "remove" ? "destructive" : "default"}
+		>
+			{ACTION_LABEL[kind]}
+		</DropdownMenuItem>
+	);
 }
 
 function ProjectMemberActionsMenu({
-	isSelf,
+	kinds,
 	member,
-	onDemote,
-	onPromote,
-	onRemove,
+	onOpen,
 }: ProjectMemberActionsMenuProps) {
 	return (
 		<DropdownMenu>
@@ -57,16 +66,9 @@ function ProjectMemberActionsMenu({
 				}
 			/>
 			<DropdownMenuContent align="end">
-				<RoleChangeItem
-					member={member}
-					onDemote={onDemote}
-					onPromote={onPromote}
-				/>
-				{isSelf ? null : (
-					<DropdownMenuItem onClick={onRemove} variant="destructive">
-						移出项目
-					</DropdownMenuItem>
-				)}
+				{kinds.map((kind) => (
+					<ActionItem key={kind} kind={kind} onOpen={onOpen} />
+				))}
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
@@ -75,28 +77,29 @@ function ProjectMemberActionsMenu({
 interface ProjectMemberRowActionsProps {
 	isSelf: boolean;
 	member: ProjectMemberView;
+	/** 项目中拥有者的数量 */
+	ownerCount: number;
 	projectId: string;
 }
 
 export function ProjectMemberRowActions({
 	isSelf,
 	member,
+	ownerCount,
 	projectId,
 }: ProjectMemberRowActionsProps) {
 	const actions = useProjectMemberActions(projectId, member);
-	const { open } = actions;
-	const askDemote = useCallback(() => open("demote"), [open]);
-	const askPromote = useCallback(() => open("promote"), [open]);
-	const askRemove = useCallback(() => open("remove"), [open]);
-
+	// 与服务端的规则相同；一项都不能用时不显示菜单按钮
+	const kinds = projectMemberActionsFor({ isSelf, member, ownerCount });
+	if (kinds.length === 0) {
+		return null;
+	}
 	return (
 		<>
 			<ProjectMemberActionsMenu
-				isSelf={isSelf}
+				kinds={kinds}
 				member={member}
-				onDemote={askDemote}
-				onPromote={askPromote}
-				onRemove={askRemove}
+				onOpen={actions.open}
 			/>
 			<ProjectMemberConfirmDialog actions={actions} member={member} />
 		</>

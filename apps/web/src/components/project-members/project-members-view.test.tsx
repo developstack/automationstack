@@ -77,9 +77,17 @@ const MEMBERS = [
 	),
 ];
 
-function renderAs(role: UserRole) {
+/** 第二个拥有者 */
+const DAVE = member(
+	"44444444-4444-4444-8444-444444444444",
+	"dave",
+	"owner",
+	"project_admin"
+);
+
+function renderAs(role: UserRole, extra: ProjectMemberView[] = []) {
 	session.role = role;
-	const members = MEMBERS.map((row) =>
+	const members = [...MEMBERS, ...extra].map((row) =>
 		row.userId === SELF_ID ? { ...row, platformRole: role } : row
 	);
 	renderWithQuery(<ProjectMembersView projectId={PROJECT_ID} />, [
@@ -112,6 +120,23 @@ describe("ProjectMembersView：不能把普通用户设为项目拥有者", () =
 		["项目管理员：菜单里有「设为拥有者」", "carol", ["设为拥有者", "移出项目"]],
 	])("%s", async (_name, username, items) => {
 		renderAs("project_admin");
+		expect(await openMenuItems(`成员「${username}」操作`)).toEqual(items);
+	});
+});
+
+describe("ProjectMembersView：不能降级或移出最后一个拥有者，不能移出自己", () => {
+	it("本人是唯一的拥有者：没有能用的操作，不显示操作按钮", () => {
+		renderAs("project_admin");
+		expect(
+			screen.queryByRole("button", { name: "成员「alice」操作" })
+		).toBeNull();
+	});
+
+	it.each([
+		["另有拥有者时本人：只能设为成员", "alice", ["设为成员"]],
+		["另一个拥有者：设为成员、移出项目", "dave", ["设为成员", "移出项目"]],
+	])("%s", async (_name, username, items) => {
+		renderAs("project_admin", [DAVE]);
 		expect(await openMenuItems(`成员「${username}」操作`)).toEqual(items);
 	});
 });
