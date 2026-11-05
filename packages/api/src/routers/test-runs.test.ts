@@ -51,7 +51,9 @@ vi.mock(
 vi.mock("@automationstack/db/repositories/test-run-report-repository", () => ({
 	getTestRunReport: mocks.getTestRunReport,
 }));
-vi.mock("../lib/r2", () => ({ getR2Storage: () => mocks.storage }));
+vi.mock("../lib/object-storage", () => ({
+	getObjectStorage: () => mocks.storage,
+}));
 vi.mock("../lib/realtime-publish", () => ({
 	publishInvalidate: mocks.publishInvalidate,
 }));

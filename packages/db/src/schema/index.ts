@@ -8,6 +8,7 @@ export * from "./project-members";
 export * from "./project-settings";
 export * from "./projects";
 export * from "./step-screenshot-purge";
+export * from "./storage-settings";
 export * from "./test-cases";
 export * from "./test-run-attachments";
 export * from "./test-run-case-events";

@@ -27,8 +27,8 @@ vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	getProjectIdByCaseId: mocks.getProjectIdByCaseId,
 }));
-vi.mock("../lib/r2", () => ({
-	getR2Storage: () => ({ presignUpload: mocks.presignUpload }),
+vi.mock("../lib/object-storage", () => ({
+	getObjectStorage: () => ({ presignUpload: mocks.presignUpload }),
 }));
 
 const PROJECT_ID = "55555555-5555-4555-8555-555555555555";

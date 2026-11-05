@@ -11,7 +11,7 @@ import {
 	buildAttachmentStorageKey,
 	UPLOAD_URL_TTL_SECONDS,
 } from "../attachment-policy";
-import { getR2Storage, type R2Storage } from "../r2";
+import { getObjectStorage, type ObjectStorage } from "../object-storage";
 import type {
 	IngestAttachmentPresignReceipt,
 	IngestAttachmentPresignRequest,
@@ -24,9 +24,7 @@ import {
 	buildGroupRejections,
 	describeRunCaseVanished,
 	describeRunUnwritable,
-	type PlannedAttachmentUploads,
 	planAttachmentUploads,
-	REASON_STORAGE_UNCONFIGURED,
 } from "./attachment-reconcile";
 import { tokenCanEnterProject } from "./ingest-project-access";
 
@@ -36,32 +34,6 @@ export type IngestAttachmentPresignOutcome =
 	| { kind: "ok"; receipt: IngestAttachmentPresignReceipt }
 	| { kind: "project-not-found" }
 	| { kind: "unauthorized" };
-
-function unconfiguredPresignReceipt(
-	planned: PlannedAttachmentUploads
-): IngestAttachmentPresignReceipt {
-	const sourceRefByIndex = new Map<number, string>();
-	for (const group of planned.groups) {
-		for (const item of group.items) {
-			sourceRefByIndex.set(item.index, item.sourceRef);
-		}
-	}
-	const rejected = [
-		...planned.rejected,
-		...[...sourceRefByIndex].map(([index, sourceRef]) => ({
-			index,
-			reason: REASON_STORAGE_UNCONFIGURED,
-			runName: null,
-			sourceRef,
-		})),
-	];
-	return {
-		expiresInSeconds: UPLOAD_URL_TTL_SECONDS,
-		rejected: rejected.sort((left, right) => left.index - right.index),
-		storageConfigured: false,
-		uploads: [],
-	};
-}
 
 interface SignedGroup {
 	rejected: IngestAttachmentRejection[];
@@ -97,7 +69,7 @@ function splitSignableItems(
 
 async function signGroup(
 	group: AttachmentUploadGroup,
-	storage: R2Storage
+	storage: ObjectStorage
 ): Promise<SignedGroup> {
 	const prepared = await prepareRunAttachmentUploads({
 		runCaseIds: group.items.map((item) => item.runCaseId),
@@ -159,10 +131,7 @@ export async function presignParsed(
 		rows,
 		runIds: request.runIds,
 	});
-	const storage = getR2Storage();
-	if (storage === null) {
-		return { kind: "ok", receipt: unconfiguredPresignReceipt(planned) };
-	}
+	const storage = await getObjectStorage();
 	const rejected = [...planned.rejected];
 	const uploads: IngestAttachmentUpload[] = [];
 	for (const group of planned.groups) {

@@ -1,7 +1,6 @@
 import { beforeEach, expect, test, vi } from "vitest";
-
+import type { ObjectStorage } from "../object-storage";
 import { createStore } from "../object-store-fixtures";
-import type { R2Storage } from "../r2";
 import { registerOne } from "./attachment-register-one";
 
 const mocks = vi.hoisted(() => ({
@@ -40,7 +39,7 @@ test("an automation upload registers on the whole case, with the same receipt as
 	const storage = createStore({
 		contentLength: 2048,
 		contentType: "text/plain",
-	}) as unknown as R2Storage;
+	}) as unknown as ObjectStorage;
 	const result = await registerOne({
 		item: ITEM,
 		scope: SCOPE,

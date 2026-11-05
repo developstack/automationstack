@@ -36,6 +36,9 @@ services:
       - ./deploy/nginx/50-reload-loop.sh:/docker-entrypoint.d/50-automationstack-reload-loop.sh:ro
       - letsencrypt:/etc/letsencrypt:ro
       - acme-webroot:/var/www/certbot:ro
+      # 本地存储的图片和附件，在宿主机目录 FILES_HOST_DIR 中。
+      # server 写入，nginx 只读并直接发送（locations.conf 的 /_files/）。
+      - ${FILES_HOST_DIR:-/data/automationstack/files}:/srv/automationstack/files:ro
     depends_on:
       # nginx 启动时解析 proxy_pass 中的主机名。server 和 web 不存在时，nginx 不能启动。
       server:
@@ -119,6 +122,13 @@ services:
       # 所以使用 nginx 写入的 X-Real-IP。nginx 总是用连接地址覆盖它，客户端不能伪造。
       # server 不发布端口，所以只能经过 nginx 访问。
       CLIENT_IP_HEADER: x-real-ip
+      # 存储方式是「服务器本地」时，上传的图片和附件写在这个目录（宿主机的 FILES_HOST_DIR）。
+      FILE_STORAGE_DIR: /var/lib/automationstack/files
+      # server 检查下载签名后，让 nginx 从同一个卷发送文件。
+      FILE_STORAGE_ACCEL_PREFIX: /_files/
+    volumes:
+      # 宿主机目录，不是 docker 卷：删除容器、镜像或 docker 卷都不影响图片，备份时直接复制这个目录。
+      - ${FILES_HOST_DIR:-/data/automationstack/files}:/var/lib/automationstack/files
     extra_hosts:
       # Linux 上的 docker 没有默认的 host.docker.internal。数据库在宿主机上时使用它。
       - "host.docker.internal:host-gateway"

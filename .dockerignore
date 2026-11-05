@@ -11,6 +11,9 @@
 **/.turbo
 .turbo
 
+# 本地存储的图片和附件，不进入镜像。
+**/.data
+
 **/.wrangler
 **/.alchemy
 **/.expo

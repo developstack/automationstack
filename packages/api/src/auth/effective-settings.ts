@@ -35,12 +35,13 @@ export function settingsFromEnv(): EffectiveAuthSettings {
 	};
 }
 
-interface OpenedSecret {
+export interface OpenedSecret {
 	problem: AuthCredentialProblem | null;
 	secret: StoredSecret;
 }
 
-async function openSecret(cipher: string | null): Promise<OpenedSecret> {
+/** 解密一个密钥列。存储设置也使用这个函数。 */
+export async function openSecret(cipher: string | null): Promise<OpenedSecret> {
 	if (cipher === null) {
 		return { problem: null, secret: NO_SECRET };
 	}

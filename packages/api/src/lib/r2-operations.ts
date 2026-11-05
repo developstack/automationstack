@@ -1,7 +1,7 @@
-import { env } from "@automationstack/env/server";
 import {
 	DeleteObjectCommand,
 	GetObjectCommand,
+	HeadBucketCommand,
 	HeadObjectCommand,
 	NotFound,
 	PutObjectCommand,
@@ -15,6 +15,7 @@ import {
 	DOWNLOAD_URL_TTL_SECONDS,
 	UPLOAD_URL_TTL_SECONDS,
 } from "./attachment-policy";
+import type { UploadObject } from "./object-storage-model";
 
 const NOT_FOUND_STATUS = 404;
 
@@ -28,13 +29,19 @@ function isObjectMissing(error: unknown): boolean {
 	return false;
 }
 
-export function createR2Client(endpoint: string): S3Client {
+export interface R2Credentials {
+	accessKeyId: string;
+	endpoint: string;
+	secretAccessKey: string;
+}
+
+export function createR2Client(credentials: R2Credentials): S3Client {
 	return new S3Client({
 		credentials: {
-			accessKeyId: env.R2_ACCESS_KEY_ID ?? "",
-			secretAccessKey: env.R2_SECRET_ACCESS_KEY ?? "",
+			accessKeyId: credentials.accessKeyId,
+			secretAccessKey: credentials.secretAccessKey,
 		},
-		endpoint,
+		endpoint: credentials.endpoint,
 		forcePathStyle: true,
 		region: "auto",
 	});
@@ -73,12 +80,6 @@ export function presignR2Download(
 	);
 }
 
-/** 上传地址允许的对象：类型和准确的字节数。 */
-export interface R2UploadObject {
-	contentLength: number;
-	contentType: string;
-}
-
 /**
  * 签发 PUT 上传地址。签名包含 content-type 和 content-length：类型或大小与声明不同的请求，
  * R2 拒绝（403 SignatureDoesNotMatch）。所以在地址有效期内，不能用另一个大小的文件替换已经上传的文件。
@@ -87,7 +88,7 @@ export function presignR2Upload(
 	client: S3Client,
 	bucket: string,
 	storageKey: string,
-	object: R2UploadObject
+	object: UploadObject
 ): Promise<string> {
 	return getSignedUrl(
 		client,
@@ -112,4 +113,26 @@ export async function removeR2Object(
 	await client.send(
 		new DeleteObjectCommand({ Bucket: bucket, Key: storageKey })
 	);
+}
+
+const CONNECTION_CHECK_TIMEOUT_MS = 10_000;
+
+/** 检查能否访问 bucket。可以访问时返回 null，否则返回原因。只读，不写入任何对象。 */
+export async function checkR2Bucket(
+	client: S3Client,
+	bucket: string
+): Promise<string | null> {
+	try {
+		await client.send(new HeadBucketCommand({ Bucket: bucket }), {
+			abortSignal: AbortSignal.timeout(CONNECTION_CHECK_TIMEOUT_MS),
+		});
+		return null;
+	} catch (error) {
+		if (error instanceof S3ServiceException) {
+			const status = error.$metadata.httpStatusCode;
+			return `R2 拒绝了请求（HTTP ${status ?? "未知"}，${error.name}）。检查 Bucket、Access Key ID 和 Secret Access Key`;
+		}
+		const reason = error instanceof Error ? error.message : String(error);
+		return `不能连接 Endpoint：${reason}`;
+	}
 }

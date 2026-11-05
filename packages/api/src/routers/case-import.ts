@@ -11,7 +11,7 @@ import { z } from "zod";
 import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
 import { resolveColumnScreenshotUploads } from "../lib/case-screenshot-uploads";
-import { getR2Storage } from "../lib/r2";
+import { getObjectStorage } from "../lib/object-storage";
 import { publishInvalidate } from "../lib/realtime-publish";
 import { importCaseSchema } from "../schemas/case";
 import { importBatchSchema, searchCasesSchema } from "../schemas/case-import";
@@ -73,7 +73,7 @@ async function resolveRowScreenshots(
 		...target,
 		now: Date.now(),
 		secret: env.SESSION_SECRET,
-		storage: getR2Storage(),
+		storage: await getObjectStorage(),
 	};
 	const resolved = await Promise.all(
 		parsed.rows.map(async (row) => ({

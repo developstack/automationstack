@@ -18,6 +18,7 @@ import { AuthSettingsNavItem } from "@/components/layout/auth-settings-nav-item"
 import { PlatformUsersNavItem } from "@/components/layout/platform-users-nav-item";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
 import { SidebarUser } from "@/components/layout/sidebar-user";
+import { StorageSettingsNavItem } from "@/components/layout/storage-settings-nav-item";
 
 const PLATFORM_GROUP_LABEL_ID = "platform-nav";
 
@@ -53,6 +54,7 @@ function PlatformNavGroup() {
 					<>
 						<PlatformUsersNavItem pathname={pathname} />
 						<AuthSettingsNavItem pathname={pathname} />
+						<StorageSettingsNavItem pathname={pathname} />
 					</>
 				) : null}
 			</SidebarMenu>

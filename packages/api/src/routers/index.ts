@@ -12,6 +12,7 @@ import { projectMembersRouter } from "./project-members";
 import { projectSettingsRouter } from "./project-settings";
 import { projectStatsRouter } from "./project-stats";
 import { projectsRouter } from "./projects";
+import { storageSettingsRouter } from "./storage-settings";
 import { testRunAttachmentsRouter } from "./test-run-attachments";
 import { testRunsRouter } from "./test-runs";
 import { usersRouter } from "./users";
@@ -29,6 +30,7 @@ export const appRouter = {
 	projectSettings: projectSettingsRouter,
 	projectStats: projectStatsRouter,
 	projects: projectsRouter,
+	storageSettings: storageSettingsRouter,
 	testRunAttachments: testRunAttachmentsRouter,
 	testRuns: testRunsRouter,
 	users: usersRouter,

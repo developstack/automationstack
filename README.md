@@ -204,7 +204,7 @@ Casdoor 的 client secret 密文）敞在那里，而没有任何人会注意到
 
 ### 单机生产部署（`make up:prod`）
 
-`make up:prod` 在一台服务器上运行生产构建。数据库在外部机器上，本仓库不启动数据库。
+`make up:prod` 在一台服务器上运行生产构建，例如 `testcases.logwing.com`。数据库在外部机器上（例如阿里云 RDS），本仓库不启动数据库。
 集群上的正式生产环境不使用它。正式生产环境由 `developstack/k8s-gitops` 的 `automationstack/k8s` 管理。
 
 服务器上必须有 docker（含 compose 插件）、git 和 make。
@@ -220,6 +220,7 @@ nginx 是唯一的入口，监听 80 和 443。server 和 web 不发布端口。
 | 路径 | 转发到 |
 | --- | --- |
 | `/rpc`、`/api`、`/ingest`、`/mcp`、`/ws`、`/health` | server |
+| `/files/` | server（上传和下载本地存储中的文件，见「图片和附件」） |
 | 其他路径 | web |
 
 路径与 k8s-gitops 的 `ingress.yaml` 相同。修改 `deploy/nginx/locations.conf` 时，两处一起改。
@@ -236,21 +237,35 @@ HTTPS 证书来自 Let's Encrypt。`make up:prod` 申请第一张证书。certbo
 1. 在阿里云中，把域名的 A 记录指向本服务器的公网 IP。
 2. 在阿里云安全组中，允许 80 和 443 端口的入站流量。
 3. 中国内地的服务器：确认域名已经完成 ICP 备案。没有备案时，80 和 443 端口被阻断，证书申请失败。
-4. 在数据库机器上创建角色和库。角色必须是库的 owner：
+4. 中国内地的服务器：配置 docker 的镜像加速器。没有加速器时，服务器可能不能从 Docker Hub 拉取 `node`、`nginx` 和 `certbot` 镜像。
+   在阿里云「容器镜像服务 → 镜像工具 → 镜像加速器」中取得加速器地址，写入 `/etc/docker/daemon.json` 的 `registry-mirrors`，然后重启 docker。
+5. 准备数据库。使用阿里云 RDS PostgreSQL 时，在 RDS 控制台中执行这些步骤：
+   1. 在「账号管理」中创建普通账号，例如 `automationstack`。
+   2. 在「数据库管理」中创建库 `automationstack`，「授权账号」选择上一步的账号。这个账号必须是库的 owner：迁移要创建 schema `drizzle`，server 要创建 schema `pgboss`。
+   3. 在「白名单与安全组」中加入本服务器的内网 IP。
+   4. 在 `.env.prod` 的 `DATABASE_URL` 中使用 RDS 的内网地址。本服务器和 RDS 必须在同一个 VPC 中。
+
+   使用自己管理的 PostgreSQL 时，用 SQL 创建角色和库，并在 `pg_hba.conf` 和防火墙中允许本服务器的地址：
 
    ```sql
    CREATE ROLE automationstack LOGIN PASSWORD '<口令>';
    CREATE DATABASE automationstack OWNER automationstack;
    ```
 
-5. 在 `pg_hba.conf` 中允许本服务器的地址连接这个库。
-6. 确认防火墙允许本服务器连接数据库的端口。
+6. 准备图片目录。默认目录是 `/data/automationstack/files`（`.env.prod` 中的 `FILES_HOST_DIR`）。
+   确认 `/data` 是数据盘的挂载点（`df -h /data`）。目录不存在时，`make up:prod` 创建它。
 
 #### 第一次启动
 
-1. 执行 `make up:prod`。它从模板生成 `.env.prod`（权限 600），然后停止。
-2. 在 `.env.prod` 中填写注释中有 `[必填]` 的键。
-3. 再执行一次 `make up:prod`。
+1. 把仓库 clone 到服务器上，然后进入仓库目录。
+2. 执行 `make up:prod`。它从模板生成 `.env.prod`（权限 600），然后停止。
+3. 在 `.env.prod` 中填写注释中有 `[必填]` 的键。
+4. 再执行一次 `make up:prod`。
+
+#### 更新
+
+执行 `make deploy:prod`。它只快进地拉取当前分支（`git pull --ff-only`），然后执行 `make up:prod`。
+工作区有未提交的修改时，它停止。`.env.prod` 不在 git 中，所以拉取代码不改变它。
 
 #### 每次启动时 `make up:prod` 做的事
 
@@ -266,12 +281,37 @@ HTTPS 证书来自 Let's Encrypt。`make up:prod` 申请第一张证书。certbo
 server 第一次启动时，库中没有管理员。这时它用 `ADMIN_INITIAL_PASSWORD` 创建引导管理员。
 `ADMIN_INITIAL_PASSWORD` 为空时，server 不启动。
 
+#### 图片和附件
+
+用例图片和执行页附件默认存储在服务器本地，不需要其他服务。
+文件在宿主机目录 `FILES_HOST_DIR` 中（默认 `/data/automationstack/files`），不在 docker 卷中。
+所以删除容器、镜像或 docker 卷都不影响图片。
+
+上传和下载使用 server 签发的地址，路径是 `/files/`。
+server 检查签名后，nginx 从这个目录直接发送文件，并处理视频的 Range 请求和缓存头。
+用例图片的地址不会过期，所以浏览器缓存它 1 年。执行页附件的地址在 15 到 30 分钟后过期。
+
+平台管理员可以在「平台 → 存储设置」页面中改用 Cloudflare R2。保存后立即生效。
+切换后，以前上传的文件留在原来的位置，仍然可以查看。设计原因见 `docs/adr/0006-uploads-stored-on-server-by-default.md`。
+
+这个目录不在数据库备份中，所以必须单独备份它。可以使用以下一种方法：
+
+- 在阿里云 ECS 控制台中，为数据盘设置自动快照策略。
+- 用 tar 备份目录：
+
+  ```bash
+  sudo tar czf "files-$(date +%F).tar.gz" -C /data/automationstack/files .
+  ```
+
+  恢复时，把备份解压到同一个目录：`sudo tar xzf files-<日期>.tar.gz -C /data/automationstack/files`。
+
 #### 其他命令
 
 | 命令 | 作用 |
 | --- | --- |
+| `make deploy:prod` | 拉取代码，然后执行 `make up:prod` |
 | `make logs:prod` | 跟踪日志。`APP=nginx` 只看 nginx |
-| `make down:prod` | 停止并删除容器。镜像、证书和数据库不变 |
+| `make down:prod` | 停止并删除容器。镜像、证书、图片目录和数据库不变 |
 | `make up:prod PROD_ENV=<路径>` | 使用其他路径的生产 env 文件 |
 
 在 `apps/server/.env.example` 中增加键时，也在 `.env.prod.example` 中增加它。

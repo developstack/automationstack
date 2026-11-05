@@ -24,8 +24,8 @@ import {
 	FOREIGN_SCREENSHOT_MESSAGE,
 	foreignScreenshotIds,
 } from "../lib/case-column-screenshots";
+import { getObjectStorage } from "../lib/object-storage";
 import { requireCaseMember, requireModuleMember } from "../lib/project-scope";
-import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
 import {
 	caseConflictDataSchema,
@@ -111,7 +111,7 @@ export const casesRouter = {
 					createdBy: context.user.id,
 					id: input.id,
 					projectId: input.projectId,
-					storage: getR2Storage(),
+					storage: await getObjectStorage(),
 				},
 				errors
 			);

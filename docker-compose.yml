@@ -76,6 +76,10 @@ services:
       CORS_ORIGIN: http://localhost:3001
       # 容器之间走服务名 + 容器内端口 5432，与下面把宿主端口挪到 5433 无关。
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?未设置。请先 cp .env.example .env 并填一个真实口令}@postgres:5432/automationstack
+      # 存储方式是「服务器本地」时，上传的图片和附件写在这个目录（files 卷），重建容器后不丢失。
+      FILE_STORAGE_DIR: /var/lib/automationstack/files
+    volumes:
+      - automationstack_files:/var/lib/automationstack/files
     healthcheck:
       test:
         [
@@ -230,3 +234,4 @@ services:
 
 volumes:
   automationstack_postgres_data:
+  automationstack_files:

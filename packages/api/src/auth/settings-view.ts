@@ -34,7 +34,9 @@ export interface AuthSettingsView {
 	webhookPath: string;
 }
 
-async function usernameOf(userId: string | null): Promise<string | null> {
+export async function usernameOf(
+	userId: string | null
+): Promise<string | null> {
 	if (userId === null) {
 		return null;
 	}

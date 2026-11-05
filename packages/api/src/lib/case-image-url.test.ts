@@ -2,12 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { caseImageDownloadUrl } from "./case-image-url";
 
-const mocks = vi.hoisted(() => ({
-	env: {} as { IMAGE_PUBLIC_BASE_URL?: string },
-}));
-
-vi.mock("@automationstack/env/server", () => ({ env: mocks.env }));
-
 const BASE_URL = "https://img.trendf.top";
 const STORAGE_KEY = "test-cases/project-1/case-1/image-1.png";
 const R2_URL = "https://r2.example.com/signed?X-Amz-Signature=abc";
@@ -18,19 +12,18 @@ const storage = {
 
 beforeEach(() => {
 	storage.presignDownload.mockClear();
-	mocks.env.IMAGE_PUBLIC_BASE_URL = undefined;
 });
 
-describe("caseImageDownloadUrl：没有配置 IMAGE_PUBLIC_BASE_URL", () => {
+describe("caseImageDownloadUrl：没有公开基础地址", () => {
 	it("返回 R2 签名链接", async () => {
-		await expect(caseImageDownloadUrl(storage, STORAGE_KEY)).resolves.toBe(
-			R2_URL
-		);
+		await expect(
+			caseImageDownloadUrl(storage, STORAGE_KEY, null)
+		).resolves.toBe(R2_URL);
 		expect(storage.presignDownload).toHaveBeenCalledWith(STORAGE_KEY);
 	});
 });
 
-describe("caseImageDownloadUrl：配置了 IMAGE_PUBLIC_BASE_URL", () => {
+describe("caseImageDownloadUrl：有公开基础地址", () => {
 	it.each([
 		["基础地址", BASE_URL, STORAGE_KEY, `${BASE_URL}/${STORAGE_KEY}`],
 		[
@@ -48,8 +41,7 @@ describe("caseImageDownloadUrl：配置了 IMAGE_PUBLIC_BASE_URL", () => {
 	])(
 		"%s：公开链接，不带查询参数，不调用 R2 签名",
 		async (_name, baseUrl, storageKey, expected) => {
-			mocks.env.IMAGE_PUBLIC_BASE_URL = baseUrl;
-			const url = await caseImageDownloadUrl(storage, storageKey);
+			const url = await caseImageDownloadUrl(storage, storageKey, baseUrl);
 			expect(url).toBe(expected);
 			expect(new URL(url).search).toBe("");
 			expect(storage.presignDownload).not.toHaveBeenCalled();

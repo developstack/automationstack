@@ -39,7 +39,7 @@ type CreateScreenshotUploadInput = z.infer<typeof createScreenshotUploadSchema>;
 
 /**
  * 上传本地文件的 curl 命令。文件路径由 shell 变量 FILE 给出，所以文件名中的字符不会破坏命令。
- * --upload-file 按文件的大小发送 Content-Length。上传地址的签名包含声明的大小，大小不同时 R2 拒绝上传。
+ * --upload-file 按文件的大小发送 Content-Length。上传地址的签名包含声明的大小，大小不同时存储拒绝上传。
  */
 function curlCommand(contentType: string, uploadUrl: string): string {
 	return `curl --fail --silent --show-error -X PUT -H 'Content-Type: ${contentType}' --upload-file "$FILE" '${uploadUrl}'`;

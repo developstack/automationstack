@@ -2,6 +2,8 @@
 
 本文说明怎样配置 R2、公开域名、WAF 规则、缓存规则和服务端。完成后，浏览器从 `img.trendf.top` 读取用例图片，Cloudflare 在边缘缓存用例图片。设计原因见 `docs/adr/0003-case-images-served-from-public-r2-domain.md`。
 
+本文只适用于存储方式是 Cloudflare R2 的部署。平台管理员在「存储设置」页面中保存过配置后，服务不再读取 `R2_*` 和 `IMAGE_PUBLIC_BASE_URL`。这时，在页面的「用例图片的公开基础地址」中填写公开域名，不执行第 9 节。存储方式见 `docs/adr/0006-uploads-stored-on-server-by-default.md`。
+
 ## 1. 公开的后果
 
 开始前，阅读本节。

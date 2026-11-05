@@ -19,7 +19,9 @@ vi.mock("@automationstack/db/repositories/projects-repository", () => ({
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 	getProjectRole: vi.fn(),
 }));
-vi.mock("../lib/r2", () => ({ getR2Storage: () => mocks.storage }));
+vi.mock("../lib/object-storage", () => ({
+	getObjectStorage: () => mocks.storage,
+}));
 
 const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
 const CASE_ID = "44444444-4444-4444-8444-444444444444";
@@ -60,8 +62,13 @@ describe("caseAttachments.presignDraftDownload：恢复新用例草稿中的图�
 		const storageKeys = Array.from({ length: 200 }, () =>
 			buildCaseAttachmentStorageKey(scope, { contentType: "image/png" })
 		);
+		mocks.storage = {
+			caseImageUrl: (storageKey: string) =>
+				Promise.resolve(`https://files.example.test/${storageKey}`),
+		};
 		const urls = await presignDownload(storageKeys);
 		expect(urls).toHaveLength(200);
+		expect(urls[0]?.url).toBe(`https://files.example.test/${storageKeys[0]}`);
 	});
 
 	it("rejects a storage key of another case", async () => {

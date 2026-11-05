@@ -1,3 +1,4 @@
+import { MAX_ATTACHMENT_BYTES } from "@automationstack/api/lib/attachment-policy";
 import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
@@ -15,6 +16,8 @@ export const DEFAULT_MAX_BODY_BYTES = DEFAULT_MAX_BODY_KIB * BYTES_PER_KIB;
 
 const BODY_LIMIT_BY_PREFIX: readonly (readonly [string, number])[] = [
 	["/ingest/", MAX_INGEST_BODY_BYTES],
+	// 本地存储的上传（files/routes）。执行页附件的上限最大，用例图片的上限更小，由签名中的大小检查。
+	["/files/", MAX_ATTACHMENT_BYTES],
 	["/rpc/", MAX_RPC_BODY_BYTES],
 	["/api-reference", MAX_RPC_BODY_BYTES],
 	["/mcp", MAX_RPC_BODY_BYTES],

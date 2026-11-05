@@ -2,18 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createR2Client, presignR2Upload } from "./r2-operations";
 
-vi.mock("@automationstack/env/server", () => ({
-	env: {
-		R2_ACCESS_KEY_ID: "test-access-key",
-		R2_SECRET_ACCESS_KEY: "test-secret-key",
-	},
-}));
-
 const STORAGE_KEY = "test-cases/p/c/a.png";
 
 /** 签发一个上传地址。只在本地计算签名，不发出请求。 */
 async function presignedUploadUrl(contentLength: number): Promise<URL> {
-	const client = createR2Client("https://account.r2.example.test");
+	const client = createR2Client({
+		accessKeyId: "test-access-key",
+		endpoint: "https://account.r2.example.test",
+		secretAccessKey: "test-secret-key",
+	});
 	return new URL(
 		await presignR2Upload(client, "bucket", STORAGE_KEY, {
 			contentLength,
