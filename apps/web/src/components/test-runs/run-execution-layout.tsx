@@ -88,6 +88,9 @@ function RunExecutionBody(props: RunExecutionLayoutProps) {
 				onSelect={verdict.handleSelect}
 				onToggleAll={bulk.handleToggleAll}
 				onToggleChecked={checked.toggle}
+				projectId={props.projectId}
+				runId={data.run.id}
+				selectedModuleId={selection.selected?.testCase.moduleId ?? null}
 				selectedRunCaseId={selection.selected?.runCase.id ?? null}
 			/>
 			<RunExecutionCasePane

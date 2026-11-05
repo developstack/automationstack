@@ -49,11 +49,12 @@ export function ModuleTree({ projectId }: ModuleTreeProps) {
 	const handleDeleted = useHandleModuleDeleted(projectId, selectedModuleId);
 	const [deleting, setDeleting] = useState<ModuleTreeNode | null>(null);
 	const closeDelete = useCallback(() => setDeleting(null), []);
-	const expansion = useModuleExpansion(
-		projectId,
-		treeQuery.data,
-		selectedModuleId
-	);
+	const expansion = useModuleExpansion({
+		nodes: treeQuery.data,
+		scope: "module-expansion",
+		selectedModuleId,
+		storageId: projectId,
+	});
 	const revealParent = useCallback(
 		(parentId: string) => expansion.setOpen(parentId, true),
 		[expansion]

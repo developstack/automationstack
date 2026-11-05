@@ -4,24 +4,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	countModules,
 	findModuleAncestorIds,
+	findModuleChain,
 	isModuleOpen,
 	type ModuleOpenOverrides,
 	parseModuleOverrides,
 	serializeModuleOverrides,
 } from "@/components/workspace/module-expansion";
 
-const STORAGE_PREFIX = "automationstack:module-expansion:";
+const STORAGE_PREFIX = "automationstack";
 
 const EMPTY_OVERRIDES: ModuleOpenOverrides = new Map<string, boolean>();
 
-function storageKey(projectId: string): string {
-	return `${STORAGE_PREFIX}${projectId}`;
+function storageKey(scope: string, storageId: string): string {
+	return `${STORAGE_PREFIX}:${scope}:${storageId}`;
 }
 
-function readOverrides(projectId: string): ModuleOpenOverrides {
+function readOverrides(scope: string, storageId: string): ModuleOpenOverrides {
 	try {
 		return parseModuleOverrides(
-			window.sessionStorage.getItem(storageKey(projectId))
+			window.sessionStorage.getItem(storageKey(scope, storageId))
 		);
 	} catch {
 		return EMPTY_OVERRIDES;
@@ -29,12 +30,13 @@ function readOverrides(projectId: string): ModuleOpenOverrides {
 }
 
 function writeOverrides(
-	projectId: string,
+	scope: string,
+	storageId: string,
 	overrides: ModuleOpenOverrides
 ): void {
 	try {
 		window.sessionStorage.setItem(
-			storageKey(projectId),
+			storageKey(scope, storageId),
 			serializeModuleOverrides(overrides)
 		);
 		// biome-ignore lint/suspicious/noEmptyBlockStatements: intentional
@@ -46,28 +48,57 @@ export interface ModuleExpansion {
 	setOpen: (moduleId: string, open: boolean) => void;
 }
 
+export interface ModuleExpansionOptions {
+	nodes: readonly ModuleTreeNode[];
+	/** true 时选中的模块自身也展开：测试任务左栏的用例就挂在模块下面 */
+	openSelected?: boolean;
+	/** sessionStorage 的命名空间，不同面板各记自己的展开状态 */
+	scope: string;
+	selectedModuleId: string | undefined;
+	/** 命名空间里的对象 id：模块树用项目 id，测试任务左栏用任务 id */
+	storageId: string;
+}
+
+/**
+ * 模块的展开状态：用户的点选存到 sessionStorage，选中项所在的层级始终展开。
+ * 用户的点选优先于「选中项展开」，所以选中之后仍然能手动收起。
+ */
 export function useModuleExpansion(
-	projectId: string,
-	nodes: readonly ModuleTreeNode[],
-	selectedModuleId: string | undefined
+	options: ModuleExpansionOptions
 ): ModuleExpansion {
+	const {
+		nodes,
+		openSelected = false,
+		scope,
+		selectedModuleId,
+		storageId,
+	} = options;
 	const [overrides, setOverrides] =
 		useState<ModuleOpenOverrides>(EMPTY_OVERRIDES);
 
 	useEffect(() => {
-		setOverrides(readOverrides(projectId));
-	}, [projectId]);
+		setOverrides(readOverrides(scope, storageId));
+	}, [scope, storageId]);
 
 	const totalModules = useMemo(() => countModules(nodes), [nodes]);
-	const ancestorIds = useMemo(
-		() => new Set(findModuleAncestorIds(nodes, selectedModuleId)),
-		[nodes, selectedModuleId]
+	const expandedIds = useMemo(
+		() =>
+			new Set(
+				openSelected
+					? findModuleChain(nodes, selectedModuleId)
+					: findModuleAncestorIds(nodes, selectedModuleId)
+			),
+		[nodes, openSelected, selectedModuleId]
 	);
 
 	const isOpen = useCallback(
 		(moduleId: string, depth: number) =>
-			isModuleOpen({ ancestorIds, overrides, totalModules }, moduleId, depth),
-		[ancestorIds, overrides, totalModules]
+			isModuleOpen(
+				{ ancestorIds: expandedIds, overrides, totalModules },
+				moduleId,
+				depth
+			),
+		[expandedIds, overrides, totalModules]
 	);
 
 	const setOpen = useCallback(
@@ -75,9 +106,9 @@ export function useModuleExpansion(
 			const next = new Map(overrides);
 			next.set(moduleId, open);
 			setOverrides(next);
-			writeOverrides(projectId, next);
+			writeOverrides(scope, storageId, next);
 		},
-		[overrides, projectId]
+		[overrides, scope, storageId]
 	);
 
 	return useMemo(() => ({ isOpen, setOpen }), [isOpen, setOpen]);
