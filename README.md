@@ -200,7 +200,7 @@ server 的启动路径、两个 Dockerfile、CI 全都不跑。
 `POSTGRES_PASSWORD` 没有兜底值，没设时 `docker compose` 直接拒绝启动。
 这是刻意的：它同时被拼进 `server` 和 `migrate` 的 `DATABASE_URL`，
 一个静默生效的弱口令会让整个库（含 `api_tokens.token_hash`、
-`jira_configs` 里的密文）敞在那里，而没有任何人会注意到。
+Casdoor 的 client secret 密文）敞在那里，而没有任何人会注意到。
 
 ## 可用脚本
 

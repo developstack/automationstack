@@ -106,7 +106,7 @@ function summarisedInCaseComment(result: TestRunStepResult): boolean {
 
 /**
  * 用例说明：把失败和阻塞步骤的实际结果按步骤顺序折成多行，每行带步骤序号。
- * 通过和跳过的步骤不收。这段文字也带进 Jira 缺陷的「实际结果」。没有可收的步骤时为 null。
+ * 通过和跳过的步骤不收。没有可收的步骤时为 null。
  */
 export function buildCaseComment(
 	steps: readonly CaseStep[],

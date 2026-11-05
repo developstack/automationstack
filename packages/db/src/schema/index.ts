@@ -3,7 +3,6 @@ export * from "./api-tokens";
 export * from "./auth-settings";
 export * from "./automation-executions";
 export * from "./case-attachments";
-export * from "./integrations";
 export * from "./modules";
 export * from "./project-members";
 export * from "./project-settings";

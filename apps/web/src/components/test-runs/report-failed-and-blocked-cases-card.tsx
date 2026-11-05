@@ -27,8 +27,6 @@ const FAILED_AND_BLOCKED_COLUMNS = [
 	"执行人 / 来源",
 	"说明",
 	"截图",
-	"Jira",
-	"Jira 状态",
 ] as const;
 
 function EmptyFailedAndBlockedCases({
@@ -67,8 +65,7 @@ export function ReportFailedAndBlockedCasesCard({
 			<CardHeader>
 				<CardTitle>{`失败和阻塞的用例（${cases.length}）`}</CardTitle>
 				<CardDescription>
-					先列失败，再列阻塞，各自按优先级排序；缺陷状态来自 Jira 同步，未接
-					Jira 时为手工填写的链接。
+					先列失败，再列阻塞，各自按优先级排序。
 				</CardDescription>
 			</CardHeader>
 			<CardContent>

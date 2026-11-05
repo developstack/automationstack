@@ -37,24 +37,4 @@ export function rejectRunWrite(
 	throw errors.NOT_FOUND({ message: "测试任务不存在" });
 }
 
-const RUN_SUBMITTED_MESSAGE = "该测试任务已提交并锁定，不可修改";
-
-/** 缺陷操作前的写锁检查：测试任务已作废或已提交时返回提示，可写时返回 null。 */
-export function runLockMessage(run: {
-	submittedAt: Date | null;
-	voidedAt: Date | null;
-}): string | null {
-	if (run.voidedAt !== null) {
-		return RUN_VOIDED_MESSAGE;
-	}
-	return run.submittedAt === null ? null : RUN_SUBMITTED_MESSAGE;
-}
-
-/** 写锁拒绝写入时的提示：已作废用作废的提示，已提交用锁定的提示。 */
-export function rejectedWriteMessage(rejection: RunWriteLock): string {
-	return rejection.kind === "voided"
-		? RUN_VOIDED_MESSAGE
-		: RUN_SUBMITTED_MESSAGE;
-}
-
 export const REVIEW_PENDING_MESSAGE = "该测试任务尚未评审完成，暂不能打结论";

@@ -19,7 +19,6 @@ import { logger } from "hono/logger";
 import { BootstrapAdminError, bootstrapAdmin } from "./auth/bootstrap-admin";
 import { registerCasdoorRoutes } from "./auth/casdoor-routes";
 import { registerIngestRoutes } from "./ingest/routes";
-import { registerJiraWebhook } from "./jira/webhook";
 import { getJobsStatus, startJobs, stopJobs } from "./jobs/boss";
 import { handleMcpRequest } from "./mcp/server";
 import { isAllowedOrigin } from "./middleware/allowed-origin";
@@ -55,8 +54,6 @@ app.use(
 app.use("/*", responseCompression());
 
 app.use("/*", requestBodyLimit());
-
-registerJiraWebhook(app);
 
 registerCasdoorRoutes(app);
 

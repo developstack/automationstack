@@ -1,40 +1,12 @@
 import { TableCell, TableRow } from "@automationstack/ui/components/table";
-import { ExternalLinkIcon } from "lucide-react";
 
 import { StatusBadge } from "@/components/status/status-badge";
 import { AttachmentCell } from "@/components/test-runs/report-attachment-cell";
 import { ReportExecutorCell } from "@/components/test-runs/report-executor-cell";
-import {
-	isSafeHttpUrl,
-	type ReportFailedAndBlockedCase,
-} from "@/components/test-runs/report-meta";
+import type { ReportFailedAndBlockedCase } from "@/components/test-runs/report-meta";
 import { reportStepResults } from "@/components/test-runs/report-step-results";
 import { ReportStepResultsRow } from "@/components/test-runs/report-step-results-row";
 import { caseLevelAttachments } from "@/components/test-runs/run-step-attachment-items";
-
-const NO_DEFECT_STATUS = "—";
-
-function DefectCell({ row }: { row: ReportFailedAndBlockedCase }) {
-	const label = row.defectKey ?? row.defectUrl;
-	if (label === null) {
-		return <span className="text-muted-foreground">未关联</span>;
-	}
-	if (!isSafeHttpUrl(row.defectUrl)) {
-		return <span title={row.defectTitle ?? undefined}>{label}</span>;
-	}
-	return (
-		<a
-			className="inline-flex items-center gap-1 underline underline-offset-2"
-			href={row.defectUrl ?? ""}
-			rel="noopener"
-			target="_blank"
-			title={row.defectTitle ?? undefined}
-		>
-			{label}
-			<ExternalLinkIcon aria-hidden="true" className="size-3.5" />
-		</a>
-	);
-}
 
 interface ReportFailedAndBlockedCaseRowProps {
 	/** 表格的列数：步骤实际结果的一行占满整行。 */
@@ -74,14 +46,6 @@ export function ReportFailedAndBlockedCaseRow({
 				</TableCell>
 				<TableCell>
 					<AttachmentCell caseName={row.name} items={caseAttachments} />
-				</TableCell>
-				<TableCell>
-					<DefectCell row={row} />
-				</TableCell>
-				<TableCell>
-					{row.defectStatus ?? (
-						<span className="text-muted-foreground">{NO_DEFECT_STATUS}</span>
-					)}
 				</TableCell>
 			</TableRow>
 			<ReportStepResultsRow

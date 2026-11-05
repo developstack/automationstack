@@ -94,7 +94,7 @@ export function commentFieldText(result: TestRunCaseResult): CommentFieldText {
 	if (result === "failed") {
 		return {
 			label: "说明",
-			placeholder: "写清楚复现路径和实际结果，这段会带进 Jira issue 的描述里",
+			placeholder: "写清楚复现路径和实际结果，这段会带进测试报告里",
 		};
 	}
 	if (result === "blocked") {

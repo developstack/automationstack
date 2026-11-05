@@ -1,6 +1,6 @@
 import type { AuthSettingsFieldGroupProps } from "@/components/auth-settings/auth-settings-field-group";
-import { JiraTextField } from "@/components/settings/jira-text-field";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { SettingsTextField } from "@/components/settings/settings-text-field";
 
 export function CasdoorRoleFields(props: AuthSettingsFieldGroupProps) {
 	return (
@@ -9,7 +9,7 @@ export function CasdoorRoleFields(props: AuthSettingsFieldGroupProps) {
 			headingId="auth-settings-role-heading"
 			title="角色映射"
 		>
-			<JiraTextField
+			<SettingsTextField
 				error={null}
 				id="auth-settings-admin-role"
 				label="平台管理员角色名"
@@ -19,7 +19,7 @@ export function CasdoorRoleFields(props: AuthSettingsFieldGroupProps) {
 				type="text"
 				value={props.values.adminRole}
 			/>
-			<JiraTextField
+			<SettingsTextField
 				error={null}
 				id="auth-settings-project-admin-role"
 				label="项目管理员角色名"

@@ -103,10 +103,6 @@ export const testRunCases = pgTable(
 		createdAt: timestamp("created_at", { withTimezone: true })
 			.notNull()
 			.defaultNow(),
-		defectKey: text("defect_key"),
-		defectStatus: text("defect_status"),
-		defectTitle: text("defect_title"),
-		defectUrl: text("defect_url"),
 		executedAt: timestamp("executed_at", { withTimezone: true }),
 		executedBy: uuid("executed_by").references(() => users.id, {
 			onDelete: "set null",

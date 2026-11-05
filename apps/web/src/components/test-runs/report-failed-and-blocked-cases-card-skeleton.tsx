@@ -14,8 +14,6 @@ const FAILED_AND_BLOCKED_SKELETON_COLUMNS: readonly TableSkeletonColumn[] = [
 	{ head: "w-20", label: "执行人 / 来源", value: "w-1/2", width: "flex-1" },
 	{ head: "w-7", label: "说明", value: "w-4/5", width: "flex-1" },
 	{ head: "w-7", label: "截图", value: "w-8", width: "w-16 shrink-0" },
-	{ head: "w-7", label: "Jira", value: "w-10", width: "w-20 shrink-0" },
-	{ head: "w-14", label: "Jira 状态", value: "w-12", width: "w-20 shrink-0" },
 ];
 
 export function ReportFailedAndBlockedCasesCardSkeleton() {

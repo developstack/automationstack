@@ -1,6 +1,8 @@
 import type { AuthSettingsFieldGroupProps } from "@/components/auth-settings/auth-settings-field-group";
-import { MASKED_SECRET_PLACEHOLDER } from "@/components/settings/jira-form-values";
-import { JiraSecretField } from "@/components/settings/jira-secret-field";
+import {
+	MASKED_SECRET_PLACEHOLDER,
+	SettingsSecretField,
+} from "@/components/settings/settings-secret-field";
 
 const CLIENT_SECRET_ID = "auth-settings-client-secret";
 
@@ -25,7 +27,7 @@ export function CasdoorClientSecretField(
 		props.view.hasClientSecret && props.values.provider === "local";
 
 	return (
-		<JiraSecretField
+		<SettingsSecretField
 			clearRequested={props.values.clearClientSecret}
 			error={null}
 			hint={clientSecretHint(props)}

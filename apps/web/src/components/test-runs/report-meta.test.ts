@@ -4,8 +4,10 @@ import { isSafeHttpUrl } from "@/components/test-runs/report-meta";
 
 describe("isSafeHttpUrl", () => {
 	it("放行 http / https", () => {
-		expect(isSafeHttpUrl("https://jira.example.com/browse/PAY-1")).toBe(true);
-		expect(isSafeHttpUrl("http://jira.example.com/browse/PAY-1")).toBe(true);
+		expect(isSafeHttpUrl("https://tracker.example.com/browse/PAY-1")).toBe(
+			true
+		);
+		expect(isSafeHttpUrl("http://tracker.example.com/browse/PAY-1")).toBe(true);
 	});
 
 	it("拦住 javascript: 及其大小写变体", () => {

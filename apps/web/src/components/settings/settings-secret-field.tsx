@@ -5,7 +5,10 @@ import { type ChangeEvent, useCallback } from "react";
 
 import { FieldError } from "@/components/interaction/field-error";
 
-export interface JiraSecretFieldProps {
+/** 已保存的密钥在输入框里的占位符：内容从不回传前端。 */
+export const MASKED_SECRET_PLACEHOLDER = "••••••••••••";
+
+export interface SettingsSecretFieldProps {
 	clearRequested?: boolean;
 	error: string | null;
 	hint: string;
@@ -41,7 +44,7 @@ function ClearSecretButton({
 	);
 }
 
-function JiraSecretHint({
+function SecretFieldHint({
 	hint,
 	hintId,
 	storageBlocked,
@@ -64,7 +67,7 @@ function JiraSecretHint({
 	);
 }
 
-export function JiraSecretField(props: JiraSecretFieldProps) {
+export function SettingsSecretField(props: SettingsSecretFieldProps) {
 	const { onValueChange } = props;
 	const handleChange = useCallback(
 		(event: ChangeEvent<HTMLInputElement>) => onValueChange(event.target.value),
@@ -103,7 +106,7 @@ export function JiraSecretField(props: JiraSecretFieldProps) {
 				)}
 			</div>
 			<FieldError id={`${props.id}-error`} message={props.error} />
-			<JiraSecretHint
+			<SecretFieldHint
 				hint={props.hint}
 				hintId={hintId}
 				storageBlocked={props.storageBlocked}

@@ -1,8 +1,8 @@
 import type { AuthSettingsFieldGroupProps } from "@/components/auth-settings/auth-settings-field-group";
 import { AuthUrlField } from "@/components/auth-settings/auth-url-field";
 import { CasdoorClientSecretField } from "@/components/auth-settings/casdoor-client-secret-field";
-import { JiraTextField } from "@/components/settings/jira-text-field";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { SettingsTextField } from "@/components/settings/settings-text-field";
 
 type ConnectionProps = AuthSettingsFieldGroupProps & {
 	onToggleClearClientSecret: () => void;
@@ -11,7 +11,7 @@ type ConnectionProps = AuthSettingsFieldGroupProps & {
 function CasdoorAddressFields(props: AuthSettingsFieldGroupProps) {
 	return (
 		<>
-			<JiraTextField
+			<SettingsTextField
 				error={props.errors.issuer}
 				id="auth-settings-issuer"
 				label="公网地址"
@@ -36,7 +36,7 @@ function CasdoorAddressFields(props: AuthSettingsFieldGroupProps) {
 function CasdoorClientFields(props: ConnectionProps) {
 	return (
 		<>
-			<JiraTextField
+			<SettingsTextField
 				error={props.errors.organization}
 				id="auth-settings-organization"
 				label="组织"
@@ -46,7 +46,7 @@ function CasdoorClientFields(props: ConnectionProps) {
 				type="text"
 				value={props.values.organization}
 			/>
-			<JiraTextField
+			<SettingsTextField
 				error={null}
 				id="auth-settings-client-id"
 				label="Client ID"

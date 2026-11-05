@@ -19,7 +19,6 @@ export interface RunCaseVerdictPanelProps {
 	locked: boolean;
 	onCommentSave: (comment: string | null) => void;
 	onPick: (result: TestRunCaseResult) => void;
-	projectId: string;
 }
 
 function VerdictPanelBody({
@@ -30,7 +29,6 @@ function VerdictPanelBody({
 	locked,
 	onCommentSave,
 	onPick,
-	projectId,
 }: RunCaseVerdictPanelProps) {
 	const { executedByName, runCase, testCase } = item;
 	return (
@@ -55,8 +53,6 @@ function VerdictPanelBody({
 				runCase={runCase}
 			/>
 			<VerdictEvidence
-				editing={editing}
-				projectId={projectId}
 				runCase={runCase}
 				stepIds={testCase.steps.map((step) => step.id)}
 			/>

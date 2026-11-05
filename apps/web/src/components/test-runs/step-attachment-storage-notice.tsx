@@ -9,7 +9,7 @@ export function StepAttachmentStorageNotice() {
 	}
 	return (
 		<p className={`rounded-md border border-dashed p-3 ${RUN_SECTION_TEXT}`}>
-			附件存储（R2）未配置，暂时无法上传实际附件。判定、实际结果的文字与缺陷关联都不受影响，
+			附件存储（R2）未配置，暂时无法上传实际附件。判定与实际结果的文字都不受影响，
 			可以让管理员在服务端补上 R2 配置后再补传。
 		</p>
 	);

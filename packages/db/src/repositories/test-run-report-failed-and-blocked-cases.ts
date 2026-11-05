@@ -55,10 +55,6 @@ export interface TestRunFailedAndBlockedCase {
 	automationExecution: TestRunReportCaseAutomation | null;
 	caseId: string;
 	comment: string | null;
-	defectKey: string | null;
-	defectStatus: string | null;
-	defectTitle: string | null;
-	defectUrl: string | null;
 	executedAt: Date | null;
 	executedByName: string | null;
 	executedVia: TestRunExecutedVia | null;
@@ -84,10 +80,6 @@ function selectFailedAndBlockedCaseRows(runId: string) {
 			caseId: testCases.id,
 			caseSteps: testCases.steps,
 			comment: testRunCases.comment,
-			defectKey: testRunCases.defectKey,
-			defectStatus: testRunCases.defectStatus,
-			defectTitle: testRunCases.defectTitle,
-			defectUrl: testRunCases.defectUrl,
 			executedAt: testRunCases.executedAt,
 			executedByName: users.username,
 			executedVia: testRunCases.executedVia,

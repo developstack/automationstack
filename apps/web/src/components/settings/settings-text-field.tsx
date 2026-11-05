@@ -4,7 +4,7 @@ import { type ChangeEvent, useCallback } from "react";
 
 import { FieldError } from "@/components/interaction/field-error";
 
-export interface JiraTextFieldProps {
+export interface SettingsTextFieldProps {
 	error: string | null;
 	id: string;
 	label: string;
@@ -19,7 +19,7 @@ function describedBy(id: string, hasError: boolean): string | undefined {
 	return hasError ? `${id}-error` : undefined;
 }
 
-export function JiraTextField(props: JiraTextFieldProps) {
+export function SettingsTextField(props: SettingsTextFieldProps) {
 	const { onValueChange } = props;
 	const handleChange = useCallback(
 		(event: ChangeEvent<HTMLInputElement>) => onValueChange(event.target.value),

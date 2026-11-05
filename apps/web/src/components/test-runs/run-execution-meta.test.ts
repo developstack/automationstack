@@ -119,7 +119,7 @@ describe("shouldAutoAdvance", () => {
 		expect(shouldAutoAdvance("skipped")).toBe(true);
 	});
 
-	it("失败 / 阻塞：留在原地填说明与缺陷（plan 012 D1）", () => {
+	it("失败 / 阻塞：留在原地填说明（plan 012 D1）", () => {
 		expect(shouldAutoAdvance("failed")).toBe(false);
 		expect(shouldAutoAdvance("blocked")).toBe(false);
 	});

@@ -2,7 +2,7 @@ import { Textarea } from "@automationstack/ui/components/textarea";
 import { type ChangeEvent, type ClipboardEvent, useCallback } from "react";
 
 const PLACEHOLDER =
-	"这一步实际发生了什么。失败和阻塞时必填，这两种步骤的实际结果会汇总进用例说明并带进 Jira。可以粘贴或拖入截图和录屏";
+	"这一步实际发生了什么。失败和阻塞时必填，这两种步骤的实际结果会汇总进用例说明。可以粘贴或拖入截图和录屏";
 
 const VERDICT_FIRST_HINT = "先选择这一步的判定，再填写实际结果或添加实际附件";
 

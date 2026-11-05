@@ -34,7 +34,7 @@ function SubmittedBar({ report }: { report: TestRunReportView }) {
 			<LockIcon aria-hidden="true" className={ICON_CLASS} />
 			<span>{`已于 ${formatDateTime(run.submittedAt)} ${actor}，报告已锁定。`}</span>
 			<span className="text-xs">
-				结论、说明、附件、缺陷链接均不可再修改；要继续测试请新建重测任务。
+				结论、说明、附件均不可再修改；要继续测试请新建重测任务。
 			</span>
 		</div>
 	);

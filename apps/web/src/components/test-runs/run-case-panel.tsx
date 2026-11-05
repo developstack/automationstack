@@ -137,7 +137,6 @@ export function RunCasePanel({
 				locked={locked}
 				onCommentSave={onCommentSave}
 				onPick={onPick}
-				projectId={projectId}
 			/>
 			<RunCaseBody
 				editingMode={editingMode}
