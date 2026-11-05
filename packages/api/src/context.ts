@@ -10,6 +10,7 @@ import {
 } from "./auth/session";
 import { isSessionUserAllowed } from "./auth/session-policy";
 import { getEffectiveAuthSettings } from "./auth/settings-store";
+import { getRequestOrigin } from "./lib/request-origin";
 
 export interface CreateContextOptions {
 	context: HonoContext;
@@ -61,7 +62,10 @@ export async function createContext(options: CreateContextOptions) {
 	return {
 		actor: readActor(options.context, user),
 		cookies: [] as string[],
-		secure: options.context.req.url.startsWith("https://"),
+		// 在 nginx 等代理后面时，请求地址是 http，协议取 X-Forwarded-Proto（request-origin）。
+		secure: (getRequestOrigin() ?? options.context.req.url).startsWith(
+			"https://"
+		),
 		user,
 	};
 }

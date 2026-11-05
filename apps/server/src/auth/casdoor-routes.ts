@@ -14,6 +14,7 @@ import {
 	CASDOOR_WEBHOOK_SECRET_HEADER,
 } from "@automationstack/api/auth/casdoor-paths";
 import { getEffectiveAuthSettings } from "@automationstack/api/auth/settings-store";
+import { getRequestOrigin } from "@automationstack/api/lib/request-origin";
 import { env } from "@automationstack/env/server";
 import type { Context, Hono } from "hono";
 
@@ -23,7 +24,8 @@ const HTTP_UNAUTHORIZED = 401;
 async function flowContext(c: Context): Promise<LoginFlowContext> {
 	return {
 		frontendOrigin: env.CORS_ORIGIN,
-		secure: c.req.url.startsWith("https://"),
+		// 在 nginx 等代理后面时，请求地址是 http，协议取 X-Forwarded-Proto（request-origin）。
+		secure: (getRequestOrigin() ?? c.req.url).startsWith("https://"),
 		sessionSecret: env.SESSION_SECRET,
 		settings: await getEffectiveAuthSettings(),
 	};
