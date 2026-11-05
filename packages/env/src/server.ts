@@ -22,6 +22,8 @@ const ADMIN_PASSWORD_MAX_LENGTH = 128;
 const ADMIN_USERNAME_MIN_LENGTH = 2;
 const ADMIN_USERNAME_MAX_LENGTH = 32;
 const NO_WHITESPACE = /^\S+$/;
+// HTTP 请求头名称：字母、数字和连字符。
+const HEADER_NAME = /^[A-Za-z0-9-]+$/;
 
 const SECRET_ENCRYPTION_KEY_BYTES = 32;
 
@@ -108,6 +110,12 @@ export const env = createEnv({
 		CASDOOR_WEBHOOK_SECRET: z
 			.string()
 			.min(CASDOOR_WEBHOOK_SECRET_MIN_LENGTH)
+			.optional(),
+		// 反向代理写入客户端 IP 的请求头，例如 x-real-ip。为空时，使用 TCP 连接的地址。
+		// 只在 server 只能经过这个代理访问时设置：否则客户端可以伪造这个请求头。
+		CLIENT_IP_HEADER: z
+			.string()
+			.regex(HEADER_NAME, "CLIENT_IP_HEADER 必须是请求头名称，例如 x-real-ip")
 			.optional(),
 		CORS_ORIGIN: z.url(),
 		DATABASE_POOL_MAX: z.coerce

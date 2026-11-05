@@ -1,0 +1,20 @@
+# 还没有证书时的站点：只有 HTTP。
+# 它响应 Let's Encrypt 的验证请求，所以 make up:prod 可以申请第一张证书。
+# 证书出现后，40-select-site.sh 改用 site-https.conf.template。
+# ${DOMAIN} 由 envsubst 替换。其他 $ 变量是 nginx 的变量，不替换。
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    include /etc/nginx/automationstack/locations.conf;
+}

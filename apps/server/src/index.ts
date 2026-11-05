@@ -22,6 +22,7 @@ import { registerIngestRoutes } from "./ingest/routes";
 import { getJobsStatus, startJobs, stopJobs } from "./jobs/boss";
 import { handleMcpRequest } from "./mcp/server";
 import { isAllowedOrigin } from "./middleware/allowed-origin";
+import { resolveClientIp } from "./middleware/client-ip";
 import { requestBodyLimit } from "./middleware/request-body-limit";
 import { responseCompression } from "./middleware/response-compression";
 import {
@@ -95,12 +96,22 @@ function withCookies(response: Response, cookies: string[]): Response {
 	});
 }
 
-function readClientIp(c: Context): string | null {
+function readSocketAddress(c: Context): string | undefined {
 	try {
-		return getConnInfo(c).remote.address ?? null;
+		return getConnInfo(c).remote.address;
 	} catch {
-		return null;
+		// 不是 node-server 的请求（例如测试中直接调用 app.fetch）时没有连接信息。
+		return undefined;
 	}
+}
+
+function readClientIp(c: Context): string | null {
+	return resolveClientIp({
+		headerValue: env.CLIENT_IP_HEADER
+			? c.req.header(env.CLIENT_IP_HEADER)
+			: undefined,
+		socketAddress: readSocketAddress(c),
+	});
 }
 
 app.use("/*", async (c, next) => {

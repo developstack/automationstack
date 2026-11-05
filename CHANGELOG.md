@@ -7,6 +7,17 @@
 
 ## [未发布]
 
+### 新增
+
+- **单机生产部署**：增加 `make up:prod`、`make logs:prod` 和 `make down:prod`。
+  它们在一台服务器上用 docker compose 运行生产构建，数据库在外部机器上（`docker-compose.prod.yml`）。
+  启动顺序：先执行数据库迁移，再启动服务。
+  nginx 是唯一的入口，前端和后端使用同一个域名，所以没有跨域请求。HTTPS 证书来自 Let's Encrypt，自动续期。
+  所有配置在 `.env.prod` 中。每次启动时，模板 `.env.prod.example` 中新增的键自动追加到 `.env.prod`。
+- **客户端 IP**：server 增加可选变量 `CLIENT_IP_HEADER`。设置后，server 从这个请求头读取客户端 IP。
+  server 在反向代理后面时，登录限流不再把所有用户算作同一个地址。为空时，行为不变。
+  `docker-compose.prod.yml` 把它设为 `x-real-ip`。
+
 ### 变更
 
 - **测试任务执行台**：左栏的用例改为按模块分组。模块行可以折叠，并显示该模块的用例数。
