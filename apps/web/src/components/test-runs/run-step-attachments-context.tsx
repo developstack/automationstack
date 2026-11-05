@@ -31,7 +31,7 @@ export interface RunStepAttachmentsValue {
 	list: readonly RunAttachmentView[];
 	pending: readonly PendingStepUpload[];
 	remove: (attachmentId: string) => void;
-	/** 编辑中但是附件存储（R2）不可用。 */
+	/** 编辑中但是附件存储不可用。 */
 	storageUnavailable: boolean;
 	upload: (batch: StepUploadBatch) => void;
 }

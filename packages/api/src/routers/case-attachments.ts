@@ -4,7 +4,6 @@ import {
 	registerCaseAttachment,
 } from "@automationstack/db/repositories/case-attachments-repository";
 import type { CaseAttachment } from "@automationstack/db/schema/case-attachments";
-import { isR2Configured } from "@automationstack/env/server";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
@@ -13,11 +12,9 @@ import { isCaseAttachmentKeyOwnedBy } from "../lib/case-attachment-policy";
 import {
 	caseAttachmentErrors,
 	presignCaseImageUpload,
-	requireCaseImageStorage,
 } from "../lib/case-image-presign";
-import { caseImageDownloadUrl } from "../lib/case-image-url";
+import { getObjectStorage } from "../lib/object-storage";
 import { requireCaseMember } from "../lib/project-scope";
-import { getR2Storage } from "../lib/r2";
 import {
 	caseImagePresignSchema,
 	fileNameSchema,
@@ -47,14 +44,11 @@ export const caseAttachmentsRouter = {
 		.use(requireCaseMember)
 		.handler(async ({ input }): Promise<CaseAttachmentView[]> => {
 			const attachments = await listCaseAttachments(input.caseId);
-			const storage = getR2Storage();
-			if (storage === null) {
-				return attachments.map((attachment) => ({ attachment, url: null }));
-			}
+			const storage = await getObjectStorage();
 			return await Promise.all(
 				attachments.map(async (attachment) => ({
 					attachment,
-					url: await caseImageDownloadUrl(storage, attachment.storageKey),
+					url: await storage.caseImageUrl(attachment.storageKey),
 				}))
 			);
 		}),
@@ -76,7 +70,7 @@ export const caseAttachmentsRouter = {
 		.input(registerSchema)
 		.use(requireCaseMember)
 		.handler(async ({ context, errors, input }) => {
-			const storage = requireCaseImageStorage();
+			const storage = await getObjectStorage();
 			const prepared = await prepareCaseAttachmentUpload(input.caseId);
 			if (prepared.kind !== "ok") {
 				throw errors.NOT_FOUND({ message: "用例不存在" });
@@ -108,7 +102,8 @@ export const caseAttachmentsRouter = {
 			return result.attachment;
 		}),
 
+	// 没有配置 R2 时，文件存储在服务器本地，所以存储总是可用。保留这个接口，前端不需要改动。
 	storageStatus: protectedProcedure.handler((): { configured: boolean } => ({
-		configured: isR2Configured(),
+		configured: true,
 	})),
 };

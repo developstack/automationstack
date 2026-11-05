@@ -509,7 +509,7 @@ casdoor-bootstrap: ## 在本地 Casdoor 中创建 automationstack 组织、应�
 # 集群上的正式生产环境不用这些目标，它由 developstack/k8s-gitops 管理。
 #
 # 每次执行同样的步骤，任何一步失败都不往下走：
-#   1. 合并并检查 .env.prod。
+#   1. 合并并检查 .env.prod。图片目录（FILES_HOST_DIR）不存在时，创建它。
 #   2. 构建镜像。迁移在 server 镜像中执行，所以构建在迁移之前。
 #      每次都构建：前端地址写在 web 镜像中，代码或域名改变后不构建就不生效。
 #      docker 有构建缓存，没有改变的层不重新构建。
@@ -526,6 +526,13 @@ up\:prod: _prod-force ## 单机生产部署：合并 .env.prod → 构建 → �
 	  echo "❌ docker 不可用：没有安装，或 daemon 没有运行。"; exit 1; \
 	fi; \
 	bash scripts/prod-env.sh "$(PROD_ENV_TEMPLATE)" "$(PROD_ENV_FILE)"; \
+	files_dir="$$(sed -n 's/^FILES_HOST_DIR=//p' "$(PROD_ENV_FILE)" | tail -n 1 | tr -d "\"' ")"; \
+	files_dir="$${files_dir:-/data/automationstack/files}"; \
+	if [ ! -d "$$files_dir" ]; then \
+	  echo "▶ 创建图片目录 $$files_dir"; \
+	  mkdir -p "$$files_dir" || { echo "❌ 不能创建 $$files_dir。执行 sudo mkdir -p $$files_dir，或在 .env.prod 中修改 FILES_HOST_DIR。"; exit 1; }; \
+	fi; \
+	echo "▶ 图片目录：$$files_dir"; \
 	echo "▶ 构建镜像"; \
 	$(PROD_COMPOSE) build; \
 	echo "▶ 预检外部库并执行迁移（SQL）"; \
@@ -543,7 +550,18 @@ up\:prod: _prod-force ## 单机生产部署：合并 .env.prod → 构建 → �
 	domain="$$(sed -n 's/^DOMAIN=//p' "$(PROD_ENV_FILE)" | tail -n 1 | tr -d "\"' ")"; \
 	echo "✅ 已启动：https://$${domain}   日志: make logs:prod   停止: make down:prod"
 
-down\:prod: _prod-force ## 停止并删除单机生产部署的容器（不删除镜像、证书和数据库）
+# 一键更新：只快进地拉取当前分支，然后执行 make up:prod。
+# 工作区有未提交的修改时停止：服务器上的代码必须与仓库相同。.env.prod 不进 git，不受影响。
+deploy\:prod: _prod-force ## 一键更新并部署：git pull（只快进）→ make up:prod
+	@set -euo pipefail; cd "$(ROOT_DIR)"; \
+	if [ -n "$$(git status --porcelain --untracked-files=no)" ]; then \
+	  echo "❌ 工作区有未提交的修改。先处理它们，再部署："; git status --short --untracked-files=no; exit 1; \
+	fi; \
+	echo "▶ 更新代码：$$(git rev-parse --abbrev-ref HEAD)"; \
+	git pull --ff-only; \
+	$(MAKE_CMD) --no-print-directory up:prod PROD_ENV="$(PROD_ENV)"
+
+down\:prod: _prod-force ## 停止并删除单机生产部署的容器（不删除镜像、证书、图片和数据库）
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
 	$(PROD_COMPOSE) down
 

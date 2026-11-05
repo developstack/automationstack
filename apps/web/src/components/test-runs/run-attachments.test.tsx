@@ -10,7 +10,7 @@ import {
 import { StepAttachmentStorageNotice } from "@/components/test-runs/step-attachment-storage-notice";
 
 const WRITE_CONTROL = /删除|选择文件|上传/;
-const STORAGE_NOTICE = /R2/;
+const STORAGE_NOTICE = /附件存储暂时不可用/;
 
 const mocks = vi.hoisted(() => ({ list: [] as RunAttachmentView[] }));
 

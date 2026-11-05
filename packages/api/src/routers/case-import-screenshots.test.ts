@@ -29,7 +29,9 @@ vi.mock("@automationstack/db/repositories/case-search-repository", () => ({
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 	getProjectRole: mocks.getProjectRole,
 }));
-vi.mock("../lib/r2", () => ({ getR2Storage: () => mocks.storage }));
+vi.mock("../lib/object-storage", () => ({
+	getObjectStorage: () => mocks.storage,
+}));
 vi.mock("../lib/realtime-publish", () => ({ publishInvalidate: vi.fn() }));
 
 const PROJECT_ID = "55555555-5555-4555-8555-555555555555";

@@ -27,7 +27,7 @@ vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	getProjectIdByCaseId: mocks.getProjectIdByCaseId,
 }));
-vi.mock("../lib/r2", () => ({ getR2Storage: () => null }));
+vi.mock("../lib/object-storage", () => ({ getObjectStorage: () => null }));
 vi.mock("../lib/realtime-publish", () => ({ publishInvalidate: vi.fn() }));
 vi.mock("../lib/case-attachment-draft-ingest", () => ({
 	resolveNewCaseAttachments: vi.fn().mockResolvedValue([]),

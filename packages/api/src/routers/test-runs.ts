@@ -14,8 +14,8 @@ import { listTestRuns } from "@automationstack/db/repositories/test-runs-reposit
 import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
+import { getObjectStorage } from "../lib/object-storage";
 import { requireRunMember } from "../lib/project-scope";
-import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
 import { withDownloadUrls } from "../lib/run-attachment-urls";
 import { rejectRunWrite, testRunErrors } from "../lib/test-run-errors";
@@ -173,7 +173,7 @@ export const testRunsRouter = {
 				throw errors.NOT_FOUND({ message: "测试任务不存在" });
 			}
 			// 失败和阻塞用例的附件随报告一起签发下载地址，页面不需要为每条用例另外请求附件列表
-			const storage = getR2Storage();
+			const storage = await getObjectStorage();
 			const failedAndBlockedCases = await Promise.all(
 				report.failedAndBlockedCases.map(async (reportCase) => ({
 					...reportCase,

@@ -24,6 +24,8 @@ const ADMIN_USERNAME_MAX_LENGTH = 32;
 const NO_WHITESPACE = /^\S+$/;
 // HTTP 请求头名称：字母、数字和连字符。
 const HEADER_NAME = /^[A-Za-z0-9-]+$/;
+// nginx location 的路径前缀：以 / 开始并以 / 结束。
+const ACCEL_PREFIX = /^\/[A-Za-z0-9_\-/]*\/$/;
 
 const SECRET_ENCRYPTION_KEY_BYTES = 32;
 
@@ -124,8 +126,21 @@ export const env = createEnv({
 			.positive()
 			.default(DEFAULT_DATABASE_POOL_MAX),
 		DATABASE_URL: z.string().min(1),
+		// nginx 内部 location 的路径前缀，例如 /_files/。设置时，server 只检查本地文件的下载签名，
+		// 然后用 X-Accel-Redirect 让 nginx 发送文件。为空时，server 自己发送文件。
+		FILE_STORAGE_ACCEL_PREFIX: z
+			.string()
+			.regex(
+				ACCEL_PREFIX,
+				"FILE_STORAGE_ACCEL_PREFIX 必须以 / 开始并以 / 结束，例如 /_files/"
+			)
+			.optional(),
+		// 本地文件存储的目录。存储方式是「服务器本地」时，上传的图片和附件写在这里。
+		// 为空时，使用 server 工作目录下的 .data/files。
+		FILE_STORAGE_DIR: z.string().min(1).optional(),
 		// 用例图片的公开基础地址，例如 https://img.trendf.top（#63，ADR-0003）。
-		// 设置时，用例图片使用 <基础地址>/<对象键> 的公开链接，否则使用 R2 签名链接。
+		// 设置时，R2 中的用例图片使用 <基础地址>/<对象键> 的公开链接，否则使用 R2 签名链接。
+		// 存储设置页面保存过配置后，使用页面中的值。
 		IMAGE_PUBLIC_BASE_URL: z.url().optional(),
 		NODE_ENV: z
 			.enum(["development", "production", "test"])

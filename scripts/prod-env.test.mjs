@@ -125,6 +125,8 @@ test("apps/server/.env.example 的每个键都在 .env.prod.example 中", () => 
 	const fixedByCompose = new Set([
 		"CLIENT_IP_HEADER",
 		"CORS_ORIGIN",
+		"FILE_STORAGE_ACCEL_PREFIX",
+		"FILE_STORAGE_DIR",
 		"NODE_ENV",
 		"PORT",
 	]);

@@ -14,6 +14,12 @@
   启动顺序：先执行数据库迁移，再启动服务。
   nginx 是唯一的入口，前端和后端使用同一个域名，所以没有跨域请求。HTTPS 证书来自 Let's Encrypt，自动续期。
   所有配置在 `.env.prod` 中。每次启动时，模板 `.env.prod.example` 中新增的键自动追加到 `.env.prod`。
+- **附件存储**：上传的图片和附件默认存储在服务器本地，没有 R2 配置时上传功能也可用。
+  平台管理员在新的「存储设置」页面中选择服务器本地或 Cloudflare R2，并填写 R2 的配置。
+  页面没有保存过时，服务使用环境变量 `R2_*`，k8s 上的部署不需要修改。
+  切换存储方式后，以前上传的文件仍然可以查看。迁移 `0022` 增加 `storage_settings` 表（ADR-0006）。
+- **nginx**：`make up:prod` 的 nginx 直接从宿主机目录 `FILES_HOST_DIR`（默认 `/data/automationstack/files`）发送本地存储中的文件，支持 Range 和缓存头，并压缩文本响应。
+- **一键更新**：增加 `make deploy:prod`。它拉取代码，然后执行 `make up:prod`。
 - **客户端 IP**：server 增加可选变量 `CLIENT_IP_HEADER`。设置后，server 从这个请求头读取客户端 IP。
   server 在反向代理后面时，登录限流不再把所有用户算作同一个地址。为空时，行为不变。
   `docker-compose.prod.yml` 把它设为 `x-real-ip`。

@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 
 import { projectExists } from "@automationstack/db/repositories/projects-repository";
-import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
@@ -11,8 +10,7 @@ import {
 	isCaseAttachmentKeyOwnedBy,
 	validateCaseImageUpload,
 } from "../lib/case-attachment-policy";
-import { caseImageDownloadUrl } from "../lib/case-image-url";
-import { getR2Storage } from "../lib/r2";
+import { getObjectStorage } from "../lib/object-storage";
 import { MAX_NEW_CASE_ATTACHMENTS } from "../schemas/case";
 
 const sizeBytesSchema = z.number().int().positive();
@@ -53,17 +51,11 @@ export const caseAttachmentDraftProcedures = {
 					throw errors.BAD_REQUEST({ message: "storageKey 不属于该用例" });
 				}
 			}
-			const storage = getR2Storage();
-			if (storage === null) {
-				return input.storageKeys.map((storageKey) => ({
-					storageKey,
-					url: null,
-				}));
-			}
+			const storage = await getObjectStorage();
 			return await Promise.all(
 				input.storageKeys.map(async (storageKey) => ({
 					storageKey,
-					url: await caseImageDownloadUrl(storage, storageKey),
+					url: await storage.caseImageUrl(storageKey),
 				}))
 			);
 		}),
@@ -73,12 +65,6 @@ export const caseAttachmentDraftProcedures = {
 		.input(presignDraftUploadSchema)
 		.use(requireProjectMember)
 		.handler(async ({ errors, input }) => {
-			const storage = getR2Storage();
-			if (storage === null) {
-				throw new ORPCError("PRECONDITION_FAILED", {
-					message: "附件存储（R2）未配置，无法粘贴图片",
-				});
-			}
 			const declared = validateCaseImageUpload(input);
 			if (declared.kind !== "ok") {
 				throwCaseImageViolation(declared, input, errors, "declared");
@@ -90,6 +76,7 @@ export const caseAttachmentDraftProcedures = {
 				{ caseId: input.caseId, projectId: input.projectId },
 				{ contentType: input.contentType }
 			);
+			const storage = await getObjectStorage();
 			const uploadUrl = await storage.presignUpload(storageKey, {
 				contentLength: input.sizeBytes,
 				contentType: input.contentType,

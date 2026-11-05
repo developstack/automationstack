@@ -5,8 +5,6 @@ import {
 	removeAttachment,
 } from "@automationstack/db/repositories/test-run-attachments-repository";
 import type { StepAttachmentRejection } from "@automationstack/db/repositories/test-run-step-attachments-core";
-import { isR2Configured } from "@automationstack/env/server";
-import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
@@ -19,11 +17,11 @@ import {
 	isAttachmentKeyOwnedBy,
 	validateAttachmentUpload,
 } from "../lib/attachment-policy";
+import { getObjectStorage } from "../lib/object-storage";
 import {
 	requireRunAttachmentMember,
 	requireRunCaseMember,
 } from "../lib/project-scope";
-import { getR2Storage, type R2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
 import {
 	type TestRunAttachmentView,
@@ -74,16 +72,6 @@ const runCaseSchema = z.object({ runCaseId: z.uuid() });
 
 const attachmentIdSchema = z.object({ attachmentId: z.uuid() });
 
-function requireStorage(): R2Storage {
-	const storage = getR2Storage();
-	if (storage === null) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "附件存储（R2）未配置，无法上传或删除附件",
-		});
-	}
-	return storage;
-}
-
 type AttachmentWriteRejection =
 	| RunWriteRejection
 	| StepAttachmentRejection
@@ -112,7 +100,7 @@ export const testRunAttachmentsRouter = {
 		.use(requireRunCaseMember)
 		.handler(async ({ input }): Promise<TestRunAttachmentView[]> => {
 			const attachments = await listAttachments(input.runCaseId);
-			return await withDownloadUrls(attachments, getR2Storage());
+			return await withDownloadUrls(attachments, await getObjectStorage());
 		}),
 
 	presignUpload: protectedProcedure
@@ -120,7 +108,7 @@ export const testRunAttachmentsRouter = {
 		.input(presignUploadSchema)
 		.use(requireRunCaseMember)
 		.handler(async ({ errors, input }) => {
-			const storage = requireStorage();
+			const storage = await getObjectStorage();
 			const declared = validateAttachmentUpload(input);
 			if (declared.kind !== "ok") {
 				throwAttachmentViolation(declared, input, errors, "declared");
@@ -145,7 +133,7 @@ export const testRunAttachmentsRouter = {
 		.input(registerSchema)
 		.use(requireRunCaseMember)
 		.handler(async ({ context, errors, input }) => {
-			const storage = requireStorage();
+			const storage = await getObjectStorage();
 			const prepared = await prepareAttachmentUpload(input.runCaseId);
 			if (prepared.kind !== "ok") {
 				rejectAttachmentWrite(prepared, errors, "用例行不存在");
@@ -193,7 +181,7 @@ export const testRunAttachmentsRouter = {
 		.input(attachmentIdSchema)
 		.use(requireRunAttachmentMember)
 		.handler(async ({ context, errors, input }) => {
-			const storage = requireStorage();
+			const storage = await getObjectStorage();
 			const result = await removeAttachment(input.attachmentId);
 			if (result.kind !== "removed") {
 				rejectAttachmentWrite(result, errors, "附件不存在");
@@ -209,7 +197,8 @@ export const testRunAttachmentsRouter = {
 			return { id: result.attachment.id };
 		}),
 
+	// 没有配置 R2 时，文件存储在服务器本地，所以存储总是可用。保留这个接口，前端不需要改动。
 	storageStatus: protectedProcedure.handler((): { configured: boolean } => ({
-		configured: isR2Configured(),
+		configured: true,
 	})),
 };

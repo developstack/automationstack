@@ -2,6 +2,7 @@ import { casdoorHealth } from "@automationstack/api/auth/casdoor/health";
 import { getEffectiveAuthSettings } from "@automationstack/api/auth/settings-store";
 import { createContext } from "@automationstack/api/context";
 import { runWithClientIp } from "@automationstack/api/lib/request-client-ip";
+import { runWithRequestOrigin } from "@automationstack/api/lib/request-origin";
 import { appRouter } from "@automationstack/api/routers/index";
 import { env } from "@automationstack/env/server";
 import { serve } from "@hono/node-server";
@@ -18,12 +19,14 @@ import { logger } from "hono/logger";
 
 import { BootstrapAdminError, bootstrapAdmin } from "./auth/bootstrap-admin";
 import { registerCasdoorRoutes } from "./auth/casdoor-routes";
+import { registerFileRoutes } from "./files/routes";
 import { registerIngestRoutes } from "./ingest/routes";
 import { getJobsStatus, startJobs, stopJobs } from "./jobs/boss";
 import { handleMcpRequest } from "./mcp/server";
 import { isAllowedOrigin } from "./middleware/allowed-origin";
 import { resolveClientIp } from "./middleware/client-ip";
 import { requestBodyLimit } from "./middleware/request-body-limit";
+import { requestOriginOf } from "./middleware/request-origin";
 import { responseCompression } from "./middleware/response-compression";
 import {
 	realtimeWebSocketHandler,
@@ -35,12 +38,21 @@ const app = new Hono();
 
 app.use(logger());
 
+// 本地存储用本次请求的 origin 生成上传地址和下载地址（lib/local-storage）。
+app.use("/*", (c, next) =>
+	runWithRequestOrigin(
+		requestOriginOf(c.req.url, c.req.header("x-forwarded-proto")),
+		next
+	)
+);
+
 app.get("/ws", realtimeWebSocketHandler);
 
 app.use(
 	"/*",
 	cors({
-		allowMethods: ["GET", "POST", "OPTIONS"],
+		// PUT：开发环境中，浏览器从另一个端口把文件上传到 /files/。
+		allowMethods: ["GET", "POST", "PUT", "OPTIONS"],
 		credentials: true,
 		origin: (origin) =>
 			isAllowedOrigin(origin, {
@@ -59,6 +71,8 @@ app.use("/*", requestBodyLimit());
 registerCasdoorRoutes(app);
 
 registerIngestRoutes(app);
+
+registerFileRoutes(app);
 
 export const apiHandler = new OpenAPIHandler(appRouter, {
 	interceptors: [

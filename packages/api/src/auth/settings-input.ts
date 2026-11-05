@@ -16,7 +16,7 @@ const MAX_CLIENT_SECRET_LENGTH = 512;
 const MAX_WEBHOOK_SECRET_LENGTH = 256;
 
 /** 空字符串和 null 都表示「不设置」，保存为 null。 */
-const optionalText = (max: number) =>
+export const optionalText = (max: number) =>
 	z
 		.string()
 		.trim()
@@ -25,7 +25,7 @@ const optionalText = (max: number) =>
 		.transform((value) => (value === "" ? null : value));
 
 /** 密钥字段的三种更新：保留原值、设置新值、清空。前端不会收到密钥的值。 */
-const secretUpdateSchema = (value: z.ZodString) =>
+export const secretUpdateSchema = (value: z.ZodString) =>
 	z.discriminatedUnion("kind", [
 		z.object({ kind: z.literal("keep") }),
 		z.object({ kind: z.literal("clear") }),

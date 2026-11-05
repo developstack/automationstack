@@ -35,7 +35,7 @@ async function encryptedColumn(value: string): Promise<SecretColumn> {
 
 export function secretColumnFor(
 	update: SecretUpdate,
-	current: EffectiveAuthSettings,
+	current: Pick<EffectiveAuthSettings, "source">,
 	currentSecret: StoredSecret
 ): Promise<SecretColumn> | SecretColumn {
 	if (update.kind === "clear") {

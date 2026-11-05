@@ -6,6 +6,7 @@ import { AuthSettingsShell } from "@/components/auth-settings/auth-settings-shel
 import { RouteError } from "@/components/layout/route-error";
 import { UsersShell } from "@/components/platform-users/users-shell";
 import { ProjectsShell } from "@/components/projects/projects-shell";
+import { StorageSettingsShell } from "@/components/storage-settings/storage-settings-shell";
 import { renderRoutes, stubMatchMedia } from "@/test-dom-fixtures";
 
 stubMatchMedia();
@@ -27,6 +28,12 @@ const AuthSettingsPage: RouteComponent = () => (
 	<AuthSettingsShell phase="ready">
 		<p>{PAGE_BODY}</p>
 	</AuthSettingsShell>
+);
+
+const StorageSettingsPage: RouteComponent = () => (
+	<StorageSettingsShell phase="ready">
+		<p>{PAGE_BODY}</p>
+	</StorageSettingsShell>
 );
 
 const RouteErrorPage: RouteComponent = () => (
@@ -51,6 +58,7 @@ const PAGES: [string, RouteComponent][] = [
 		),
 	],
 	["认证设置", AuthSettingsPage],
+	["存储设置", StorageSettingsPage],
 	["路由出错页", RouteErrorPage],
 ];
 
@@ -89,8 +97,11 @@ describe("项目以外的页面：内容靠左，宽度由内容决定", () => {
 		}
 	);
 
-	it("认证设置：表单区域靠左，最大宽度为 max-w-3xl", async () => {
-		await renderPage(AuthSettingsPage);
+	it.each([
+		["认证设置", AuthSettingsPage],
+		["存储设置", StorageSettingsPage],
+	])("%s：表单区域靠左，最大宽度为 max-w-3xl", async (_name, page) => {
+		await renderPage(page);
 		const form = screen.getByText(PAGE_BODY).parentElement;
 
 		expect(form?.classList.contains("max-w-3xl")).toBe(true);

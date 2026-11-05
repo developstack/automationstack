@@ -1,5 +1,4 @@
 import { prepareCaseAttachmentUpload } from "@automationstack/db/repositories/case-attachments-repository";
-import { ORPCError } from "@orpc/server";
 
 import {
 	type CaseAttachmentErrorThrowers,
@@ -10,22 +9,12 @@ import {
 	type CaseAttachmentKeyScope,
 	validateCaseImageUpload,
 } from "./case-attachment-policy";
-import { getR2Storage, type R2Storage } from "./r2";
+import { getObjectStorage } from "./object-storage";
 
 export const caseAttachmentErrors = {
 	BAD_REQUEST: {},
 	NOT_FOUND: {},
 } as const;
-
-export function requireCaseImageStorage(): R2Storage {
-	const storage = getR2Storage();
-	if (storage === null) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "附件存储（R2）未配置，无法上传图片",
-		});
-	}
-	return storage;
-}
 
 export interface CaseImagePresignInput {
 	caseId: string;
@@ -47,7 +36,6 @@ export async function presignCaseImageUpload(
 	input: CaseImagePresignInput,
 	errors: CaseAttachmentErrorThrowers
 ): Promise<PresignedCaseImage> {
-	const storage = requireCaseImageStorage();
 	const declared = validateCaseImageUpload(input);
 	if (declared.kind !== "ok") {
 		throwCaseImageViolation(declared, input, errors, "declared");
@@ -59,6 +47,7 @@ export async function presignCaseImageUpload(
 	const storageKey = buildCaseAttachmentStorageKey(prepared.scope, {
 		contentType: input.contentType,
 	});
+	const storage = await getObjectStorage();
 	const uploadUrl = await storage.presignUpload(storageKey, {
 		contentLength: input.sizeBytes,
 		contentType: input.contentType,

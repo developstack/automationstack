@@ -32,8 +32,11 @@ vi.mock(
 		removeAttachment: mocks.removeAttachment,
 	})
 );
-vi.mock("../lib/r2", () => ({
-	getR2Storage: () => ({ ...mocks.store, presignUpload: mocks.presignUpload }),
+vi.mock("../lib/object-storage", () => ({
+	getObjectStorage: () => ({
+		...mocks.store,
+		presignUpload: mocks.presignUpload,
+	}),
 }));
 vi.mock("../lib/realtime-publish", () => ({
 	publishInvalidate: mocks.publishInvalidate,

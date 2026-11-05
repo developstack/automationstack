@@ -23,6 +23,9 @@ local.db-*
 # make up:prod 的生产配置，含数据库口令和密钥。模板是 .env.prod.example。
 .env.prod
 
+# 本地存储的图片和附件（在宿主机上运行 server 时的默认目录 apps/server/.data/files）。
+.data/
+
 # IDEs and editors
 .vscode/*
 !.vscode/settings.json

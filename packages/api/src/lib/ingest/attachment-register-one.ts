@@ -4,7 +4,7 @@ import {
 } from "@automationstack/db/repositories/test-run-attachments-repository";
 
 import { isAttachmentKeyOwnedBy } from "../attachment-policy";
-import type { R2Storage } from "../r2";
+import type { ObjectStorage } from "../object-storage";
 import type {
 	IngestAttachmentRegistered,
 	IngestAttachmentRegisterRejection,
@@ -18,7 +18,7 @@ import {
 export interface RegisterOne {
 	item: AttachmentRegisterItem;
 	scope: AttachmentScope;
-	storage: R2Storage;
+	storage: ObjectStorage;
 	userId: string;
 }
 

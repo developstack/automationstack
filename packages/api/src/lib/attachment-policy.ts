@@ -25,7 +25,8 @@ const ALLOWED_CONTENT_TYPES_BY_KIND: Record<
 	video: VIDEO_CONTENT_TYPES,
 };
 
-const EXTENSION_BY_CONTENT_TYPE: Record<string, string> = {
+/** 对象键的扩展名。本地存储按扩展名得出文件的类型，所以这个对应关系必须是一对一的。 */
+export const EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
 	"image/jpeg": "jpg",
 	"image/png": "png",
 	"image/webp": "webp",

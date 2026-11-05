@@ -5,7 +5,7 @@ import {
 import type { User } from "@automationstack/db/schema/users";
 
 import type { RealtimeActor } from "../../realtime/protocol";
-import { getR2Storage, type R2Storage } from "../r2";
+import { getObjectStorage, type ObjectStorage } from "../object-storage";
 import { publishInvalidateAs } from "../realtime-publish";
 import type {
 	IngestAttachmentRegistered,
@@ -19,7 +19,6 @@ import {
 	describeRunCaseVanished,
 	describeRunUnwritable,
 	groupRegisterItemsByRunId,
-	REASON_STORAGE_UNCONFIGURED,
 } from "./attachment-reconcile";
 import { type RegisterOne, registerOne } from "./attachment-register-one";
 import { splitRegisterGroupsByAccess } from "./attachment-register-scope";
@@ -32,21 +31,6 @@ export type IngestAttachmentRegisterOutcome =
 
 function attachmentIngestActor(user: User): RealtimeActor {
 	return { clientId: "automation-ingest", name: user.username };
-}
-
-function unconfiguredRegisterReceipt(
-	request: IngestAttachmentRegisterRequest
-): IngestAttachmentRegisterReceipt {
-	return {
-		registered: [],
-		rejected: request.attachments.map((item, index) => ({
-			index,
-			reason: REASON_STORAGE_UNCONFIGURED,
-			runCaseId: item.runCaseId,
-			storageKey: item.storageKey,
-		})),
-		storageConfigured: false,
-	};
 }
 
 const REGISTER_CONCURRENCY = 8;
@@ -73,7 +57,7 @@ interface PendingSplit {
 function splitRegisterPending(
 	group: AttachmentRegisterGroup,
 	scopeByRunCaseId: Map<string, AttachmentScope>,
-	storage: R2Storage,
+	storage: ObjectStorage,
 	userId: string
 ): PendingSplit {
 	const pending: RegisterOne[] = [];
@@ -93,7 +77,7 @@ function splitRegisterPending(
 
 async function registerGroup(
 	group: AttachmentRegisterGroup,
-	storage: R2Storage,
+	storage: ObjectStorage,
 	userId: string
 ): Promise<RegisteredGroup> {
 	const prepared = await prepareRunAttachmentUploads({
@@ -142,10 +126,7 @@ export async function registerParsed(
 	request: IngestAttachmentRegisterRequest,
 	user: User
 ): Promise<IngestAttachmentRegisterOutcome> {
-	const storage = getR2Storage();
-	if (storage === null) {
-		return { kind: "ok", receipt: unconfiguredRegisterReceipt(request) };
-	}
+	const storage = await getObjectStorage();
 	const actor = attachmentIngestActor(user);
 	const registered: IngestAttachmentRegistered[] = [];
 	const scope = splitRegisterGroupsByAccess(
