@@ -17,6 +17,7 @@ interface ProjectMemberRowProps {
 	canManage: boolean;
 	isSelf: boolean;
 	member: ProjectMemberView;
+	ownerCount: number;
 	projectId: string;
 }
 
@@ -24,6 +25,7 @@ function ProjectMemberRow({
 	canManage,
 	isSelf,
 	member,
+	ownerCount,
 	projectId,
 }: ProjectMemberRowProps) {
 	const disabled = member.disabledAt !== null;
@@ -45,6 +47,7 @@ function ProjectMemberRow({
 					<ProjectMemberRowActions
 						isSelf={isSelf}
 						member={member}
+						ownerCount={ownerCount}
 						projectId={projectId}
 					/>
 				</TableCell>
@@ -65,6 +68,7 @@ export function ProjectMembersTable({
 	projectId,
 }: ProjectMembersTableProps) {
 	const currentUser = useCurrentUser();
+	const ownerCount = members.filter((member) => member.role === "owner").length;
 
 	return (
 		<Table>
@@ -88,6 +92,7 @@ export function ProjectMembersTable({
 						isSelf={member.userId === currentUser.id}
 						key={member.userId}
 						member={member}
+						ownerCount={ownerCount}
 						projectId={projectId}
 					/>
 				))}

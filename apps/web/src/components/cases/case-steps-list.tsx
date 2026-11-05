@@ -1,10 +1,15 @@
-import type { CaseStep } from "@automationstack/db/schema/test-cases";
-import { useCallback } from "react";
-
+import type {
+	CaseStep,
+	ColumnScreenshotKey,
+} from "@automationstack/db/schema/test-cases";
+import { cn } from "@automationstack/ui/lib/utils";
+import { ColumnScreenshotGallery } from "@/components/cases/column-screenshot-gallery";
 import type { MarkdownImageUrls } from "@/components/cases/markdown-inline-render";
 import { MarkdownRender } from "@/components/cases/markdown-render";
-import { StepScreenshotGallery } from "@/components/cases/step-screenshot-gallery";
-import { stepScreenshots } from "@/components/cases/step-screenshots";
+import {
+	STEP_GRID_CLASS,
+	StepGridHeader,
+} from "@/components/cases/step-grid-header";
 
 const DEFAULT_EMPTY_TEXT = "还没有步骤。点击「编辑」添加操作步骤和预期结果。";
 
@@ -12,65 +17,91 @@ interface CaseStepsListProps {
 	/** 没有步骤时显示的文字。默认指引用户点击「编辑」添加 */
 	emptyText?: string;
 	imageUrls: MarkdownImageUrls;
-	/** 用户确认删除一张步骤截图后调用。不传时不显示删除按钮。 */
-	onRemoveScreenshot?: (stepId: string, attachmentId: string) => void;
-	/** 删除正在保存时为 true。 */
-	removingScreenshot?: boolean;
 	steps: readonly CaseStep[];
 }
 
 interface CaseStepItemProps {
 	imageUrls: MarkdownImageUrls;
-	onRemoveScreenshot?: (stepId: string, attachmentId: string) => void;
 	position: number;
-	removingScreenshot: boolean;
 	step: CaseStep;
 }
 
-function CaseStepItem({
+interface StepCellProps {
+	group: ColumnScreenshotKey;
+	imageUrls: MarkdownImageUrls;
+	label: string;
+	position: number;
+	step: CaseStep;
+	text: string;
+}
+
+/**
+ * 一栏的内容：文字和这一栏的截图。宽屏时列标题在表头，这里的标签只给读屏软件；
+ * 窄屏两栏堆叠时显示标签。
+ */
+function StepCell({
+	group,
 	imageUrls,
-	onRemoveScreenshot,
+	label,
 	position,
-	removingScreenshot,
 	step,
-}: CaseStepItemProps) {
-	const removeScreenshot = useCallback(
-		(attachmentId: string) => onRemoveScreenshot?.(step.id, attachmentId),
-		[onRemoveScreenshot, step.id]
-	);
+	text,
+}: StepCellProps) {
 	return (
-		<li className="flex gap-3 rounded-lg border bg-card p-4 text-card-foreground text-sm shadow-card">
+		<div className="flex min-w-0 flex-col gap-1">
+			<p className="text-muted-foreground text-xs sm:sr-only">{label}</p>
+			{text ? (
+				<MarkdownRender imageUrls={imageUrls} text={text} />
+			) : (
+				<p className="text-muted-foreground">—</p>
+			)}
+			<ColumnScreenshotGallery
+				group={group}
+				imageUrls={imageUrls}
+				position={position}
+				step={step}
+			/>
+		</div>
+	);
+}
+
+function CaseStepItem({ imageUrls, position, step }: CaseStepItemProps) {
+	return (
+		<li
+			className={cn(
+				STEP_GRID_CLASS,
+				"items-start border-b py-3 last:border-b-0"
+			)}
+		>
 			<span className="numeric flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs">
 				{position}
 			</span>
-			<div className="flex min-w-0 flex-1 flex-col gap-2">
-				<MarkdownRender imageUrls={imageUrls} text={step.step} />
-				<div className="flex flex-col gap-1">
-					<p className="text-muted-foreground text-xs">预期结果</p>
-					{step.expected ? (
-						<MarkdownRender imageUrls={imageUrls} text={step.expected} />
-					) : (
-						<p className="text-muted-foreground">—</p>
-					)}
-				</div>
-				<StepScreenshotGallery
-					ids={stepScreenshots(step)}
-					imageUrls={imageUrls}
-					label={`第 ${position} 步截图`}
-					onRemove={onRemoveScreenshot ? removeScreenshot : undefined}
-					removing={removingScreenshot}
-				/>
-			</div>
+			<StepCell
+				group="actionScreenshots"
+				imageUrls={imageUrls}
+				label="操作步骤"
+				position={position}
+				step={step}
+				text={step.step}
+			/>
+			<StepCell
+				group="expectedScreenshots"
+				imageUrls={imageUrls}
+				label="预期结果"
+				position={position}
+				step={step}
+				text={step.expected}
+			/>
+			{/* 编辑模式中这一栏放行尾操作。查看模式留出同样的宽度，切换模式时两栏不移动。 */}
+			<span aria-hidden="true" className="hidden w-6 sm:block" />
 		</li>
 	);
 }
 
-/** 只读的步骤列表：编号、操作、预期结果和步骤截图。用在用例详情和版本历史的快照查看中。 */
+/** 只读的步骤列表：编号、操作步骤和预期结果，每一栏文字下方是这一栏的截图。列与编辑模式一致：宽屏左右两栏，窄屏上下堆叠。用在用例详情和版本历史的快照查看中。 */
 export function CaseStepsList({
 	emptyText = DEFAULT_EMPTY_TEXT,
 	imageUrls,
-	onRemoveScreenshot,
-	removingScreenshot = false,
 	steps,
 }: CaseStepsListProps) {
 	if (steps.length === 0) {
@@ -81,17 +112,18 @@ export function CaseStepsList({
 		);
 	}
 	return (
-		<ol className="flex flex-col gap-3">
-			{steps.map((step, index) => (
-				<CaseStepItem
-					imageUrls={imageUrls}
-					key={step.id}
-					onRemoveScreenshot={onRemoveScreenshot}
-					position={index + 1}
-					removingScreenshot={removingScreenshot}
-					step={step}
-				/>
-			))}
-		</ol>
+		<div className="rounded-lg border text-sm">
+			<StepGridHeader />
+			<ol>
+				{steps.map((step, index) => (
+					<CaseStepItem
+						imageUrls={imageUrls}
+						key={step.id}
+						position={index + 1}
+						step={step}
+					/>
+				))}
+			</ol>
+		</div>
 	);
 }

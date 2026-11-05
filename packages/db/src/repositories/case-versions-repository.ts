@@ -4,7 +4,10 @@ import { db } from "../index";
 import type { CaseSnapshot, CaseVersion } from "../schema/test-cases";
 import { caseVersions } from "../schema/test-cases";
 import type { CaseContentPatch } from "./case-snapshot-core";
-import { writeCaseMutation } from "./case-snapshot-core";
+import {
+	withExplicitScreenshots,
+	writeCaseMutation,
+} from "./case-snapshot-core";
 import type { CaseWriteResult, DbTransaction } from "./repository-types";
 
 export interface CaseVersionSummary {
@@ -71,7 +74,7 @@ function snapshotToContentPatch(snapshot: CaseSnapshot): CaseContentPatch {
 		priority: snapshot.priority,
 		sourceRef: snapshot.sourceRef,
 		status: snapshot.status,
-		steps: snapshot.steps,
+		steps: withExplicitScreenshots(snapshot.steps),
 		tags: snapshot.tags,
 	};
 }

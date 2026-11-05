@@ -3,8 +3,10 @@ import { CASDOOR_WEBHOOK_URL_IN_CLUSTER } from "@automationstack/api/auth/casdoo
 import type { AuthSettingsFieldGroupProps } from "@/components/auth-settings/auth-settings-field-group";
 import { AuthUrlField } from "@/components/auth-settings/auth-url-field";
 import { WebhookSecretActions } from "@/components/auth-settings/webhook-secret-actions";
-import { MASKED_SECRET_PLACEHOLDER } from "@/components/settings/jira-form-values";
-import { JiraSecretField } from "@/components/settings/jira-secret-field";
+import {
+	MASKED_SECRET_PLACEHOLDER,
+	SettingsSecretField,
+} from "@/components/settings/settings-secret-field";
 import { SettingsSection } from "@/components/settings/settings-section";
 
 type WebhookProps = AuthSettingsFieldGroupProps & {
@@ -41,7 +43,7 @@ export function CasdoorWebhookFields(props: WebhookProps) {
 				label="Webhook 地址"
 				value={CASDOOR_WEBHOOK_URL_IN_CLUSTER}
 			/>
-			<JiraSecretField
+			<SettingsSecretField
 				clearRequested={props.values.clearWebhookSecret}
 				error={props.errors.webhookSecret}
 				hint={webhookSecretHint(props)}

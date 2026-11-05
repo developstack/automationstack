@@ -25,10 +25,7 @@ interface CaseListPage {
 
 type StatusChangeInput = z.infer<typeof changeCaseStatusInputSchema>;
 
-/** 按 id 修改的输入（一条用例、勾选的用例和撤销）。 */
-type StatusChangeByIdsInput = Extract<StatusChangeInput, { ids: string[] }>;
-
-/** 提示中的「撤销」。撤销失败的原因由全局的失败提示显示。 */
+/** 提示中的「撤销」。撤销失败的原因（例如撤销已过期）由全局的失败提示显示。 */
 function undoAction(undo: () => Promise<void>) {
 	return {
 		action: {
@@ -40,20 +37,36 @@ function undoAction(undo: () => Promise<void>) {
 	};
 }
 
-function withStatus(
+/** 列表中的用例改为给出的状态，其他用例不变。 */
+function withStatuses(
 	page: CaseListPage | undefined,
-	{ ids, status }: StatusChangeByIdsInput
+	statusById: ReadonlyMap<string, CaseStatus>
 ): CaseListPage | undefined {
 	if (page === undefined) {
 		return page;
 	}
-	const changed = new Set(ids);
 	return {
 		...page,
-		items: page.items.map((testCase) =>
-			changed.has(testCase.id) ? { ...testCase, status } : testCase
-		),
+		items: page.items.map((testCase) => {
+			const status = statusById.get(testCase.id);
+			return status === undefined ? testCase : { ...testCase, status };
+		}),
 	};
+}
+
+/** 立刻更新列表中用例的状态。 */
+function useSetListedStatuses() {
+	const queryClient = useQueryClient();
+	return useCallback(
+		async (statusById: ReadonlyMap<string, CaseStatus>) => {
+			const queryKey = orpc.cases.list.key();
+			await queryClient.cancelQueries({ queryKey });
+			queryClient.setQueriesData<CaseListPage>({ queryKey }, (page) =>
+				withStatuses(page, statusById)
+			);
+		},
+		[queryClient]
+	);
 }
 
 /**
@@ -62,7 +75,7 @@ function withStatus(
  * 失败的原因由全局的失败提示显示，重新载入后列表恢复为服务端的状态。
  */
 function useChangeStatusMutation() {
-	const queryClient = useQueryClient();
+	const setListedStatuses = useSetListedStatuses();
 	const invalidateCases = useInvalidateCases();
 	return useMutation(
 		orpc.cases.changeStatus.mutationOptions({
@@ -71,10 +84,8 @@ function useChangeStatusMutation() {
 				if ("filter" in input) {
 					return;
 				}
-				const queryKey = orpc.cases.list.key();
-				await queryClient.cancelQueries({ queryKey });
-				queryClient.setQueriesData<CaseListPage>({ queryKey }, (page) =>
-					withStatus(page, input)
+				await setListedStatuses(
+					new Map(input.ids.map((id) => [id, input.status]))
 				);
 			},
 			onSettled: invalidateCases,
@@ -82,30 +93,63 @@ function useChangeStatusMutation() {
 	);
 }
 
-/** 用例表格中改一条用例的状态。提示「已改为废弃」等，带「撤销」，撤销也记录一个新版本。 */
+/**
+ * 撤销一次状态修改：凭修改时返回的撤销凭证，由服务端恢复改过的用例（见 cases.undoStatusChange）。
+ * 服务端跳过修改后又被改过的用例，所以列表在撤销成功后按返回的用例更新，再重新载入。
+ */
+function useUndoStatusMutation() {
+	const setListedStatuses = useSetListedStatuses();
+	const invalidateCases = useInvalidateCases();
+	return useMutation(
+		orpc.cases.undoStatusChange.mutationOptions({
+			meta: { failureAction: "撤销修改用例状态" },
+			onSettled: invalidateCases,
+			onSuccess: ({ changes }) =>
+				setListedStatuses(
+					new Map(changes.map(({ testCase }) => [testCase.id, testCase.status]))
+				),
+		})
+	);
+}
+
+/**
+ * 用例表格中改一条用例的状态。提示「已改为废弃」等，带「撤销」，撤销也记录一个新版本。
+ * 状态没有变化时没有撤销凭证，提示不带「撤销」。
+ */
 export function useCaseStatusChange(): (
 	request: CaseStatusChangeRequest
 ) => Promise<void> {
 	const { mutateAsync } = useChangeStatusMutation();
+	const { mutateAsync: undoAsync } = useUndoStatusMutation();
 
 	const undo = useCallback(
-		async ({ caseId, from }: CaseStatusChangeRequest) => {
-			await mutateAsync({ ids: [caseId], status: from });
+		async (token: string, from: CaseStatus) => {
+			const { skippedIds } = await undoAsync({ token });
+			if (skippedIds.length > 0) {
+				toast.warning("用例在修改后又被改过，保留现在的状态");
+				return;
+			}
 			toast.success(`已恢复为${STATUS_LABELS[from]}`);
 		},
-		[mutateAsync]
+		[undoAsync]
 	);
 
 	return useCallback(
 		async (request: CaseStatusChangeRequest) => {
+			let undoToken: string | null;
 			try {
-				await mutateAsync({ ids: [request.caseId], status: request.to });
+				({ undoToken } = await mutateAsync({
+					ids: [request.caseId],
+					status: request.to,
+				}));
 			} catch {
 				return;
 			}
 			toast.success(
 				`已改为${STATUS_LABELS[request.to]}`,
-				undoAction(() => undo(request))
+				undoToken === null
+					? undefined
+					: undoAction(() => undo(undoToken, request.from))
 			);
 		},
 		[mutateAsync, undo]
@@ -113,31 +157,15 @@ export function useCaseStatusChange(): (
 }
 
 interface ChangedCase {
-	previousStatus: CaseStatus;
-	testCase: { id: string };
-	/** 状态没有变化时为 null：没有记录新版本，撤销时不动。 */
+	/** 状态没有变化时为 null：没有记录新版本。 */
 	version: { version: number } | null;
 }
 
-/**
- * 撤销批量修改的请求：按原来的状态分组，每组一个请求。状态没有变化的用例不在其中。
- * 带 undo：按筛选条件修改的用例可以超过 MAX_BATCH_CASES 条，一组仍然是一个请求、一个事务。
- */
-function undoInputs(changes: readonly ChangedCase[]): StatusChangeByIdsInput[] {
-	const idsByStatus = new Map<CaseStatus, string[]>();
-	for (const change of changes) {
-		if (change.version === null) {
-			continue;
-		}
-		const ids = idsByStatus.get(change.previousStatus) ?? [];
-		ids.push(change.testCase.id);
-		idsByStatus.set(change.previousStatus, ids);
-	}
-	return [...idsByStatus].map(([status, ids]) => ({
-		ids,
-		status,
-		undo: true,
-	}));
+function restoreMessage(restored: number, skipped: number): string {
+	const message = `已恢复 ${restored} 条用例原来的状态`;
+	return skipped > 0
+		? `${message}，${skipped} 条在修改后又被改过，保留现在的状态`
+		: message;
 }
 
 function batchMessage(changes: readonly ChangedCase[], to: CaseStatus): string {
@@ -152,8 +180,8 @@ function batchMessage(changes: readonly ChangedCase[], to: CaseStatus): string {
 /**
  * 用例表格中批量改用例的状态：勾选的用例，或全部符合筛选的用例（见 CaseBatchTarget）。
  * 一个请求完成（一个事务，要么都改，要么都不改）。按筛选条件修改时提示服务端实际修改的条数。
- * 提示修改结果，带「撤销」：撤销把每条用例恢复为它自己原来的状态，也记录新版本。
- * 撤销按原来的状态分组，每组一个请求（最多三个）。一组失败时停下，已恢复的组不回退，重新载入后列表显示实际的状态。
+ * 提示修改结果，带「撤销」：撤销凭修改返回的撤销凭证，一个请求把每条用例恢复为它自己原来的状态，
+ * 也记录新版本。修改后又被改过的用例保留现在的状态，提示中报告条数。
  * 一次最多的条数（MAX_BATCH_CASES、MAX_FILTER_BATCH_CASES）由批量操作栏在请求前检查。
  * 返回是否修改成功。失败的原因由全局的失败提示显示。
  */
@@ -162,31 +190,29 @@ export function useCaseBatchStatusChange(): (
 	to: CaseStatus
 ) => Promise<boolean> {
 	const { mutateAsync } = useChangeStatusMutation();
+	const { mutateAsync: undoAsync } = useUndoStatusMutation();
 
 	const undo = useCallback(
-		async (inputs: readonly StatusChangeByIdsInput[]) => {
-			for (const input of inputs) {
-				// biome-ignore lint/performance/noAwaitInLoops: 一组恢复成功后再恢复下一组，失败时停下
-				await mutateAsync(input);
-			}
-			const count = inputs.reduce((sum, input) => sum + input.ids.length, 0);
-			toast.success(`已恢复 ${count} 条用例原来的状态`);
+		async (token: string) => {
+			const { changes, skippedIds } = await undoAsync({ token });
+			const notify = skippedIds.length > 0 ? toast.warning : toast.success;
+			notify(restoreMessage(changes.length, skippedIds.length));
 		},
-		[mutateAsync]
+		[undoAsync]
 	);
 
 	return useCallback(
 		async (target: CaseBatchTarget, to: CaseStatus) => {
-			let changes: ChangedCase[];
+			let result: { changes: ChangedCase[]; undoToken: string | null };
 			try {
-				({ changes } = await mutateAsync({ ...target, status: to }));
+				result = await mutateAsync({ ...target, status: to });
 			} catch {
 				return false;
 			}
-			const restore = undoInputs(changes);
+			const { changes, undoToken } = result;
 			toast.success(
 				batchMessage(changes, to),
-				restore.length === 0 ? undefined : undoAction(() => undo(restore))
+				undoToken === null ? undefined : undoAction(() => undo(undoToken))
 			);
 			return true;
 		},

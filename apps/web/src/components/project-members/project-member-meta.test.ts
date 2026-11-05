@@ -7,6 +7,7 @@ import {
 	canManageProjectMembers,
 	isSuspendedOwner,
 	type ProjectRoleHolder,
+	projectMemberActionsFor,
 	projectRoleLabelFor,
 	projectRoleOptionsFor,
 	viewerProjectRoleLabel,
@@ -73,39 +74,70 @@ describe("isSuspendedOwner：降级为普通用户的项目 owner 暂停管理",
 	});
 });
 
-function ownerOptionDisabled(platformRole: UserRole | undefined) {
-	return projectRoleOptionsFor(platformRole).find(
-		(option) => option.value === "owner"
-	)?.disabled;
+function optionValues(
+	platformRole: UserRole | undefined,
+	currentRole?: ProjectRole
+) {
+	return projectRoleOptionsFor(platformRole, currentRole).map(
+		(option) => option.value
+	);
 }
 
-describe("projectRoleOptionsFor：普通用户不提供「拥有者」选项", () => {
+describe("projectRoleOptionsFor：只列出能选的项目角色", () => {
 	it.each([
-		["admin", false],
-		["project_admin", false],
-		["member", true],
-		[undefined, false],
-	] as const)("平台角色 %s：拥有者选项禁用 = %s", (platformRole, expected) => {
-		expect(ownerOptionDisabled(platformRole) ?? false).toBe(expected);
-	});
-
-	it("「成员」选项总是可选", () => {
-		const member = projectRoleOptionsFor("member").find(
-			(option) => option.value === "member"
-		);
-		expect(member?.disabled ?? false).toBe(false);
-	});
+		["admin", undefined, ["member", "owner"]],
+		["project_admin", undefined, ["member", "owner"]],
+		["member", undefined, ["member"]],
+		[undefined, undefined, ["member"]],
+		["member", "owner", ["member", "owner"]],
+	] as const)(
+		"平台角色 %s，当前项目角色 %s：%j",
+		(platformRole, currentRole, expected) => {
+			expect(optionValues(platformRole, currentRole)).toEqual(expected);
+		}
+	);
 });
 
-describe("allowedProjectRole：普通用户的项目角色只能是成员", () => {
+describe("allowedProjectRole：只有能成为拥有者的账号可以提交「拥有者」", () => {
 	it.each([
 		["owner", "admin", "owner"],
 		["owner", "project_admin", "owner"],
 		["owner", "member", "member"],
-		["owner", undefined, "owner"],
-		["member", "member", "member"],
+		["owner", undefined, "member"],
+		["member", "admin", "member"],
 	] as const)("选 %s，平台角色 %s：%s", (role, platformRole, expected) => {
 		expect(allowedProjectRole(role, platformRole)).toBe(expected);
+	});
+});
+
+describe("projectMemberActionsFor：成员行的菜单只列出服务端允许的操作", () => {
+	const input = (
+		role: ProjectRole,
+		platformRole: UserRole,
+		ownerCount: number,
+		isSelf = false
+	) => ({ isSelf, member: { platformRole, role }, ownerCount });
+
+	it.each([
+		[
+			"另有拥有者的拥有者：设为成员、移出",
+			input("owner", "project_admin", 2),
+			["demote", "remove"],
+		],
+		[
+			"唯一的拥有者：不能设为成员，不能移出",
+			input("owner", "project_admin", 1),
+			[],
+		],
+		[
+			"项目管理员成员：设为拥有者、移出",
+			input("member", "project_admin", 1),
+			["promote", "remove"],
+		],
+		["普通用户成员：不能设为拥有者", input("member", "member", 1), ["remove"]],
+		["本人：不能移出", input("owner", "admin", 2, true), ["demote"]],
+	] as const)("%s", (_name, actionsInput, expected) => {
+		expect(projectMemberActionsFor(actionsInput)).toEqual(expected);
 	});
 });
 

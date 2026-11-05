@@ -54,6 +54,9 @@ KEEP_DB ?=
 CONFIRM ?=
 # make logs / make ps 只看某一个 app：make logs APP=server
 APP ?=
+# make up:prod 使用的生产 env 文件。默认在仓库根目录，不进 git。
+# 用其他路径：make up:prod PROD_ENV=/etc/automationstack/prod.env
+PROD_ENV ?= $(ROOT_DIR)/.env.prod
 
 PG_DB := automationstack
 # Homebrew 的 Postgres 监听 5432；compose 那个刻意映射到 5433，就是为了不和
@@ -65,6 +68,13 @@ DOCKER_PG_PORT := 5433
 PG_WAIT_TIMEOUT := 60
 
 LOG_DIR := $(ROOT_DIR)/.dev-logs
+# 相对路径按 make 的工作目录解析。compose 的 env_file 按 compose 文件的目录解析，
+# 两者可能不同，所以传给 compose 的一律是绝对路径。
+PROD_ENV_FILE := $(abspath $(PROD_ENV))
+PROD_ENV_TEMPLATE := $(ROOT_DIR)/.env.prod.example
+# --env-file 展开 docker-compose.prod.yml 中的 ${...}；PROD_ENV_FILE 给 server 和 migrate 的 env_file。
+# 给了 --env-file 时，compose 不读取根目录的 .env（那是本地开发的文件）。
+PROD_COMPOSE = PROD_ENV_FILE="$(PROD_ENV_FILE)" docker compose --project-directory "$(ROOT_DIR)" -f "$(ROOT_DIR)/docker-compose.prod.yml" --env-file "$(PROD_ENV_FILE)"
 ENV_ROOT := $(ROOT_DIR)/.env
 ENV_SERVER := $(ROOT_DIR)/apps/server/.env
 ENV_WEB := $(ROOT_DIR)/apps/web/.env
@@ -112,7 +122,7 @@ DB_BACKEND_RESOLVED = $(shell \
 .PHONY: help install setup dev up down restart logs ps status \
 	db-up db-down db-wait db-migrate db-generate db-seed db-seed-admin db-reset-password db-auth-set-local \
 	db-seed-demo db-studio db-reset casdoor-up casdoor-down casdoor-bootstrap \
-	check doctor clean _backend-guard _env
+	check doctor clean _backend-guard _env _prod-force
 
 .DEFAULT_GOAL := help
 
@@ -122,15 +132,17 @@ DB_BACKEND_RESOLVED = $(shell \
 # 不存在「加了目标忘了更新 help」这种漂移。
 # awk 的 FS 用 `:.*## ` 而不是常见的 `:.*?## `：非贪婪 `?` 是 PCRE 的写法，
 # macOS 自带的 awk（one true awk）只认 POSIX ERE，那里的 `*?` 行为未定义。
+# 目标名中转义的冒号（`up\:prod`）先换成 \001，截掉第一个冒号后的内容，再换回 `:`。
 help: ## 显示本说明（默认目标）
 	@printf '\n\033[1mautomationstack 本地开发\033[0m\n'
 	@printf '用法: make <target> [VAR=value]\n'
-	@awk 'BEGIN {FS = ":.*## "} /^##@ / {printf "\n\033[1m%s\033[0m\n", substr($$0, 5)} /^[a-zA-Z0-9_-]+:.*## / {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "} /^##@ / {printf "\n\033[1m%s\033[0m\n", substr($$0, 5)} /^[a-zA-Z0-9_-]+(\\:[a-zA-Z0-9_-]+)*:.*## / {name = $$0; gsub(/\\:/, "\001", name); sub(/:.*/, "", name); gsub(/\001/, ":", name); printf "  \033[36m%-14s\033[0m %s\n", name, $$2}' $(MAKEFILE_LIST)
 	@printf '\n\033[1m可覆盖的变量\033[0m\n'
 	@printf '  \033[36m%-14s\033[0m %s\n' 'DB_BACKEND' 'brew | docker | auto（当前: $(DB_BACKEND)）'
 	@printf '  \033[36m%-14s\033[0m %s\n' 'KEEP_DB' '非空时 make down 不停 Postgres'
 	@printf '  \033[36m%-14s\033[0m %s\n' 'APP' 'make logs / ps 只看某个 app'
 	@printf '  \033[36m%-14s\033[0m %s\n' 'CONFIRM' 'make db-reset 的非交互确认'
+	@printf '  \033[36m%-14s\033[0m %s\n' 'PROD_ENV' 'make up:prod 的生产 env 文件（默认 .env.prod）'
 	@printf '\n检测到的 dev 服务: $(DEV_APPS)\n\n'
 
 install: ## 安装依赖（pnpm install）
@@ -489,6 +501,57 @@ casdoor-down: ## 停本地 Casdoor（保留 casdoor 库中的配置）
 casdoor-bootstrap: ## 在本地 Casdoor 中创建 automationstack 组织、应用、角色和测试用户（幂等）
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
 	CASDOOR_ORGANIZATION=automationstack CASDOOR_URL="http://localhost:$(CASDOOR_PORT)" scripts/casdoor-dev-bootstrap.sh
+
+##@ 单机生产部署（数据库在外部机器上）
+
+# 在一台服务器上用 docker compose 运行生产构建，配置见 docker-compose.prod.yml 与 .env.prod.example。
+# nginx 是唯一的入口，前端和后端使用同一个域名，所以没有跨域请求。域名由阿里云的 DNS 指向本服务器。
+# 集群上的正式生产环境不用这些目标，它由 developstack/k8s-gitops 管理。
+#
+# 每次执行同样的步骤，任何一步失败都不往下走：
+#   1. 合并并检查 .env.prod。
+#   2. 构建镜像。迁移在 server 镜像中执行，所以构建在迁移之前。
+#      每次都构建：前端地址写在 web 镜像中，代码或域名改变后不构建就不生效。
+#      docker 有构建缓存，没有改变的层不重新构建。
+#   3. 预检外部库，然后执行迁移（SQL）。这一步在启动或替换任何服务之前。
+#      它失败时，正在运行的旧服务不变。
+#   4. 启动 server、web、nginx 和 certbot，等到 healthy。
+#   5. 没有证书时，向 Let's Encrypt 申请。然后 nginx 选择站点配置并 reload：有证书时使用 HTTPS。
+#
+# 目标名中的冒号必须写成 `\:`。GNU Make 3.81 的 .PHONY 不认这种名字，
+# 所以用 phony 目标 _prod-force 作为前置依赖：仓库中有同名文件时，目标也照样执行。
+up\:prod: _prod-force ## 单机生产部署：合并 .env.prod → 构建 → 迁移外部库 → 启动 → HTTPS 证书
+	@set -euo pipefail; cd "$(ROOT_DIR)"; \
+	if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then \
+	  echo "❌ docker 不可用：没有安装，或 daemon 没有运行。"; exit 1; \
+	fi; \
+	bash scripts/prod-env.sh "$(PROD_ENV_TEMPLATE)" "$(PROD_ENV_FILE)"; \
+	echo "▶ 构建镜像"; \
+	$(PROD_COMPOSE) build; \
+	echo "▶ 预检外部库并执行迁移（SQL）"; \
+	$(PROD_COMPOSE) run --rm migrate; \
+	echo "▶ 启动服务，等到 healthy"; \
+	if ! $(PROD_COMPOSE) up -d --wait server web nginx certbot; then \
+	  echo "❌ 服务没有全部变为 healthy。最近的日志："; \
+	  $(PROD_COMPOSE) logs --tail 50 server web nginx || true; \
+	  exit 1; \
+	fi; \
+	echo "▶ 检查 HTTPS 证书"; \
+	$(PROD_COMPOSE) run --rm --no-deps --entrypoint sh certbot /opt/automationstack/ensure-cert.sh; \
+	$(PROD_COMPOSE) exec -T nginx sh -c '/docker-entrypoint.d/40-automationstack-select-site.sh && nginx -s reload'; \
+	$(PROD_COMPOSE) ps; \
+	domain="$$(sed -n 's/^DOMAIN=//p' "$(PROD_ENV_FILE)" | tail -n 1 | tr -d "\"' ")"; \
+	echo "✅ 已启动：https://$${domain}   日志: make logs:prod   停止: make down:prod"
+
+down\:prod: _prod-force ## 停止并删除单机生产部署的容器（不删除镜像、证书和数据库）
+	@set -euo pipefail; cd "$(ROOT_DIR)"; \
+	$(PROD_COMPOSE) down
+
+logs\:prod: _prod-force ## 跟踪单机生产部署的日志（make logs:prod APP=server 只看一个）
+	@set -euo pipefail; cd "$(ROOT_DIR)"; \
+	$(PROD_COMPOSE) logs -f --tail 100 $(APP)
+
+_prod-force:
 
 ##@ 质量与排查
 

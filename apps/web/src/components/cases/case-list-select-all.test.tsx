@@ -39,6 +39,7 @@ vi.mock("@/utils/orpc", () => ({
 					mutationFn: api.removeMany,
 				}),
 			},
+			undoStatusChange: { mutationOptions: (options: object) => options },
 		},
 		mindmap: { key: () => ["mindmap"] },
 	},
@@ -116,7 +117,7 @@ describe("CaseListBatchActions：选择全部符合筛选的用例", () => {
 	});
 
 	it("选择全部后改状态：一个请求，发送筛选条件而不是 id", async () => {
-		api.changeStatus.mockResolvedValue({ changes: [] });
+		api.changeStatus.mockResolvedValue({ changes: [], undoToken: null });
 		const selection = renderActions({ allMatching: true });
 		fireEvent.click(screen.getByRole("button", { name: "改状态" }));
 		fireEvent.click(await screen.findByRole("menuitem", { name: "废弃" }));

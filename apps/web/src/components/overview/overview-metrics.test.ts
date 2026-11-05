@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	activeRunsDescription,
 	compareWithPrevious,
 	coverageGapRows,
 	formatCount,
@@ -57,6 +58,23 @@ describe("overviewSummary", () => {
 		["没有用例时，说明本项目还没有用例", { totalCases: 0 }, "本项目还没有用例"],
 	])("%s", (_name, patch, summary) => {
 		expect(overviewSummary({ ...base, ...patch })).toBe(summary);
+	});
+});
+
+describe("activeRunsDescription", () => {
+	it.each([
+		[
+			"没有停滞的测试任务",
+			{ stalledCount: 0, totalCount: 1204 },
+			"1,204 个测试任务还没有提交（不含已作废），停滞的测试任务排在最前面",
+		],
+		[
+			"有停滞的测试任务",
+			{ stalledCount: 2, totalCount: 3 },
+			"3 个测试任务还没有提交（不含已作废），2 个超过 7 天没有新的执行结果，排在最前面",
+		],
+	])("%s：条数写明不含已作废的测试任务", (_name, stats, description) => {
+		expect(activeRunsDescription(stats)).toBe(description);
 	});
 });
 

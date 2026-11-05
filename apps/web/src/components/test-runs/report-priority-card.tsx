@@ -65,7 +65,7 @@ function P0Verdict({ stat }: { stat: ReportPriorityStat | undefined }) {
 					aria-hidden="true"
 					className="mt-0.5 size-4 shrink-0"
 				/>
-				{`P0 有 ${stat.failed} 条失败 —— 上线红线已触发，明细见本页底部的失败用例清单。`}
+				{`P0 有 ${stat.failed} 条失败 —— 上线红线已触发，明细见本页底部的失败和阻塞用例清单。`}
 			</p>
 		);
 	}

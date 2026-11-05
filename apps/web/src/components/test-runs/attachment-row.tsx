@@ -1,6 +1,5 @@
 import { Button } from "@automationstack/ui/components/button";
-import { ImageIcon, PaperclipIcon, Trash2Icon } from "lucide-react";
-import { useCallback } from "react";
+import { ImageIcon, PaperclipIcon } from "lucide-react";
 
 const BYTES_PER_KIB = 1024;
 const THUMBNAIL_PX = 40;
@@ -51,64 +50,35 @@ function AttachmentThumbnail({
 	);
 }
 
-interface AttachmentRowActionsProps {
-	fileName: string;
-	onRemove: () => void;
-	removable: boolean;
-	url: string | null;
-}
-
-function AttachmentRowActions({
-	fileName,
-	onRemove,
-	removable,
-	url,
-}: AttachmentRowActionsProps) {
+/** 打开附件的链接。存储不可用时没有地址，不显示。 */
+function AttachmentOpenLink({ url }: { url: string | null }) {
+	if (url === null) {
+		return null;
+	}
 	return (
-		<>
-			{url !== null && (
-				<Button
-					render={<a href={url} rel="noopener" target="_blank" />}
-					variant="ghost"
-				>
-					打开
-				</Button>
-			)}
-			{removable ? (
-				<Button
-					aria-label={`删除附件 ${fileName}`}
-					onClick={onRemove}
-					type="button"
-					variant="ghost"
-				>
-					<Trash2Icon aria-hidden="true" />
-				</Button>
-			) : null}
-		</>
+		<Button
+			render={<a href={url} rel="noopener" target="_blank" />}
+			variant="ghost"
+		>
+			打开
+		</Button>
 	);
 }
 
 interface AttachmentRowProps {
 	contentType: string;
 	fileName: string;
-	id: string;
-	onRemove: (id: string) => void;
-	removable: boolean;
 	sizeBytes: number;
 	url: string | null;
 }
 
+/** 只读的一行附件：缩略图、文件名、大小和「打开」。 */
 export function AttachmentRow({
 	contentType,
 	fileName,
-	id,
-	onRemove,
-	removable,
 	sizeBytes,
 	url,
 }: AttachmentRowProps) {
-	const handleRemove = useCallback(() => onRemove(id), [id, onRemove]);
-
 	return (
 		<li className="flex items-center gap-2 rounded-md bg-card p-2">
 			<AttachmentThumbnail
@@ -125,12 +95,7 @@ export function AttachmentRow({
 					{url === null && " · 存储不可用，暂时打不开"}
 				</span>
 			</span>
-			<AttachmentRowActions
-				fileName={fileName}
-				onRemove={handleRemove}
-				removable={removable}
-				url={url}
-			/>
+			<AttachmentOpenLink url={url} />
 		</li>
 	);
 }

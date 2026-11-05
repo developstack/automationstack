@@ -145,7 +145,7 @@ services:
       # `:?` 而不是 `:-password`：没设这个变量时 compose 直接拒绝启动，
       # 报错里带下面那句话。原来的兜底口令看着只是「本地方便」，实际后果是
       # 一台忘了填 .env 的机器会**静默地**跑起一个口令为 password 的库——
-      # 而库里躺着 api_tokens.token_hash 和 jira_configs 的密文。
+      # 而库里躺着 api_tokens.token_hash 和 Casdoor 的 client secret 密文。
       # 缺配置要么响亮地失败，要么就成了一个没人知道自己开着的弱口令库。
       #
       # 它同时被拼进 server 和 migrate 的 DATABASE_URL，三处靠同一个

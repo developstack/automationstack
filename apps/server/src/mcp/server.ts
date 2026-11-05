@@ -7,6 +7,7 @@ import { createRouterClient } from "@orpc/server";
 import type { Context as HonoContext } from "hono";
 
 import { mcpContext } from "./identity";
+import { registerCaseScreenshotTools } from "./tools/case-screenshots";
 import { registerCaseTools } from "./tools/cases";
 import { registerModuleTools } from "./tools/modules";
 import { registerProjectTools } from "./tools/projects";
@@ -36,6 +37,7 @@ function createMcpServer(context: Context): McpServer {
 	registerProjectTools(server, client);
 	registerModuleTools(server, client);
 	registerCaseTools(server, client);
+	registerCaseScreenshotTools(server, client);
 	registerTestRunTools(server, client);
 	return server;
 }

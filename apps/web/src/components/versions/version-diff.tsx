@@ -11,7 +11,7 @@ import { VersionTag } from "./version-tag.tsx";
 interface VersionDiffProps {
 	baseVersion: number;
 	diff: CaseSnapshotDiff;
-	/** 步骤截图的地址。删除的截图仍然可以显示，因为附件没有删除。 */
+	/** 截图的地址。删除的截图仍然可以显示，因为附件没有删除。 */
 	imageUrls: MarkdownImageUrls;
 	targetVersion: number;
 }

@@ -32,7 +32,7 @@ function MembershipRoleSelect({
 	onSetRole,
 	platformRole,
 }: MembershipRoleSelectProps) {
-	const options = projectRoleOptionsFor(platformRole);
+	const options = projectRoleOptionsFor(platformRole, membership.role);
 	const handleRoleChange = useCallback(
 		(next: string | null) => {
 			if (next === "member" || next === "owner") {
@@ -57,11 +57,7 @@ function MembershipRoleSelect({
 			</SelectTrigger>
 			<SelectContent>
 				{options.map((option) => (
-					<SelectItem
-						disabled={option.disabled}
-						key={option.value}
-						value={option.value}
-					>
+					<SelectItem key={option.value} value={option.value}>
 						{option.label}
 					</SelectItem>
 				))}

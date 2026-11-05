@@ -6,6 +6,10 @@ import type {
 	CaseType,
 	TestCase,
 } from "../schema/test-cases";
+import {
+	insertCaseAttachmentsInTx,
+	type NewCaseAttachmentRow,
+} from "./case-attachments-repository";
 import { findByNameInModule, findBySourceRef } from "./case-import-lookup";
 import { createTestCaseInTx } from "./case-mutations-repository";
 import { writeCaseMutation } from "./case-snapshot-core";
@@ -14,6 +18,15 @@ import type { DbTransaction } from "./repository-types";
 export const IMPORT_BATCH_LIMIT = 50;
 
 const OVERWRITE_CHANGE_NOTE = "导入覆盖（sourceRef 匹配）";
+
+const NEW_CASE_SCREENSHOTS_MESSAGE =
+	'这一行会新建用例，新用例不能引用截图上传凭证。先导入用例，再用 onDuplicate "overwrite" 和同一个 sourceRef 写入截图';
+
+const FOREIGN_SCREENSHOTS_MESSAGE =
+	"截图上传凭证属于另一个用例，不属于 sourceRef 对应的用例";
+
+const SKIPPED_SCREENSHOTS_NOTE =
+	'；没有写入截图，写入截图要用 onDuplicate "overwrite"';
 
 export type ImportOnDuplicate = "create-anyway" | "overwrite" | "skip";
 
@@ -30,9 +43,19 @@ export interface ImportCaseInput {
 	tags?: string[];
 }
 
+/**
+ * 一行引用的截图上传，已经校验过 R2 中的对象。步骤中的截图已经换成 attachments 的 id。
+ * 只能写入 caseId 这条已有的用例：覆盖时登记附件，新建或跳过时不登记。
+ */
+export interface ImportRowScreenshots {
+	attachments: NewCaseAttachmentRow[];
+	caseId: string;
+}
+
 export interface ImportCaseRow {
 	index: number;
 	item: ImportCaseInput;
+	screenshots?: ImportRowScreenshots;
 }
 
 export interface ImportBatchInput {
@@ -82,11 +105,26 @@ interface CaseTask extends ImportCaseRow {
 	batch: ImportBatchInput;
 }
 
+function errorOutcome(task: CaseTask, message: string): CaseOutcome {
+	return {
+		item: {
+			index: task.index,
+			message,
+			name: task.item.name,
+			sourceRef: task.item.sourceRef ?? null,
+		},
+		kind: "error",
+	};
+}
+
 async function createNewCase(
 	tx: DbTransaction,
 	task: CaseTask,
 	options: { sourceRef: string | null; warning?: string }
 ): Promise<CaseOutcome> {
+	if (task.screenshots !== undefined) {
+		return errorOutcome(task, NEW_CASE_SCREENSHOTS_MESSAGE);
+	}
 	const result = await createTestCaseInTx(tx, {
 		...task.item,
 		actorName: task.batch.actorName,
@@ -94,15 +132,7 @@ async function createNewCase(
 		sourceRef: options.sourceRef,
 	});
 	if (result.kind !== "created") {
-		return {
-			item: {
-				index: task.index,
-				message: "moduleId 不存在或不属于该项目",
-				name: task.item.name,
-				sourceRef: task.item.sourceRef ?? null,
-			},
-			kind: "error",
-		};
+		return errorOutcome(task, "moduleId 不存在或不属于该项目");
 	}
 	return {
 		item: {
@@ -123,6 +153,9 @@ async function overwriteExisting(
 	task: CaseTask,
 	existing: TestCase
 ): Promise<CaseOutcome> {
+	if (task.screenshots && task.screenshots.caseId !== existing.id) {
+		return errorOutcome(task, FOREIGN_SCREENSHOTS_MESSAGE);
+	}
 	const result = await writeCaseMutation(tx, {
 		actorName: task.batch.actorName,
 		caseId: existing.id,
@@ -139,16 +172,14 @@ async function overwriteExisting(
 		},
 	});
 	if (result.kind === "conflict" || result.kind === "not-found") {
-		return {
-			item: {
-				index: task.index,
-				message: `overwrite 失败（${result.kind}）`,
-				name: task.item.name,
-				sourceRef: task.item.sourceRef ?? null,
-			},
-			kind: "error",
-		};
+		return errorOutcome(task, `overwrite 失败（${result.kind}）`);
 	}
+	// 附件与步骤在同一个事务中写入。附件 id 来自上传凭证，再次导入同一个上传时不重复登记
+	await insertCaseAttachmentsInTx(
+		tx,
+		existing.id,
+		task.screenshots?.attachments ?? []
+	);
 	return {
 		item: {
 			action: "overwritten",
@@ -172,7 +203,11 @@ function skippedOutcome(
 			existingCaseId: existing.id,
 			index: task.index,
 			name: task.item.name,
-			reason,
+			// 跳过的行不写入截图。明确告诉调用方，不让截图悄悄丢失
+			reason:
+				task.screenshots === undefined
+					? reason
+					: `${reason}${SKIPPED_SCREENSHOTS_NOTE}`,
 			sourceRef: task.item.sourceRef ?? null,
 		},
 		kind: "skipped",
@@ -241,9 +276,9 @@ export async function importTestCases(
 	input: ImportBatchInput
 ): Promise<ImportBatchResult> {
 	const result: ImportBatchResult = { created: [], errors: [], skipped: [] };
-	for (const { index, item } of input.rows) {
+	for (const row of input.rows) {
 		// biome-ignore lint/performance/noAwaitInLoops: 逐条独立事务且需保持源文件顺序，必须串行
-		const outcome = await importOneCase({ batch: input, index, item });
+		const outcome = await importOneCase({ ...row, batch: input });
 		if (outcome.kind === "created") {
 			result.created.push(outcome.item);
 		} else if (outcome.kind === "skipped") {

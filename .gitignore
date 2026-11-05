@@ -20,6 +20,8 @@ local.db-*
 # Environment variables
 .env
 .env*.local
+# make up:prod 的生产配置，含数据库口令和密钥。模板是 .env.prod.example。
+.env.prod
 
 # IDEs and editors
 .vscode/*

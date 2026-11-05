@@ -134,6 +134,8 @@ describe("server env：变量格式", () => {
 		["AUTO_SUBMIT_SCAN_TZ", "UTC+8", false],
 		["AUTO_SUBMIT_SCAN_TZ", "Asia/Shanghai", true],
 		["SECRET_ENCRYPTION_KEY", "not base64!", false],
+		["CLIENT_IP_HEADER", "x-real-ip", true],
+		["CLIENT_IP_HEADER", "X-Real-IP: 1.2.3.4", false],
 	])("%s=%s：正常加载是 %s，失败时点名变量", async (name, value, loads) => {
 		stubEnv({ [name]: value });
 		const { error, output } = await loadEnv();

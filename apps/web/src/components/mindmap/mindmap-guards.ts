@@ -7,6 +7,10 @@ import {
 	type MindmapEntityRef,
 } from "./mindmap-adapter.ts";
 import {
+	canMoveMindmapNode,
+	type MindmapMoveDirection,
+} from "./mindmap-menu-items.ts";
+import {
 	isStepNodeRef,
 	type MindmapEntityNodeRef,
 	type MindmapNodeKind,
@@ -200,6 +204,24 @@ function guardMove(
 	return guardDropTarget(host, moved, movedRef, target);
 }
 
+/** 与菜单的上移、下移规则相同；移不动时（例如已经在最前面）不提示 */
+function guardMoveSibling(
+	host: MindmapGuardHost,
+	direction: MindmapMoveDirection,
+	el?: Topic
+): boolean {
+	const target = resolveTarget(host, el);
+	const ref = target === null ? null : getMindmapNodeRef(target.nodeObj);
+	if (target === null || ref === null) {
+		return false;
+	}
+	if (isStepNodeRef(ref)) {
+		host.reject(STEP_READONLY_MESSAGE);
+		return false;
+	}
+	return canMoveMindmapNode(target.nodeObj, direction);
+}
+
 function guardBeginEdit(host: MindmapGuardHost, el?: Topic): boolean {
 	const target = resolveTarget(host, el);
 	const ref = target === null ? null : getMindmapNodeRef(target.nodeObj);
@@ -225,9 +247,11 @@ export function createMindmapGuards(host: MindmapGuardHost): Before {
 		copyNodes: deny(host, "暂不支持复制节点"),
 		insertParent: deny(host, "暂不支持插入父节点"),
 		insertSibling: (_type, el) => guardInsertSibling(host, el),
+		moveDownNode: (el) => guardMoveSibling(host, 1, el),
 		moveNodeAfter: (from, to) => guardMove(host, from, to.nodeObj.parent),
 		moveNodeBefore: (from, to) => guardMove(host, from, to.nodeObj.parent),
 		moveNodeIn: (from, to) => guardMove(host, from, to.nodeObj),
+		moveUpNode: (el) => guardMoveSibling(host, -1, el),
 		removeNodes: (tpcs) => guardRemove(host, tpcs),
 		reshapeNode: deny(host, "暂不支持修改节点样式"),
 	};

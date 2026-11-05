@@ -1,12 +1,12 @@
 import { DiffMark } from "./diff-mark.tsx";
-import type { StepDiffEntry } from "./step-diff.ts";
+import type { StepDiffEntry, StepDiffField } from "./step-diff.ts";
 import { TextDiff } from "./text-diff.tsx";
 
 const TEXT_CLASS = "whitespace-pre-wrap break-words text-sm leading-relaxed";
 
 interface StepTextCellProps {
 	entry: StepDiffEntry;
-	field: "expected" | "step";
+	field: StepDiffField;
 }
 
 /** 步骤对比表格的一格：修改的步骤逐词对比，新增和删除的步骤整段标记。 */

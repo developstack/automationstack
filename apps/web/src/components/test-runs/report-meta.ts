@@ -7,7 +7,9 @@ export type TestRunReportView = Awaited<
 
 export type ReportModuleStat = TestRunReportView["modules"][number];
 export type ReportPriorityStat = TestRunReportView["priorities"][number];
-export type ReportFailedCase = TestRunReportView["failedCases"][number];
+/** 报告中一条失败或阻塞的用例。 */
+export type ReportFailedAndBlockedCase =
+	TestRunReportView["failedAndBlockedCases"][number];
 
 export const CONCLUDED_RESULTS: readonly TestRunCaseResult[] = [
 	"passed",

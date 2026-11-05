@@ -36,8 +36,12 @@ export function throwCaseImageViolation(
 	});
 }
 
+const MISSING_OBJECT_MESSAGE = "对象不存在，请重新上传后再登记";
+
 export async function verifyUploadedCaseImage(
 	target: {
+		/** 对象不存在时的错误信息。不同的调用方告诉用户不同的下一步。 */
+		missingMessage?: string;
 		scope: CaseAttachmentKeyScope;
 		storage: AttachmentObjectStore;
 		storageKey: string;
@@ -51,7 +55,9 @@ export async function verifyUploadedCaseImage(
 		target.storageKey
 	);
 	if (head === null) {
-		throw errors.BAD_REQUEST({ message: "对象不存在，请重新上传后再登记" });
+		throw errors.BAD_REQUEST({
+			message: target.missingMessage ?? MISSING_OBJECT_MESSAGE,
+		});
 	}
 	const verified: VerifiedCaseImage = {
 		contentType: head.contentType,

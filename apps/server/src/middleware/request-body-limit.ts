@@ -10,8 +10,6 @@ const BYTES_PER_MIB = BYTES_PER_KIB * BYTES_PER_KIB;
 const MAX_RPC_BODY_MIB = 2;
 export const MAX_RPC_BODY_BYTES = MAX_RPC_BODY_MIB * BYTES_PER_MIB;
 
-export const MAX_JIRA_WEBHOOK_BODY_BYTES = BYTES_PER_MIB;
-
 const DEFAULT_MAX_BODY_KIB = 64;
 export const DEFAULT_MAX_BODY_BYTES = DEFAULT_MAX_BODY_KIB * BYTES_PER_KIB;
 
@@ -19,7 +17,6 @@ const BODY_LIMIT_BY_PREFIX: readonly (readonly [string, number])[] = [
 	["/ingest/", MAX_INGEST_BODY_BYTES],
 	["/rpc/", MAX_RPC_BODY_BYTES],
 	["/api-reference", MAX_RPC_BODY_BYTES],
-	["/api/jira/webhook/", MAX_JIRA_WEBHOOK_BODY_BYTES],
 	["/mcp", MAX_RPC_BODY_BYTES],
 ];
 

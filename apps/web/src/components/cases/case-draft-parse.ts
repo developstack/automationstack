@@ -1,4 +1,7 @@
-import type { CaseStep } from "@automationstack/db/schema/test-cases";
+import {
+	type CaseStep,
+	COLUMN_SCREENSHOT_KEYS,
+} from "@automationstack/db/schema/test-cases";
 
 import {
 	CASE_TYPE_VALUES,
@@ -43,6 +46,20 @@ function pickOption<T extends string>(
 	return fallback;
 }
 
+/** 草稿中步骤的两组截图：附件 id 或上传占位。没有的一组不写。 */
+function pickScreenshots(raw: Record<string, unknown>): Partial<CaseStep> {
+	const groups: Partial<CaseStep> = {};
+	for (const key of COLUMN_SCREENSHOT_KEYS) {
+		const value = raw[key];
+		if (Array.isArray(value)) {
+			groups[key] = value.filter(
+				(entry): entry is string => typeof entry === "string"
+			);
+		}
+	}
+	return groups;
+}
+
 function parseSteps(value: unknown): CaseStep[] {
 	if (!Array.isArray(value)) {
 		return [];
@@ -54,6 +71,7 @@ function parseSteps(value: unknown): CaseStep[] {
 				expected: pickString(raw.expected, ""),
 				id: raw.id,
 				step: pickString(raw.step, ""),
+				...pickScreenshots(raw),
 			});
 		}
 	}

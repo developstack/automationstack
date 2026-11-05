@@ -18,6 +18,9 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@automationstack/db", () => ({ db: {} }));
+vi.mock("@automationstack/env/server", () => ({
+	env: { SESSION_SECRET: "test-session-secret-0123456789abcdef" },
+}));
 vi.mock("@automationstack/db/repositories/case-mutations-repository", () => ({
 	changeCaseStatus: mocks.changeCaseStatus,
 }));
@@ -50,12 +53,13 @@ const testCase = {
 function changeAs(
 	projectRole: ProjectRole | null,
 	status: CaseStatus,
-	ids = [CASE_ID]
+	ids = [CASE_ID],
+	extra: object = {}
 ) {
 	mocks.getProjectRole.mockResolvedValue(projectRole);
 	return call(
 		caseStatusProcedures.changeStatus,
-		{ ids, status },
+		{ ids, status, ...extra },
 		{ context: callContext(viewer), path: ["cases", "changeStatus"] }
 	);
 }
@@ -69,8 +73,8 @@ beforeEach(() => {
 
 describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 	it.each<[string, number | null, number]>([
-		["状态变化：记录新版本，通知其他人刷新", 6, 1],
-		["状态没有变化：不记录版本，也不通知", null, 0],
+		["状态变化：记录新版本，通知其他人刷新，返回撤销凭证", 6, 1],
+		["状态没有变化：不记录版本，不通知，没有撤销凭证", null, 0],
 	])("%s", async (_name, version, published) => {
 		const change = {
 			previousStatus: "active",
@@ -84,6 +88,7 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 
 		await expect(changeAs("member", "deprecated")).resolves.toEqual({
 			changes: [change],
+			undoToken: version === null ? null : expect.any(String),
 		});
 		expect(mocks.changeCaseStatus).toHaveBeenCalledWith({
 			actorName: "bob",
@@ -152,16 +157,18 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 		);
 	});
 
-	it.each<[string, string[]]>([
-		["没有用例", []],
-		[
-			`超过 ${MAX_BATCH_CASES} 条用例`,
-			Array.from({ length: MAX_BATCH_CASES + 1 }, () => CASE_ID),
-		],
-	])("%s：BAD_REQUEST，不写数据库", async (_name, ids) => {
-		await expect(changeAs("member", "draft", ids)).rejects.toMatchObject({
-			code: "BAD_REQUEST",
-		});
+	const tooMany = Array.from({ length: MAX_BATCH_CASES + 1 }, () => CASE_ID);
+	it.each<[string, string[], object]>([
+		["没有用例", [], {}],
+		[`超过 ${MAX_BATCH_CASES} 条用例`, tooMany, {}],
+		// 撤销改用 cases.undoStatusChange，旧的 undo 标记不再放宽按 id 修改的上限
+		[`带 undo 标记超过 ${MAX_BATCH_CASES} 条用例`, tooMany, { undo: true }],
+	])("%s：BAD_REQUEST，不写数据库", async (_name, ids, extra) => {
+		await expect(changeAs("member", "draft", ids, extra)).rejects.toMatchObject(
+			{
+				code: "BAD_REQUEST",
+			}
+		);
 		expect(mocks.changeCaseStatus).not.toHaveBeenCalled();
 	});
 

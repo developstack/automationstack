@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 import { MAX_INGEST_BODY_BYTES } from "../ingest/body-limit";
 import {
 	DEFAULT_MAX_BODY_BYTES,
-	MAX_JIRA_WEBHOOK_BODY_BYTES,
 	MAX_RPC_BODY_BYTES,
 	requestBodyLimit,
 } from "./request-body-limit";
@@ -46,7 +45,6 @@ describe("requestBodyLimit", () => {
 
 	it("额度按路由族分档，且 ingest 那档就是 ingest 自己的上限", () => {
 		expect(MAX_INGEST_BODY_BYTES).toBeGreaterThan(MAX_RPC_BODY_BYTES);
-		expect(MAX_RPC_BODY_BYTES).toBeGreaterThan(MAX_JIRA_WEBHOOK_BODY_BYTES);
-		expect(MAX_JIRA_WEBHOOK_BODY_BYTES).toBeGreaterThan(DEFAULT_MAX_BODY_BYTES);
+		expect(MAX_RPC_BODY_BYTES).toBeGreaterThan(DEFAULT_MAX_BODY_BYTES);
 	});
 });

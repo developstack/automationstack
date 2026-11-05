@@ -200,7 +200,82 @@ server 的启动路径、两个 Dockerfile、CI 全都不跑。
 `POSTGRES_PASSWORD` 没有兜底值，没设时 `docker compose` 直接拒绝启动。
 这是刻意的：它同时被拼进 `server` 和 `migrate` 的 `DATABASE_URL`，
 一个静默生效的弱口令会让整个库（含 `api_tokens.token_hash`、
-`jira_configs` 里的密文）敞在那里，而没有任何人会注意到。
+Casdoor 的 client secret 密文）敞在那里，而没有任何人会注意到。
+
+### 单机生产部署（`make up:prod`）
+
+`make up:prod` 在一台服务器上运行生产构建。数据库在外部机器上，本仓库不启动数据库。
+集群上的正式生产环境不使用它。正式生产环境由 `developstack/k8s-gitops` 的 `automationstack/k8s` 管理。
+
+服务器上必须有 docker（含 compose 插件）、git 和 make。
+
+所有配置在一个文件中：仓库根目录的 `.env.prod`。它的模板是 `.env.prod.example`。
+`.env.prod` 不进入 git。重新 clone 仓库后它不存在，所以要单独备份它。
+
+#### 入口与跨域
+
+nginx 是唯一的入口，监听 80 和 443。server 和 web 不发布端口。
+前端和后端使用同一个域名 `https://<DOMAIN>`。nginx 按路径分流，所以浏览器中没有跨域请求：
+
+| 路径 | 转发到 |
+| --- | --- |
+| `/rpc`、`/api`、`/ingest`、`/mcp`、`/ws`、`/health` | server |
+| 其他路径 | web |
+
+路径与 k8s-gitops 的 `ingress.yaml` 相同。修改 `deploy/nginx/locations.conf` 时，两处一起改。
+web 的 `VITE_SERVER_URL` 和 server 的 `CORS_ORIGIN` 都由 `DOMAIN` 得出，所以两者总是相同。
+
+登录限流按客户端 IP 计数。nginx 用连接地址覆盖 `X-Real-IP` 请求头，server 从这个请求头读取客户端 IP（`CLIENT_IP_HEADER`）。
+server 不发布端口，所以客户端不能绕过 nginx 伪造这个请求头。
+
+HTTPS 证书来自 Let's Encrypt。`make up:prod` 申请第一张证书。certbot 服务自动续期证书。
+证书在 docker 卷 `letsencrypt` 中。`make down:prod` 不删除它。
+
+#### 准备
+
+1. 在阿里云中，把域名的 A 记录指向本服务器的公网 IP。
+2. 在阿里云安全组中，允许 80 和 443 端口的入站流量。
+3. 中国内地的服务器：确认域名已经完成 ICP 备案。没有备案时，80 和 443 端口被阻断，证书申请失败。
+4. 在数据库机器上创建角色和库。角色必须是库的 owner：
+
+   ```sql
+   CREATE ROLE automationstack LOGIN PASSWORD '<口令>';
+   CREATE DATABASE automationstack OWNER automationstack;
+   ```
+
+5. 在 `pg_hba.conf` 中允许本服务器的地址连接这个库。
+6. 确认防火墙允许本服务器连接数据库的端口。
+
+#### 第一次启动
+
+1. 执行 `make up:prod`。它从模板生成 `.env.prod`（权限 600），然后停止。
+2. 在 `.env.prod` 中填写注释中有 `[必填]` 的键。
+3. 再执行一次 `make up:prod`。
+
+#### 每次启动时 `make up:prod` 做的事
+
+1. 合并 `.env.prod`：模板中新增的键，连同注释，追加到 `.env.prod` 的末尾。已有的值不变。
+2. 检查 `.env.prod`：必填键为空时，停止。模板中没有的键，给警告。
+3. 构建 server 和 web 的镜像。迁移在 server 镜像中执行，所以构建在迁移之前。
+4. 预检外部库，然后执行迁移（SQL）。这一步在启动或替换任何服务之前。
+   它失败时，`make up:prod` 停止，正在运行的旧服务不变。
+5. 启动 server、web、nginx 和 certbot，等到 server 和 web 变为 healthy。
+6. 没有证书时，向 Let's Encrypt 申请。然后 nginx 改用 HTTPS。
+   申请失败时，站点继续用 HTTP 提供服务。改正原因后，再执行一次 `make up:prod`。
+
+server 第一次启动时，库中没有管理员。这时它用 `ADMIN_INITIAL_PASSWORD` 创建引导管理员。
+`ADMIN_INITIAL_PASSWORD` 为空时，server 不启动。
+
+#### 其他命令
+
+| 命令 | 作用 |
+| --- | --- |
+| `make logs:prod` | 跟踪日志。`APP=nginx` 只看 nginx |
+| `make down:prod` | 停止并删除容器。镜像、证书和数据库不变 |
+| `make up:prod PROD_ENV=<路径>` | 使用其他路径的生产 env 文件 |
+
+在 `apps/server/.env.example` 中增加键时，也在 `.env.prod.example` 中增加它。
+`scripts/prod-env.test.mjs` 检查这两个文件的键。
 
 ## 可用脚本
 

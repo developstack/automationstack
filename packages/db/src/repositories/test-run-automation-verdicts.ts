@@ -87,7 +87,7 @@ async function updateAutomationVerdictRows(
 			executed_by = ${input.actorId}::uuid,
 			executed_via = 'automation',
 			last_automation_execution_id = ${input.executionId}::uuid,
-			step_results = ${uniformStepResultsSql({ lastStepComment: sql`v.comment`, result: sql`v.result::text` })}
+			step_results = ${uniformStepResultsSql({ lastStepActualResult: sql`v.comment`, result: sql`v.result::text` })}
 		from (values ${sql.join(valueRows, sql`, `)}) as v(id, result, comment)
 		where ${testRunCases.id} = v.id
 		returning ${testRunCases.id}

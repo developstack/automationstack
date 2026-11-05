@@ -1,6 +1,12 @@
+import {
+	type CaseStep,
+	COLUMN_SCREENSHOT_KEYS,
+	type ColumnScreenshotKey,
+} from "@automationstack/db/schema/test-cases";
+
 import type { ChangeKind } from "./change-kind.ts";
 
-/** 一张步骤截图在两个版本之间的变化。截图没有「修改」，内容不同的图片是另一个附件。 */
+/** 一张截图（操作截图或预期截图）在两个版本之间的变化。截图没有「修改」，内容不同的图片是另一个附件。 */
 export type ScreenshotChangeKind = Exclude<ChangeKind, "modified">;
 
 export interface ScreenshotDiffEntry {
@@ -42,7 +48,7 @@ function keptInOrder(
 }
 
 /**
- * 一个步骤的截图变化。先按新版本的顺序列出新增、移动和未变的截图，再按旧版本的顺序列出删除的截图。
+ * 一个步骤中一组截图的变化。先按新版本的顺序列出新增、移动和未变的截图，再按旧版本的顺序列出删除的截图。
  * 「移动」只标记相对顺序改变的截图：删除或新增一张截图不会让其他截图变成「移动」。
  */
 export function diffScreenshots(
@@ -78,8 +84,33 @@ function newKind(
 	return kept.has(id) ? "unchanged" : "moved";
 }
 
-export function hasScreenshotChanges(
+function hasScreenshotChanges(
 	entries: readonly ScreenshotDiffEntry[]
 ): boolean {
 	return entries.some((entry) => entry.kind !== "unchanged");
+}
+
+/** 一个步骤的两组截图各自的变化，见 CONTEXT.md：操作截图和预期截图。 */
+export type ColumnScreenshotsDiff = Record<
+	ColumnScreenshotKey,
+	ScreenshotDiffEntry[]
+>;
+
+/** 对比一个步骤的两组截图。新增的步骤 oldStep 为 null，删除的步骤 newStep 为 null；没有字段等于空列表。 */
+export function diffColumnScreenshots(
+	oldStep: CaseStep | null,
+	newStep: CaseStep | null
+): ColumnScreenshotsDiff {
+	const group = (key: ColumnScreenshotKey) =>
+		diffScreenshots(oldStep?.[key] ?? [], newStep?.[key] ?? []);
+	return {
+		actionScreenshots: group("actionScreenshots"),
+		expectedScreenshots: group("expectedScreenshots"),
+	};
+}
+
+export function hasColumnScreenshotChanges(
+	diff: ColumnScreenshotsDiff
+): boolean {
+	return COLUMN_SCREENSHOT_KEYS.some((key) => hasScreenshotChanges(diff[key]));
 }

@@ -5,6 +5,8 @@ import {
 	buildCaseComment,
 	deriveCaseResult,
 	fillStepResults,
+	stepsMissingActualResult,
+	unjudgedStepsWithActualResult,
 	unknownStepIds,
 } from "./test-run-step-results-core";
 
@@ -17,9 +19,9 @@ const steps: CaseStep[] = [
 describe("fillStepResults", () => {
 	it("没点过的步骤落成跳过，顺序跟用例的步骤走", () => {
 		expect(fillStepResults(steps, { s2: "failed" })).toEqual([
-			{ comment: null, result: "skipped", stepId: "s1" },
-			{ comment: null, result: "failed", stepId: "s2" },
-			{ comment: null, result: "skipped", stepId: "s3" },
+			{ actualResult: null, result: "skipped", stepId: "s1" },
+			{ actualResult: null, result: "failed", stepId: "s2" },
+			{ actualResult: null, result: "skipped", stepId: "s3" },
 		]);
 	});
 
@@ -32,42 +34,95 @@ describe("fillStepResults", () => {
 		expect(filled.map((item) => item.stepId)).toEqual(["s1", "s2", "s3"]);
 	});
 
-	it("只有失败 / 阻塞才留下原因", () => {
+	it("每种判定都保留实际结果的文字，去掉首尾空白，只有空白时当作没写", () => {
 		const filled = fillStepResults(
 			steps,
-			{ s1: "passed", s2: "failed", s3: "blocked" },
-			{ s1: "点错了写的", s2: "支付超时", s3: "环境没起来" }
+			{ s1: "passed", s2: "failed", s3: "skipped" },
+			{ s1: "  登录页正常出现 ", s2: "支付超时", s3: "   \n  " }
 		);
-		expect(filled.map((item) => item.comment)).toEqual([
-			null,
+		expect(filled.map((item) => item.actualResult)).toEqual([
+			"登录页正常出现",
 			"支付超时",
-			"环境没起来",
+			null,
 		]);
 	});
+});
 
-	it("判成通过时那段原因不落库——但草稿里留着是另一回事", () => {
-		const [first] = fillStepResults(
-			steps,
-			{ s1: "passed" },
-			{ s1: "支付超时" }
+describe("stepsMissingActualResult", () => {
+	it.each([
+		["失败和阻塞没写实际结果", { s1: "failed", s3: "blocked" }, {}, [1, 3]],
+		["实际结果只有空白", { s2: "failed" }, { s2: "  " }, [2]],
+		[
+			"失败和阻塞都写了",
+			{ s1: "failed", s2: "blocked" },
+			{ s1: "超时", s2: "没环境" },
+			[],
+		],
+		[
+			"通过和跳过可以不写（一键全部通过）",
+			{ s1: "passed", s2: "passed", s3: "skipped" },
+			{},
+			[],
+		],
+	] as const)("%s", (_name, judged, actualResults, expected) => {
+		expect(stepsMissingActualResult(steps, judged, actualResults)).toEqual(
+			expected
 		);
-		expect(first?.comment).toBeNull();
 	});
+});
 
-	it("只有空白字符的原因当作没写", () => {
-		const [, second] = fillStepResults(
-			steps,
-			{ s2: "failed" },
-			{ s2: "   \n  " }
-		);
-		expect(second?.comment).toBeNull();
+describe("unjudgedStepsWithActualResult", () => {
+	it.each<{
+		actualResults: Record<string, string>;
+		attached: string[];
+		expected: number[];
+		judged: Record<string, "failed" | "passed" | "skipped">;
+		name: string;
+	}>([
+		{
+			actualResults: { s1: "没测到这里" },
+			attached: [],
+			expected: [1],
+			judged: { s2: "passed" },
+			name: "没有判定的步骤写了文字",
+		},
+		{
+			actualResults: {},
+			attached: ["s3"],
+			expected: [3],
+			judged: {},
+			name: "没有判定的步骤有实际附件",
+		},
+		{
+			actualResults: { s1: "  " },
+			attached: [],
+			expected: [],
+			judged: {},
+			name: "只有空白的文字不算实际结果",
+		},
+		{
+			actualResults: { s1: "没环境", s2: "超时" },
+			attached: ["s1", "s2"],
+			expected: [],
+			judged: { s1: "skipped", s2: "failed" },
+			name: "有判定的步骤可以有文字和实际附件",
+		},
+	])("$name", ({ actualResults, attached, expected, judged }) => {
+		expect(
+			unjudgedStepsWithActualResult(
+				steps,
+				judged,
+				actualResults,
+				new Set(attached)
+			)
+		).toEqual(expected);
 	});
 });
 
 describe("deriveCaseResult", () => {
 	const of = (...results: string[]) =>
 		results.map((result, index) => ({
-			comment: null,
+			actualResult: null,
 			result: result as "blocked" | "failed" | "passed" | "skipped",
 			stepId: `s${index}`,
 		}));
@@ -96,26 +151,32 @@ describe("deriveCaseResult", () => {
 });
 
 describe("buildCaseComment", () => {
-	it("按步骤序号折成多行，只收有原因的那几步", () => {
+	it("只收失败和阻塞的步骤，按用例的步骤顺序和序号折成多行", () => {
 		const filled = fillStepResults(
 			steps,
-			{ s1: "passed", s2: "failed", s3: "blocked" },
-			{ s2: "支付超时，订单状态没回滚", s3: "沙箱账号没开通" }
+			{ s1: "blocked", s2: "passed", s3: "failed" },
+			{ s1: "沙箱账号没开通", s2: "页面正常", s3: "支付超时" }
 		);
 		expect(buildCaseComment(steps, filled)).toBe(
-			"步骤 2：支付超时，订单状态没回滚\n步骤 3：沙箱账号没开通"
+			"步骤 1：沙箱账号没开通\n步骤 3：支付超时"
 		);
 	});
 
-	it("一条原因都没有时返回 null，而不是空字符串", () => {
-		const filled = fillStepResults(steps, { s1: "passed" });
-		expect(buildCaseComment(steps, filled)).toBeNull();
+	it.each([
+		["只有通过和跳过的步骤写了实际结果", "skipped", "没测"],
+		["失败的步骤没有实际结果", "failed", null],
+	] as const)("没有可收的步骤时返回 null：%s", (_name, result, text) => {
+		const stepResults = [
+			{ actualResult: "页面正常", result: "passed" as const, stepId: "s1" },
+			{ actualResult: text, result, stepId: "s2" },
+		];
+		expect(buildCaseComment(steps, stepResults)).toBeNull();
 	});
 
 	it("用例改过、指不到人的那条结果不丢，落成「已删除的步骤」", () => {
 		const orphan = [
 			{
-				comment: "旧步骤当时失败了",
+				actualResult: "旧步骤当时失败了",
 				result: "failed" as const,
 				stepId: "gone",
 			},

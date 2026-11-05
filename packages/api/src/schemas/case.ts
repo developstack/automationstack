@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MAX_FILE_NAME_LENGTH } from "./case-attachment";
+
 export const casePrioritySchema = z.enum(["P0", "P1", "P2", "P3"]);
 
 export const caseTypeSchema = z.enum([
@@ -61,21 +63,31 @@ export const caseListFilterSchema = z.object({
 });
 
 /**
- * cases.changeStatus 的输入，三种之一：
+ * cases.changeStatus 的输入，两种之一：
  * - 勾选的用例 { ids, status }，最多 MAX_BATCH_CASES 条；
- * - 撤销 { ids, status, undo: true }：恢复按筛选条件修改的用例，最多 MAX_FILTER_BATCH_CASES 条。
- *   服务端不核对这是不是撤销：按筛选条件本来就可以一次修改这么多条，事务的上限相同；
  * - 全部符合筛选的用例 { filter, status }，由服务端按筛选条件找出用例。
+ * 撤销不用这个输入，用 cases.undoStatusChange 和修改时返回的撤销凭证（见 undoCaseStatusChangeSchema）。
  */
 export const changeCaseStatusInputSchema = z.union([
 	changeCaseStatusSchema,
-	z.object({
-		ids: z.array(z.uuid()).min(1).max(MAX_FILTER_BATCH_CASES),
-		status: caseStatusSchema,
-		undo: z.literal(true),
-	}),
 	z.object({ filter: caseListFilterSchema, status: caseStatusSchema }),
 ]);
+
+/**
+ * 撤销凭证最多的字符数。凭证中有改过的用例和各自原来的状态，按筛选条件修改时最多
+ * MAX_FILTER_BATCH_CASES 条，约 52 KB。上限留出余量，并让校验签名的工作量有界。
+ */
+const MAX_UNDO_TOKEN_KIB = 128;
+const CHARS_PER_KIB = 1024;
+export const MAX_UNDO_TOKEN_LENGTH = MAX_UNDO_TOKEN_KIB * CHARS_PER_KIB;
+
+/** cases.undoStatusChange 的输入：cases.changeStatus 返回的撤销凭证（undoToken）。 */
+export const undoCaseStatusChangeSchema = z.object({
+	token: z.string().min(1, "撤销凭证不能为空").max(MAX_UNDO_TOKEN_LENGTH),
+});
+
+export const CASE_STATUS_UNDO_EXPIRED_MESSAGE =
+	"撤销已过期，请手动修改用例状态";
 
 /** cases.removeMany 的输入：勾选的用例 { ids }，或全部符合筛选的用例 { filter }。 */
 export const removeCasesInputSchema = z.union([
@@ -83,26 +95,67 @@ export const removeCasesInputSchema = z.union([
 	z.object({ filter: caseListFilterSchema }),
 ]);
 
-/** 每个步骤最多的步骤截图数量。 */
-export const MAX_STEP_SCREENSHOTS = 9;
+/** 每个步骤每组截图（操作截图、预期截图）最多的数量。 */
+export const MAX_COLUMN_SCREENSHOTS = 9;
 
-/** 外部工具（导入、MCP）写入的步骤：不带步骤截图，多余的字段被丢弃。 */
+/**
+ * 步骤的文字部分，多余的字段被丢弃。没有截图字段时，id 相同的步骤保留现有的截图
+ * （见 mergeColumnScreenshots）。
+ */
 export const caseStepSchema = z.object({
 	expected: z.string(),
 	id: z.string().min(1),
 	step: z.string(),
 });
 
-const stepScreenshotsSchema = z
-	.array(z.uuid())
-	.max(MAX_STEP_SCREENSHOTS, `每个步骤最多 ${MAX_STEP_SCREENSHOTS} 张步骤截图`)
-	.refine((ids) => new Set(ids).size === ids.length, {
-		message: "步骤截图中有重复的附件 id",
-	});
+function screenshotGroupSchema(
+	label: string,
+	item: { schema: z.ZodType<string>; unit: string }
+) {
+	return z
+		.array(item.schema)
+		.max(
+			MAX_COLUMN_SCREENSHOTS,
+			`每个步骤最多 ${MAX_COLUMN_SCREENSHOTS} 张${label}`
+		)
+		.refine((ids) => new Set(ids).size === ids.length, {
+			message: `${label}中有重复的${item.unit}`,
+		});
+}
 
-/** 用例编辑区写入的步骤：可以带步骤截图（用例附件 id）。 */
+const attachmentIdItem = { schema: z.uuid(), unit: "附件 id" };
+
+/** MCP 写入截图时引用的上传凭证（见 lib/case-screenshot-upload-token）。 */
+const uploadTokenItem = {
+	schema: z.string().min(1, "上传凭证不能为空"),
+	unit: "上传凭证",
+};
+
+/** 用例编辑区写入的步骤：可以带操作截图和预期截图（用例附件 id）。不带的一组保留现有的截图。 */
 export const caseStepWithScreenshotsSchema = caseStepSchema.extend({
-	screenshots: stepScreenshotsSchema.optional(),
+	actionScreenshots: screenshotGroupSchema(
+		"操作截图",
+		attachmentIdItem
+	).optional(),
+	expectedScreenshots: screenshotGroupSchema(
+		"预期截图",
+		attachmentIdItem
+	).optional(),
+});
+
+/**
+ * 导入（MCP 的 import_test_cases）写入的步骤：截图是上传凭证，写入前换成附件 id。
+ * 给出的一组整组替换，不给的一组保留现有的截图。
+ */
+export const importCaseStepSchema = caseStepSchema.extend({
+	actionScreenshots: screenshotGroupSchema(
+		"操作截图",
+		uploadTokenItem
+	).optional(),
+	expectedScreenshots: screenshotGroupSchema(
+		"预期截图",
+		uploadTokenItem
+	).optional(),
 });
 
 export const caseContentSchema = z.object({
@@ -131,7 +184,7 @@ export const caseContentPatchSchema = z.object({
 
 export const importCaseSchema = caseContentSchema.extend({
 	moduleId: z.uuid(),
-	steps: z.array(caseStepSchema).default([]),
+	steps: z.array(importCaseStepSchema).default([]),
 });
 
 export const importOnDuplicateSchema = z.enum([
@@ -141,12 +194,16 @@ export const importOnDuplicateSchema = z.enum([
 ]);
 
 export const createCaseAttachmentSchema = z.object({
-	fileName: z.string().min(1).max(255),
+	fileName: z.string().min(1).max(MAX_FILE_NAME_LENGTH),
 	id: z.uuid(),
 	storageKey: z.string().min(1),
 });
 
-export const MAX_NEW_CASE_ATTACHMENTS = 50;
+/**
+ * 新建一条用例时一次可以引用的附件数量（正文图片、操作截图和预期截图），MCP 导入的一行也使用这个上限。
+ * 每组截图最多 MAX_COLUMN_SCREENSHOTS 张，步骤数量不限，所以上限要足够大。
+ */
+export const MAX_NEW_CASE_ATTACHMENTS = 200;
 
 export const caseConflictDataSchema = z.object({
 	currentVersion: z.number().int(),

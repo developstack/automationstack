@@ -1,16 +1,10 @@
 import { z } from "zod";
 
 export const PROJECT_TAB = "project";
-export const JIRA_TAB = "jira";
 export const TOKENS_TAB = "tokens";
 export const AGENT_TAB = "agent";
 
-export const SETTINGS_TABS = [
-	PROJECT_TAB,
-	JIRA_TAB,
-	TOKENS_TAB,
-	AGENT_TAB,
-] as const;
+export const SETTINGS_TABS = [PROJECT_TAB, TOKENS_TAB, AGENT_TAB] as const;
 
 export type SettingsTab = (typeof SETTINGS_TABS)[number];
 

@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { precheckCaseImage } from "@/components/cases/case-attachment-policy";
-import type { CaseDraftAttachment } from "@/components/cases/case-draft-parse";
 import { putFileToStorage } from "@/components/cases/case-storage-put";
 import { client, orpc } from "@/utils/orpc";
 
@@ -18,12 +17,7 @@ export function isStorageUnavailableError(error: unknown): boolean {
 
 /** 一张图片的上传结果。failed 的原因可以直接显示给用户。 */
 export type CaseImageUploadResult =
-	| {
-			attachmentId: string;
-			/** 新建用例的草稿上传流程返回的附件信息，创建用例时提交。 */
-			draft?: CaseDraftAttachment;
-			kind: "ok";
-	  }
+	| { attachmentId: string; kind: "ok" }
 	| { kind: "failed"; reason: string }
 	| { kind: "storage-unavailable" };
 

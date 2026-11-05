@@ -10,7 +10,11 @@ import { useTestRunListFilters } from "@/components/test-runs/test-run-list-cont
 import { TestRunListHeader } from "@/components/test-runs/test-run-list-header";
 import { TestRunListResults } from "@/components/test-runs/test-run-list-results";
 import { TestRunListToolbar } from "@/components/test-runs/test-run-list-toolbar";
-import { testRunListInput } from "@/components/test-runs/test-runs-search";
+import {
+	type TestRunsSearch,
+	testRunListInput,
+} from "@/components/test-runs/test-runs-search";
+import { useHasVoidedRuns } from "@/components/test-runs/use-has-voided-runs";
 import { orpc } from "@/utils/orpc";
 
 const routeApi = getRouteApi("/projects/$projectId/test-runs/");
@@ -61,19 +65,41 @@ function TestRunListForms({
 	);
 }
 
-export function TestRunListView({ projectId }: { projectId: string }) {
-	const search = routeApi.useSearch();
-	const navigate = useNavigate({ from: "/projects/$projectId/test-runs/" });
-	const [formOpen, setFormOpen] = useState(false);
-	const [editingRunId, setEditingRunId] = useState<string | null>(null);
-
+/**
+ * 按筛选条件载入的测试任务，和项目中有没有已作废的测试任务（见 useHasVoidedRuns）。
+ * 列表为空时等这两个查询都返回再显示结果，空列表的说明不会先显示「还没有测试任务」再改变。
+ */
+function useTestRunList(projectId: string, search: TestRunsSearch) {
 	const listQuery = useQuery(
 		orpc.testRuns.list.queryOptions({
 			input: testRunListInput(projectId, search),
 			placeholderData: keepPreviousData,
 		})
 	);
+	const hasVoidedRuns = useHasVoidedRuns(
+		projectId,
+		search,
+		listQuery.data?.length === 0 && !listQuery.isPlaceholderData
+	);
+	const loaded = listQuery.data !== undefined;
+	return {
+		hasVoidedRuns: hasVoidedRuns ?? false,
+		items: listQuery.data ?? [],
+		loaded,
+		resultsLoaded: loaded && hasVoidedRuns !== undefined,
+	};
+}
 
+export function TestRunListView({ projectId }: { projectId: string }) {
+	const search = routeApi.useSearch();
+	const navigate = useNavigate({ from: "/projects/$projectId/test-runs/" });
+	const [formOpen, setFormOpen] = useState(false);
+	const [editingRunId, setEditingRunId] = useState<string | null>(null);
+
+	const { hasVoidedRuns, items, loaded, resultsLoaded } = useTestRunList(
+		projectId,
+		search
+	);
 	const { setKeyword, setStatus } = useTestRunListFilters(navigate);
 
 	const openCreate = useCallback(() => {
@@ -86,22 +112,21 @@ export function TestRunListView({ projectId }: { projectId: string }) {
 	}, []);
 	const closeForm = useCallback(() => setFormOpen(false), []);
 
-	const items = listQuery.data ?? [];
-
 	return (
 		<PageTransition className={TEST_RUN_LIST_MAIN} phase="ready">
 			<TestRunListHeader onCreate={openCreate} />
 			<TestRunListToolbar
 				count={items.length}
-				loaded={listQuery.data !== undefined}
+				loaded={loaded}
 				onKeywordChange={setKeyword}
 				onStatusChange={setStatus}
 				search={search}
 			/>
 			<TestRunListCaveat />
 			<TestRunListResults
+				hasVoidedRuns={hasVoidedRuns}
 				items={items}
-				loaded={listQuery.data !== undefined}
+				loaded={resultsLoaded}
 				onEdit={openEdit}
 				search={search}
 			/>

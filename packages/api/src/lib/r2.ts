@@ -9,6 +9,7 @@ import {
 	headR2Object,
 	presignR2Download,
 	presignR2Upload,
+	type R2UploadObject,
 	removeR2Object,
 } from "./r2-operations";
 
@@ -16,7 +17,11 @@ export type R2ObjectHead = AttachmentObjectHead;
 
 export interface R2Storage extends AttachmentObjectStore {
 	presignDownload: (storageKey: string) => Promise<string>;
-	presignUpload: (storageKey: string, contentType: string) => Promise<string>;
+	/** 签发上传地址。地址只接受这个类型和这个准确大小的文件。 */
+	presignUpload: (
+		storageKey: string,
+		object: R2UploadObject
+	) => Promise<string>;
 }
 
 let cachedStorage: R2Storage | null = null;
@@ -37,8 +42,8 @@ function createStorage(bucket: string, endpoint: string): R2Storage {
 		headObject: (storageKey) => headR2Object(client, bucket, storageKey),
 		presignDownload: (storageKey) =>
 			presignR2Download(client, bucket, storageKey),
-		presignUpload: (storageKey, contentType) =>
-			presignR2Upload(client, bucket, storageKey, contentType),
+		presignUpload: (storageKey, object) =>
+			presignR2Upload(client, bucket, storageKey, object),
 		remove: (storageKey) => removeR2Object(client, bucket, storageKey),
 	};
 }

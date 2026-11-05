@@ -9,11 +9,13 @@ function caseFormFingerprint(values: CaseFormValues): string {
 		values.priority,
 		values.status,
 		values.tagsText,
+		// 没有截图字段等于空列表
 		values.steps.map((step) => [
 			step.id,
 			step.step,
 			step.expected,
-			step.screenshots ?? [],
+			step.actionScreenshots ?? [],
+			step.expectedScreenshots ?? [],
 		]),
 	]);
 }

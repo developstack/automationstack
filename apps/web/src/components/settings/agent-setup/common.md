@@ -4,7 +4,7 @@
 2. **跑一次安装脚本**——它装两个 skill，并按你本机装了哪些 agent 分别写好 MCP 配置。
 3. **`export AS_TOKEN=…` 之后重启 agent**，让它调一次 `list_projects`：能列出项目就算接上了。
 
-> 前两步是**一次性配置**，装完不必再回来。日常真正在用的只有下面这条端点和九个工具——其中最要紧的一条是：**动笔写用例之前先调 `read_cases` 把平台上已有的用例正文读进来**，理由见「动笔之前」那一节。
+> 前两步是**一次性配置**，装完不必再回来。日常真正在用的只有下面这条端点和十一个工具——其中最要紧的一条是：**动笔写用例之前先调 `read_cases` 把平台上已有的用例正文读进来**，理由见「动笔之前」那一节。
 
 ---
 
@@ -26,9 +26,9 @@
 
 ---
 
-## 十个工具
+## 十一个工具
 
-按「你什么时候会用到它」分五组，不是十件等权重的事。
+按「你什么时候会用到它」分六组，不是十一件等权重的事。
 
 ### 一次性：找到项目
 
@@ -74,6 +74,51 @@
 
 > ⚠️ 两个默认值决定了你事后要不要返工。**新写的用例一律 `status: "draft"`**——平台的用例列表按 status 过滤，`draft` 就是「待评审」那一格；直接写 `active` 等于把没人看过的 AI 产出混进正式用例库。**`onDuplicate` 用 `skip`（补漏）或 `overwrite`（需求改了重出一版），别用 `create-anyway`**：它会把 `sourceRef` 置成 `null`，那条用例从此退出幂等体系，以后每次重跑都再复制一份。另注意 `overwrite` **只覆盖内容字段，不会把用例移动到别的模块**。
 
+### 写入截图：三步
+
+- **`create_screenshot_upload`** —— 为一个已有用例的一张图片取得上传地址。迁移 Excel 或 XMind 中的用例时，用它写入步骤的操作截图和预期截图。
+
+MCP 工具的参数是 JSON 文本，不能包含图片的字节。所以写入截图分三步：
+
+1. 调用 `create_screenshot_upload`。给出用例的 `caseId`，以及本地图片的文件名、类型和准确的字节数（`sizeBytes`）。例如用 `wc -c < ./images/login.png` 取得字节数。
+2. 把 shell 变量 `FILE` 设为本地图片的路径。然后执行返回的 `curl` 命令。这个命令用 `--upload-file` 上传文件，curl 按文件的大小发送 `Content-Length`。
+3. 调用 `import_test_cases`。`onDuplicate` 用 `"overwrite"`，`sourceRef` 用这条用例的 `sourceRef`。在步骤的 `actionScreenshots` 或 `expectedScreenshots` 中写入返回的上传凭证（`uploadToken`）。
+
+第 2 步的命令如下：
+
+```bash
+FILE='./images/login.png'
+curl --fail --silent --show-error -X PUT -H 'Content-Type: image/png' --upload-file "$FILE" '<返回的 uploadUrl>'
+```
+
+第 3 步中的一个步骤如下：
+
+```json
+{
+  "id": "s1",
+  "step": "输入账号和密码，点击登录",
+  "expected": "进入首页",
+  "actionScreenshots": ["<上传凭证 1>"],
+  "expectedScreenshots": ["<上传凭证 2>"]
+}
+```
+
+规则：
+
+- 每张图片调用一次 `create_screenshot_upload`。上传地址在 5 分钟后过期，上传凭证在 1 小时后过期。
+- 上传地址只接受声明的类型和大小。文件的大小与 `sizeBytes` 不同时，存储拒绝上传（HTTP 403）。取得上传地址后，不要修改文件。
+- 用其他工具上传时，发送返回的 `headers` 中的所有请求头，并且不要用分块传输（chunked）。
+- 只有已有的用例可以写入截图。新用例先用 `import_test_cases` 创建，再用第二次调用写入截图。没有 `sourceRef` 的用例不能用这个方法写入截图。
+- 给出的一组截图替换这个步骤原有的整组截图。空列表 `[]` 删除这一组的所有图片。
+- 不给某一组时，`id` 相同的步骤保留原有的这一组。
+- 每组最多 9 张图片。每个文件最多 10 MB，类型是 png、jpeg 或 webp。这些限制与界面相同。
+- 一行最多引用 200 个上传凭证。上传凭证更多时，分几次调用。已经写入的步骤不给截图字段。
+- 上传凭证只能用于取得它的那条用例。项目的任何成员都可以调用 `create_screenshot_upload`，权限与 `import_test_cases` 相同。
+- 只有取得上传凭证的用户可以使用它。另一个用户使用这个凭证时，这一行进入 `errors`。
+- 上传凭证无效或过期、文件没有上传，或者文件与声明的类型和大小不同时，这一行进入 `errors`。错误信息说明原因。
+- 被跳过的行不写入截图，`skipped` 中的原因说明这一点。
+- `read_cases` 不返回截图。
+
 ### 改状态：只改状态，可以撤销
 
 - **`change_case_status`** —— 一次把最多 100 条用例改为 `draft`、`active` 或 `deprecated`，这些用例必须在同一个项目中。只改状态，不改步骤等内容，也不检查版本。一条用例不存在时什么都不改。状态有变化的用例各记录一个新版本；原来就是目标状态的用例不动。返回 `{changed[], unchanged[]}`，`changed` 中每条带 `previousStatus`：要撤销，就按 `previousStatus` 分组再调用一次。评审通过的草稿改为 `active`、下线用例改为 `deprecated`，都用这个工具。
@@ -94,7 +139,8 @@
 | --- | --- |
 | `read_cases` | `detail: "full"` 每页默认 10、最多 **20**；`summary` 档每页最多 100 |
 | `ensure_module_path` | 路径最多 **10 段** |
-| `import_test_cases` | 每批最多 **50 条**，超了整批被拒 |
+| `import_test_cases` | 每批最多 **50 条**，超了整批被拒；一行最多引用 **200** 个上传凭证 |
+| `create_screenshot_upload` | 每次一张图片；每个文件最多 **10 MB**，每组最多 **9** 张 |
 | `change_case_status` | 每次最多 **100 条**，超了整批被拒 |
 | `delete_cases` | 每次最多 **100 条**，超了整批被拒 |
 | `search_cases` | 默认 20 条，上限 **50 条** |

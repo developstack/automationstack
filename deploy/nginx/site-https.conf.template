@@ -1,0 +1,35 @@
+# 有证书时的站点：HTTP 只响应 Let's Encrypt 的验证请求，其他请求跳转到 HTTPS。
+# 证书由 certbot 服务续期。nginx 每 6 小时 reload 一次，使用续期后的证书（50-reload-loop.sh）。
+# ${DOMAIN} 由 envsubst 替换。其他 $ 变量是 nginx 的变量，不替换。
+
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    ssl_certificate     /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    include /etc/nginx/automationstack/locations.conf;
+}

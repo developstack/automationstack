@@ -1,4 +1,4 @@
-import type { TestCase } from "@automationstack/db/schema/test-cases";
+import type { CaseStep, TestCase } from "@automationstack/db/schema/test-cases";
 import { expect, it } from "vitest";
 
 import {
@@ -25,16 +25,19 @@ const sampleCase: TestCase = {
 	status: "draft",
 	steps: [
 		{
+			actionScreenshots: ["55555555-5555-4555-8555-555555555555"],
 			expected: "提示「用户名长度需为 4–20 个字符」",
+			expectedScreenshots: ["66666666-6666-4666-8666-666666666666"],
 			id: "s1",
 			step: "输入 21 个字符",
 		},
+		// 迁移 0019 以前的数据：步骤带 screenshots 字段
 		{
 			expected: "注册成功",
 			id: "s2",
 			screenshots: ["44444444-4444-4444-8444-444444444444"],
 			step: "输入 20 个字符",
-		},
+		} as CaseStep,
 	],
 	tags: ["边界值"],
 	updatedAt: new Date("2026-02-01T00:00:00Z"),
@@ -77,10 +80,17 @@ it.each([
 	["summary", "drops case bodies", pick(SUMMARY_FIELDS)],
 	[
 		"full",
-		"keeps case bodies and lists each step's screenshots, empty for old steps",
+		"keeps case bodies with only id, step and expected in each step (no action or expected screenshots)",
 		{
 			...pick([...SUMMARY_FIELDS, "preconditions"]),
-			steps: [{ ...sampleCase.steps[0], screenshots: [] }, sampleCase.steps[1]],
+			steps: [
+				{
+					expected: "提示「用户名长度需为 4–20 个字符」",
+					id: "s1",
+					step: "输入 21 个字符",
+				},
+				{ expected: "注册成功", id: "s2", step: "输入 20 个字符" },
+			],
 		},
 	],
 ] as const)(

@@ -14,10 +14,8 @@ const URLS = new Map([[TOKEN, "blob:local"]]);
 function renderPending(uploads: CaseUploadJobs) {
 	const value: CaseAttachmentContextValue = {
 		discardUpload: vi.fn(),
-		fileNames: new Map(),
 		imageUrls: URLS,
 		retryUpload: vi.fn(),
-		screenshots: null,
 		uploading: false,
 		uploadPasted: null,
 		uploads,

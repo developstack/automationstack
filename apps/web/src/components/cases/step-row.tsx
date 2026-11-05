@@ -2,20 +2,13 @@ import type { CaseStep } from "@automationstack/db/schema/test-cases";
 import { cn } from "@automationstack/ui/lib/utils";
 import { GripVerticalIcon } from "lucide-react";
 import { useCallback, useState } from "react";
-
-import { MarkdownField } from "@/components/cases/markdown-field";
+import { StepCellEditor } from "@/components/cases/step-cell-editor";
 import {
 	type StepDropEdge,
 	useStepRowDrag,
 } from "@/components/cases/step-drag";
+import { STEP_GRID_CLASS } from "@/components/cases/step-grid-header";
 import { StepRowActions } from "@/components/cases/step-row-actions";
-import { StepScreenshotStrip } from "@/components/cases/step-screenshot-strip";
-import { stepScreenshots } from "@/components/cases/step-screenshots";
-import { useStepScreenshotEdit } from "@/components/cases/use-step-screenshot-edit";
-
-/** 步骤编辑器的表头和每一行共用的列：编号、操作步骤、预期结果、操作。 */
-export const STEP_GRID_CLASS =
-	"grid grid-cols-1 gap-3 px-3 sm:grid-cols-case-step";
 
 const DROP_EDGE_CLASS: Record<Exclude<StepDropEdge, null>, string> = {
 	after: "before:bottom-0",
@@ -83,12 +76,11 @@ function stepRowClass(drag: ReturnType<typeof useStepRowDrag>): string {
 	);
 }
 
-/** 步骤编辑器的一行：拖动把手和编号、操作步骤、预期结果、行尾操作，下面是步骤截图。 */
+/** 步骤编辑器的一行：拖动把手和编号、操作步骤和操作截图、预期结果和预期截图，以及行尾操作。 */
 export function StepRow(props: StepRowProps) {
 	const { index, step } = props;
 	const position = index + 1;
 	const handlers = useStepRowHandlers(props);
-	const screenshots = useStepScreenshotEdit(step, props.onChange);
 	const drag = useStepRowDrag(step.id, index);
 	const [previewOpen, setPreviewOpen] = useState(false);
 	const togglePreview = useCallback(() => setPreviewOpen((open) => !open), []);
@@ -96,20 +88,26 @@ export function StepRow(props: StepRowProps) {
 	return (
 		<li className={stepRowClass(drag)} ref={drag.setRowRef} style={drag.style}>
 			<StepNumber handle={drag.handle} position={position} />
-			<MarkdownField
+			<StepCellEditor
 				ariaLabel={`第 ${position} 步操作`}
-				onChange={handlers.handleStepChange}
-				onPasteImages={screenshots.addFiles}
+				group="actionScreenshots"
+				onChange={props.onChange}
+				onTextChange={handlers.handleStepChange}
 				placeholder="操作步骤，支持 markdown"
+				position={position}
 				preview={previewOpen}
+				step={step}
 				value={step.step}
 			/>
-			<MarkdownField
+			<StepCellEditor
 				ariaLabel={`第 ${position} 步预期结果`}
-				onChange={handlers.handleExpectedChange}
-				onPasteImages={screenshots.addFiles}
+				group="expectedScreenshots"
+				onChange={props.onChange}
+				onTextChange={handlers.handleExpectedChange}
 				placeholder="预期结果，支持 markdown"
+				position={position}
 				preview={previewOpen}
+				step={step}
 				value={step.expected}
 			/>
 			<StepRowActions
@@ -121,11 +119,6 @@ export function StepRow(props: StepRowProps) {
 				onRemove={handlers.handleRemove}
 				onTogglePreview={togglePreview}
 				previewOpen={previewOpen}
-			/>
-			<StepScreenshotStrip
-				edit={screenshots}
-				ids={stepScreenshots(step)}
-				position={position}
 			/>
 		</li>
 	);

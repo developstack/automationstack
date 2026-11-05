@@ -1,11 +1,11 @@
 import {
-	importBatchSchema,
-	searchCasesSchema,
-} from "@automationstack/api/routers/case-import";
-import {
 	changeCaseStatusSchema,
 	removeCasesSchema,
 } from "@automationstack/api/schemas/case";
+import {
+	importBatchSchema,
+	searchCasesSchema,
+} from "@automationstack/api/schemas/case-import";
 import { MAX_PAGE_SIZE } from "@automationstack/db/repositories/case-list-repository";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";

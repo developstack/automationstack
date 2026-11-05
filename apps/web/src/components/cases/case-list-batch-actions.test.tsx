@@ -37,6 +37,7 @@ vi.mock("@/utils/orpc", () => ({
 					mutationFn: api.removeMany,
 				}),
 			},
+			undoStatusChange: { mutationOptions: (options: object) => options },
 		},
 		mindmap: { key: () => ["mindmap"] },
 	},
@@ -108,7 +109,7 @@ describe("CaseListBatchActions：有勾选时才出现批量操作栏", () => {
 	});
 
 	it("改状态：菜单中有草稿、生效、废弃；选中后一次修改所有勾选的用例，成功后清空勾选", async () => {
-		api.changeStatus.mockResolvedValue({ changes: [] });
+		api.changeStatus.mockResolvedValue({ changes: [], undoToken: null });
 		const selection = renderActions(caseIds(2));
 		fireEvent.click(screen.getByRole("button", { name: "改状态" }));
 		const items = await screen.findAllByRole("menuitem");
@@ -230,7 +231,15 @@ describe("CaseListBatchActions：批量删除，被测试任务用到的用例�
 			expect(invalidate).toHaveBeenCalledWith({ queryKey: ["mindmap"] });
 			expect(api.removeMany).toHaveBeenCalledTimes(1);
 			expect(api.removeMany.mock.calls[0]?.[0]).toEqual({ ids: caseIds(2) });
-			expect(toast[level]).toHaveBeenCalledWith(message);
+			// 有跳过的用例时才带「改为废弃」（点击后的行为见 use-case-batch-remove.test.tsx）
+			expect(vi.mocked(toast[level]).mock.calls[0]).toEqual(
+				skipped.length > 0
+					? [
+							message,
+							{ action: expect.objectContaining({ label: "改为废弃" }) },
+						]
+					: [message]
+			);
 		}
 	);
 

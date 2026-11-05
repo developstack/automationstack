@@ -1,39 +1,12 @@
 import { RunAttachments } from "@/components/test-runs/run-attachments";
-import { RunDefectPanel } from "@/components/test-runs/run-defect-panel";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
 
 interface VerdictEvidenceProps {
-	editing: boolean;
-	onStorageUnavailable: () => void;
-	projectId: string;
 	runCase: RunCaseDetail["runCase"];
-	storageUnavailable: boolean;
+	stepIds: readonly string[];
 }
 
-export function VerdictEvidence({
-	editing,
-	onStorageUnavailable,
-	projectId,
-	runCase,
-	storageUnavailable,
-}: VerdictEvidenceProps) {
-	return (
-		<>
-			<RunDefectPanel
-				defectKey={runCase.defectKey}
-				defectStatus={runCase.defectStatus}
-				defectTitle={runCase.defectTitle}
-				defectUrl={runCase.defectUrl}
-				editing={editing}
-				projectId={projectId}
-				runCaseId={runCase.id}
-			/>
-			<RunAttachments
-				editing={editing}
-				onStorageUnavailable={onStorageUnavailable}
-				runCaseId={runCase.id}
-				storageUnavailable={storageUnavailable}
-			/>
-		</>
-	);
+/** 执行结论下方：只读的整条用例的附件。 */
+export function VerdictEvidence({ runCase, stepIds }: VerdictEvidenceProps) {
+	return <RunAttachments runCaseId={runCase.id} stepIds={stepIds} />;
 }

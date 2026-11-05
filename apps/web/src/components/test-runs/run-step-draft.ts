@@ -10,8 +10,9 @@ const STEP_RESULT_VALUES: readonly TestRunStepResult[] = [
 ];
 
 export interface RunStepDraft {
+	/** 每个步骤的实际结果文字，按步骤 id 索引。 */
+	actualResults: Record<string, string>;
 	caseVersion: number;
-	comments: Record<string, string>;
 	judged: Record<string, TestRunStepResult>;
 	savedAt: number;
 }
@@ -48,17 +49,17 @@ function parseJudged(value: unknown): Record<string, TestRunStepResult> {
 	return judged;
 }
 
-function parseComments(value: unknown): Record<string, string> {
+function parseActualResults(value: unknown): Record<string, string> {
 	if (!isRecord(value)) {
 		return {};
 	}
-	const comments: Record<string, string> = {};
+	const actualResults: Record<string, string> = {};
 	for (const [stepId, text] of Object.entries(value)) {
 		if (typeof text === "string") {
-			comments[stepId] = text;
+			actualResults[stepId] = text;
 		}
 	}
-	return comments;
+	return actualResults;
 }
 
 export function parseRunStepDraft(raw: string | null): RunStepDraft | null {
@@ -79,8 +80,9 @@ export function parseRunStepDraft(raw: string | null): RunStepDraft | null {
 		return null;
 	}
 	return {
+		// #78 之前的草稿把失败原因和阻塞原因存在 comments 键中，读出来作为实际结果
+		actualResults: parseActualResults(parsed.actualResults ?? parsed.comments),
 		caseVersion,
-		comments: parseComments(parsed.comments),
 		judged: parseJudged(parsed.judged),
 		savedAt: typeof savedAt === "number" ? savedAt : 0,
 	};

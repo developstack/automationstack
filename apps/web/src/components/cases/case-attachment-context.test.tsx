@@ -1,7 +1,11 @@
 import { renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+	type CaseAttachmentContextValue,
+	CaseAttachmentProvider,
+	useCaseAttachments,
 	useCaseAttachmentUrls,
 	useCaseEditAttachments,
 } from "@/components/cases/case-attachment-context";
@@ -39,7 +43,7 @@ vi.mock("@/utils/orpc", () => ({
 	},
 }));
 
-describe("useCaseEditAttachments：编辑区的图片地址、文件名和步骤截图", () => {
+describe("useCaseEditAttachments：编辑区的图片地址和粘贴上传", () => {
 	it("maps attachment ids to URLs for read-only views", async () => {
 		const { result } = renderHook(() => useCaseAttachmentUrls(CASE_ID), {
 			wrapper: createQueryWrapper(),
@@ -55,18 +59,43 @@ describe("useCaseEditAttachments：编辑区的图片地址、文件名和步骤
 		[true, true],
 		[false, false],
 	])(
-		"gives the file name of each attachment; with R2 configured %s screenshots are available %s",
+		"shows the saved images; with R2 configured %s pasting is available %s",
 		async (configured, available) => {
 			storage.configured = configured;
 			const { result } = renderHook(() => useCaseEditAttachments(CASE_ID), {
 				wrapper: createQueryWrapper(),
 			});
 			await waitFor(() =>
-				expect(result.current.fileNames.get(ATTACHMENT_ID)).toBe("登录页.png")
+				expect(result.current.imageUrls.get(ATTACHMENT_ID)).toBe(
+					"https://r2.example/login.png"
+				)
 			);
 			await waitFor(() =>
-				expect(result.current.screenshots.available).toBe(available)
+				expect(result.current.uploadPasted !== null).toBe(available)
 			);
 		}
 	);
+});
+
+describe("useCaseAttachments：读取外层提供的图片和上传任务", () => {
+	it("has no images and accepts no pasted images without a provider", () => {
+		const { result } = renderHook(() => useCaseAttachments());
+		expect(result.current.imageUrls.size).toBe(0);
+		expect(result.current.uploadPasted).toBeNull();
+		expect(result.current.uploading).toBe(false);
+		// 默认的重试和移除什么也不做
+		result.current.retryUpload("t1");
+		result.current.discardUpload("t1");
+	});
+
+	it("returns the value of the nearest provider", () => {
+		const value = {
+			imageUrls: new Map([[ATTACHMENT_ID, "https://r2.example/a.png"]]),
+		} as unknown as CaseAttachmentContextValue;
+		const wrapper = ({ children }: { children: ReactNode }) => (
+			<CaseAttachmentProvider value={value}>{children}</CaseAttachmentProvider>
+		);
+		const { result } = renderHook(() => useCaseAttachments(), { wrapper });
+		expect(result.current).toBe(value);
+	});
 });

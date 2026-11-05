@@ -9,24 +9,17 @@ import {
 	formValuesToContent,
 } from "@/components/cases/case-meta";
 import { hasUnfinishedCaseUploads } from "@/components/cases/case-submit-checks";
-import { uploadScreenshotsBeforeSave } from "@/components/cases/step-screenshot-save";
 import {
 	type CaseSaveConflict,
 	caseSaveBaseVersion,
 	useUpdateCase,
 } from "@/components/cases/use-case-mutations";
 import { useCaseNameCheck } from "@/components/cases/use-case-name-check";
-import { useScreenshotRemoval } from "@/components/cases/use-screenshot-removal";
-import type { StepScreenshotStore } from "@/components/cases/use-step-screenshots";
 
 export const CASE_EDITOR_FORM_ID = "case-editor-form";
 
 const UPLOADING_MESSAGE =
 	"还有图片没有上传完成。等上传结束，或者在编辑区下方重试、移除上传失败的图片，再保存。";
-
-function reportSaveError(error: unknown): void {
-	toast.error(error instanceof Error ? error.message : "保存失败");
-}
 
 interface CaseSaveInput {
 	caseId: string;
@@ -36,11 +29,10 @@ interface CaseSaveInput {
 	editingVersion: number | null;
 	form: CaseFormValues | null;
 	mutation: ReturnType<typeof useUpdateCase>["mutation"];
-	screenshots: StepScreenshotStore | null;
 	testCase: TestCase | undefined;
 }
 
-/** 保存：先检查名称和正文图片，再上传新的步骤截图，最后保存用例。 */
+/** 保存：先检查名称和正文图片，再保存用例。 */
 function useCaseSave(input: CaseSaveInput) {
 	const {
 		caseId,
@@ -49,11 +41,10 @@ function useCaseSave(input: CaseSaveInput) {
 		editingVersion,
 		form,
 		mutation,
-		screenshots,
 		testCase,
 	} = input;
-	const save = useCallback(async () => {
-		if (!(testCase && form) || screenshots?.progress) {
+	return useCallback(() => {
+		if (!(testCase && form)) {
 			return;
 		}
 		if (!checkName(form)) {
@@ -63,58 +54,25 @@ function useCaseSave(input: CaseSaveInput) {
 			toast.error(UPLOADING_MESSAGE);
 			return;
 		}
-		const uploaded = await uploadScreenshotsBeforeSave(screenshots, form.steps);
-		if (uploaded.kind === "failed") {
-			return;
-		}
 		mutation.mutate({
 			expectedVersion: caseSaveBaseVersion(
 				editingVersion ?? testCase.currentVersion,
 				conflict
 			),
 			id: caseId,
-			patch: { ...formValuesToContent(form), steps: uploaded.steps },
+			patch: formValuesToContent(form),
 		});
-	}, [
-		caseId,
-		checkName,
-		conflict,
-		editingVersion,
-		form,
-		mutation,
-		screenshots,
-		testCase,
-	]);
-
-	return useCallback(() => {
-		save().catch(reportSaveError);
-	}, [save]);
-}
-
-/** 两种保存：编辑区的「保存」，以及只读视图中删除一张步骤截图。 */
-function useCaseSaveActions(
-	input: CaseSaveInput & { setForm: (values: CaseFormValues) => void }
-) {
-	const handleSave = useCaseSave(input);
-	const removeScreenshot = useScreenshotRemoval({
-		...input,
-		onConflict: input.setForm,
-	});
-	return { handleSave, removeScreenshot };
+	}, [caseId, checkName, conflict, editingVersion, form, mutation, testCase]);
 }
 
 /** 编辑区的内容，以及开始编辑时载入的版本。 */
-function useEditingForm(
-	testCase: TestCase | undefined,
-	screenshots: StepScreenshotStore | null
-) {
+function useEditingForm(testCase: TestCase | undefined) {
 	const [form, setForm] = useState<CaseFormValues | null>(null);
 	const [editingVersion, setEditingVersion] = useState<number | null>(null);
 	const leaveForm = useCallback(() => {
 		setForm(null);
 		setEditingVersion(null);
-		screenshots?.clear();
-	}, [screenshots]);
+	}, []);
 	const startEditing = useCallback(() => {
 		if (testCase) {
 			setForm(caseToFormValues(testCase));
@@ -124,13 +82,9 @@ function useEditingForm(
 	return { editingVersion, form, leaveForm, setForm, startEditing };
 }
 
-export function useCaseEditor(
-	caseId: string,
-	testCase: TestCase | undefined,
-	screenshots: StepScreenshotStore | null = null
-) {
+export function useCaseEditor(caseId: string, testCase: TestCase | undefined) {
 	const { editingVersion, form, leaveForm, setForm, startEditing } =
-		useEditingForm(testCase, screenshots);
+		useEditingForm(testCase);
 	const {
 		check: checkName,
 		errorFor: nameErrorFor,
@@ -144,15 +98,13 @@ export function useCaseEditor(
 		clearConflict();
 	}, [clearConflict, leaveForm, resetNameCheck]);
 
-	const { handleSave, removeScreenshot } = useCaseSaveActions({
+	const handleSave = useCaseSave({
 		caseId,
 		checkName,
 		conflict,
 		editingVersion,
 		form,
 		mutation,
-		screenshots,
-		setForm,
 		testCase,
 	});
 
@@ -162,8 +114,7 @@ export function useCaseEditor(
 		form,
 		handleSave,
 		nameError: nameErrorFor(form),
-		removeScreenshot,
-		saving: mutation.isPending || Boolean(screenshots?.progress),
+		saving: mutation.isPending,
 		setForm,
 		startEditing,
 		stopEditing,
@@ -189,11 +140,5 @@ export function CaseDetailBody({ editor, testCase }: CaseDetailBodyProps) {
 			/>
 		);
 	}
-	return (
-		<CaseDetailView
-			onRemoveScreenshot={editor.removeScreenshot}
-			removingScreenshot={editor.saving}
-			testCase={testCase}
-		/>
-	);
+	return <CaseDetailView testCase={testCase} />;
 }

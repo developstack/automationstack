@@ -20,10 +20,10 @@ import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
 import { resolveNewCaseAttachments } from "../lib/case-attachment-draft-ingest";
 import {
+	columnScreenshotIds,
 	FOREIGN_SCREENSHOT_MESSAGE,
 	foreignScreenshotIds,
-	stepScreenshotIds,
-} from "../lib/case-step-screenshots";
+} from "../lib/case-column-screenshots";
 import { requireCaseMember, requireModuleMember } from "../lib/project-scope";
 import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
@@ -46,10 +46,8 @@ const listCasesSchema = caseListFilterSchema.extend({
 });
 
 const createCaseSchema = caseContentSchema.extend({
-	attachments: z
-		.array(createCaseAttachmentSchema)
-		.max(MAX_NEW_CASE_ATTACHMENTS)
-		.optional(),
+	// 数量上限在 handler 中检查，错误信息说明上限（见 tooManyAttachmentsMessage）
+	attachments: z.array(createCaseAttachmentSchema).optional(),
 	id: z.uuid().optional(),
 	index: z.number().int().min(0).optional(),
 	moduleId: z.uuid(),
@@ -76,6 +74,10 @@ const reorderCasesSchema = z.object({
 
 const toCaseScope = (input: { id: string }) => ({ caseId: input.id });
 
+function tooManyAttachmentsMessage(count: number): string {
+	return `新用例一次最多保存 ${MAX_NEW_CASE_ATTACHMENTS} 张图片，这次有 ${count} 张。请减少图片后再保存`;
+}
+
 function actorName(context: Context): string | null {
 	return context.actor?.name ?? null;
 }
@@ -90,6 +92,13 @@ export const casesRouter = {
 		.input(createCaseSchema)
 		.use(requireProjectMember)
 		.handler(async ({ context, errors, input }) => {
+			const attachmentCount = input.attachments?.length ?? 0;
+			if (attachmentCount > MAX_NEW_CASE_ATTACHMENTS) {
+				throw errors.BAD_REQUEST({
+					message: tooManyAttachmentsMessage(attachmentCount),
+				});
+			}
+			// 新用例的截图只能是这次一起提交的新附件
 			const newAttachmentIds = new Set(
 				(input.attachments ?? []).map((attachment) => attachment.id)
 			);
@@ -228,7 +237,7 @@ export const casesRouter = {
 		.input(updateCaseSchema)
 		.use(requireCaseMember, toCaseScope)
 		.handler(async ({ context, errors, input }) => {
-			const screenshotIds = stepScreenshotIds(input.patch.steps);
+			const screenshotIds = columnScreenshotIds(input.patch.steps);
 			const owned = await findCaseAttachmentIds(input.id, screenshotIds);
 			if (foreignScreenshotIds(input.patch.steps, owned).length > 0) {
 				throw errors.BAD_REQUEST({ message: FOREIGN_SCREENSHOT_MESSAGE });

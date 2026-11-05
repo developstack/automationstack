@@ -21,9 +21,9 @@ import {
 	type TestRunAutomationExecution,
 } from "./test-run-report-automation";
 import {
-	loadFailedCases,
-	type TestRunFailedCase,
-} from "./test-run-report-failed-cases";
+	loadFailedAndBlockedCases,
+	type TestRunFailedAndBlockedCase,
+} from "./test-run-report-failed-and-blocked-cases";
 import {
 	loadOutOfScopeCases,
 	type TestRunOutOfScopeCase,
@@ -32,9 +32,11 @@ import type { TestRunResultCounts } from "./test-runs-repository";
 
 export type { TestRunAutomationExecution } from "./test-run-report-automation";
 export type {
-	TestRunFailedCase,
-	TestRunFailedCaseAutomation,
-} from "./test-run-report-failed-cases";
+	TestRunFailedAndBlockedCase,
+	TestRunFailedAndBlockedResult,
+	TestRunReportCaseAutomation,
+	TestRunReportStep,
+} from "./test-run-report-failed-and-blocked-cases";
 export type { TestRunOutOfScopeCase } from "./test-run-report-out-of-scope";
 
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -74,7 +76,8 @@ export interface TestRunReport {
 	autoSubmitAt: Date | null;
 	completionRate: number | null;
 	counts: TestRunResultCounts;
-	failedCases: TestRunFailedCase[];
+	/** 失败和阻塞的用例：先列失败，再列阻塞。 */
+	failedAndBlockedCases: TestRunFailedAndBlockedCase[];
 	modules: TestRunModuleStat[];
 	outOfScopeCases: TestRunOutOfScopeCase[];
 	passRate: number | null;
@@ -156,7 +159,7 @@ async function loadReportParts(run: TestRun) {
 		countsRow,
 		moduleStats,
 		priorities,
-		failedCases,
+		failedAndBlockedCases,
 		automationExecutions,
 		outOfScopeCases,
 		settings,
@@ -164,7 +167,7 @@ async function loadReportParts(run: TestRun) {
 		loadCounts(run.id),
 		loadModuleStats(run.id),
 		loadPriorityStats(run.id),
-		loadFailedCases(run.id),
+		loadFailedAndBlockedCases(run.id),
 		loadAutomationExecutions(run.id, run.name),
 		loadOutOfScopeCases(run.id),
 		getProjectSettings(run.projectId),
@@ -172,7 +175,7 @@ async function loadReportParts(run: TestRun) {
 	return {
 		automationExecutions,
 		countsRow,
-		failedCases,
+		failedAndBlockedCases,
 		moduleStats,
 		outOfScopeCases,
 		priorities,
@@ -203,7 +206,7 @@ export async function getTestRunReport(
 		autoSubmitAt: computeAutoSubmitAt(row.run, autoSubmitAfterCompletedDays),
 		completionRate: computeCompletionRate(counts),
 		counts,
-		failedCases: parts.failedCases,
+		failedAndBlockedCases: parts.failedAndBlockedCases,
 		modules: parts.moduleStats,
 		outOfScopeCases: parts.outOfScopeCases,
 		passRate: computePassRate(counts),

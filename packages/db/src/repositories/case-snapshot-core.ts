@@ -1,15 +1,17 @@
 import { eq, sql } from "drizzle-orm";
 
-import type {
-	CasePriority,
-	CaseSnapshot,
-	CaseStatus,
-	CaseStep,
-	CaseType,
-	CaseVersion,
-	TestCase,
+import {
+	type CasePriority,
+	type CaseSnapshot,
+	type CaseStatus,
+	type CaseStep,
+	type CaseType,
+	type CaseVersion,
+	COLUMN_SCREENSHOT_KEYS,
+	caseVersions,
+	type TestCase,
+	testCases,
 } from "../schema/test-cases";
-import { caseVersions, testCases } from "../schema/test-cases";
 import type { CaseWriteResult, DbTransaction } from "./repository-types";
 
 export interface CaseContentPatch {
@@ -100,27 +102,53 @@ function sameSteps(
 				step.id === other.id &&
 				step.step === other.step &&
 				step.expected === other.expected &&
-				sameList(step.screenshots ?? [], other.screenshots ?? [])
+				COLUMN_SCREENSHOT_KEYS.every((key) =>
+					sameList(step[key] ?? [], other[key] ?? [])
+				)
 			);
 		})
 	);
 }
 
 /**
- * 外部工具（MCP、导入、其他 API）写入的步骤可能不带 screenshots。
- * 这时 id 相同的步骤保留现有的步骤截图；新的步骤 id 没有步骤截图。
+ * 外部工具（导入、MCP、思维导图等）写入的步骤不带截图字段。
+ * 这时 id 相同的步骤保留现有的这一组截图；新的步骤 id 没有截图。
+ * 两组截图分别处理：步骤只带一组时，另一组保留现有的截图。
  */
-export function mergeStepScreenshots(
+export function mergeColumnScreenshots(
 	stored: readonly CaseStep[],
 	patched: readonly CaseStep[]
 ): CaseStep[] {
 	const storedById = new Map(stored.map((step) => [step.id, step]));
 	return patched.map((step) => {
-		if (step.screenshots !== undefined) {
+		const previous = storedById.get(step.id);
+		if (previous === undefined) {
 			return step;
 		}
-		const kept = storedById.get(step.id)?.screenshots;
-		return kept === undefined ? step : { ...step, screenshots: kept };
+		const merged: CaseStep = { ...step };
+		for (const key of COLUMN_SCREENSHOT_KEYS) {
+			const kept = previous[key];
+			if (merged[key] === undefined && kept !== undefined) {
+				merged[key] = kept;
+			}
+		}
+		return merged;
+	});
+}
+
+/**
+ * 把没有的截图字段写成空列表。回滚到旧版本时使用：旧版本中没有截图的步骤回滚后也没有截图，
+ * 不保留现有的截图。
+ */
+export function withExplicitScreenshots(
+	steps: readonly CaseStep[]
+): CaseStep[] {
+	return steps.map((step) => {
+		const explicit: CaseStep = { ...step };
+		for (const key of COLUMN_SCREENSHOT_KEYS) {
+			explicit[key] = step[key] ?? [];
+		}
+		return explicit;
 	});
 }
 
@@ -131,7 +159,7 @@ function withMergedScreenshots(
 	if (patch.steps === undefined) {
 		return patch;
 	}
-	return { ...patch, steps: mergeStepScreenshots(row.steps, patch.steps) };
+	return { ...patch, steps: mergeColumnScreenshots(row.steps, patch.steps) };
 }
 
 export function isNoopCasePatch(

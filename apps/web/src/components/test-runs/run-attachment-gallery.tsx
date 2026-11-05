@@ -1,7 +1,3 @@
-import { Button } from "@automationstack/ui/components/button";
-import { Trash2Icon } from "lucide-react";
-import { useCallback } from "react";
-
 import type { AttachmentListItem } from "@/components/test-runs/attachment-list";
 
 const IMAGE_HEIGHT_CLASS = "h-40";
@@ -12,21 +8,10 @@ export function isViewableImage(item: AttachmentListItem): boolean {
 
 interface GalleryItemProps {
 	fileName: string;
-	id: string;
-	onRemove: (id: string) => void;
-	removable: boolean;
 	url: string;
 }
 
-function GalleryItem({
-	fileName,
-	id,
-	onRemove,
-	removable,
-	url,
-}: GalleryItemProps) {
-	const handleRemove = useCallback(() => onRemove(id), [id, onRemove]);
-
+function GalleryItem({ fileName, url }: GalleryItemProps) {
 	return (
 		<li className="flex flex-col items-start gap-1">
 			<a href={url} rel="noopener" target="_blank">
@@ -38,33 +23,16 @@ function GalleryItem({
 					src={url}
 				/>
 			</a>
-			{removable ? (
-				<Button
-					aria-label={`删除附件 ${fileName}`}
-					onClick={handleRemove}
-					size="xs"
-					type="button"
-					variant="ghost"
-				>
-					<Trash2Icon aria-hidden="true" data-icon="inline-start" />
-					删除
-				</Button>
-			) : null}
 		</li>
 	);
 }
 
 export interface AttachmentGalleryProps {
 	items: readonly AttachmentListItem[];
-	onRemove: (id: string) => void;
-	removable: boolean;
 }
 
-export function AttachmentGallery({
-	items,
-	onRemove,
-	removable,
-}: AttachmentGalleryProps) {
+/** 只读的图片附件：点击在新标签页中打开原图。 */
+export function AttachmentGallery({ items }: AttachmentGalleryProps) {
 	if (items.length === 0) {
 		return null;
 	}
@@ -73,10 +41,7 @@ export function AttachmentGallery({
 			{items.map(({ attachment, url }) => (
 				<GalleryItem
 					fileName={attachment.fileName}
-					id={attachment.id}
 					key={attachment.id}
-					onRemove={onRemove}
-					removable={removable}
 					url={url ?? ""}
 				/>
 			))}

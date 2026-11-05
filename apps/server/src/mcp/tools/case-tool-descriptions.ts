@@ -1,3 +1,5 @@
+import { MAX_NEW_CASE_ATTACHMENTS } from "@automationstack/api/schemas/case";
+
 export const READ_CASES_DESCRIPTION =
 	"Read existing test cases of a project, with their bodies. This is the tool " +
 	"to call BEFORE writing any new case: it is the only way to learn how this " +
@@ -10,8 +12,7 @@ export const READ_CASES_DESCRIPTION =
 	"for that requirement). " +
 	"detail: 'summary' (default) returns id/name/moduleId/priority/status/" +
 	"caseType/tags/sourceRef/maintainer/updatedAt; 'full' adds preconditions and " +
-	"steps (each step carries screenshots: an ordered list of case attachment " +
-	"ids, empty when the step has none), and is capped at 10 rows per page by default (20 max) because case " +
+	"steps, and is capped at 10 rows per page by default (20 max) because case " +
 	"bodies are expensive — page through them rather than asking for everything. " +
 	"Returns {detail, items[], page, pageSize, total}. " +
 	"Do not use it to check whether one specific case landed after an import — " +
@@ -38,10 +39,20 @@ export const IMPORT_TEST_CASES_DESCRIPTION =
 	"Fields: priority P0-P3 (default P2 — for newly designed cases set it " +
 	"explicitly, an all-P2 batch carries no prioritisation), caseType " +
 	"functional|interface|performance|security|compatibility|other, status " +
-	"draft|active|deprecated, preconditions, steps [{id, step, expected}] (id must " +
-	"be a unique non-empty string, e.g. a uuid; step screenshots cannot be " +
-	"written here, and on overwrite a step that keeps its id keeps its stored " +
-	"screenshots), tags, maintainer. " +
+	"draft|active|deprecated, preconditions, steps [{id, step, expected, " +
+	"actionScreenshots?, expectedScreenshots?}] (id must be a unique non-empty " +
+	"string, e.g. a uuid), tags, maintainer. " +
+	"Screenshots: actionScreenshots and expectedScreenshots are ordered lists of " +
+	"uploadToken values from create_screenshot_upload, at most 9 in each group. " +
+	"Only an existing case can get screenshots. Use onDuplicate 'overwrite' and " +
+	"the sourceRef of that case. A case without a sourceRef cannot get " +
+	"screenshots. All uploadToken values of a row must belong to that case. " +
+	"A group that you give replaces the stored group of the step. An empty list " +
+	"removes all images of the group. If you do not give a group, the stored " +
+	"group of a step with the same id stays. One row can refer to at most " +
+	`${MAX_NEW_CASE_ATTACHMENTS} uploadToken values; write more in more calls. A bad or expired ` +
+	"uploadToken, or a file that is not in storage, is an error of that row. " +
+	"A skipped row writes no screenshots, and its reason says so. " +
 	"Newly designed cases go in as status 'draft' (the default): the platform's " +
 	"case list filters on status, so draft is where a human reviews them before " +
 	"they count as the project's real coverage. Writing 'active' directly puts " +
@@ -102,3 +113,35 @@ export const CHANGE_CASE_STATUS_DESCRIPTION =
 	"Returns {changed[] (id, name, previousStatus, status, version), unchanged[] " +
 	"(id, name, status)}. To undo, call again once per distinct previousStatus " +
 	"with the ids that had it.";
+
+export const CREATE_SCREENSHOT_UPLOAD_DESCRIPTION =
+	"Get an upload URL for one image of one existing case. Use it to " +
+	"write action screenshots (操作截图) or expected screenshots (预期截图) of " +
+	"case steps, for example when you migrate cases from Excel or XMind. Tool " +
+	"arguments cannot contain image bytes, so do these three steps. " +
+	"1. Call this tool with the caseId and the name, type and exact size in " +
+	"bytes (sizeBytes) of the local image file. " +
+	"2. Set the shell variable FILE to the path of the local file. Then run the " +
+	"returned curl command. It uses curl --upload-file, which sends the " +
+	"Content-Length of the file. " +
+	"3. Call import_test_cases with onDuplicate 'overwrite' and the sourceRef of " +
+	"the same case. Put the uploadToken in actionScreenshots or " +
+	"expectedScreenshots of a step. " +
+	"The upload URL accepts only the declared type and size. The storage " +
+	"rejects a file of another size with HTTP 403. Thus do not change the " +
+	"file after you call this tool. " +
+	"Call this tool one time for each image. The upload URL expires after " +
+	"expiresInSeconds (5 minutes). The uploadToken expires after " +
+	"tokenExpiresInSeconds (1 hour). " +
+	"The case must exist before you upload. Get its id from import_test_cases, " +
+	"read_cases or search_cases. Thus a new case gets its screenshots in a second " +
+	"import_test_cases call. " +
+	"The limits are the same as in the web page: png, jpeg or webp, at most 10 MB " +
+	"for each file, at most 9 images in each group. " +
+	"Any member of the project can call it, as for import_test_cases. The " +
+	"uploadToken is valid only for this case and only for the user who got it. " +
+	"The platform examines the " +
+	"uploaded file when import_test_cases refers to the uploadToken. " +
+	"read_cases does not return screenshots. " +
+	"Returns {uploadToken, uploadUrl, method, headers, expiresInSeconds, " +
+	"tokenExpiresInSeconds, curl}.";

@@ -52,7 +52,7 @@ interface MarkdownFieldControlProps {
 	ariaLabel: string;
 	id?: string;
 	onChange: (value: string) => void;
-	/** 传入时，粘贴的图片交给它处理，不写入文字。 */
+	/** 传入时，粘贴的图片交给它处理（例如加入操作截图），不写入文字。 */
 	onPasteImages?: (files: File[]) => void;
 	placeholder: string;
 	preview?: boolean;

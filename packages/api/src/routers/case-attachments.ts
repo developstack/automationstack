@@ -5,39 +5,25 @@ import {
 } from "@automationstack/db/repositories/case-attachments-repository";
 import type { CaseAttachment } from "@automationstack/db/schema/case-attachments";
 import { isR2Configured } from "@automationstack/env/server";
-import { ORPCError } from "@orpc/server";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
+import { verifyUploadedCaseImage } from "../lib/case-attachment-ingest";
+import { isCaseAttachmentKeyOwnedBy } from "../lib/case-attachment-policy";
 import {
-	throwCaseImageViolation,
-	verifyUploadedCaseImage,
-} from "../lib/case-attachment-ingest";
-import {
-	buildCaseAttachmentStorageKey,
-	isCaseAttachmentKeyOwnedBy,
-	validateCaseImageUpload,
-} from "../lib/case-attachment-policy";
+	caseAttachmentErrors,
+	presignCaseImageUpload,
+	requireCaseImageStorage,
+} from "../lib/case-image-presign";
 import { caseImageDownloadUrl } from "../lib/case-image-url";
 import { requireCaseMember } from "../lib/project-scope";
-import { getR2Storage, type R2Storage } from "../lib/r2";
+import { getR2Storage } from "../lib/r2";
+import {
+	caseImagePresignSchema,
+	fileNameSchema,
+} from "../schemas/case-attachment";
 import { caseAttachmentDraftProcedures } from "./case-attachment-drafts";
-
-const caseAttachmentErrors = {
-	BAD_REQUEST: {},
-	NOT_FOUND: {},
-} as const;
-
-const sizeBytesSchema = z.number().int().positive();
-
-const fileNameSchema = z.string().min(1).max(255);
-
-const presignUploadSchema = z.object({
-	caseId: z.uuid(),
-	contentType: z.string().min(1),
-	fileName: fileNameSchema,
-	sizeBytes: sizeBytesSchema,
-});
+import { caseScreenshotUploadProcedures } from "./case-screenshot-uploads";
 
 const registerSchema = z.object({
 	caseId: z.uuid(),
@@ -52,18 +38,9 @@ export interface CaseAttachmentView {
 	url: string | null;
 }
 
-function requireStorage(): R2Storage {
-	const storage = getR2Storage();
-	if (storage === null) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "附件存储（R2）未配置，无法粘贴图片",
-		});
-	}
-	return storage;
-}
-
 export const caseAttachmentsRouter = {
 	...caseAttachmentDraftProcedures,
+	...caseScreenshotUploadProcedures,
 
 	list: protectedProcedure
 		.input(caseSchema)
@@ -84,24 +61,12 @@ export const caseAttachmentsRouter = {
 
 	presignUpload: protectedProcedure
 		.errors(caseAttachmentErrors)
-		.input(presignUploadSchema)
+		.input(caseImagePresignSchema)
 		.use(requireCaseMember)
 		.handler(async ({ errors, input }) => {
-			const storage = requireStorage();
-			const declared = validateCaseImageUpload(input);
-			if (declared.kind !== "ok") {
-				throwCaseImageViolation(declared, input, errors, "declared");
-			}
-			const prepared = await prepareCaseAttachmentUpload(input.caseId);
-			if (prepared.kind !== "ok") {
-				throw errors.NOT_FOUND({ message: "用例不存在" });
-			}
-			const storageKey = buildCaseAttachmentStorageKey(prepared.scope, {
-				contentType: input.contentType,
-			});
-			const uploadUrl = await storage.presignUpload(
-				storageKey,
-				input.contentType
+			const { storageKey, uploadUrl } = await presignCaseImageUpload(
+				input,
+				errors
 			);
 			return { storageKey, uploadUrl };
 		}),
@@ -111,7 +76,7 @@ export const caseAttachmentsRouter = {
 		.input(registerSchema)
 		.use(requireCaseMember)
 		.handler(async ({ context, errors, input }) => {
-			const storage = requireStorage();
+			const storage = requireCaseImageStorage();
 			const prepared = await prepareCaseAttachmentUpload(input.caseId);
 			if (prepared.kind !== "ok") {
 				throw errors.NOT_FOUND({ message: "用例不存在" });

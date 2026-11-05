@@ -1,0 +1,1 @@
+ALTER TABLE "test_run_attachments" ADD COLUMN "step_id" text;

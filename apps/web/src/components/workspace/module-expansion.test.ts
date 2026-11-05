@@ -6,6 +6,7 @@ import {
 	DEFAULT_OPEN_DEPTH,
 	FULL_EXPAND_MAX_MODULES,
 	findModuleAncestorIds,
+	findModuleChain,
 	isModuleOpen,
 	type ModuleOpenContext,
 	parseModuleOverrides,
@@ -78,6 +79,26 @@ describe("findModuleAncestorIds", () => {
 		["returns an empty chain for missing ids", undefined, []],
 	])("%s", (_name, moduleId, chain) => {
 		expect(findModuleAncestorIds(tree, moduleId)).toEqual(chain);
+	});
+});
+
+describe("findModuleChain", () => {
+	it.each([
+		[
+			"returns the root-to-module chain including the module",
+			"great",
+			["root", "child", "grand", "great"],
+		],
+		["returns the module itself for a root module", "root", ["root"]],
+		[
+			"does not leak the failed branch when the module sits in a later subtree",
+			"other-child",
+			["other", "other-child"],
+		],
+		["returns an empty chain for unknown ids", "nope", []],
+		["returns an empty chain for missing ids", undefined, []],
+	])("%s", (_name, moduleId, chain) => {
+		expect(findModuleChain(tree, moduleId)).toEqual(chain);
 	});
 });
 

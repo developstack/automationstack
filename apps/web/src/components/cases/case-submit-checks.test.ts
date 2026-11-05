@@ -6,6 +6,7 @@ import {
 	emptyCaseFormValues,
 } from "@/components/cases/case-meta";
 import {
+	caseFormImageCount,
 	hasUnfinishedCaseUploads,
 	referencedCaseAttachments,
 } from "@/components/cases/case-submit-checks";
@@ -25,7 +26,12 @@ function valuesWith(patch: Partial<CaseFormValues>): CaseFormValues {
 	return { ...emptyCaseFormValues(), ...patch };
 }
 
-function stepWith(cells: { expected?: string; step?: string }) {
+function stepWith(cells: {
+	actionScreenshots?: string[];
+	expected?: string;
+	expectedScreenshots?: string[];
+	step?: string;
+}) {
 	return { expected: "", id: "s1", step: "", ...cells };
 }
 
@@ -41,6 +47,25 @@ describe("hasUnfinishedCaseUploads", () => {
 			"步骤预期格里的占位算数",
 			{ steps: [stepWith({ expected: UPLOADING })] },
 			true,
+		],
+		[
+			"操作截图里上传中的图片算数",
+			{ steps: [stepWith({ actionScreenshots: [ID_A, UPLOADING] })] },
+			true,
+		],
+		[
+			"预期截图里上传中的图片算数",
+			{ steps: [stepWith({ expectedScreenshots: [UPLOADING] })] },
+			true,
+		],
+		[
+			"截图都上传完成时不算未完成",
+			{
+				steps: [
+					stepWith({ actionScreenshots: [ID_A], expectedScreenshots: [ID_B] }),
+				],
+			},
+			false,
 		],
 		[
 			"已经换成 attachment: 的引用不算未完成",
@@ -78,10 +103,44 @@ describe("referencedCaseAttachments", () => {
 			{ steps: [stepWith({ expected: refB, step: refA })] },
 			both,
 		],
+		[
+			"操作截图和预期截图中的图片也登记",
+			{
+				steps: [
+					stepWith({ actionScreenshots: [ID_A], expectedScreenshots: [ID_B] }),
+				],
+			},
+			both,
+		],
 		["正文一处引用都没有时返回空清单", { preconditions: "纯文本" }, []],
 	])("%s", (_name, patch, expected) => {
 		expect(referencedCaseAttachments(valuesWith(patch), both)).toEqual(
 			expected
 		);
+	});
+});
+
+describe("caseFormImageCount", () => {
+	const refA = buildCaseAttachmentRef(ID_A);
+
+	it.each([
+		["没有图片时为 0", {}, 0],
+		[
+			"正文图片、两组截图和上传中的图片都算数",
+			{
+				preconditions: `${refA}${UPLOADING}`,
+				steps: [
+					stepWith({ actionScreenshots: [ID_B], expectedScreenshots: [ID_A] }),
+				],
+			},
+			3,
+		],
+		[
+			"同一张图出现多次只算一张",
+			{ steps: [stepWith({ expected: refA, step: `${refA}${refA}` })] },
+			1,
+		],
+	])("%s", (_name, patch, count) => {
+		expect(caseFormImageCount(valuesWith(patch))).toBe(count);
 	});
 });

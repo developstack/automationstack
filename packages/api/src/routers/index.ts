@@ -6,7 +6,6 @@ import { authRouter } from "./auth";
 import { authSettingsRouter } from "./auth-settings";
 import { caseAttachmentsRouter } from "./case-attachments";
 import { casesRouter } from "./cases";
-import { jiraRouter } from "./jira";
 import { mindmapRouter } from "./mindmap";
 import { modulesRouter } from "./modules";
 import { projectMembersRouter } from "./project-members";
@@ -24,7 +23,6 @@ export const appRouter = {
 	caseAttachments: caseAttachmentsRouter,
 	cases: casesRouter,
 	healthCheck: publicProcedure.handler(() => "OK"),
-	jira: jiraRouter,
 	mindmap: mindmapRouter,
 	modules: modulesRouter,
 	projectMembers: projectMembersRouter,

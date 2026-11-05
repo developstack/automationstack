@@ -101,11 +101,7 @@ function RoleField({ onChange, platformRole, value }: RoleFieldProps) {
 			</SelectTrigger>
 			<SelectContent>
 				{options.map((option) => (
-					<SelectItem
-						disabled={option.disabled}
-						key={option.value}
-						value={option.value}
-					>
+					<SelectItem key={option.value} value={option.value}>
 						{option.label}
 					</SelectItem>
 				))}

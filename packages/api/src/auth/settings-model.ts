@@ -3,7 +3,7 @@ import type { AuthProviderId } from "@automationstack/db/schema/auth-settings";
 /** 配置来源：页面配置（数据库中有 auth_settings 行）或环境变量。 */
 export type AuthSettingsSource = "database" | "env";
 
-/** 已保存的密钥不能解密的原因。与 Jira 配置使用相同的值。 */
+/** 已保存的密钥不能解密的原因。 */
 export type AuthCredentialProblem = "master-key-missing" | "undecryptable";
 
 /**

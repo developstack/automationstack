@@ -1,4 +1,3 @@
-import { STALLED_RUN_DAYS } from "@automationstack/db/repositories/project-stats-definitions";
 import type { ActiveRunsStats } from "@automationstack/db/repositories/project-stats-runs-core";
 import { buttonVariants } from "@automationstack/ui/components/button";
 import { useQuery } from "@tanstack/react-query";
@@ -9,20 +8,15 @@ import { ActiveRunRow } from "@/components/overview/active-run-row";
 import { ActiveRunsSkeleton } from "@/components/overview/active-runs-skeleton";
 import { OverviewEmpty } from "@/components/overview/overview-empty";
 import { FULL_CARD } from "@/components/overview/overview-layout";
-import { formatCount } from "@/components/overview/overview-metrics";
+import {
+	activeRunsDescription,
+	formatCount,
+} from "@/components/overview/overview-metrics";
 import { OverviewQuery } from "@/components/overview/overview-query";
 import { OverviewSection } from "@/components/overview/overview-section";
 import { orpc } from "@/utils/orpc";
 
 export const ACTIVE_RUNS_CARD_TITLE = "进行中的测试任务";
-
-function activeRunsDescription(data: ActiveRunsStats): string {
-	const total = `${formatCount(data.totalCount)} 个测试任务还没有提交`;
-	if (data.stalledCount === 0) {
-		return `${total}，停滞的测试任务排在最前面`;
-	}
-	return `${total}，${formatCount(data.stalledCount)} 个超过 ${STALLED_RUN_DAYS} 天没有新的执行结果，排在最前面`;
-}
 
 interface AllRunsLinkProps {
 	projectId: string;

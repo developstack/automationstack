@@ -97,7 +97,7 @@ test("moduleId 与 sourceRef 不参与 diff（当前行为）", () => {
 	expect(diff.hasChanges).toBe(false);
 	const withSource = diffCaseSnapshots(
 		makeSnapshot(),
-		makeSnapshot({ sourceRef: "JIRA-1" })
+		makeSnapshot({ sourceRef: "TICKET-1" })
 	);
 	expect(withSource.hasChanges).toBe(false);
 });

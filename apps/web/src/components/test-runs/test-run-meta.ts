@@ -23,6 +23,9 @@ export const RUN_STATUS_LABELS: Record<TestRunStatus, string> = {
 	voided: "已作废",
 };
 
+/** 状态筛选的默认选项。不选状态时列表不显示已作废的测试任务，所以名称写明不含已作废。 */
+export const DEFAULT_RUN_STATUS_FILTER_LABEL = `全部（不含${RUN_STATUS_LABELS.voided}）`;
+
 export const RESULT_LABELS: Record<TestRunCaseResult, string> = {
 	blocked: "阻塞",
 	failed: "失败",
@@ -86,16 +89,17 @@ export interface CommentFieldText {
 	placeholder?: string;
 }
 
+/** 用例说明的标签和提示。有步骤的用例，说明由失败和阻塞步骤的实际结果汇总而成。 */
 export function commentFieldText(result: TestRunCaseResult): CommentFieldText {
 	if (result === "failed") {
 		return {
-			label: "失败原因",
-			placeholder: "写清楚复现路径与实际现象，这段会带进 Jira issue 的描述里",
+			label: "说明",
+			placeholder: "写清楚复现路径和实际结果，这段会带进测试报告里",
 		};
 	}
 	if (result === "blocked") {
 		return {
-			label: "阻塞原因",
+			label: "说明",
 			placeholder: "写清楚卡在哪一步、缺什么环境或数据，解开后才知道从哪接着测",
 		};
 	}

@@ -2,7 +2,6 @@ import { TabsContent } from "@automationstack/ui/components/tabs";
 
 import { ApiTokensPage } from "@/components/api-tokens/api-tokens-page";
 import { AgentSetupPanel } from "@/components/settings/agent-setup-panel";
-import { JiraSettingsSection } from "@/components/settings/jira-settings-section";
 import {
 	AGENT_SCOPE_NOTE,
 	SettingsScopeNote,
@@ -10,7 +9,6 @@ import {
 } from "@/components/settings/settings-scope-note";
 import {
 	AGENT_TAB,
-	JIRA_TAB,
 	PROJECT_TAB,
 	TOKENS_TAB,
 } from "@/components/settings/settings-tab";
@@ -36,9 +34,6 @@ export function SettingsTabPanels({ projectId }: { projectId: string }) {
 					key={`test-run-${projectId}`}
 					projectId={projectId}
 				/>
-			</TabsContent>
-			<TabsContent className={READABLE_PANEL} value={JIRA_TAB}>
-				<JiraSettingsSection key={`jira-${projectId}`} projectId={projectId} />
 			</TabsContent>
 			<TabsContent className={PANEL} value={TOKENS_TAB}>
 				<SettingsScopeNote>{TOKENS_SCOPE_NOTE}</SettingsScopeNote>

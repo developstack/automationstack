@@ -5,27 +5,12 @@ import {
 	PopoverTrigger,
 } from "@automationstack/ui/components/popover";
 import { ImageIcon } from "lucide-react";
-import { useState } from "react";
 
-import { useAttachmentList } from "@/components/test-runs/use-attachment-upload";
+import type { AttachmentListItem } from "@/components/test-runs/attachment-list";
 
 const NO_ATTACHMENT = "无";
 
-type AttachmentItems = ReturnType<typeof useAttachmentList>["data"];
-
-function AttachmentList({
-	isPending,
-	items,
-}: {
-	isPending: boolean;
-	items: AttachmentItems;
-}) {
-	if (isPending) {
-		return <p className="text-muted-foreground text-sm">正在加载附件…</p>;
-	}
-	if (items === undefined || items.length === 0) {
-		return <p className="text-muted-foreground text-sm">这条用例没有附件。</p>;
-	}
+function AttachmentLinks({ items }: { items: readonly AttachmentListItem[] }) {
 	return (
 		<ul className="flex flex-col gap-2">
 			{items.map(({ attachment, url }) => (
@@ -51,25 +36,21 @@ function AttachmentList({
 }
 
 export interface AttachmentCellProps {
-	attachmentCount: number;
 	caseName: string;
-	runCaseId: string;
+	/** 整条用例的附件：自动化上传、以前人工上传的附件，以及已删除步骤的实际附件。 */
+	items: readonly AttachmentListItem[];
 }
 
-export function AttachmentCell({
-	attachmentCount,
-	caseName,
-	runCaseId,
-}: AttachmentCellProps) {
-	const [open, setOpen] = useState(false);
-	const { data, isPending } = useAttachmentList(open ? runCaseId : undefined);
+/** 整条用例的附件数量，点击后列出文件链接。附件随报告一起加载，不另外请求。 */
+export function AttachmentCell({ caseName, items }: AttachmentCellProps) {
+	const attachmentCount = items.length;
 
 	if (attachmentCount === 0) {
 		return <span className="text-muted-foreground">{NO_ATTACHMENT}</span>;
 	}
 
 	return (
-		<Popover onOpenChange={setOpen} open={open}>
+		<Popover>
 			<PopoverTrigger
 				render={
 					<Button
@@ -84,7 +65,7 @@ export function AttachmentCell({
 				}
 			/>
 			<PopoverContent className="w-72">
-				<AttachmentList isPending={isPending} items={data} />
+				<AttachmentLinks items={items} />
 			</PopoverContent>
 		</Popover>
 	);

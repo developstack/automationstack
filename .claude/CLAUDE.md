@@ -113,19 +113,20 @@ All corners use one scale of four steps. The maximum radius is 8px. The tokens a
 | --- | --- | --- |
 | `rounded-xs` | 2px | Very small marks in a component: chart legend squares, tooltip arrows. |
 | `rounded-sm` | 4px | Small items: checkboxes, badges, inline code, the project initial, items in a menu. |
-| `rounded-md` | 6px | Controls: buttons, inputs, select triggers, toggles, tabs, tooltips, sidebar items, the project switcher. |
-| `rounded-lg` | 8px | Containers: the content panel, cards, dialogs, popovers, menus, alerts, code blocks, images. |
+| `rounded-md` | 6px | Controls: buttons, inputs, select triggers, toggles, tabs, tooltips, sidebar items, the project switcher, small thumbnails that the user can click. |
+| `rounded-lg` | 8px | Containers: the content panel, cards, dialogs, popovers, menus, alerts, code blocks, large images. |
 | `rounded-full` | Circle | Round items only: avatars, status dots, progress bars, scroll bar thumbs. |
 
 1. Use only the classes in the table.
 2. Do not use `rounded-xl`, `rounded-2xl`, `rounded-3xl`, `rounded-4xl`, or `rounded` without a step.
 3. Do not use arbitrary radius values, for example `rounded-[6px]`.
 4. Select the step from the function of the element, not from its size.
-5. Do not use `rounded-full` on a rectangle that contains text. Buttons and badges are not pills.
-6. An item in a container must have a radius that is equal to or smaller than the radius of the container.
-7. A skeleton must have the same radius as the element that it replaces.
-8. In a CSS file, use a `--radius-*` token or calculate the radius from `var(--radius)`. Do not write a fixed pixel value.
-9. When you add a vendored component, for example from shadcn or Kibo UI, change its radius classes to this scale.
+5. A small thumbnail that the user can click is a control. Use `rounded-md`. A large image, for example in a lightbox or a preview, is a container. Use `rounded-lg`.
+6. Do not use `rounded-full` on a rectangle that contains text. Buttons and badges are not pills.
+7. An item in a container must have a radius that is equal to or smaller than the radius of the container.
+8. A skeleton must have the same radius as the element that it replaces.
+9. In a CSS file, use a `--radius-*` token or calculate the radius from `var(--radius)`. Do not write a fixed pixel value.
+10. When you add a vendored component, for example from shadcn or Kibo UI, change its radius classes to this scale.
 
 The tokens `--radius-xl` to `--radius-4xl` point to `--radius-lg`. Thus a vendored class that is not changed also stops at 8px.
 

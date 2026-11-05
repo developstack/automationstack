@@ -6,7 +6,6 @@ import {
 import { getRouteApi } from "@tanstack/react-router";
 import {
 	KeyRoundIcon,
-	PlugIcon,
 	SlidersHorizontalIcon,
 	TerminalIcon,
 } from "lucide-react";
@@ -14,7 +13,6 @@ import { type ReactNode, useCallback } from "react";
 
 import {
 	AGENT_TAB,
-	JIRA_TAB,
 	PROJECT_TAB,
 	resolveSettingsTab,
 	SETTINGS_TABS,
@@ -49,10 +47,6 @@ function SettingsTabTriggers() {
 			<TabsTrigger value={PROJECT_TAB}>
 				<SlidersHorizontalIcon data-icon="inline-start" />
 				项目设置
-			</TabsTrigger>
-			<TabsTrigger value={JIRA_TAB}>
-				<PlugIcon data-icon="inline-start" />
-				Jira 集成
 			</TabsTrigger>
 			<TabsTrigger value={TOKENS_TAB}>
 				<KeyRoundIcon data-icon="inline-start" />

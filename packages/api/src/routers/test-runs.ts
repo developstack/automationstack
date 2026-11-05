@@ -15,7 +15,9 @@ import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
 import { requireRunMember } from "../lib/project-scope";
+import { getR2Storage } from "../lib/r2";
 import { publishInvalidate } from "../lib/realtime-publish";
+import { withDownloadUrls } from "../lib/run-attachment-urls";
 import { rejectRunWrite, testRunErrors } from "../lib/test-run-errors";
 import { runIdSchema, testRunStatusSchema } from "../schemas/test-run";
 import { testRunEventProcedures } from "./test-run-events";
@@ -170,7 +172,15 @@ export const testRunsRouter = {
 			if (!report) {
 				throw errors.NOT_FOUND({ message: "测试任务不存在" });
 			}
-			return report;
+			// 失败和阻塞用例的附件随报告一起签发下载地址，页面不需要为每条用例另外请求附件列表
+			const storage = getR2Storage();
+			const failedAndBlockedCases = await Promise.all(
+				report.failedAndBlockedCases.map(async (reportCase) => ({
+					...reportCase,
+					attachments: await withDownloadUrls(reportCase.attachments, storage),
+				}))
+			);
+			return { ...report, failedAndBlockedCases };
 		}),
 	submit: protectedProcedure
 		.errors(testRunErrors)

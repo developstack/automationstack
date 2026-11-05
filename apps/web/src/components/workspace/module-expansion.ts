@@ -44,6 +44,36 @@ export function findModuleAncestorIds(
 	return walk(nodes) ? path : [];
 }
 
+/**
+ * 从根到模块自身的模块 id 链。模块不在树里时返回空数组。
+ * 与 findModuleAncestorIds 的差别：这里包含模块自己。
+ */
+export function findModuleChain(
+	nodes: readonly ModuleTreeNode[],
+	moduleId: string | undefined
+): string[] {
+	if (moduleId === undefined) {
+		return [];
+	}
+	const walk = (
+		list: readonly ModuleTreeNode[],
+		path: readonly string[]
+	): string[] | null => {
+		for (const node of list) {
+			const next = [...path, node.id];
+			if (node.id === moduleId) {
+				return next;
+			}
+			const found = walk(node.children, next);
+			if (found !== null) {
+				return found;
+			}
+		}
+		return null;
+	};
+	return walk(nodes, []) ?? [];
+}
+
 export function isModuleOpen(
 	context: ModuleOpenContext,
 	moduleId: string,

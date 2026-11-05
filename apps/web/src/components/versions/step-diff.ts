@@ -1,16 +1,14 @@
 import type { CaseStep } from "@automationstack/db/schema/test-cases";
 
-import { stepScreenshots } from "@/components/cases/step-screenshots";
-
 import type { ChangeKind } from "./change-kind.ts";
 import {
 	buildWordDiffSegments,
 	type TextDiffSegment,
 } from "./diff-segments.ts";
 import {
-	diffScreenshots,
-	hasScreenshotChanges,
-	type ScreenshotDiffEntry,
+	type ColumnScreenshotsDiff,
+	diffColumnScreenshots,
+	hasColumnScreenshotChanges,
 } from "./screenshot-diff.ts";
 
 export interface StepDiffEntry {
@@ -21,10 +19,13 @@ export interface StepDiffEntry {
 	newStep: CaseStep | null;
 	oldIndex: number | null;
 	oldStep: CaseStep | null;
-	/** 这个步骤的截图变化。新增的步骤中所有截图都是新增，删除的步骤中所有截图都是删除。 */
-	screenshots: ScreenshotDiffEntry[];
+	/** 两组截图的变化。新增的步骤中所有截图都是新增，删除的步骤中所有截图都是删除。 */
+	screenshots: ColumnScreenshotsDiff;
 	stepSegments: TextDiffSegment[] | null;
 }
+
+/** 步骤对比表格中的一栏：操作步骤（step）或预期结果（expected）。 */
+export type StepDiffField = "expected" | "step";
 
 export type StepsDiffCounts = Record<ChangeKind, number>;
 
@@ -50,7 +51,7 @@ function createAddedEntry(newStep: CaseStep, newIndex: number): StepDiffEntry {
 		newStep,
 		oldIndex: null,
 		oldStep: null,
-		screenshots: diffScreenshots([], stepScreenshots(newStep)),
+		screenshots: diffColumnScreenshots(null, newStep),
 		stepSegments: null,
 	};
 }
@@ -67,21 +68,18 @@ function createRemovedEntry(
 		newStep: null,
 		oldIndex,
 		oldStep,
-		screenshots: diffScreenshots(stepScreenshots(oldStep), []),
+		screenshots: diffColumnScreenshots(oldStep, null),
 		stepSegments: null,
 	};
 }
 
 function createPairedEntry(pair: PairedSteps): StepDiffEntry {
 	const { newIndex, newStep, oldIndex, oldStep } = pair;
-	const screenshots = diffScreenshots(
-		stepScreenshots(oldStep),
-		stepScreenshots(newStep)
-	);
+	const screenshots = diffColumnScreenshots(oldStep, newStep);
 	const contentChanged =
 		oldStep.step !== newStep.step ||
 		oldStep.expected !== newStep.expected ||
-		hasScreenshotChanges(screenshots);
+		hasColumnScreenshotChanges(screenshots);
 	const base = {
 		expectedSegments: null,
 		id: newStep.id,
