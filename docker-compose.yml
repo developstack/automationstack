@@ -184,7 +184,6 @@ services:
   # 本地调试 Casdoor 认证模式用的 Casdoor（plan 021 D10、T14）。
   # 只在 `--profile casdoor` 时启动，默认的 `docker compose up` 和 `make up` 不启动它。
   # 启动和停止用 `make casdoor-up` / `make casdoor-down`。
-  # 配置与生产相同（k8s-gitops `casdoor/k8s/configmap.yaml`），只有地址和口令不同。
   casdoor:
     profiles: ["casdoor"]
     # 版本与生产相同。生产升级时这里一起改。

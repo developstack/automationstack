@@ -4,6 +4,8 @@
 
 本文只适用于存储方式是 Cloudflare R2 的部署。平台管理员在「存储设置」页面中保存过配置后，服务不再读取 `R2_*` 和 `IMAGE_PUBLIC_BASE_URL`。这时，在页面的「用例图片的公开基础地址」中填写公开域名，不执行第 9 节。存储方式见 `docs/adr/0006-uploads-stored-on-server-by-default.md`。
 
+我们不再使用 k8s（`docs/adr/0007-deploy-to-one-server-from-acr-images.md`）。本文中 GitOps 仓库、ConfigMap、Secret 和 ArgoCD 的步骤只说明以前的部署。在单机部署中，把环境变量写入 `.env.prod`，然后执行 `make up:prod`。
+
 ## 1. 公开的后果
 
 开始前，阅读本节。

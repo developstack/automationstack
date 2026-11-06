@@ -7,6 +7,16 @@
 
 ## [未发布]
 
+### 变更
+
+- **部署改为从 ACR 拉取镜像**：CI 构建 server 和 web 的镜像，并把它们推送到阿里云 ACR。
+  `make up:prod` 拉取当前提交的镜像，不再在服务器上构建。`.env.prod` 增加必填键 `IMAGE_PREFIX`。
+  web 镜像的前端地址与 `DOMAIN` 不同时，`make up:prod` 停止。
+
+### 移除
+
+- **k8s 部署**：CI 不再推送 GHCR，也不再写回 GitOps 仓库。推送 `main` 不再部署任何环境。
+
 ### 新增
 
 - **单机生产部署**：增加 `make up:prod`、`make logs:prod` 和 `make down:prod`。
