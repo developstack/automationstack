@@ -216,6 +216,8 @@ jobs:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+          # ACR 个人版拒绝 buildx 默认的证明清单（application/vnd.oci.empty.v1+json），所以关闭它。
+          provenance: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             ${{ steps.meta.outputs.labels }}
