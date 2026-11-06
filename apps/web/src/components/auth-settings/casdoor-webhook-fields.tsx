@@ -1,4 +1,4 @@
-import { CASDOOR_WEBHOOK_URL_IN_CLUSTER } from "@automationstack/api/auth/casdoor-paths";
+import { env } from "@automationstack/env/web";
 
 import type { AuthSettingsFieldGroupProps } from "@/components/auth-settings/auth-settings-field-group";
 import { AuthUrlField } from "@/components/auth-settings/auth-url-field";
@@ -38,10 +38,10 @@ export function CasdoorWebhookFields(props: WebhookProps) {
 		>
 			<AuthUrlField
 				copyLabel="webhook 地址"
-				hint={`这是 k8s 部署中的集群内地址。其他部署方式请把主机换成 Casdoor 能访问的 server 地址，路径保持 ${props.view.webhookPath}。`}
+				hint={`Casdoor 必须能访问这个地址。Casdoor 不能访问这个主机时，把主机换成它能访问的 server 地址，路径保持 ${props.view.webhookPath}。`}
 				id="auth-settings-webhook-url"
 				label="Webhook 地址"
-				value={CASDOOR_WEBHOOK_URL_IN_CLUSTER}
+				value={`${env.VITE_SERVER_URL}${props.view.webhookPath}`}
 			/>
 			<SettingsSecretField
 				clearRequested={props.values.clearWebhookSecret}

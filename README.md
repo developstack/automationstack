@@ -186,10 +186,9 @@ server 的启动路径、两个 Dockerfile、CI 全都不跑。
 
 - **docker compose**：改 `docker-compose.yml` 里 web 服务的
   `build.args.VITE_SERVER_URL`，然后 `docker compose build web`。
-- **CI / GHCR 镜像**：在仓库 Settings → Secrets and variables → Actions →
-  Variables 里设 `VITE_SERVER_URL`（`.github/workflows/ci.yml` 读它；
-  没设时兜底的是 `http://localhost:3000`）。它是公开的后端地址不是密钥，
-  所以放 Variables 而不是 Secrets。
+- **CI / ACR 镜像**：在仓库 Settings → Secrets and variables → Actions →
+  Variables 里设 `VITE_SERVER_URL`（`.github/workflows/ci.yml` 读它）。
+  它是公开的后端地址不是密钥，所以放 Variables 而不是 Secrets。
 
 `CORS_ORIGIN`（server 侧）必须和 `VITE_SERVER_URL`（web 侧）**成对地改**：
 前者填错是浏览器报 CORS，后者填错是前端根本请求不到后端——
@@ -204,8 +203,10 @@ Casdoor 的 client secret 密文）敞在那里，而没有任何人会注意到
 
 ### 单机生产部署（`make up:prod`）
 
-`make up:prod` 在一台服务器上运行生产构建，例如 `testcases.logwing.com`。数据库在外部机器上（例如阿里云 RDS），本仓库不启动数据库。
-集群上的正式生产环境不使用它。正式生产环境由 `developstack/k8s-gitops` 的 `automationstack/k8s` 管理。
+`make up:prod` 在一台服务器上运行生产镜像，例如 `testcases.logwing.com`。数据库在外部机器上（例如阿里云 RDS），本仓库不启动数据库。
+
+GitHub Actions 构建 server 和 web 的镜像，并把它们推送到阿里云容器镜像服务（ACR）。服务器只拉取镜像，不构建。
+推送 `main` 不会更新服务器。在服务器上执行 `make deploy:prod` 后，服务器才更新。
 
 服务器上必须有 docker（含 compose 插件）、git 和 make。
 
@@ -223,8 +224,8 @@ nginx 是唯一的入口，监听 80 和 443。server 和 web 不发布端口。
 | `/files/` | server（上传和下载本地存储中的文件，见「图片和附件」） |
 | 其他路径 | web |
 
-路径与 k8s-gitops 的 `ingress.yaml` 相同。修改 `deploy/nginx/locations.conf` 时，两处一起改。
-web 的 `VITE_SERVER_URL` 和 server 的 `CORS_ORIGIN` 都由 `DOMAIN` 得出，所以两者总是相同。
+server 的 `CORS_ORIGIN` 由 `DOMAIN` 得出。web 的 `VITE_SERVER_URL` 来自 GitHub 仓库变量，它必须是 `https://<DOMAIN>`。
+两者不同时，`make up:prod` 停止。这个检查使用 web 镜像的标签 `automationstack.server-url`。
 
 登录限流按客户端 IP 计数。nginx 用连接地址覆盖 `X-Real-IP` 请求头，server 从这个请求头读取客户端 IP（`CLIENT_IP_HEADER`）。
 server 不发布端口，所以客户端不能绕过 nginx 伪造这个请求头。
@@ -232,12 +233,28 @@ server 不发布端口，所以客户端不能绕过 nginx 伪造这个请求头
 HTTPS 证书来自 Let's Encrypt。`make up:prod` 申请第一张证书。certbot 服务自动续期证书。
 证书在 docker 卷 `letsencrypt` 中。`make down:prod` 不删除它。
 
+#### 准备镜像仓库
+
+1. 在阿里云 ACR 中创建命名空间。
+2. 在这个命名空间中，创建仓库 `automationstack-server` 和 `automationstack-web`。也可以开启「自动创建仓库」。
+3. 在 ACR 的「访问凭证」中，设置固定密码。
+4. 在 GitHub 仓库中设置这些 Variables：
+
+   | Variable | 值 |
+   | --- | --- |
+   | `ACR_REGISTRY` | ACR 的公网地址，例如 `crpi-xxxx.cn-guangzhou.personal.cr.aliyuncs.com` |
+   | `ACR_NAMESPACE` | 命名空间 |
+   | `VITE_SERVER_URL` | 站点的地址，例如 `https://testcases.logwing.com` |
+
+5. 在 GitHub 仓库中设置这些 Secrets：`ACR_USERNAME` 和 `ACR_PASSWORD`。它们是 ACR 的用户名和固定密码。
+6. 在 GitHub Actions 中手动运行 CI，或推送 `main`。CI 成功后，确认 ACR 中有 `sha-` 开头的 tag。
+
 #### 准备
 
 1. 在阿里云中，把域名的 A 记录指向本服务器的公网 IP。
 2. 在阿里云安全组中，允许 80 和 443 端口的入站流量。
 3. 中国内地的服务器：确认域名已经完成 ICP 备案。没有备案时，80 和 443 端口被阻断，证书申请失败。
-4. 中国内地的服务器：配置 docker 的镜像加速器。没有加速器时，服务器可能不能从 Docker Hub 拉取 `node`、`nginx` 和 `certbot` 镜像。
+4. 中国内地的服务器：配置 docker 的镜像加速器。没有加速器时，服务器可能不能从 Docker Hub 拉取 `nginx` 和 `certbot` 镜像。
    在阿里云「容器镜像服务 → 镜像工具 → 镜像加速器」中取得加速器地址，写入 `/etc/docker/daemon.json` 的 `registry-mirrors`，然后重启 docker。
 5. 准备数据库。使用阿里云 RDS PostgreSQL 时，在 RDS 控制台中执行这些步骤：
    1. 在「账号管理」中创建普通账号，例如 `automationstack`。
@@ -254,6 +271,8 @@ HTTPS 证书来自 Let's Encrypt。`make up:prod` 申请第一张证书。certbo
 
 6. 准备图片目录。默认目录是 `/data/automationstack/files`（`.env.prod` 中的 `FILES_HOST_DIR`）。
    确认 `/data` 是数据盘的挂载点（`df -h /data`）。目录不存在时，`make up:prod` 创建它。
+7. 登录 ACR：执行 `docker login --username=<用户名> <地址>`。地址必须与 `.env.prod` 的 `IMAGE_PREFIX` 相同。
+   服务器与 ACR 在同一个地域时，使用 VPC 地址，例如 `crpi-xxxx-vpc.cn-guangzhou.personal.cr.aliyuncs.com`。ACR 的「访问凭证」页面显示这个地址。
 
 #### 第一次启动
 
@@ -264,14 +283,18 @@ HTTPS 证书来自 Let's Encrypt。`make up:prod` 申请第一张证书。certbo
 
 #### 更新
 
-执行 `make deploy:prod`。它只快进地拉取当前分支（`git pull --ff-only`），然后执行 `make up:prod`。
+1. 推送 `main`，然后等到 CI 成功。
+2. 在服务器上执行 `make deploy:prod`。它只快进地拉取当前分支（`git pull --ff-only`），然后执行 `make up:prod`。
+
 工作区有未提交的修改时，它停止。`.env.prod` 不在 git 中，所以拉取代码不改变它。
+
+回滚时，执行 `make up:prod IMAGE_TAG=sha-<提交的前 7 位>`。回滚不还原数据库迁移。所以只回滚到与当前数据库兼容的版本。
 
 #### 每次启动时 `make up:prod` 做的事
 
 1. 合并 `.env.prod`：模板中新增的键，连同注释，追加到 `.env.prod` 的末尾。已有的值不变。
 2. 检查 `.env.prod`：必填键为空时，停止。模板中没有的键，给警告。
-3. 构建 server 和 web 的镜像。迁移在 server 镜像中执行，所以构建在迁移之前。
+3. 拉取当前提交的镜像，然后检查 web 镜像的前端地址。迁移在 server 镜像中执行，所以拉取在迁移之前。
 4. 预检外部库，然后执行迁移（SQL）。这一步在启动或替换任何服务之前。
    它失败时，`make up:prod` 停止，正在运行的旧服务不变。
 5. 启动 server、web、nginx 和 certbot，等到 server 和 web 变为 healthy。

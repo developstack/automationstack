@@ -57,6 +57,9 @@ APP ?=
 # make up:prod 使用的生产 env 文件。默认在仓库根目录，不进 git。
 # 用其他路径：make up:prod PROD_ENV=/etc/automationstack/prod.env
 PROD_ENV ?= $(ROOT_DIR)/.env.prod
+# make up:prod 拉取的镜像 tag，默认是当前提交。CI 用同样的格式推送镜像：sha- 加上提交的前 7 位。
+# 回滚到以前的版本：make up:prod IMAGE_TAG=sha-1234567
+IMAGE_TAG ?= sha-$(shell git -C "$(ROOT_DIR)" rev-parse HEAD | cut -c1-7)
 
 PG_DB := automationstack
 # Homebrew 的 Postgres 监听 5432；compose 那个刻意映射到 5433，就是为了不和
@@ -74,7 +77,7 @@ PROD_ENV_FILE := $(abspath $(PROD_ENV))
 PROD_ENV_TEMPLATE := $(ROOT_DIR)/.env.prod.example
 # --env-file 展开 docker-compose.prod.yml 中的 ${...}；PROD_ENV_FILE 给 server 和 migrate 的 env_file。
 # 给了 --env-file 时，compose 不读取根目录的 .env（那是本地开发的文件）。
-PROD_COMPOSE = PROD_ENV_FILE="$(PROD_ENV_FILE)" docker compose --project-directory "$(ROOT_DIR)" -f "$(ROOT_DIR)/docker-compose.prod.yml" --env-file "$(PROD_ENV_FILE)"
+PROD_COMPOSE = IMAGE_TAG="$(IMAGE_TAG)" PROD_ENV_FILE="$(PROD_ENV_FILE)" docker compose --project-directory "$(ROOT_DIR)" -f "$(ROOT_DIR)/docker-compose.prod.yml" --env-file "$(PROD_ENV_FILE)"
 ENV_ROOT := $(ROOT_DIR)/.env
 ENV_SERVER := $(ROOT_DIR)/apps/server/.env
 ENV_WEB := $(ROOT_DIR)/apps/web/.env
@@ -504,15 +507,14 @@ casdoor-bootstrap: ## 在本地 Casdoor 中创建 automationstack 组织、应�
 
 ##@ 单机生产部署（数据库在外部机器上）
 
-# 在一台服务器上用 docker compose 运行生产构建，配置见 docker-compose.prod.yml 与 .env.prod.example。
+# 在一台服务器上用 docker compose 运行生产镜像，配置见 docker-compose.prod.yml 与 .env.prod.example。
+# 镜像由 GitHub Actions 构建并推送到阿里云 ACR。服务器只拉取镜像，不构建。
 # nginx 是唯一的入口，前端和后端使用同一个域名，所以没有跨域请求。域名由阿里云的 DNS 指向本服务器。
-# 集群上的正式生产环境不用这些目标，它由 developstack/k8s-gitops 管理。
 #
 # 每次执行同样的步骤，任何一步失败都不往下走：
 #   1. 合并并检查 .env.prod。图片目录（FILES_HOST_DIR）不存在时，创建它。
-#   2. 构建镜像。迁移在 server 镜像中执行，所以构建在迁移之前。
-#      每次都构建：前端地址写在 web 镜像中，代码或域名改变后不构建就不生效。
-#      docker 有构建缓存，没有改变的层不重新构建。
+#   2. 拉取当前提交的镜像。迁移在 server 镜像中执行，所以拉取在迁移之前。
+#      然后检查 web 镜像中的前端地址：它与 DOMAIN 不同时，浏览器的请求发到其他站点，所以停止。
 #   3. 预检外部库，然后执行迁移（SQL）。这一步在启动或替换任何服务之前。
 #      它失败时，正在运行的旧服务不变。
 #   4. 启动 server、web、nginx 和 certbot，等到 healthy。
@@ -520,7 +522,7 @@ casdoor-bootstrap: ## 在本地 Casdoor 中创建 automationstack 组织、应�
 #
 # 目标名中的冒号必须写成 `\:`。GNU Make 3.81 的 .PHONY 不认这种名字，
 # 所以用 phony 目标 _prod-force 作为前置依赖：仓库中有同名文件时，目标也照样执行。
-up\:prod: _prod-force ## 单机生产部署：合并 .env.prod → 构建 → 迁移外部库 → 启动 → HTTPS 证书
+up\:prod: _prod-force ## 单机生产部署：合并 .env.prod → 拉取镜像 → 迁移外部库 → 启动 → HTTPS 证书
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
 	if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then \
 	  echo "❌ docker 不可用：没有安装，或 daemon 没有运行。"; exit 1; \
@@ -530,11 +532,24 @@ up\:prod: _prod-force ## 单机生产部署：合并 .env.prod → 构建 → �
 	files_dir="$${files_dir:-/data/automationstack/files}"; \
 	if [ ! -d "$$files_dir" ]; then \
 	  echo "▶ 创建图片目录 $$files_dir"; \
-	  mkdir -p "$$files_dir" || { echo "❌ 不能创建 $$files_dir。执行 sudo mkdir -p $$files_dir，或在 .env.prod 中修改 FILES_HOST_DIR。"; exit 1; }; \
+	  mkdir -p "$$files_dir" || { echo "❌ 不能创建 $${files_dir}。执行 sudo mkdir -p $${files_dir}，或在 .env.prod 中修改 FILES_HOST_DIR。"; exit 1; }; \
 	fi; \
 	echo "▶ 图片目录：$$files_dir"; \
-	echo "▶ 构建镜像"; \
-	$(PROD_COMPOSE) build; \
+	echo "▶ 拉取镜像 $(IMAGE_TAG)"; \
+	if ! $(PROD_COMPOSE) pull server web nginx certbot; then \
+	  echo "❌ 不能拉取镜像 $(IMAGE_TAG)。检查这些原因："; \
+	  echo "   1. 这个提交的 CI 没有完成或没有成功。到 GitHub Actions 中查看。"; \
+	  echo "   2. 这台服务器没有登录 ACR。执行 docker login，地址与 IMAGE_PREFIX 相同。"; \
+	  exit 1; \
+	fi; \
+	domain="$$(sed -n 's/^DOMAIN=//p' "$(PROD_ENV_FILE)" | tail -n 1 | tr -d "\"' ")"; \
+	prefix="$$(sed -n 's/^IMAGE_PREFIX=//p' "$(PROD_ENV_FILE)" | tail -n 1 | tr -d "\"' ")"; \
+	baked="$$(docker image inspect --format '{{ index .Config.Labels "automationstack.server-url" }}' "$$prefix/automationstack-web:$(IMAGE_TAG)")"; \
+	if [ "$$baked" != "https://$$domain" ]; then \
+	  echo "❌ web 镜像的前端地址是 $${baked}，但 DOMAIN 是 $${domain}。"; \
+	  echo "   把 GitHub 仓库变量 VITE_SERVER_URL 设为 https://$${domain}，然后在 GitHub Actions 中重新运行 CI。"; \
+	  exit 1; \
+	fi; \
 	echo "▶ 预检外部库并执行迁移（SQL）"; \
 	$(PROD_COMPOSE) run --rm migrate; \
 	echo "▶ 启动服务，等到 healthy"; \
@@ -547,7 +562,6 @@ up\:prod: _prod-force ## 单机生产部署：合并 .env.prod → 构建 → �
 	$(PROD_COMPOSE) run --rm --no-deps --entrypoint sh certbot /opt/automationstack/ensure-cert.sh; \
 	$(PROD_COMPOSE) exec -T nginx sh -c '/docker-entrypoint.d/40-automationstack-select-site.sh && nginx -s reload'; \
 	$(PROD_COMPOSE) ps; \
-	domain="$$(sed -n 's/^DOMAIN=//p' "$(PROD_ENV_FILE)" | tail -n 1 | tr -d "\"' ")"; \
 	echo "✅ 已启动：https://$${domain}   日志: make logs:prod   停止: make down:prod"
 
 # 一键更新：只快进地拉取当前分支，然后执行 make up:prod。
