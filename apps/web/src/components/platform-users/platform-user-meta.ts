@@ -12,9 +12,8 @@ export const PASSWORD_HINT = `${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} �
 
 /** 平台角色的中文名称（CONTEXT.md）。存储值 member 表示普通用户。 */
 export const PLATFORM_ROLE_LABEL: Record<UserRole, string> = {
-	admin: "平台管理员",
+	admin: "管理员",
 	member: "普通用户",
-	project_admin: "项目管理员",
 };
 
 interface RoleOption {
@@ -25,11 +24,10 @@ interface RoleOption {
 /** 按权限从低到高排列。 */
 export const PLATFORM_ROLE_OPTIONS: readonly RoleOption[] = [
 	{ label: PLATFORM_ROLE_LABEL.member, value: "member" },
-	{ label: PLATFORM_ROLE_LABEL.project_admin, value: "project_admin" },
 	{ label: PLATFORM_ROLE_LABEL.admin, value: "admin" },
 ];
 
-/** 用户菜单中可以改成的平台角色：当前角色以外的两个。 */
+/** 用户菜单中可以改成的平台角色：当前角色以外的那一个。 */
 export function roleChangeTargets(current: UserRole): UserRole[] {
 	return PLATFORM_ROLE_OPTIONS.map((option) => option.value).filter(
 		(role) => role !== current

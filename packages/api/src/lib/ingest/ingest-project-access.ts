@@ -1,4 +1,4 @@
-import { getProjectRole } from "@automationstack/db/repositories/project-members-repository";
+import { isProjectMember } from "@automationstack/db/repositories/project-members-repository";
 import { getProjectIdByRunId } from "@automationstack/db/repositories/project-scope-repository";
 import type { User } from "@automationstack/db/schema/users";
 
@@ -9,8 +9,8 @@ export async function tokenCanEnterProject(
 	projectId: string
 ): Promise<boolean> {
 	return canEnterProject({
+		isMember: await isProjectMember(projectId, user.id),
 		platformRole: user.role,
-		projectRole: await getProjectRole(projectId, user.id),
 	});
 }
 

@@ -14,7 +14,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { FolderKanbanIcon } from "lucide-react";
 
 import { useSession } from "@/components/auth/use-session";
-import { AuthSettingsNavItem } from "@/components/layout/auth-settings-nav-item";
 import { PlatformUsersNavItem } from "@/components/layout/platform-users-nav-item";
 import { SidebarBrand } from "@/components/layout/sidebar-brand";
 import { SidebarUser } from "@/components/layout/sidebar-user";
@@ -53,7 +52,6 @@ function PlatformNavGroup() {
 				{user?.role === "admin" ? (
 					<>
 						<PlatformUsersNavItem pathname={pathname} />
-						<AuthSettingsNavItem pathname={pathname} />
 						<StorageSettingsNavItem pathname={pathname} />
 					</>
 				) : null}

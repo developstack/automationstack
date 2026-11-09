@@ -1,4 +1,3 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
@@ -24,16 +23,15 @@ function useInvalidateMembership() {
 }
 
 export interface UserProjectActions {
-	add: (projectId: string, role: ProjectRole) => void;
+	add: (projectId: string) => void;
 	error: string | undefined;
 	isPending: boolean;
 	remove: (projectId: string) => void;
-	setRole: (projectId: string, role: ProjectRole) => void;
 }
 
-function useMembershipMutations() {
+/** 把一个用户加入项目或移出项目。改动即时生效。 */
+export function useUserProjectActions(userId: string): UserProjectActions {
 	const invalidate = useInvalidateMembership();
-
 	const addMutation = useMutation(
 		orpc.projectMembers.add.mutationOptions({
 			meta: { suppressErrorToast: true },
@@ -46,59 +44,27 @@ function useMembershipMutations() {
 			onSuccess: (result) => invalidate(result.projectId),
 		})
 	);
-	const roleMutation = useMutation(
-		orpc.projectMembers.updateRole.mutationOptions({
-			meta: { suppressErrorToast: true },
-			onSuccess: (member) => invalidate(member.projectId),
-		})
-	);
-
-	const resetAll = useCallback(() => {
-		addMutation.reset();
-		removeMutation.reset();
-		roleMutation.reset();
-	}, [addMutation, removeMutation, roleMutation]);
-
-	return { addMutation, removeMutation, resetAll, roleMutation };
-}
-
-export function useUserProjectActions(userId: string): UserProjectActions {
-	const { addMutation, removeMutation, resetAll, roleMutation } =
-		useMembershipMutations();
 
 	const add = useCallback(
-		(projectId: string, role: ProjectRole) => {
-			resetAll();
-			addMutation.mutate({ projectId, role, userId });
+		(projectId: string) => {
+			removeMutation.reset();
+			addMutation.mutate({ projectId, userId });
 		},
-		[addMutation, resetAll, userId]
+		[addMutation, removeMutation, userId]
 	);
 
 	const remove = useCallback(
 		(projectId: string) => {
-			resetAll();
+			addMutation.reset();
 			removeMutation.mutate({ projectId, userId });
 		},
-		[removeMutation, resetAll, userId]
-	);
-
-	const setRole = useCallback(
-		(projectId: string, role: ProjectRole) => {
-			resetAll();
-			roleMutation.mutate({ projectId, role, userId });
-		},
-		[resetAll, roleMutation, userId]
+		[addMutation, removeMutation, userId]
 	);
 
 	return {
 		add,
-		error: (addMutation.error ?? removeMutation.error ?? roleMutation.error)
-			?.message,
-		isPending:
-			addMutation.isPending ||
-			removeMutation.isPending ||
-			roleMutation.isPending,
+		error: (addMutation.error ?? removeMutation.error)?.message,
+		isPending: addMutation.isPending || removeMutation.isPending,
 		remove,
-		setRole,
 	};
 }

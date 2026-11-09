@@ -4,7 +4,7 @@ import { db } from "../index";
 import {
 	type ChangedSettingsField,
 	settingsChangeLog,
-} from "../schema/auth-settings";
+} from "../schema/settings-change-log";
 import {
 	STORAGE_SETTINGS_ROW_ID,
 	type StorageBackendId,

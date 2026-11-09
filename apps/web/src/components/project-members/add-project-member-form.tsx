@@ -1,5 +1,3 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
-import type { UserRole } from "@automationstack/db/schema/users";
 import { Button } from "@automationstack/ui/components/button";
 import { DialogFooter } from "@automationstack/ui/components/dialog";
 import { Label } from "@automationstack/ui/components/label";
@@ -11,26 +9,19 @@ import {
 	SelectValue,
 } from "@automationstack/ui/components/select";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { type FormEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import { ProjectMemberFormError } from "@/components/project-members/project-member-form-error";
-import {
-	allowedProjectRole,
-	isOwnerIneligible,
-	OWNER_NOT_ELIGIBLE_HINT,
-	projectRoleOptionsFor,
-} from "@/components/project-members/project-member-meta";
 import { orpc } from "@/utils/orpc";
 
 const CANDIDATE_FIELD_ID = "project-member-candidate";
-const ROLE_FIELD_ID = "project-member-role";
-const ROLE_HINT_ID = "project-member-role-hint";
+const NO_CANDIDATE_HINT_ID = "project-member-no-candidate";
 const NO_CANDIDATE = "__none__";
 
 interface CandidateOption {
 	label: string;
-	platformRole?: UserRole;
 	value: string;
 }
 
@@ -55,12 +46,18 @@ function useAddMember(projectId: string, onClose: () => void) {
 }
 
 interface CandidateFieldProps {
+	describedBy: string | undefined;
 	onChange: (userId: string) => void;
 	options: readonly CandidateOption[];
 	value: string;
 }
 
-function CandidateField({ onChange, options, value }: CandidateFieldProps) {
+function CandidateField({
+	describedBy,
+	onChange,
+	options,
+	value,
+}: CandidateFieldProps) {
 	const handleValueChange = useCallback(
 		(next: string | null) => onChange(next ?? NO_CANDIDATE),
 		[onChange]
@@ -70,48 +67,10 @@ function CandidateField({ onChange, options, value }: CandidateFieldProps) {
 		<div className="flex flex-col gap-2">
 			<Label htmlFor={CANDIDATE_FIELD_ID}>账号</Label>
 			<Select items={options} onValueChange={handleValueChange} value={value}>
-				<SelectTrigger className="w-full" id={CANDIDATE_FIELD_ID}>
-					<SelectValue />
-				</SelectTrigger>
-				<SelectContent>
-					{options.map((option) => (
-						<SelectItem key={option.value} value={option.value}>
-							{option.label}
-						</SelectItem>
-					))}
-				</SelectContent>
-			</Select>
-		</div>
-	);
-}
-
-interface RoleFieldProps {
-	onChange: (role: ProjectRole) => void;
-	platformRole: UserRole | undefined;
-	value: ProjectRole;
-}
-
-function RoleField({ onChange, platformRole, value }: RoleFieldProps) {
-	const options = projectRoleOptionsFor(platformRole);
-	// 选了普通用户时没有「拥有者」，在字段下说明原因
-	const ownerBlocked = isOwnerIneligible(platformRole);
-	const handleValueChange = useCallback(
-		(next: string | null) => {
-			if (next === "member" || next === "owner") {
-				onChange(next);
-			}
-		},
-		[onChange]
-	);
-
-	return (
-		<div className="flex flex-col gap-2">
-			<Label htmlFor={ROLE_FIELD_ID}>项目角色</Label>
-			<Select items={options} onValueChange={handleValueChange} value={value}>
 				<SelectTrigger
-					aria-describedby={ownerBlocked ? ROLE_HINT_ID : undefined}
+					aria-describedby={describedBy}
 					className="w-full"
-					id={ROLE_FIELD_ID}
+					id={CANDIDATE_FIELD_ID}
 				>
 					<SelectValue />
 				</SelectTrigger>
@@ -123,31 +82,34 @@ function RoleField({ onChange, platformRole, value }: RoleFieldProps) {
 					))}
 				</SelectContent>
 			</Select>
-			{ownerBlocked ? (
-				<p className="text-muted-foreground text-xs" id={ROLE_HINT_ID}>
-					{OWNER_NOT_ELIGIBLE_HINT}
-				</p>
-			) : null}
 		</div>
+	);
+}
+
+/** 所有账号都已经在项目里时，说明原因，并给出新建账号的入口。 */
+function NoCandidateHint() {
+	return (
+		<p className="text-muted-foreground text-xs" id={NO_CANDIDATE_HINT_ID}>
+			没有可以添加的账号：所有账号都已经在本项目中。先到
+			<Link className="underline underline-offset-4" to="/users">
+				用户
+			</Link>
+			页面新建账号，再回到这里添加。
+		</p>
 	);
 }
 
 function buildCandidateOptions(
 	isPending: boolean,
-	candidates: readonly {
-		id: string;
-		platformRole: UserRole;
-		username: string;
-	}[]
+	candidates: readonly { id: string; username: string }[]
 ): CandidateOption[] {
 	return [
 		{
-			label: isPending ? "载入中…" : "选择一个平台账号（已在项目里的不再列出）",
+			label: isPending ? "载入中…" : "选择一个账号（已在项目里的不再列出）",
 			value: NO_CANDIDATE,
 		},
 		...candidates.map((candidate) => ({
 			label: candidate.username,
-			platformRole: candidate.platformRole,
 			value: candidate.id,
 		})),
 	];
@@ -158,65 +120,65 @@ interface AddProjectMemberFormProps {
 	projectId: string;
 }
 
-/** 表单里选中的账号和项目角色。 */
-function useMemberDraft(projectId: string) {
+/** 表单的状态：候选账号、选中的账号和提交。 */
+function useAddMemberForm(projectId: string, onClose: () => void) {
+	const add = useAddMember(projectId, onClose);
 	const candidatesQuery = useQuery(
 		orpc.projectMembers.listCandidates.queryOptions({ input: { projectId } })
 	);
-	const [role, setRole] = useState<ProjectRole>("member");
 	const [userId, setUserId] = useState(NO_CANDIDATE);
-	const options = buildCandidateOptions(
-		candidatesQuery.isPending,
-		candidatesQuery.data ?? []
+	const handleSubmit = useCallback(
+		(event: FormEvent<HTMLFormElement>) => {
+			event.preventDefault();
+			if (userId !== NO_CANDIDATE) {
+				add.mutate({ projectId, userId });
+			}
+		},
+		[add, projectId, userId]
 	);
-	const { platformRole } =
-		options.find((option) => option.value === userId) ?? {};
-	// 只有能成为拥有者的账号可以提交「拥有者」：选了「拥有者」后再换成普通用户，实际提交「成员」。
-	const effectiveRole = allowedProjectRole(role, platformRole);
-	return { effectiveRole, options, platformRole, setRole, setUserId, userId };
+	return {
+		errorMessage: add.error?.message ?? candidatesQuery.error?.message,
+		handleSubmit,
+		isPending: add.isPending,
+		noCandidates: candidatesQuery.data?.length === 0,
+		options: buildCandidateOptions(
+			candidatesQuery.isPending,
+			candidatesQuery.data ?? []
+		),
+		setUserId,
+		userId,
+	};
 }
 
 export function AddProjectMemberForm({
 	onClose,
 	projectId,
 }: AddProjectMemberFormProps) {
-	const add = useAddMember(projectId, onClose);
-	const { effectiveRole, options, platformRole, setRole, setUserId, userId } =
-		useMemberDraft(projectId);
-
-	const handleSubmit = useCallback(
-		(event: FormEvent<HTMLFormElement>) => {
-			event.preventDefault();
-			if (userId === NO_CANDIDATE) {
-				return;
-			}
-			add.mutate({ projectId, role: effectiveRole, userId });
-		},
-		[add, effectiveRole, projectId, userId]
-	);
+	const form = useAddMemberForm(projectId, onClose);
 
 	return (
 		<form
 			className="flex flex-col gap-4"
 			noValidate={true}
-			onSubmit={handleSubmit}
+			onSubmit={form.handleSubmit}
 		>
-			<CandidateField onChange={setUserId} options={options} value={userId} />
-			<RoleField
-				onChange={setRole}
-				platformRole={platformRole}
-				value={effectiveRole}
+			<CandidateField
+				describedBy={form.noCandidates ? NO_CANDIDATE_HINT_ID : undefined}
+				onChange={form.setUserId}
+				options={form.options}
+				value={form.userId}
 			/>
-			<ProjectMemberFormError message={add.error?.message} />
+			{form.noCandidates ? <NoCandidateHint /> : null}
+			<ProjectMemberFormError message={form.errorMessage} />
 			<DialogFooter>
 				<Button onClick={onClose} type="button" variant="outline">
 					取消
 				</Button>
 				<Button
-					disabled={add.isPending || userId === NO_CANDIDATE}
+					disabled={form.isPending || form.userId === NO_CANDIDATE}
 					type="submit"
 				>
-					{add.isPending ? "添加中…" : "添加"}
+					{form.isPending ? "添加中…" : "添加"}
 				</Button>
 			</DialogFooter>
 		</form>

@@ -78,9 +78,7 @@ export function useStorageAvailability() {
 	const [storageFailed, setStorageFailed] = useState(false);
 	const markUnavailable = useCallback(() => {
 		setStorageFailed(true);
-		toast.error(
-			"附件存储暂时不可用，不能粘贴图片。请让平台管理员检查「存储设置」"
-		);
+		toast.error("附件存储暂时不可用，不能粘贴图片。请让管理员检查「存储设置」");
 	}, []);
 	return {
 		markUnavailable,

@@ -15,7 +15,6 @@ const emptyDatabase: BootstrapAdminInput = {
 	existingUserBlocker: null,
 	initialPassword: PROD_PASSWORD,
 	localLoginAdminCount: 0,
-	localLoginEnabled: true,
 	production: true,
 	username: "admin",
 };
@@ -57,12 +56,11 @@ describe("decideBootstrapAdmin：生产环境", () => {
 		}
 	);
 
-	// reset-password 脚本不能提升成员，也不能把外部账号改成本地账号，所以只对前两种提示它
+	// reset-password 脚本不能把普通用户提升为管理员，所以只对前两种提示它
 	it.each([
 		["disabled", "scripts/reset-password.ts", true],
 		["no-password", "scripts/reset-password.ts", true],
-		["external-account", "该账号不是本地账号。请修改 ADMIN_USERNAME。", false],
-		["not-admin", "「用户管理」页面把该账号设为平台管理员", false],
+		["not-admin", "数据库中把该账号的 role 改为 admin", false],
 	] as const)(
 		"用户名被 %s 账号占用：拒绝启动，写明「%s」，信息不含密码",
 		(existingUserBlocker, hint, suggestsResetPassword) => {
@@ -87,11 +85,6 @@ describe("decideBootstrapAdmin：已有管理员或本地登录关闭", () => {
 			"已有多个本地登录管理员，没有配置密码：什么都不做",
 			{ initialPassword: undefined, localLoginAdminCount: 2 },
 			"admin-exists",
-		],
-		[
-			"本地登录关闭：什么都不做",
-			{ initialPassword: undefined, localLoginEnabled: false },
-			"local-login-disabled",
 		],
 	] as const)("%s", (_name, overrides, reason) => {
 		expect(decide(overrides)).toEqual({ kind: "skip", reason });

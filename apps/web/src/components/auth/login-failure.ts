@@ -17,7 +17,7 @@ export type LoginFailure =
 /**
  * 把登录请求的错误转换为页面上的提示。
  * 未授权统一提示"用户名或密码错误"。网络错误和 5xx 错误提示无法连接服务器。
- * 其他 4xx 错误（例如限流、内置认证关闭）显示服务器给出的中文提示。
+ * 其他 4xx 错误（例如限流）显示服务器给出的中文提示。
  */
 export function loginFailureOf(error: unknown): LoginFailure {
 	if (!(error instanceof ORPCError)) {

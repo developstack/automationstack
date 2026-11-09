@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 	createTestCase: vi.fn(),
 	findCaseAttachmentIds: vi.fn(),
 	getProjectIdByCaseId: vi.fn(),
-	getProjectRole: vi.fn(),
+	isProjectMember: vi.fn(),
 	updateTestCase: vi.fn(),
 }));
 
@@ -22,7 +22,7 @@ vi.mock("@automationstack/db/repositories/case-attachments-repository", () => ({
 	findCaseAttachmentIds: mocks.findCaseAttachmentIds,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	getProjectIdByCaseId: mocks.getProjectIdByCaseId,

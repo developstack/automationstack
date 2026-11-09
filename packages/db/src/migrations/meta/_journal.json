@@ -162,6 +162,13 @@
       "when": 1793845563215,
       "tag": "0022_storage_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794059921582,
+      "tag": "0023_local_auth_two_roles",
+      "breakpoints": true
     }
   ]
 }

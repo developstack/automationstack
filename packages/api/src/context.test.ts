@@ -10,9 +10,6 @@ vi.mock("@automationstack/env/server", () => ({
 vi.mock("@automationstack/db/repositories/users-repository", () => ({
 	getUserById: vi.fn(),
 }));
-vi.mock("./auth/settings-store", () => ({
-	getEffectiveAuthSettings: vi.fn(),
-}));
 
 /** 用 Hono 处理一次请求，返回这次请求的 context.secure。 */
 async function secureFor(url: string, origin: string | null): Promise<boolean> {

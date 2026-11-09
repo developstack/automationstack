@@ -9,7 +9,6 @@ import {
 const GENERATED = "generated-password-xyz";
 
 const localUser = {
-	authSource: "local" as const,
 	disabledAt: null,
 	id: "33333333-3333-4333-8333-333333333333",
 	username: "admin",
@@ -65,12 +64,6 @@ describe("planPasswordReset", () => {
 			["short"],
 		],
 		["账号不存在：报错", { user: null }, "账号不存在。", []],
-		[
-			"外部账号：报错",
-			{ user: { ...localUser, authSource: "casdoor" as const } },
-			expect.any(String),
-			[],
-		],
 		["没有用户名：只返回用法", { args: [] }, RESET_PASSWORD_USAGE, []],
 		[
 			"多余参数：只返回用法，不回显参数",

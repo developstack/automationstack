@@ -1,4 +1,3 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type {
 	CaseStatus,
 	TestCase,
@@ -12,7 +11,7 @@ import { caseStatusProcedures } from "./case-status";
 
 const mocks = vi.hoisted(() => ({
 	changeCaseStatus: vi.fn(),
-	getProjectRole: vi.fn(),
+	isProjectMember: vi.fn(),
 	listCaseProjects: vi.fn(),
 	publishInvalidate: vi.fn(),
 }));
@@ -25,7 +24,7 @@ vi.mock("@automationstack/db/repositories/case-mutations-repository", () => ({
 	changeCaseStatus: mocks.changeCaseStatus,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	listCaseProjects: mocks.listCaseProjects,
@@ -51,12 +50,12 @@ const testCase = {
 } as TestCase;
 
 function changeAs(
-	projectRole: ProjectRole | null,
+	isMember: boolean,
 	status: CaseStatus,
 	ids = [CASE_ID],
 	extra: object = {}
 ) {
-	mocks.getProjectRole.mockResolvedValue(projectRole);
+	mocks.isProjectMember.mockResolvedValue(isMember);
 	return call(
 		caseStatusProcedures.changeStatus,
 		{ ids, status, ...extra },
@@ -86,7 +85,7 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 			kind: "ok",
 		});
 
-		await expect(changeAs("member", "deprecated")).resolves.toEqual({
+		await expect(changeAs(true, "deprecated")).resolves.toEqual({
 			changes: [change],
 			undoToken: version === null ? null : expect.any(String),
 		});
@@ -121,7 +120,7 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 	])("%s：NOT_FOUND，不写数据库", async (_name, rows) => {
 		mocks.listCaseProjects.mockResolvedValue(rows);
 		await expect(
-			changeAs("member", "draft", [CASE_ID, OTHER_CASE_ID])
+			changeAs(true, "draft", [CASE_ID, OTHER_CASE_ID])
 		).rejects.toMatchObject({ code: "NOT_FOUND" });
 		expect(mocks.changeCaseStatus).not.toHaveBeenCalled();
 	});
@@ -145,7 +144,7 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 		});
 		const ids = [CASE_ID, OTHER_CASE_ID, KEPT_CASE_ID];
 
-		await changeAs("member", "deprecated", ids);
+		await changeAs(true, "deprecated", ids);
 		expect(mocks.changeCaseStatus).toHaveBeenCalledWith(
 			expect.objectContaining({ caseIds: ids })
 		);
@@ -164,16 +163,14 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 		// 撤销改用 cases.undoStatusChange，旧的 undo 标记不再放宽按 id 修改的上限
 		[`带 undo 标记超过 ${MAX_BATCH_CASES} 条用例`, tooMany, { undo: true }],
 	])("%s：BAD_REQUEST，不写数据库", async (_name, ids, extra) => {
-		await expect(changeAs("member", "draft", ids, extra)).rejects.toMatchObject(
-			{
-				code: "BAD_REQUEST",
-			}
-		);
+		await expect(changeAs(true, "draft", ids, extra)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+		});
 		expect(mocks.changeCaseStatus).not.toHaveBeenCalled();
 	});
 
 	it("不是项目成员：FORBIDDEN，不写数据库", async () => {
-		await expect(changeAs(null, "draft")).rejects.toMatchObject({
+		await expect(changeAs(false, "draft")).rejects.toMatchObject({
 			code: "FORBIDDEN",
 		});
 		expect(mocks.changeCaseStatus).not.toHaveBeenCalled();
@@ -184,7 +181,7 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 			kind: "not-found",
 			missingIds: [CASE_ID],
 		});
-		await expect(changeAs("member", "draft")).rejects.toMatchObject({
+		await expect(changeAs(true, "draft")).rejects.toMatchObject({
 			code: "NOT_FOUND",
 		});
 		expect(mocks.publishInvalidate).not.toHaveBeenCalled();

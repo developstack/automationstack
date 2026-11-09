@@ -25,11 +25,10 @@ export async function listUsersWithProjects(): Promise<UserWithProjects[]> {
 		.select({
 			projectId: projects.id,
 			projectName: projects.name,
-			projectRole: projectMembers.role,
 			user: {
-				authSource: users.authSource,
 				createdAt: users.createdAt,
 				disabledAt: users.disabledAt,
+				hasPassword: sql<boolean>`${users.passwordHash} is not null`,
 				id: users.id,
 				mustChangePassword: users.mustChangePassword,
 				role: users.role,
@@ -70,17 +69,6 @@ export async function createUser(input: CreateUserInput): Promise<User | null> {
 		})
 		.onConflictDoNothing({ target: users.username })
 		.returning();
-	return row ?? null;
-}
-
-export async function getUserByExternalId(
-	externalId: string
-): Promise<User | null> {
-	const [row] = await db
-		.select()
-		.from(users)
-		.where(eq(users.externalId, externalId))
-		.limit(1);
 	return row ?? null;
 }
 
@@ -149,8 +137,7 @@ export async function countLocalLoginAdmins(): Promise<number> {
 			and(
 				eq(users.role, "admin"),
 				isNull(users.disabledAt),
-				isNotNull(users.passwordHash),
-				eq(users.authSource, "local")
+				isNotNull(users.passwordHash)
 			)
 		);
 	return row?.value ?? 0;

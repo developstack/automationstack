@@ -1,50 +1,35 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { UserRole } from "@automationstack/db/schema/users";
 
+/** 用户对一个项目的访问：平台角色，以及是否是这个项目的成员。 */
 export interface ProjectAccess {
+	isMember: boolean;
 	platformRole: UserRole;
-	projectRole: ProjectRole | null;
 }
 
-function isPlatformAdmin(access: ProjectAccess): boolean {
+function isPlatformAdmin(access: Pick<ProjectAccess, "platformRole">): boolean {
 	return access.platformRole === "admin";
 }
 
+/** 管理员可以进入所有项目。普通用户只能进入自己是成员的项目。 */
 export function canEnterProject(access: ProjectAccess): boolean {
-	return isPlatformAdmin(access) || access.projectRole !== null;
+	return isPlatformAdmin(access) || access.isMember;
 }
 
 /**
- * 平台管理员可以管理所有项目。其他用户必须是项目 owner，并且平台角色是项目管理员。
- * 每次请求都重新计算：项目管理员降级为普通用户后，项目 owner 记录保留，管理权限暂停；恢复角色后自动恢复。
+ * 只有管理员可以管理项目：修改项目、管理成员、修改项目设置（ADR 0008）。
+ * 服务端和 web 共用这条规则。
  */
-export function canAdministerProject(access: ProjectAccess): boolean {
-	if (isPlatformAdmin(access)) {
-		return true;
-	}
-	return (
-		access.projectRole === "owner" && canBecomeProjectOwner(access.platformRole)
-	);
-}
-
-/** 平台管理员和项目管理员可以成为项目 owner，普通用户不可以。服务端和 web 共用这条规则。 */
-export function canBecomeProjectOwner(platformRole: UserRole): boolean {
-	return platformRole === "admin" || platformRole === "project_admin";
-}
-
-/** 用户是项目 owner，但平台角色不能成为项目 owner：管理权限暂停。web 用这条规则显示暂停状态。 */
-export function isProjectOwnerSuspended(
-	projectRole: ProjectRole | null,
-	platformRole: UserRole
+export function canAdministerProject(
+	access: Pick<ProjectAccess, "platformRole">
 ): boolean {
-	return projectRole === "owner" && !canBecomeProjectOwner(platformRole);
+	return isPlatformAdmin(access);
 }
 
 export function seesAllProjects(platformRole: UserRole): boolean {
 	return platformRole === "admin";
 }
 
-/** 平台管理员和项目管理员可以新建项目，普通用户不可以。服务端和 web 共用这条规则。 */
+/** 只有管理员可以新建项目。服务端和 web 共用这条规则。 */
 export function canCreateProject(platformRole: UserRole): boolean {
-	return platformRole === "admin" || platformRole === "project_admin";
+	return platformRole === "admin";
 }

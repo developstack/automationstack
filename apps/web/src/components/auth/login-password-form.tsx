@@ -112,8 +112,8 @@ function useLoginPasswordForm(onLogin: LoginPasswordFormProps["onLogin"]) {
 }
 
 /**
- * 内置认证的用户名密码表单：提交时校验，按错误类型显示提示，请求期间显示 loading。
- * 表单不发请求，由调用方通过 onLogin 发出，所以内置认证登录和应急登录可以共用。
+ * 用户名密码表单：提交时校验，按错误类型显示提示，请求期间显示 loading。
+ * 表单不发请求，由调用方通过 onLogin 发出。
  */
 export function LoginPasswordForm({ onLogin }: LoginPasswordFormProps) {
 	const idPrefix = useId();

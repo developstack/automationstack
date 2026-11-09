@@ -2,11 +2,12 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	constructed: [] as unknown[],
+	getSchedules: vi.fn(),
 	poolQuery: vi.fn(),
 	registerAutoSubmitScan: vi.fn(),
-	registerCasdoorReconcile: vi.fn(),
 	start: vi.fn(),
 	stop: vi.fn(),
+	unschedule: vi.fn(),
 }));
 
 vi.mock("@automationstack/db", () => ({
@@ -17,18 +18,16 @@ vi.mock("./auto-submit-scan", () => ({
 	registerAutoSubmitScan: mocks.registerAutoSubmitScan,
 }));
 
-vi.mock("./casdoor-reconcile", () => ({
-	registerCasdoorReconcile: mocks.registerCasdoorReconcile,
-}));
-
 vi.mock("pg-boss", () => ({
 	PgBoss: class {
 		constructor(options: unknown) {
 			mocks.constructed.push(options);
 		}
+		getSchedules = mocks.getSchedules;
 		on = vi.fn();
 		start = mocks.start;
 		stop = mocks.stop;
+		unschedule = mocks.unschedule;
 	},
 }));
 
@@ -39,10 +38,11 @@ const { getJobsStatus, sharedPoolDb, startJobs, stopJobs } = await import(
 beforeEach(() => {
 	vi.resetAllMocks();
 	mocks.constructed.length = 0;
+	mocks.getSchedules.mockResolvedValue([]);
 	mocks.start.mockResolvedValue(undefined);
 	mocks.stop.mockResolvedValue(undefined);
 	mocks.registerAutoSubmitScan.mockResolvedValue(undefined);
-	mocks.registerCasdoorReconcile.mockResolvedValue(undefined);
+	mocks.unschedule.mockResolvedValue(undefined);
 });
 
 afterEach(async () => {
@@ -65,4 +65,21 @@ test("共享适配器把 SQL 原样转给应用池的 query", async () => {
 	mocks.poolQuery.mockResolvedValue(result);
 	await expect(sharedPoolDb.executeSql("select $1", [1])).resolves.toBe(result);
 	expect(mocks.poolQuery).toHaveBeenCalledWith("select $1", [1]);
+});
+
+test("启动时删除以前的 Casdoor 对账计划；删除失败时后台任务照常启动", async () => {
+	mocks.getSchedules.mockResolvedValue([{ name: "casdoor-reconcile" }]);
+	mocks.unschedule.mockRejectedValue(new Error("no such schedule"));
+	await startJobs();
+	expect(mocks.unschedule).toHaveBeenCalledWith("casdoor-reconcile");
+	expect(getJobsStatus()).toBe("running");
+});
+
+test("没有旧的计划时不删除，也不打告警", async () => {
+	const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+	await startJobs();
+	expect(mocks.unschedule).not.toHaveBeenCalled();
+	expect(warn).not.toHaveBeenCalled();
+	expect(getJobsStatus()).toBe("running");
+	warn.mockRestore();
 });

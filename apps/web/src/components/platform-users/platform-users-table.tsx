@@ -16,46 +16,32 @@ import {
 } from "@automationstack/ui/components/table";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { formatDateTime } from "@/components/cases/case-meta";
-import {
-	AUTH_SOURCE_LABEL,
-	accountSourceNote,
-	type KnownProvider,
-} from "@/components/platform-users/platform-user-access";
 import { PLATFORM_ROLE_LABEL } from "@/components/platform-users/platform-user-meta";
 import { PlatformUserRowActions } from "@/components/platform-users/platform-user-row-actions";
-import { useKnownProvider } from "@/components/platform-users/use-known-provider";
 import { UserProjectsCell } from "@/components/platform-users/user-projects-cell";
 import { orpc } from "@/utils/orpc";
 
-function PlatformUserRow({
-	provider,
-	row,
-}: {
-	provider: KnownProvider;
-	row: UserWithProjects;
-}) {
+/** 没有密码的账号（以前的 Casdoor 账号）不能登录，管理员重置密码后才能使用。 */
+const NO_PASSWORD_HINT = "未设置密码，重置密码后才能登录";
+
+function PlatformUserRow({ row }: { row: UserWithProjects }) {
 	const disabled = row.user.disabledAt !== null;
-	const { authSource } = row.user;
-	const sourceNote = accountSourceNote(row.user, provider);
 
 	return (
 		<TableRow>
 			<TableCell className="font-medium">{row.user.username}</TableCell>
-			<TableCell>
-				<div className="flex flex-col items-start gap-1">
-					<Badge variant={authSource === "casdoor" ? "secondary" : "outline"}>
-						{AUTH_SOURCE_LABEL[authSource]}
-					</Badge>
-					{sourceNote === null ? null : (
-						<span className="text-muted-foreground text-xs">{sourceNote}</span>
-					)}
-				</div>
-			</TableCell>
 			<TableCell>{PLATFORM_ROLE_LABEL[row.user.role]}</TableCell>
 			<TableCell>
-				<Badge variant={disabled ? "outline" : "secondary"}>
-					{disabled ? "已停用" : "启用"}
-				</Badge>
+				<div className="flex flex-col items-start gap-1">
+					<Badge variant={disabled ? "outline" : "secondary"}>
+						{disabled ? "已停用" : "启用"}
+					</Badge>
+					{row.user.hasPassword ? null : (
+						<span className="text-muted-foreground text-xs">
+							{NO_PASSWORD_HINT}
+						</span>
+					)}
+				</div>
 			</TableCell>
 			<TableCell>
 				<UserProjectsCell projects={row.projects} />
@@ -85,7 +71,6 @@ export function PlatformUsersTable() {
 	const usersQuery = useSuspenseQuery(
 		orpc.users.listWithProjects.queryOptions()
 	);
-	const provider = useKnownProvider();
 
 	if (usersQuery.data.length === 0) {
 		return <PlatformUsersEmpty />;
@@ -96,7 +81,6 @@ export function PlatformUsersTable() {
 			<TableHeader>
 				<TableRow>
 					<TableHead>用户名</TableHead>
-					<TableHead>账号来源</TableHead>
 					<TableHead>平台角色</TableHead>
 					<TableHead>状态</TableHead>
 					<TableHead>所属项目</TableHead>
@@ -108,7 +92,7 @@ export function PlatformUsersTable() {
 			</TableHeader>
 			<TableBody>
 				{usersQuery.data.map((row) => (
-					<PlatformUserRow key={row.user.id} provider={provider} row={row} />
+					<PlatformUserRow key={row.user.id} row={row} />
 				))}
 			</TableBody>
 		</Table>

@@ -9,7 +9,7 @@ const SECRET = "test-session-secret-0123456789abcdef";
 
 const mocks = vi.hoisted(() => ({
 	getProjectIdByCaseId: vi.fn(),
-	getProjectRole: vi.fn(),
+	isProjectMember: vi.fn(),
 	prepareCaseAttachmentUpload: vi.fn(),
 	presignUpload: vi.fn(),
 }));
@@ -22,7 +22,7 @@ vi.mock("@automationstack/db/repositories/case-attachments-repository", () => ({
 	prepareCaseAttachmentUpload: mocks.prepareCaseAttachmentUpload,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	getProjectIdByCaseId: mocks.getProjectIdByCaseId,
@@ -56,7 +56,7 @@ function presign(overrides: Partial<typeof input> = {}, user = testUser()) {
 beforeEach(() => {
 	vi.clearAllMocks();
 	mocks.getProjectIdByCaseId.mockResolvedValue(PROJECT_ID);
-	mocks.getProjectRole.mockResolvedValue(null);
+	mocks.isProjectMember.mockResolvedValue(false);
 	mocks.prepareCaseAttachmentUpload.mockResolvedValue({
 		kind: "ok",
 		scope: { caseId: CASE_ID, projectId: PROJECT_ID },

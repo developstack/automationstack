@@ -41,11 +41,9 @@ const ACCOUNT_COPY: Record<"disable" | "restore", ConfirmCopy> = {
 /** 改成每个平台角色后，该账号可以做什么。 */
 const ROLE_DESCRIPTION: Record<UserRole, string> = {
 	admin:
-		"平台管理员可以看到和管理所有项目，并管理平台用户和设置：创建、停用账号，重置任何人的密码，调整项目归属。",
+		"管理员可以看到和管理所有项目，并管理平台用户和设置：创建、停用账号，重置任何人的密码，调整项目归属。",
 	member:
-		"普通用户不能新建项目，也不能管理平台用户和设置；已加入的项目与用例照常读写。",
-	project_admin:
-		"项目管理员可以新建项目，但不能管理平台用户和设置；已加入的项目与用例照常读写。",
+		"普通用户只能使用自己加入的项目，不能新建项目，也不能管理项目成员、用户和设置。",
 };
 
 function confirmCopy(confirm: PlatformUserConfirm): ConfirmCopy {

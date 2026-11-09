@@ -1,4 +1,3 @@
-import { localPasswordHashOf } from "@automationstack/db/local-login";
 import {
 	hashPassword,
 	MAX_PASSWORD_LENGTH,
@@ -10,14 +9,8 @@ import { toPublicUser } from "@automationstack/db/schema/users";
 import { env } from "@automationstack/env/server";
 import { z } from "zod";
 
-import { loginWithLocalPassword } from "../auth/providers/local-password-login";
-import {
-	type AuthConfig,
-	authConfigOf,
-	authProviderFor,
-} from "../auth/providers/resolve";
+import { loginWithLocalPassword } from "../auth/local-password-login";
 import { createSessionToken, sessionCookieHeader } from "../auth/session";
-import { getEffectiveAuthSettings } from "../auth/settings-store";
 import { protectedProcedure, publicProcedure } from "../index";
 import {
 	checkLoginGate,
@@ -38,15 +31,13 @@ const changePasswordSchema = z.object({
 	newPassword: z.string().min(MIN_PASSWORD_LENGTH).max(MAX_PASSWORD_LENGTH),
 });
 
-const LOCAL_LOGIN_DISABLED_MESSAGE = "本地密码登录已关闭，请使用 Casdoor 登录";
-
 export const authRouter = {
 	// 当前密码错误时返回 BAD_REQUEST，不返回 UNAUTHORIZED：前端把 UNAUTHORIZED 当作会话过期。
 	changePassword: protectedProcedure
 		.errors({ BAD_REQUEST: {}, TOO_MANY_REQUESTS: {} })
 		.input(changePasswordSchema)
 		.handler(async ({ context, errors, input }) => {
-			const storedHash = localPasswordHashOf(context.user);
+			const storedHash = context.user.passwordHash;
 			if (storedHash === null) {
 				throw errors.BAD_REQUEST({
 					message: "该账号没有本地密码，不能在这里修改密码",
@@ -84,27 +75,15 @@ export const authRouter = {
 			);
 			return { ok: true };
 		}),
-	// 认证方式和本地登录的开放范围来自 settings-store：页面保存后立即生效。
-	config: publicProcedure.handler(
-		async (): Promise<AuthConfig> =>
-			authConfigOf(await getEffectiveAuthSettings())
-	),
 	login: publicProcedure
-		.errors({ FORBIDDEN: {}, TOO_MANY_REQUESTS: {}, UNAUTHORIZED: {} })
+		.errors({ TOO_MANY_REQUESTS: {}, UNAUTHORIZED: {} })
 		.input(loginSchema)
 		.handler(async ({ context, errors, input }) => {
-			const settings = await getEffectiveAuthSettings();
-			const outcome = await loginWithLocalPassword(
-				{
-					clientIp: getClientIp(),
-					password: input.password,
-					username: input.username.trim(),
-				},
-				authProviderFor(settings).localLoginPolicy(settings)
-			);
-			if (outcome.kind === "disabled") {
-				throw errors.FORBIDDEN({ message: LOCAL_LOGIN_DISABLED_MESSAGE });
-			}
+			const outcome = await loginWithLocalPassword({
+				clientIp: getClientIp(),
+				password: input.password,
+				username: input.username.trim(),
+			});
 			if (outcome.kind === "rate-limited") {
 				throw errors.TOO_MANY_REQUESTS({
 					message: TOO_MANY_LOGIN_ATTEMPTS_MESSAGE,

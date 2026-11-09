@@ -1,4 +1,3 @@
-import { isManagedByCasdoor } from "@automationstack/api/auth/casdoor/managed-users";
 import type { UserProjectMembership } from "@automationstack/db/repositories/users-with-projects-core";
 import type { PublicUser, UserRole } from "@automationstack/db/schema/users";
 import { Button } from "@automationstack/ui/components/button";
@@ -85,13 +84,8 @@ function PlatformUserActionsMenu({
 				<DropdownMenuItem onClick={onManageProjects}>
 					管理项目归属
 				</DropdownMenuItem>
-				{/* Casdoor 用户在任何模式下都不能做账号操作，菜单里不出现这些项。服务端也检查（managed-users.ts）。 */}
-				{isManagedByCasdoor(user) ? null : (
-					<>
-						<DropdownMenuSeparator />
-						<AccountActionItems {...items} />
-					</>
-				)}
+				<DropdownMenuSeparator />
+				<AccountActionItems {...items} />
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);

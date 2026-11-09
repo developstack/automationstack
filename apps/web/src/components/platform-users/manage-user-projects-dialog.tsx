@@ -1,4 +1,3 @@
-import { canBecomeProjectOwner } from "@automationstack/api/lib/project-access";
 import type { UserProjectMembership } from "@automationstack/db/repositories/users-with-projects-core";
 import type { PublicUser } from "@automationstack/db/schema/users";
 import {
@@ -12,7 +11,6 @@ import { MembershipList } from "@/components/platform-users/membership-list";
 import { PlatformUserFormError } from "@/components/platform-users/platform-user-form-error";
 import { useUserProjectActions } from "@/components/platform-users/use-user-project-actions";
 import { UserProjectAddForm } from "@/components/platform-users/user-project-add-form";
-import { OWNER_NOT_ELIGIBLE_HINT } from "@/components/project-members/project-member-meta";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 
 interface ManageUserProjectsDialogProps {
@@ -33,22 +31,12 @@ function ManageUserProjectsBody({
 
 	return (
 		<div className="flex flex-col gap-4">
-			{canBecomeProjectOwner(user.role) ? null : (
-				<p className="text-muted-foreground text-xs">
-					{OWNER_NOT_ELIGIBLE_HINT}
-				</p>
-			)}
-			<MembershipList
-				actions={actions}
-				memberships={memberships}
-				platformRole={user.role}
-			/>
+			<MembershipList actions={actions} memberships={memberships} />
 			<PlatformUserFormError message={actions.error} />
 			<UserProjectAddForm
 				disabled={actions.isPending}
 				memberOf={memberOf}
 				onAdd={actions.add}
-				platformRole={user.role}
 			/>
 		</div>
 	);

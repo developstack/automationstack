@@ -7,7 +7,6 @@
     "check-types": "tsc --noEmit"
   },
   "exports": {
-    "./casdoor-rules": "./src/casdoor-rules.ts",
     "./dev-secrets": "./src/dev-secrets.ts",
     "./server": "./src/server.ts",
     "./web": "./src/web.ts"

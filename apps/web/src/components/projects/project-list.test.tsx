@@ -7,7 +7,7 @@ import { renderWithQuery } from "@/test-dom-fixtures";
 
 const PROJECTS_KEY = ["projects", "list"];
 const CLICK_CREATE_HINT = /点击「新建项目」/;
-const ASK_OWNER_HINT = /请联系项目 owner/;
+const ASK_OWNER_HINT = /请联系管理员/;
 
 const session = vi.hoisted(() => ({ role: "member" as UserRole }));
 
@@ -42,11 +42,8 @@ function renderAs(role: UserRole) {
 }
 
 describe("ProjectList：「新建项目」按钮", () => {
-	it.each([
-		["admin", "平台管理员"],
-		["project_admin", "项目管理员"],
-	] as const)("%s（%s）：显示按钮", (role, _label) => {
-		renderAs(role);
+	it("admin（管理员）：显示按钮", () => {
+		renderAs("admin");
 		expect(screen.getByRole("button", { name: "新建项目" })).toBeDefined();
 	});
 

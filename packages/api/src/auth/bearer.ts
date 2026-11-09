@@ -8,7 +8,6 @@ import type { User } from "@automationstack/db/schema/users";
 
 import { parseBearerToken } from "./bearer-token";
 import { isSessionUserAllowed } from "./session-policy";
-import { getEffectiveAuthSettings } from "./settings-store";
 
 export async function resolveUserFromBearer(
 	header: string | null | undefined
@@ -25,8 +24,8 @@ export async function resolveUserFromBearer(
 	if (user === null || user.disabledAt !== null) {
 		return null;
 	}
-	// API token 与会话 cookie 使用相同的规则（plan 021 §10.4、§2 第 12 项）。
-	if (!isSessionUserAllowed(user, await getEffectiveAuthSettings())) {
+	// API token 与会话 cookie 使用相同的规则。
+	if (!isSessionUserAllowed(user)) {
 		return null;
 	}
 	touchApiTokenLastUsed(token.id).catch((error: unknown) => {

@@ -7,9 +7,9 @@ import {
 } from "./users-with-projects-core";
 
 const makeUser = (id: string, username: string): PublicUser => ({
-	authSource: "local",
 	createdAt: new Date("2026-01-01T00:00:00Z"),
 	disabledAt: null,
+	hasPassword: true,
 	id,
 	mustChangePassword: false,
 	role: "member",
@@ -23,14 +23,12 @@ const carol = makeUser("u-3", "carol");
 const rowWithProject = (
 	user: PublicUser,
 	projectId: string,
-	projectName: string,
-	projectRole: UserProjectRow["projectRole"] = "member"
-): UserProjectRow => ({ projectId, projectName, projectRole, user });
+	projectName: string
+): UserProjectRow => ({ projectId, projectName, user });
 
 const rowWithoutProject = (user: PublicUser): UserProjectRow => ({
 	projectId: null,
 	projectName: null,
-	projectRole: null,
 	user,
 });
 
@@ -61,15 +59,15 @@ describe("groupUsersWithProjects", () => {
 		expect(result[0]?.projects).toEqual([]);
 	});
 
-	it("角色跟着成员关系走，不是跟着用户走", () => {
+	it("每个成员关系给出项目的 id 和名称", () => {
 		const result = groupUsersWithProjects([
-			rowWithProject(alice, "p-1", "Apollo", "owner"),
+			rowWithProject(alice, "p-1", "Apollo"),
 			rowWithProject(alice, "p-2", "Borealis"),
 		]);
 
 		expect(result[0]?.projects).toEqual([
-			{ id: "p-1", name: "Apollo", role: "owner" },
-			{ id: "p-2", name: "Borealis", role: "member" },
+			{ id: "p-1", name: "Apollo" },
+			{ id: "p-2", name: "Borealis" },
 		]);
 	});
 

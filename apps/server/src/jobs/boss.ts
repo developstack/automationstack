@@ -2,7 +2,6 @@ import { pool } from "@automationstack/db";
 import { type Db, PgBoss } from "pg-boss";
 
 import { registerAutoSubmitScan } from "./auto-submit-scan";
-import { registerCasdoorReconcile } from "./casdoor-reconcile";
 
 let boss: PgBoss | null = null;
 
@@ -32,6 +31,29 @@ function attachEventLogging(instance: PgBoss): void {
 	});
 }
 
+/**
+ * 以前的 Casdoor 对账任务的定时计划还在 pgboss schema 中。删除它，
+ * 否则 pg-boss 继续为没有 worker 的队列创建任务（ADR 0008）。
+ */
+const LEGACY_SCHEDULES = ["casdoor-reconcile"] as const;
+
+async function removeLegacySchedules(instance: PgBoss): Promise<void> {
+	for (const name of LEGACY_SCHEDULES) {
+		try {
+			// 先查再删：unschedule 对不存在的计划会抛错。直接删的话，从未用过
+			// Casdoor 的安装每次启动都会打一条「删除失败」的假告警。
+			// biome-ignore lint/performance/noAwaitInLoops: 只有一项，按顺序处理
+			const schedules = await instance.getSchedules(name);
+			if (schedules.length === 0) {
+				continue;
+			}
+			await instance.unschedule(name);
+		} catch (error) {
+			console.warn(`删除旧的定时任务「${name}」失败：`, error);
+		}
+	}
+}
+
 export async function startJobs(): Promise<void> {
 	if (boss) {
 		return;
@@ -46,7 +68,7 @@ export async function startJobs(): Promise<void> {
 		attachEventLogging(instance);
 		await instance.start();
 		await registerAutoSubmitScan(instance);
-		await registerCasdoorReconcile(instance);
+		await removeLegacySchedules(instance);
 		boss = instance;
 		status = "running";
 		console.log('pg-boss 后台任务已启动（schema "pgboss"）');

@@ -1,5 +1,5 @@
 import {
-	createProjectWithOwner,
+	createProjectWithCreator,
 	listProjectsByMember,
 } from "@automationstack/db/repositories/project-members-repository";
 import {
@@ -38,10 +38,9 @@ const routerErrors = {
 	NOT_FOUND: {},
 } as const;
 
-const OWNER_REQUIRED_MESSAGE =
-	"只有平台管理员和身为项目 owner 的项目管理员能执行该操作";
+const ADMIN_REQUIRED_MESSAGE = "只有管理员能执行该操作";
 
-const CREATE_FORBIDDEN_MESSAGE = "只有平台管理员和项目管理员可以新建项目";
+const CREATE_FORBIDDEN_MESSAGE = "只有管理员可以新建项目";
 
 export const projectsRouter = {
 	create: protectedProcedure
@@ -51,8 +50,8 @@ export const projectsRouter = {
 			if (!canCreateProject(context.user.role)) {
 				throw errors.FORBIDDEN({ message: CREATE_FORBIDDEN_MESSAGE });
 			}
-			// 新建者自动成为项目 owner。
-			const project = await createProjectWithOwner(
+			// 新建者自动成为项目成员。
+			const project = await createProjectWithCreator(
 				{ description: input.description, name: input.name },
 				context.user.id
 			);
@@ -87,7 +86,7 @@ export const projectsRouter = {
 		.use(requireProjectMember, toProjectScope)
 		.handler(async ({ context, errors, input }) => {
 			if (!canAdministerProject(context.projectAccess)) {
-				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
+				throw errors.FORBIDDEN({ message: ADMIN_REQUIRED_MESSAGE });
 			}
 			const removed = await removeProject(input.id);
 			if (!removed) {
@@ -108,7 +107,7 @@ export const projectsRouter = {
 		.use(requireProjectMember, toProjectScope)
 		.handler(async ({ context, errors, input }) => {
 			if (!canAdministerProject(context.projectAccess)) {
-				throw errors.FORBIDDEN({ message: OWNER_REQUIRED_MESSAGE });
+				throw errors.FORBIDDEN({ message: ADMIN_REQUIRED_MESSAGE });
 			}
 			const project = await updateProject(input.id, {
 				description: input.description,

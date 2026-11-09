@@ -21,21 +21,13 @@ import {
 } from "@automationstack/db/schema/users";
 import { z } from "zod";
 
-import {
-	CASDOOR_MANAGED_USER_MESSAGE,
-	CASDOOR_NO_LOCAL_PASSWORD_MESSAGE,
-	CASDOOR_USER_CREATE_MESSAGE,
-	isManagedByCasdoor,
-	isUserCreateClosed,
-} from "../auth/casdoor/managed-users";
-import { getEffectiveAuthSettings } from "../auth/settings-store";
 import { adminProcedure } from "../index";
 
 const MIN_USERNAME_LENGTH = 2;
 const MAX_USERNAME_LENGTH = 32;
 const USERNAME_PATTERN = /^\S+$/;
 
-/** 三个平台角色：平台管理员、项目管理员、普通用户。 */
+/** 两个平台角色：管理员和普通用户。 */
 const roleSchema = z.enum(userRoleEnum.enumValues);
 
 const usernameSchema = z
@@ -60,9 +52,8 @@ const routerErrors = {
 } as const;
 
 /**
- * 「不能降级或停用最后一个平台管理员」只计算可以本地登录的平台管理员（plan 021 T12）。
- * Casdoor 平台管理员不能用本地密码登录，Casdoor 不可用时不能用来恢复。
- * 改成项目管理员或普通用户都算降级。
+ * 「不能降级或停用最后一个管理员」只计算可以登录的管理员：有密码、未停用。
+ * 没有密码的管理员（以前的 Casdoor 账号）不能登录，所以不计算在内。
  */
 async function isLastLocalAdmin(target: User): Promise<boolean> {
 	if (localLoginAdminBlocker(target) !== null) {
@@ -82,9 +73,6 @@ export const usersRouter = {
 			})
 		)
 		.handler(async ({ errors, input }) => {
-			if (isUserCreateClosed(await getEffectiveAuthSettings())) {
-				throw errors.FORBIDDEN({ message: CASDOOR_USER_CREATE_MESSAGE });
-			}
 			const user = await createUser({
 				passwordHash: await hashPassword(input.password),
 				role: input.role,
@@ -107,10 +95,6 @@ export const usersRouter = {
 			if (user === null) {
 				throw errors.NOT_FOUND({ message: "账号不存在" });
 			}
-			// 任何模式下都拒绝（plan 021 §2 第 12 项）：Casdoor 账号不能用本地密码登录。
-			if (isManagedByCasdoor(user)) {
-				throw errors.FORBIDDEN({ message: CASDOOR_NO_LOCAL_PASSWORD_MESSAGE });
-			}
 			// 管理员知道这个密码，所以用户下次登录后必须自己修改。
 			await updateUserPasswordHash(
 				user.id,
@@ -127,14 +111,11 @@ export const usersRouter = {
 			if (user === null) {
 				throw errors.NOT_FOUND({ message: "账号不存在" });
 			}
-			if (isManagedByCasdoor(user)) {
-				throw errors.FORBIDDEN({ message: CASDOOR_MANAGED_USER_MESSAGE });
-			}
 			if (input.disabled && user.id === context.user.id) {
 				throw errors.BAD_REQUEST({ message: "不能停用自己的账号" });
 			}
 			if (input.disabled && (await isLastLocalAdmin(user))) {
-				throw errors.CONFLICT({ message: "不能停用最后一个平台管理员" });
+				throw errors.CONFLICT({ message: "不能停用最后一个管理员" });
 			}
 			const updated = await setUserDisabled(user.id, input.disabled);
 			if (updated === null) {
@@ -150,14 +131,11 @@ export const usersRouter = {
 			if (user === null) {
 				throw errors.NOT_FOUND({ message: "账号不存在" });
 			}
-			if (isManagedByCasdoor(user)) {
-				throw errors.FORBIDDEN({ message: CASDOOR_MANAGED_USER_MESSAGE });
-			}
 			if (input.role !== "admin" && user.id === context.user.id) {
-				throw errors.BAD_REQUEST({ message: "不能取消自己的平台管理员身份" });
+				throw errors.BAD_REQUEST({ message: "不能取消自己的管理员身份" });
 			}
 			if (input.role !== "admin" && (await isLastLocalAdmin(user))) {
-				throw errors.CONFLICT({ message: "不能降级最后一个平台管理员" });
+				throw errors.CONFLICT({ message: "不能降级最后一个管理员" });
 			}
 			const updated = await updateUserRole(user.id, input.role);
 			if (updated === null) {

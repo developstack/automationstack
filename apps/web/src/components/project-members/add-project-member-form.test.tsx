@@ -2,11 +2,11 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { AddProjectMemberForm } from "@/components/project-members/add-project-member-form";
-import { OWNER_NOT_ELIGIBLE_HINT } from "@/components/project-members/project-member-meta";
-import { renderWithQuery } from "@/test-dom-fixtures";
+import { createQueryWrapper, renderRoutes } from "@/test-dom-fixtures";
 
 const PROJECT_ID = "55555555-5555-4555-8555-555555555555";
 const CANDIDATES_KEY = ["projectMembers", "listCandidates", PROJECT_ID];
+const NO_CANDIDATE_HINT = /没有可以添加的账号/;
 
 vi.mock("@/utils/orpc", () => ({
 	orpc: {
@@ -15,59 +15,60 @@ vi.mock("@/utils/orpc", () => ({
 			list: { key: () => ["projectMembers", "list"] },
 			listCandidates: {
 				key: () => ["projectMembers", "listCandidates"],
-				queryOptions: () => ({
-					queryFn: () => Promise.resolve(CANDIDATES),
-					queryKey: CANDIDATES_KEY,
-				}),
+				queryOptions: () => ({ queryKey: CANDIDATES_KEY }),
 			},
 		},
 	},
 }));
 
 const CANDIDATES = [
-	{ id: "u-bob", platformRole: "member", username: "bob" },
-	{ id: "u-carol", platformRole: "project_admin", username: "carol" },
-	{ id: "u-dave", platformRole: "admin", username: "dave" },
+	{ id: "u-bob", username: "bob" },
+	{ id: "u-carol", username: "carol" },
 ];
 
-/** 打开选择框，返回各选项的文字 */
-async function openOptions(name: string): Promise<string[]> {
-	fireEvent.click(screen.getByRole("combobox", { name }));
-	const listbox = await screen.findByRole("listbox");
-	return within(listbox)
-		.getAllByRole("option")
-		.map((option) => option.textContent ?? "");
+async function renderForm(candidates: readonly object[]) {
+	const Wrapper = createQueryWrapper([CANDIDATES_KEY, candidates]);
+	renderRoutes({
+		initialPath: "/",
+		routes: {
+			"/": () => (
+				<Wrapper>
+					<AddProjectMemberForm onClose={vi.fn()} projectId={PROJECT_ID} />
+				</Wrapper>
+			),
+		},
+	});
+	return await screen.findByRole("combobox", { name: "账号" });
 }
 
-/** Base UI 只接受从选项上按下的鼠标点击，所以先按下再点击 */
-async function pickAccount(username: string) {
-	fireEvent.click(screen.getByRole("combobox", { name: "账号" }));
-	const option = await screen.findByRole("option", { name: username });
-	fireEvent.pointerDown(option);
-	fireEvent.click(option);
-}
+describe("AddProjectMemberForm", () => {
+	it("列出还不在项目里的账号，没有项目角色字段，不显示没有账号的提示", async () => {
+		fireEvent.click(await renderForm(CANDIDATES));
+		const listbox = await screen.findByRole("listbox");
+		const labels = within(listbox)
+			.getAllByRole("option")
+			.map((option) => option.textContent);
 
-function renderForm() {
-	renderWithQuery(
-		<AddProjectMemberForm onClose={vi.fn()} projectId={PROJECT_ID} />,
-		[CANDIDATES_KEY, CANDIDATES]
-	);
-}
-
-describe("AddProjectMemberForm：项目角色只列出能选的角色", () => {
-	it("还没选账号：只有「成员」", async () => {
-		renderForm();
-		expect(await openOptions("项目角色")).toEqual(["成员"]);
+		expect(labels).toEqual([
+			"选择一个账号（已在项目里的不再列出）",
+			"bob",
+			"carol",
+		]);
+		expect(screen.queryByRole("combobox", { name: "项目角色" })).toBeNull();
+		expect(screen.queryByText(NO_CANDIDATE_HINT)).toBeNull();
 	});
 
-	it.each([
-		["普通用户：没有「拥有者」，字段下说明原因", "bob", ["成员"], true],
-		["项目管理员：有「拥有者」", "carol", ["成员", "拥有者"], false],
-		["平台管理员：有「拥有者」", "dave", ["成员", "拥有者"], false],
-	])("%s", async (_name, username, options, hint) => {
-		renderForm();
-		await pickAccount(username);
-		expect(await openOptions("项目角色")).toEqual(options);
-		expect(screen.queryByText(OWNER_NOT_ELIGIBLE_HINT) !== null).toBe(hint);
+	it("没有可以添加的账号：说明原因，并链接到「用户」页面；「添加」不可用", async () => {
+		const field = await renderForm([]);
+
+		const hint = screen.getByText(NO_CANDIDATE_HINT);
+		expect(field.getAttribute("aria-describedby")).toBe(hint.id);
+		expect(
+			within(hint).getByRole("link", { name: "用户" }).getAttribute("href")
+		).toBe("/users");
+		expect(
+			(screen.getByRole("button", { name: "添加" }) as HTMLButtonElement)
+				.disabled
+		).toBe(true);
 	});
 });

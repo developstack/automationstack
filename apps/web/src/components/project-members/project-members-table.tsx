@@ -10,14 +10,13 @@ import {
 } from "@automationstack/ui/components/table";
 import { useCurrentUser } from "@/components/auth/use-session";
 import { formatDateTime } from "@/components/cases/case-meta";
-import { projectRoleLabelFor } from "@/components/project-members/project-member-meta";
+import { projectMemberLabelFor } from "@/components/project-members/project-member-meta";
 import { ProjectMemberRowActions } from "@/components/project-members/project-member-row-actions";
 
 interface ProjectMemberRowProps {
 	canManage: boolean;
 	isSelf: boolean;
 	member: ProjectMemberView;
-	ownerCount: number;
 	projectId: string;
 }
 
@@ -25,7 +24,6 @@ function ProjectMemberRow({
 	canManage,
 	isSelf,
 	member,
-	ownerCount,
 	projectId,
 }: ProjectMemberRowProps) {
 	const disabled = member.disabledAt !== null;
@@ -33,7 +31,7 @@ function ProjectMemberRow({
 	return (
 		<TableRow>
 			<TableCell className="font-medium">{member.username}</TableCell>
-			<TableCell>{projectRoleLabelFor(member)}</TableCell>
+			<TableCell>{projectMemberLabelFor(member)}</TableCell>
 			<TableCell>
 				<Badge variant={disabled ? "outline" : "secondary"}>
 					{disabled ? "已停用" : "启用"}
@@ -47,7 +45,6 @@ function ProjectMemberRow({
 					<ProjectMemberRowActions
 						isSelf={isSelf}
 						member={member}
-						ownerCount={ownerCount}
 						projectId={projectId}
 					/>
 				</TableCell>
@@ -68,14 +65,13 @@ export function ProjectMembersTable({
 	projectId,
 }: ProjectMembersTableProps) {
 	const currentUser = useCurrentUser();
-	const ownerCount = members.filter((member) => member.role === "owner").length;
 
 	return (
 		<Table>
 			<TableHeader>
 				<TableRow>
 					<TableHead>用户名</TableHead>
-					<TableHead>项目角色</TableHead>
+					<TableHead>角色</TableHead>
 					<TableHead>账号状态</TableHead>
 					<TableHead>加入时间</TableHead>
 					{canManage ? (
@@ -92,7 +88,6 @@ export function ProjectMembersTable({
 						isSelf={member.userId === currentUser.id}
 						key={member.userId}
 						member={member}
-						ownerCount={ownerCount}
 						projectId={projectId}
 					/>
 				))}

@@ -9,7 +9,6 @@ import {
 	verifySessionToken,
 } from "./auth/session";
 import { isSessionUserAllowed } from "./auth/session-policy";
-import { getEffectiveAuthSettings } from "./auth/settings-store";
 import { getRequestOrigin } from "./lib/request-origin";
 
 export interface CreateContextOptions {
@@ -48,8 +47,8 @@ export async function resolveUserFromCookies(
 	if (user === null || user.disabledAt !== null) {
 		return null;
 	}
-	// casdoor 模式下的本地普通用户和 local 模式下的 Casdoor 用户：会话失效（plan 021 §10.4、§2 第 12 项）。
-	if (!isSessionUserAllowed(user, await getEffectiveAuthSettings())) {
+	// 没有本地密码的账号（以前的 Casdoor 账号）：会话失效。
+	if (!isSessionUserAllowed(user)) {
 		return null;
 	}
 	return user;

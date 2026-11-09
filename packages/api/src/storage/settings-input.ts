@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { optionalText, secretUpdateSchema } from "../auth/settings-input";
+import { optionalText, secretUpdateSchema } from "../settings/input";
 
 const MAX_URL_LENGTH = 512;
 const MAX_BUCKET_LENGTH = 63;

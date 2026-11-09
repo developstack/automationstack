@@ -1,4 +1,3 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +13,7 @@ import { caseStatusProcedures } from "./case-status";
 const mocks = vi.hoisted(() => ({
 	changeCaseStatus: vi.fn(),
 	changeCaseStatusByFilter: vi.fn(),
-	getProjectRole: vi.fn(),
+	isProjectMember: vi.fn(),
 	listCaseProjects: vi.fn(),
 	publishInvalidate: vi.fn(),
 	removeTestCases: vi.fn(),
@@ -39,7 +38,7 @@ vi.mock(
 	})
 );
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	listCaseProjects: mocks.listCaseProjects,
@@ -76,8 +75,8 @@ const options = (procedure: string) => ({
 	path: ["cases", procedure],
 });
 
-function changeAs(projectRole: ProjectRole | null, input: object) {
-	mocks.getProjectRole.mockResolvedValue(projectRole);
+function changeAs(isMember: boolean, input: object) {
+	mocks.isProjectMember.mockResolvedValue(isMember);
 	return call(
 		caseStatusProcedures.changeStatus,
 		input as never,
@@ -85,8 +84,8 @@ function changeAs(projectRole: ProjectRole | null, input: object) {
 	);
 }
 
-function removeAs(projectRole: ProjectRole | null, input: object) {
-	mocks.getProjectRole.mockResolvedValue(projectRole);
+function removeAs(isMember: boolean, input: object) {
+	mocks.isProjectMember.mockResolvedValue(isMember);
 	return call(
 		caseRemoveProcedures.removeMany,
 		input as never,
@@ -101,10 +100,10 @@ const byFilter: Record<Procedure, ReturnType<typeof vi.fn>> = {
 	removeMany: mocks.removeTestCasesByFilter,
 };
 
-function runByFilter(procedure: Procedure, projectRole: ProjectRole | null) {
+function runByFilter(procedure: Procedure, isMember: boolean) {
 	return procedure === "changeStatus"
-		? changeAs(projectRole, { filter: FILTER, status: "deprecated" })
-		: removeAs(projectRole, { filter: FILTER });
+		? changeAs(isMember, { filter: FILTER, status: "deprecated" })
+		: removeAs(isMember, { filter: FILTER });
 }
 
 beforeEach(() => {
@@ -121,7 +120,7 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 		mocks.changeCaseStatusByFilter.mockResolvedValue({ changes, kind: "ok" });
 
 		await expect(
-			changeAs("member", { filter: FILTER, status: "deprecated" })
+			changeAs(true, { filter: FILTER, status: "deprecated" })
 		).resolves.toEqual({ changes, undoToken: expect.any(String) });
 		expect(mocks.changeCaseStatusByFilter).toHaveBeenCalledWith({
 			actorName: "bob",
@@ -129,7 +128,7 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 			limit: MAX_FILTER_BATCH_CASES,
 			status: "deprecated",
 		});
-		expect(mocks.getProjectRole).toHaveBeenCalledWith(PROJECT_ID, viewer.id);
+		expect(mocks.isProjectMember).toHaveBeenCalledWith(PROJECT_ID, viewer.id);
 		expect(mocks.publishInvalidate).toHaveBeenCalledWith(
 			expect.objectContaining({
 				action: "update",
@@ -147,7 +146,7 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 			skipped: [{ referencedByRunCount: 3, testCase: testCase(2) }],
 		});
 
-		await expect(removeAs("member", { filter: FILTER })).resolves.toEqual({
+		await expect(removeAs(true, { filter: FILTER })).resolves.toEqual({
 			deleted: [{ id: caseId(1), name: "用例 1" }],
 			missingIds: [],
 			skipped: [{ id: caseId(2), name: "用例 2", referencedByRunCount: 3 }],
@@ -165,7 +164,7 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 		"%s：符合筛选的用例超过上限时 BAD_REQUEST，提示缩小筛选范围，不通知",
 		async (procedure) => {
 			byFilter[procedure].mockResolvedValue({ kind: "too-many" });
-			await expect(runByFilter(procedure, "member")).rejects.toMatchObject({
+			await expect(runByFilter(procedure, true)).rejects.toMatchObject({
 				code: "BAD_REQUEST",
 				message: FILTER_BATCH_TOO_MANY_MESSAGE,
 			});
@@ -176,7 +175,7 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 	it.each<Procedure>(["changeStatus", "removeMany"])(
 		"%s：不是筛选条件中项目的成员时 FORBIDDEN，不写数据库",
 		async (procedure) => {
-			await expect(runByFilter(procedure, null)).rejects.toMatchObject({
+			await expect(runByFilter(procedure, false)).rejects.toMatchObject({
 				code: "FORBIDDEN",
 			});
 			expect(byFilter[procedure]).not.toHaveBeenCalled();

@@ -1,19 +1,9 @@
-import {
-	index,
-	pgEnum,
-	pgTable,
-	timestamp,
-	unique,
-	uuid,
-} from "drizzle-orm/pg-core";
+import { index, pgTable, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
 import { projects } from "./projects";
 import { users } from "./users";
 
-export const projectRoleEnum = pgEnum("project_role", ["owner", "member"]);
-
-export type ProjectRole = (typeof projectRoleEnum.enumValues)[number];
-
+/** 项目成员可以使用这个项目。项目内没有角色：只有管理员能管理项目（ADR 0008）。 */
 export const projectMembers = pgTable(
 	"project_members",
 	{
@@ -24,7 +14,6 @@ export const projectMembers = pgTable(
 		projectId: uuid("project_id")
 			.notNull()
 			.references(() => projects.id, { onDelete: "cascade" }),
-		role: projectRoleEnum("role").notNull().default("member"),
 		userId: uuid("user_id")
 			.notNull()
 			.references(() => users.id, { onDelete: "cascade" }),

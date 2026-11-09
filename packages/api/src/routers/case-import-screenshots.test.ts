@@ -9,8 +9,8 @@ import { caseImportProcedures } from "./case-import";
 const SECRET = "test-session-secret-0123456789abcdef";
 
 const mocks = vi.hoisted(() => ({
-	getProjectRole: vi.fn(),
 	importTestCases: vi.fn(),
+	isProjectMember: vi.fn(),
 	storage: null as unknown,
 }));
 
@@ -27,7 +27,7 @@ vi.mock("@automationstack/db/repositories/case-search-repository", () => ({
 	searchTestCases: vi.fn(),
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("../lib/object-storage", () => ({
 	getObjectStorage: () => mocks.storage,

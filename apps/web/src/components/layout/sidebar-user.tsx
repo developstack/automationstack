@@ -59,7 +59,7 @@ export function SidebarUser() {
 						<UserMenuTrigger role={user.role} username={user.username} />
 						<DropdownMenuContent align="start" side="top">
 							<UserMenuItems
-								canChangePassword={user.authSource === "local"}
+								canChangePassword={user.hasPassword}
 								isDark={isDark}
 								onLogout={logout}
 								onToggleTheme={toggleTheme}

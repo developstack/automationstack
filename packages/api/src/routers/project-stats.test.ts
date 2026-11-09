@@ -10,12 +10,12 @@ const mocks = vi.hoisted(() => ({
 	getExecutionCoverage: vi.fn(),
 	getExecutionTrend: vi.fn(),
 	getLatestResults: vi.fn(),
-	getProjectRole: vi.fn(),
 	getRunTrend: vi.fn(),
+	isProjectMember: vi.fn(),
 }));
 
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("@automationstack/db/repositories/project-stats-coverage", () => ({
 	getProjectCoverageStats: vi.fn(),
@@ -97,7 +97,7 @@ describe("projectStats 的新只读查询", () => {
 	it.each(NEW_QUERIES)(
 		"$name：项目成员取得该项目的统计",
 		async ({ invoke, name, repo }) => {
-			mocks.getProjectRole.mockResolvedValue("member");
+			mocks.isProjectMember.mockResolvedValue(true);
 			repo.mockResolvedValue({ ok: name });
 
 			await expect(invoke()).resolves.toEqual({ ok: name });
@@ -108,7 +108,7 @@ describe("projectStats 的新只读查询", () => {
 	it.each(NEW_QUERIES)(
 		"$name：不是项目成员时拒绝，不查询数据",
 		async ({ invoke, repo }) => {
-			mocks.getProjectRole.mockResolvedValue(null);
+			mocks.isProjectMember.mockResolvedValue(false);
 
 			await expect(invoke()).rejects.toMatchObject({
 				code: "FORBIDDEN",

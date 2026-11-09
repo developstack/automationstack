@@ -1,5 +1,3 @@
-import { isLocalLoginEnabled } from "@automationstack/api/auth/providers/resolve";
-import { getEffectiveAuthSettings } from "@automationstack/api/auth/settings-store";
 import { localLoginAdminBlocker } from "@automationstack/db/local-login";
 import { hashPassword } from "@automationstack/db/password";
 import {
@@ -57,27 +55,19 @@ async function createBootstrapAdmin(
  * 服务启动时创建引导管理员（plan 021 D2）。必须在 serve() 之前 await。
  * 生产环境的配置错误抛出 BootstrapAdminError，调用方以非零码退出。
  * 日志不写密码。
- * 本地登录是否启用取当前生效的认证设置（页面配置优先于环境变量，plan 021 §10）。
- * 否则页面已切换到 casdoor 并关闭本地登录时，服务会按环境变量要求引导管理员的密码。
  */
 export async function bootstrapAdmin(
 	logger: BootstrapAdminLogger
 ): Promise<void> {
-	const localLoginEnabled = isLocalLoginEnabled(
-		await getEffectiveAuthSettings()
-	);
-	const localLoginAdminCount = localLoginEnabled
-		? await countLocalLoginAdmins()
-		: 0;
+	const localLoginAdminCount = await countLocalLoginAdmins();
 	const username = env.ADMIN_USERNAME;
-	const needsUsernameCheck = localLoginEnabled && localLoginAdminCount === 0;
+	const needsUsernameCheck = localLoginAdminCount === 0;
 	const decision = decideBootstrapAdmin({
 		existingUserBlocker: needsUsernameCheck
 			? await readExistingUserBlocker(username)
 			: null,
 		initialPassword: env.ADMIN_INITIAL_PASSWORD,
 		localLoginAdminCount,
-		localLoginEnabled,
 		production: env.NODE_ENV === "production",
 		username,
 	});

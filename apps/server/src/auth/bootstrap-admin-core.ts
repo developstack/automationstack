@@ -7,7 +7,6 @@ export interface BootstrapAdminInput {
 	/** ADMIN_INITIAL_PASSWORD；未配置时为 undefined。 */
 	initialPassword: string | undefined;
 	localLoginAdminCount: number;
-	localLoginEnabled: boolean;
 	production: boolean;
 	username: string;
 }
@@ -15,12 +14,11 @@ export interface BootstrapAdminInput {
 export type BootstrapAdminDecision =
 	| { kind: "create"; mustChangePassword: boolean; password: string }
 	| { kind: "fail"; message: string }
-	| { kind: "skip"; reason: "admin-exists" | "local-login-disabled" }
+	| { kind: "skip"; reason: "admin-exists" }
 	| { kind: "warn"; message: string };
 
 const BLOCKER_LABEL: Record<LocalLoginAdminBlocker, string> = {
 	disabled: "已被禁用",
-	"external-account": "不是本地账号",
 	"no-password": "没有本地密码",
 	"not-admin": "不是管理员",
 };
@@ -28,13 +26,13 @@ const BLOCKER_LABEL: Record<LocalLoginAdminBlocker, string> = {
 const RESET_PASSWORD_HINT =
 	"请修改 ADMIN_USERNAME，或用 scripts/reset-password.ts 恢复该账号。";
 
-// reset-password 脚本只能重置密码和解除禁用，不能把成员提升为管理员，也不能把外部账号改成本地账号。
+// reset-password 脚本只能重置密码和解除禁用，不能把普通用户提升为管理员。
+// 走到这里时库里没有能登录的管理员，所以不能建议「让另一个管理员在页面上操作」。
 const BLOCKER_HINT: Record<LocalLoginAdminBlocker, string> = {
 	disabled: RESET_PASSWORD_HINT,
-	"external-account": "请修改 ADMIN_USERNAME。",
 	"no-password": RESET_PASSWORD_HINT,
 	"not-admin":
-		"请修改 ADMIN_USERNAME，或由其他平台管理员在「用户管理」页面把该账号设为平台管理员。",
+		"请修改 ADMIN_USERNAME，或直接在数据库中把该账号的 role 改为 admin。",
 };
 
 function missingOrBlocked(
@@ -51,9 +49,6 @@ function missingOrBlocked(
 export function decideBootstrapAdmin(
 	input: BootstrapAdminInput
 ): BootstrapAdminDecision {
-	if (!input.localLoginEnabled) {
-		return { kind: "skip", reason: "local-login-disabled" };
-	}
 	if (input.localLoginAdminCount > 0) {
 		return { kind: "skip", reason: "admin-exists" };
 	}

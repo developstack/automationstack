@@ -1,8 +1,7 @@
 import type { StorageSettingsRow } from "@automationstack/db/schema/storage-settings";
 import { env, isR2Configured } from "@automationstack/env/server";
 
-import { openSecret } from "../auth/effective-settings";
-import { NO_SECRET } from "../auth/settings-model";
+import { NO_SECRET, openSecret } from "../settings/secrets";
 import type { EffectiveStorageSettings } from "./settings-model";
 
 function envEndpoint(): string | null {

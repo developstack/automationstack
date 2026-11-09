@@ -1,4 +1,3 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +7,7 @@ import { callContext, testUser } from "../test-fixtures";
 import { caseRemoveProcedures } from "./case-remove";
 
 const mocks = vi.hoisted(() => ({
-	getProjectRole: vi.fn(),
+	isProjectMember: vi.fn(),
 	listCaseProjects: vi.fn(),
 	publishInvalidate: vi.fn(),
 	removeTestCases: vi.fn(),
@@ -19,7 +18,7 @@ vi.mock("@automationstack/db/repositories/test-cases-repository", () => ({
 	removeTestCases: mocks.removeTestCases,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	listCaseProjects: mocks.listCaseProjects,
@@ -52,8 +51,8 @@ function existIn(projectId: string, ids: string[]) {
 	);
 }
 
-function removeAs(projectRole: ProjectRole | null, ids: string[]) {
-	mocks.getProjectRole.mockResolvedValue(projectRole);
+function removeAs(isMember: boolean, ids: string[]) {
+	mocks.isProjectMember.mockResolvedValue(isMember);
 	return call(
 		caseRemoveProcedures.removeMany,
 		{ ids },
@@ -110,7 +109,7 @@ describe("cases.removeMany：批量删除用例，被测试任务用到的用例
 			})),
 		});
 
-		await expect(removeAs("member", ids)).resolves.toEqual({
+		await expect(removeAs(true, ids)).resolves.toEqual({
 			deleted: removed.map(({ id, name }) => ({ id, name })),
 			missingIds,
 			skipped: skipped.map(({ id, name }) => ({
@@ -140,7 +139,7 @@ describe("cases.removeMany：批量删除用例，被测试任务用到的用例
 
 	it("所有用例都已经不存在：没有要删除的用例，直接报告为不存在", async () => {
 		existIn(PROJECT_ID, []);
-		await expect(removeAs(null, [GONE_ID])).resolves.toEqual({
+		await expect(removeAs(false, [GONE_ID])).resolves.toEqual({
 			deleted: [],
 			missingIds: [GONE_ID],
 			skipped: [],
@@ -153,41 +152,41 @@ describe("cases.removeMany：批量删除用例，被测试任务用到的用例
 		ids: string[];
 		name: string;
 		projectIds: string[];
-		role: ProjectRole | null;
+		isMember: boolean;
 	}>([
 		{
 			code: "NOT_FOUND",
 			ids: [LOGIN_ID, LOGOUT_ID],
+			isMember: true,
 			name: "用例分属不同项目",
 			projectIds: [PROJECT_ID, OTHER_PROJECT_ID],
-			role: "member",
 		},
 		{
 			code: "FORBIDDEN",
 			ids: [LOGIN_ID],
+			isMember: false,
 			name: "不是项目成员",
 			projectIds: [PROJECT_ID],
-			role: null,
 		},
 		{
 			code: "BAD_REQUEST",
 			ids: [],
+			isMember: true,
 			name: "没有用例",
 			projectIds: [],
-			role: "member",
 		},
 		{
 			code: "BAD_REQUEST",
 			ids: Array.from({ length: MAX_BATCH_CASES + 1 }, () => LOGIN_ID),
+			isMember: true,
 			name: `超过 ${MAX_BATCH_CASES} 条用例`,
 			projectIds: [],
-			role: "member",
 		},
-	])("$name：$code，不删除", async ({ code, ids, projectIds, role }) => {
+	])("$name：$code，不删除", async ({ code, ids, isMember, projectIds }) => {
 		mocks.listCaseProjects.mockResolvedValue(
 			projectIds.map((projectId, index) => ({ caseId: ids[index], projectId }))
 		);
-		await expect(removeAs(role, ids)).rejects.toMatchObject({ code });
+		await expect(removeAs(isMember, ids)).rejects.toMatchObject({ code });
 		expect(mocks.removeTestCases).not.toHaveBeenCalled();
 	});
 });

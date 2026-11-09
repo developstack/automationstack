@@ -1,11 +1,7 @@
 import { and, asc, eq, isNull, notExists, sql } from "drizzle-orm";
 
 import { db } from "../index";
-import {
-	type ProjectMember,
-	type ProjectRole,
-	projectMembers,
-} from "../schema/project-members";
+import { type ProjectMember, projectMembers } from "../schema/project-members";
 import { type Project, projects } from "../schema/projects";
 import { type UserRole, users } from "../schema/users";
 import {
@@ -16,16 +12,14 @@ import {
 export interface ProjectMemberView {
 	createdAt: Date;
 	disabledAt: Date | null;
-	/** 平台角色。web 用它判断这个用户能否成为项目 owner。 */
+	/** 平台角色。web 用它标出管理员。 */
 	platformRole: UserRole;
-	role: ProjectRole;
 	userId: string;
 	username: string;
 }
 
 export interface AddProjectMemberInput {
 	projectId: string;
-	role?: ProjectRole;
 	userId: string;
 }
 
@@ -37,7 +31,6 @@ export function listProjectMembers(
 			createdAt: projectMembers.createdAt,
 			disabledAt: users.disabledAt,
 			platformRole: users.role,
-			role: projectMembers.role,
 			userId: users.id,
 			username: users.username,
 		})
@@ -49,8 +42,6 @@ export function listProjectMembers(
 
 export interface ProjectMemberCandidate {
 	id: string;
-	/** 平台角色。web 用它判断这个用户能否成为项目 owner。 */
-	platformRole: UserRole;
 	username: string;
 }
 
@@ -60,7 +51,6 @@ export function listProjectMemberCandidates(
 	return db
 		.select({
 			id: users.id,
-			platformRole: users.role,
 			username: users.username,
 		})
 		.from(users)
@@ -83,12 +73,13 @@ export function listProjectMemberCandidates(
 		.orderBy(asc(users.username));
 }
 
-export async function getProjectRole(
+/** 用户是否是项目成员。 */
+export async function isProjectMember(
 	projectId: string,
 	userId: string
-): Promise<ProjectRole | null> {
+): Promise<boolean> {
 	const [row] = await db
-		.select({ role: projectMembers.role })
+		.select({ id: projectMembers.id })
 		.from(projectMembers)
 		.where(
 			and(
@@ -97,7 +88,7 @@ export async function getProjectRole(
 			)
 		)
 		.limit(1);
-	return row?.role ?? null;
+	return row !== undefined;
 }
 
 export function listProjectsByMember(userId: string): Promise<Project[]> {
@@ -122,30 +113,11 @@ export async function addProjectMember(
 		.insert(projectMembers)
 		.values({
 			projectId: input.projectId,
-			role: input.role ?? "member",
 			userId: input.userId,
 		})
 		.onConflictDoNothing({
 			target: [projectMembers.projectId, projectMembers.userId],
 		})
-		.returning();
-	return row ?? null;
-}
-
-export async function updateProjectMemberRole(
-	projectId: string,
-	userId: string,
-	role: ProjectRole
-): Promise<ProjectMember | null> {
-	const [row] = await db
-		.update(projectMembers)
-		.set({ role })
-		.where(
-			and(
-				eq(projectMembers.projectId, projectId),
-				eq(projectMembers.userId, userId)
-			)
-		)
 		.returning();
 	return row ?? null;
 }
@@ -166,28 +138,16 @@ export async function removeProjectMember(
 	return rows.length > 0;
 }
 
-export async function countProjectOwners(projectId: string): Promise<number> {
-	const [row] = await db
-		.select({ value: sql<number>`count(*)::int` })
-		.from(projectMembers)
-		.where(
-			and(
-				eq(projectMembers.projectId, projectId),
-				eq(projectMembers.role, "owner")
-			)
-		);
-	return row?.value ?? 0;
-}
-
-export function createProjectWithOwner(
+/** 创建项目，并把创建者加为项目成员。 */
+export function createProjectWithCreator(
 	input: CreateProjectInput,
-	ownerUserId: string
+	creatorUserId: string
 ): Promise<Project> {
 	return db.transaction(async (tx) => {
 		const project = await createProjectInTx(tx, input);
 		await tx
 			.insert(projectMembers)
-			.values({ projectId: project.id, role: "owner", userId: ownerUserId });
+			.values({ projectId: project.id, userId: creatorUserId });
 		return project;
 	});
 }

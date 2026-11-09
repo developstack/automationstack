@@ -1,7 +1,7 @@
 import { resolveUserFromCookies } from "@automationstack/api/context";
 import { canEnterProject } from "@automationstack/api/lib/project-access";
 import { colorForName } from "@automationstack/api/realtime/presence-color";
-import { getProjectRole } from "@automationstack/db/repositories/project-members-repository";
+import { isProjectMember } from "@automationstack/db/repositories/project-members-repository";
 import { env } from "@automationstack/env/server";
 import type { Context as HonoContext } from "hono";
 
@@ -48,8 +48,8 @@ export async function resolveHandshake(
 	if (user === null) {
 		return { kind: "rejected", reason: INVALID_HANDSHAKE_REASON };
 	}
-	const projectRole = await getProjectRole(projectId, user.id);
-	if (!canEnterProject({ platformRole: user.role, projectRole })) {
+	const isMember = await isProjectMember(projectId, user.id);
+	if (!canEnterProject({ isMember, platformRole: user.role })) {
 		return { kind: "rejected", reason: NOT_PROJECT_MEMBER_REASON };
 	}
 	return {

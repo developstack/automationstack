@@ -102,31 +102,6 @@ describe("server env：生产环境拒绝开发默认密钥", () => {
 	});
 });
 
-describe("server env：Casdoor 默认值", () => {
-	it("CASDOOR_ISSUER 带路径：启动失败", async () => {
-		stubEnv({ CASDOOR_ISSUER: "https://casdoor.example.com/login" });
-		const { error, output } = await loadEnv();
-		expect(error).toBeInstanceOf(Error);
-		expect(output).toContain("CASDOOR_ISSUER");
-	});
-
-	it("CASDOOR_WEBHOOK_SECRET 少于 32 个字符：启动失败", async () => {
-		stubEnv({ CASDOOR_WEBHOOK_SECRET: "too-short" });
-		const { error } = await loadEnv();
-		expect(error).toBeInstanceOf(Error);
-	});
-
-	it("CASDOOR_INTERNAL_URL 结尾有斜杠：规范为 origin", async () => {
-		stubEnv({
-			CASDOOR_INTERNAL_URL: "http://casdoor.casdoor.svc.cluster.local:8000/",
-		});
-		const { env } = await import("./server");
-		expect(env.CASDOOR_INTERNAL_URL).toBe(
-			"http://casdoor.casdoor.svc.cluster.local:8000"
-		);
-	});
-});
-
 describe("server env：变量格式", () => {
 	it.each([
 		["IMAGE_PUBLIC_BASE_URL", "img.trendf.top", false],

@@ -1,9 +1,10 @@
 import type { StorageBackendId } from "@automationstack/db/schema/storage-settings";
-
-import type { AuthCredentialProblem } from "../auth/settings-model";
-import { isSecretStorageAvailable } from "../auth/settings-secrets";
-import { usernameOf } from "../auth/settings-view";
 import { localStorageRoot } from "../lib/local-storage";
+import { usernameOf } from "../settings/actor";
+import {
+	type CredentialProblem,
+	isSecretStorageAvailable,
+} from "../settings/secrets";
 import {
 	type EffectiveStorageSettings,
 	r2ConnectionOf,
@@ -15,7 +16,7 @@ export interface StorageSettingsView {
 	/** 新上传的文件实际写到哪里。存储方式是 R2 但 R2 不能使用时，这里是 local。 */
 	activeBackend: StorageBackendId;
 	backend: StorageBackendId;
-	credentialProblem: AuthCredentialProblem | null;
+	credentialProblem: CredentialProblem | null;
 	hasSecretAccessKey: boolean;
 	/** server 上本地存储的目录（环境变量 FILE_STORAGE_DIR）。页面不能修改。 */
 	localDirectory: string;

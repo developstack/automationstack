@@ -12,7 +12,7 @@ import {
 } from "./password-change-gate";
 
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: vi.fn(),
+	isProjectMember: vi.fn(),
 }));
 
 const baseUser = testUser();

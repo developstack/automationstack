@@ -9,16 +9,24 @@
 
 ### 变更
 
+- **只使用本地登录，平台角色只有管理员和普通用户**（ADR 0008）：
+  只有管理员可以新建项目、管理用户和项目成员。项目内不再有拥有者和成员的区别。
+  原来的项目管理员改为管理员。迁移 `0023` 删除认证设置表、账号来源列和项目角色列。
+  没有密码的账号（以前的 Casdoor 账号）不能登录，管理员重置密码后才能使用。
+- **添加成员时没有可选账号**：表单说明原因，并给出「用户」页面的入口。
 - **部署改为从 ACR 拉取镜像**：CI 构建 server 和 web 的镜像，并把它们推送到阿里云 ACR。
   `make up:prod` 拉取当前提交的镜像，不再在服务器上构建。`.env.prod` 增加必填键 `IMAGE_PREFIX`。
   web 镜像的前端地址与 `DOMAIN` 不同时，`make up:prod` 停止。
 
 ### 移除
 
+- **Casdoor 登录**：删除 Casdoor 登录、webhook、对账任务、认证设置页面、`make casdoor-*` 和 `make db-auth-set-local`。
+  `.env` 中的 `AUTH_PROVIDER`、`AUTH_ALLOW_LOCAL_LOGIN` 和 `CASDOOR_*` 不再使用，可以删除。
 - **k8s 部署**：CI 不再推送 GHCR，也不再写回 GitOps 仓库。推送 `main` 不再部署任何环境。
 
 ### 新增
 
+- **DeepSeek harness 插件**：`plugins/dsh-testcase-platform/` 把平台的 MCP 工具和两个用例 skill 加到 dsh 中。
 - **单机生产部署**：增加 `make up:prod`、`make logs:prod` 和 `make down:prod`。
   它们在一台服务器上用 docker compose 运行生产构建，数据库在外部机器上（`docker-compose.prod.yml`）。
   启动顺序：先执行数据库迁移，再启动服务。

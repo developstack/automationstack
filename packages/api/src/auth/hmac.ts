@@ -1,4 +1,4 @@
-// 会话 cookie 和 Casdoor 登录 state cookie 共用的签名工具。
+// 会话 cookie 的签名工具。
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -9,8 +9,6 @@ const TRAILING_EQUALS = /[=]+$/;
 const DASH_TO_PLUS = /-/g;
 const UNDERSCORE_TO_SLASH = /_/g;
 const BASE64_GROUP = 4;
-const HEX_RADIX = 16;
-const HEX_BYTE_WIDTH = 2;
 
 export function toBase64Url(bytes: Uint8Array): string {
 	let binary = "";
@@ -62,32 +60,6 @@ export async function hmacSha256(
 	);
 	const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
 	return new Uint8Array(signature);
-}
-
-async function sha256(value: string): Promise<Uint8Array> {
-	return new Uint8Array(
-		await crypto.subtle.digest("SHA-256", encoder.encode(value))
-	);
-}
-
-export async function sha256Hex(value: string): Promise<string> {
-	let hex = "";
-	for (const byte of await sha256(value)) {
-		hex += byte.toString(HEX_RADIX).padStart(HEX_BYTE_WIDTH, "0");
-	}
-	return hex;
-}
-
-/**
- * 常量时间比较两个字符串。先计算两边的 SHA-256，所以比较时间与长度无关。
- * 用于 webhook 密钥这类共享密钥。
- */
-export async function secretsEqual(
-	provided: string,
-	expected: string
-): Promise<boolean> {
-	const [left, right] = await Promise.all([sha256(provided), sha256(expected)]);
-	return timingSafeEqual(left, right);
 }
 
 /** 把 JSON 值签名为「载荷.签名」，两段都是 base64url。 */

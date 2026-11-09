@@ -1,8 +1,8 @@
 import { saveStorageSettings } from "@automationstack/db/repositories/storage-settings-repository";
-import type { ChangedSettingsField } from "@automationstack/db/schema/auth-settings";
+import type { ChangedSettingsField } from "@automationstack/db/schema/settings-change-log";
 
-import type { SettingsActor } from "../auth/settings-save";
-import { secretColumnFor } from "../auth/settings-secrets";
+import type { SettingsActor } from "../settings/actor";
+import { secretColumnFor } from "../settings/secrets";
 import type { SaveStorageSettingsInput } from "./settings-input";
 import type { EffectiveStorageSettings, R2Connection } from "./settings-model";
 import {

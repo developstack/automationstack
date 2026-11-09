@@ -17,7 +17,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@automationstack/db", () => ({ db: {} }));
 vi.mock("@automationstack/env/server", () => ({ isR2Configured: () => true }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: () => Promise.resolve("member"),
+	isProjectMember: () => Promise.resolve(true),
 }));
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	getProjectIdByRunAttachmentId: () => Promise.resolve(PROJECT_ID),

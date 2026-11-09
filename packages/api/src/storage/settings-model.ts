@@ -1,9 +1,6 @@
 import type { StorageBackendId } from "@automationstack/db/schema/storage-settings";
 
-import type {
-	AuthCredentialProblem,
-	StoredSecret,
-} from "../auth/settings-model";
+import type { CredentialProblem, StoredSecret } from "../settings/secrets";
 
 /** 配置来源：页面配置（数据库中有 storage_settings 行）或环境变量。 */
 export type StorageSettingsSource = "database" | "env";
@@ -22,7 +19,7 @@ export interface R2Settings {
 export interface EffectiveStorageSettings {
 	/** 新上传的文件写到哪里。已有的文件在哪里，由 object-storage 读取时判断。 */
 	backend: StorageBackendId;
-	credentialProblem: AuthCredentialProblem | null;
+	credentialProblem: CredentialProblem | null;
 	r2: R2Settings;
 	source: StorageSettingsSource;
 	updatedAt: Date | null;

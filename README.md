@@ -155,6 +155,13 @@ import { Button } from "@automationstack/ui/components/button";
 
 只给 web 用的 block（不打算共享的），在 `apps/web` 目录里跑 shadcn CLI。
 
+## DeepSeek harness 插件
+
+`plugins/dsh-testcase-platform/` 是 DeepSeek harness（`dsh`）的插件。它把本平台的 MCP 工具和两个用例 skill 加到 dsh 中，所以 dsh 可以生成和管理用例。
+安装和配置见 `plugins/dsh-testcase-platform/README.md`。
+
+`.claude/skills/` 中的 skill 修改后，执行 `node scripts/build-dsh-plugin-skills.js`，把它们复制到插件中。CI 检查两处是否相同。
+
 ## 部署
 
 ### Docker Compose
@@ -199,7 +206,7 @@ server 的启动路径、两个 Dockerfile、CI 全都不跑。
 `POSTGRES_PASSWORD` 没有兜底值，没设时 `docker compose` 直接拒绝启动。
 这是刻意的：它同时被拼进 `server` 和 `migrate` 的 `DATABASE_URL`，
 一个静默生效的弱口令会让整个库（含 `api_tokens.token_hash`、
-Casdoor 的 client secret 密文）敞在那里，而没有任何人会注意到。
+存储设置中 R2 密钥的密文）敞在那里，而没有任何人会注意到。
 
 ### 单机生产部署（`make up:prod`）
 
@@ -314,7 +321,7 @@ server 第一次启动时，库中没有管理员。这时它用 `ADMIN_INITIAL_
 server 检查签名后，nginx 从这个目录直接发送文件，并处理视频的 Range 请求和缓存头。
 用例图片的地址不会过期，所以浏览器缓存它 1 年。执行页附件的地址在 15 到 30 分钟后过期。
 
-平台管理员可以在「平台 → 存储设置」页面中改用 Cloudflare R2。保存后立即生效。
+管理员可以在「平台 → 存储设置」页面中改用 Cloudflare R2。保存后立即生效。
 切换后，以前上传的文件留在原来的位置，仍然可以查看。设计原因见 `docs/adr/0006-uploads-stored-on-server-by-default.md`。
 
 这个目录不在数据库备份中，所以必须单独备份它。可以使用以下一种方法：

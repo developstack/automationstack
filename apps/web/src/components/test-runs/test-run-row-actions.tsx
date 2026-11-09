@@ -25,11 +25,11 @@ export function TestRunRowActions({ item, onEdit }: TestRunRowActionsProps) {
 	const { counts, run } = item;
 	const [retesting, openRetest, closeRetest] = useDialogToggle();
 	const [voiding, openVoid, closeVoid] = useDialogToggle();
-	const viewer = useRunViewer(run.projectId);
+	const viewer = useRunViewer();
 	// 不能用的操作不放进菜单。已提交和已作废的测试任务不能编辑。
 	const locked = isTestRunLocked(run.status);
 	const canRetest = counts.failed > 0;
-	// 与服务端用同一条规则：状态允许，并且是创建者、项目 owner 或平台管理员。
+	// 与服务端用同一条规则：状态允许，并且是创建者或管理员。
 	const canVoid =
 		viewer !== null &&
 		isTestRunVoidable(run.status) &&

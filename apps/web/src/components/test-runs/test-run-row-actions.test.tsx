@@ -20,7 +20,6 @@ vi.mock("@/components/test-runs/use-run-viewer", () => ({
 const CREATOR_ID = "22222222-2222-4222-8222-222222222222";
 const creator: RunViewer = {
 	platformRole: "member",
-	projectRole: "member",
 	userId: CREATOR_ID,
 };
 const viewerState = vi.hoisted(() => ({
@@ -65,10 +64,9 @@ function listItem(status: TestRunStatus, failed: number): TestRunListItem {
 }
 
 const otherMember: RunViewer = { ...creator, userId: "other" };
-const projectOwner: RunViewer = {
-	platformRole: "project_admin",
-	projectRole: "owner",
-	userId: "owner",
+const admin: RunViewer = {
+	platformRole: "admin",
+	userId: "admin",
 };
 
 describe("TestRunRowActions：菜单里只有能用的操作", () => {
@@ -89,7 +87,7 @@ describe("TestRunRowActions：菜单里只有能用的操作", () => {
 		],
 		["待评审：可以作废", "pending_review", 0, creator, ["编辑", "作废"]],
 		["待测试：可以作废", "ready", 0, creator, ["编辑", "作废"]],
-		["项目 owner：可以作废", "ready", 0, projectOwner, ["编辑", "作废"]],
+		["管理员：可以作废", "ready", 0, admin, ["编辑", "作废"]],
 		["其他项目成员：没有「作废」", "in_progress", 0, otherMember, ["编辑"]],
 		["成员列表加载中：没有「作废」", "in_progress", 0, null, ["编辑"]],
 		["已完成：没有「作废」", "completed", 0, creator, ["编辑"]],

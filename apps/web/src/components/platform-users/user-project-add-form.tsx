@@ -1,5 +1,3 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
-import type { UserRole } from "@automationstack/db/schema/users";
 import { Button } from "@automationstack/ui/components/button";
 import { Label } from "@automationstack/ui/components/label";
 import {
@@ -12,11 +10,9 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useCallback, useState } from "react";
 
-import { projectRoleOptionsFor } from "@/components/project-members/project-member-meta";
 import { orpc } from "@/utils/orpc";
 
 const PROJECT_FIELD_ID = "user-project-candidate";
-const ROLE_FIELD_ID = "user-project-role";
 const NO_PROJECT = "__none__";
 
 interface Option {
@@ -73,60 +69,19 @@ function ProjectField({ onChange, options, value }: ProjectFieldProps) {
 	);
 }
 
-interface RoleFieldProps {
-	onChange: (role: ProjectRole) => void;
-	platformRole: UserRole;
-	value: ProjectRole;
-}
-
-function RoleField({ onChange, platformRole, value }: RoleFieldProps) {
-	const options = projectRoleOptionsFor(platformRole);
-	const handleValueChange = useCallback(
-		(next: string | null) => {
-			if (next === "member" || next === "owner") {
-				onChange(next);
-			}
-		},
-		[onChange]
-	);
-
-	return (
-		<Select items={options} onValueChange={handleValueChange} value={value}>
-			<SelectTrigger
-				aria-label="加入时的项目角色"
-				className="w-full sm:w-32"
-				id={ROLE_FIELD_ID}
-			>
-				<SelectValue />
-			</SelectTrigger>
-			<SelectContent>
-				{options.map((option) => (
-					<SelectItem key={option.value} value={option.value}>
-						{option.label}
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
-	);
-}
-
 interface UserProjectAddFormProps {
 	disabled: boolean;
 	memberOf: ReadonlySet<string>;
-	onAdd: (projectId: string, role: ProjectRole) => void;
-	/** 这个用户的平台角色。普通用户不能设为项目拥有者。 */
-	platformRole: UserRole;
+	onAdd: (projectId: string) => void;
 }
 
 export function UserProjectAddForm({
 	disabled,
 	memberOf,
 	onAdd,
-	platformRole,
 }: UserProjectAddFormProps) {
 	const projectsQuery = useQuery(orpc.projects.list.queryOptions());
 	const [projectId, setProjectId] = useState(NO_PROJECT);
-	const [role, setRole] = useState<ProjectRole>("member");
 	const options = buildProjectOptions(
 		projectsQuery.isPending,
 		projectsQuery.data ?? [],
@@ -139,10 +94,10 @@ export function UserProjectAddForm({
 			if (projectId === NO_PROJECT) {
 				return;
 			}
-			onAdd(projectId, role);
+			onAdd(projectId);
 			setProjectId(NO_PROJECT);
 		},
-		[onAdd, projectId, role]
+		[onAdd, projectId]
 	);
 
 	return (
@@ -157,11 +112,6 @@ export function UserProjectAddForm({
 					onChange={setProjectId}
 					options={options}
 					value={projectId}
-				/>
-				<RoleField
-					onChange={setRole}
-					platformRole={platformRole}
-					value={role}
 				/>
 				<Button disabled={disabled || projectId === NO_PROJECT} type="submit">
 					加入

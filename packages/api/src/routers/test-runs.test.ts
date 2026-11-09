@@ -1,4 +1,3 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { TestRun } from "@automationstack/db/schema/test-runs";
 import type { UserRole } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
@@ -9,8 +8,8 @@ import { testRunsRouter } from "./test-runs";
 
 const mocks = vi.hoisted(() => ({
 	findTestRun: vi.fn(),
-	getProjectRole: vi.fn(),
 	getTestRunReport: vi.fn(),
+	isProjectMember: vi.fn(),
 	markTestRunReviewed: vi.fn(),
 	publishInvalidate: vi.fn(),
 	storage: null as { presignDownload: (key: string) => Promise<string> } | null,
@@ -22,7 +21,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@automationstack/db", () => ({ db: {} }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	getProjectIdByRunId: () => Promise.resolve(PROJECT_ID),
@@ -73,15 +72,15 @@ const run = {
 
 interface Viewer {
 	id: string;
+	isMember: boolean;
 	platformRole: UserRole;
-	projectRole: ProjectRole | null;
 }
 
 function voidAs(
-	{ id, platformRole, projectRole }: Viewer,
+	{ id, isMember, platformRole }: Viewer,
 	reason?: string | null
 ) {
-	mocks.getProjectRole.mockResolvedValue(projectRole);
+	mocks.isProjectMember.mockResolvedValue(isMember);
 	return call(
 		testRunsRouter.void,
 		{ reason, runId: RUN_ID },
@@ -94,8 +93,8 @@ function voidAs(
 
 const memberViewer: Viewer = {
 	id: viewer.id,
+	isMember: true,
 	platformRole: "member",
-	projectRole: "member",
 };
 
 beforeEach(() => {
@@ -104,16 +103,12 @@ beforeEach(() => {
 	mocks.voidTestRun.mockResolvedValue({ kind: "ok", run });
 });
 
-describe("testRuns.void：只有创建者、项目 owner、平台管理员可以作废", () => {
+describe("testRuns.void：只有创建者和管理员可以作废", () => {
 	it.each<[string, Viewer]>([
 		["创建者（普通用户）", { ...memberViewer, id: CREATOR_ID }],
 		[
-			"项目 owner（项目管理员）",
-			{ ...memberViewer, platformRole: "project_admin", projectRole: "owner" },
-		],
-		[
-			"平台管理员（不在项目里）",
-			{ ...memberViewer, platformRole: "admin", projectRole: null },
+			"管理员（不在项目里）",
+			{ ...memberViewer, isMember: false, platformRole: "admin" },
 		],
 	])("%s：作废成功", async (_name, who) => {
 		await expect(voidAs(who, "重复创建")).resolves.toEqual(run);
@@ -125,11 +120,10 @@ describe("testRuns.void：只有创建者、项目 owner、平台管理员可以
 		expect(mocks.publishInvalidate).toHaveBeenCalledTimes(1);
 	});
 
-	it.each<[string, Viewer]>([
-		["其他项目成员", memberViewer],
-		["降级为普通用户的项目 owner", { ...memberViewer, projectRole: "owner" }],
-	])("%s：FORBIDDEN，不写数据库", async (_name, who) => {
-		await expect(voidAs(who)).rejects.toMatchObject({ code: "FORBIDDEN" });
+	it("其他项目成员：FORBIDDEN，不写数据库", async () => {
+		await expect(voidAs(memberViewer)).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		});
 		expect(mocks.voidTestRun).not.toHaveBeenCalled();
 	});
 
@@ -224,7 +218,7 @@ describe("已作废的测试任务拒绝所有写操作", () => {
 		"%s：CONFLICT「测试任务已作废，不能修改」",
 		async (_name, repo, invoke) => {
 			repo.mockResolvedValue({ kind: "voided", voidedAt: new Date() });
-			mocks.getProjectRole.mockResolvedValue("member");
+			mocks.isProjectMember.mockResolvedValue(true);
 			await expect(invoke()).rejects.toMatchObject({
 				code: "CONFLICT",
 				message: VOIDED_MESSAGE,
@@ -248,7 +242,7 @@ describe("testRuns.report：失败和阻塞用例的附件带下载地址", () =
 		call(testRunsRouter.report, byRunId, callOptions("report"));
 
 	beforeEach(() => {
-		mocks.getProjectRole.mockResolvedValue("member");
+		mocks.isProjectMember.mockResolvedValue(true);
 		mocks.getTestRunReport.mockResolvedValue({
 			failedAndBlockedCases: [
 				failedOrBlockedCase("failed", [attachment("actual", "s1")]),

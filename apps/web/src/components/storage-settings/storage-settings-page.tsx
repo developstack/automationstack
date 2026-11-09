@@ -18,9 +18,9 @@ function StorageSettingsForbidden() {
 	return (
 		<Empty>
 			<EmptyHeader>
-				<EmptyTitle>需要平台管理员权限</EmptyTitle>
+				<EmptyTitle>需要管理员权限</EmptyTitle>
 				<EmptyDescription>
-					存储设置只对平台管理员开放。可以回到
+					存储设置只对管理员开放。可以回到
 					<Link className="underline underline-offset-4" to="/projects">
 						项目列表
 					</Link>

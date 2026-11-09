@@ -21,7 +21,7 @@ function checkConnection(connection: R2Connection): Promise<string | null> {
 	return checkR2Bucket(createR2Client(connection), connection.bucket);
 }
 
-/** 存储设置：上传的图片和附件存在哪里。只有平台管理员可以读取和保存。 */
+/** 存储设置：上传的图片和附件存在哪里。只有管理员可以读取和保存。 */
 export const storageSettingsRouter = {
 	get: adminProcedure.handler(
 		async (): Promise<StorageSettingsView> =>

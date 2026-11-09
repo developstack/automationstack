@@ -123,8 +123,8 @@ DB_BACKEND_RESOLVED = $(shell \
 	else echo none; fi)
 
 .PHONY: help install setup dev up down restart logs ps status \
-	db-up db-down db-wait db-migrate db-generate db-seed db-seed-admin db-reset-password db-auth-set-local \
-	db-seed-demo db-studio db-reset casdoor-up casdoor-down casdoor-bootstrap \
+	db-up db-down db-wait db-migrate db-generate db-seed db-seed-admin db-reset-password \
+	db-seed-demo db-studio db-reset \
 	check doctor clean _backend-guard _env _prod-force
 
 .DEFAULT_GOAL := help
@@ -404,11 +404,6 @@ db-reset-password: ## 重置本地账号密码（USER=用户名；NEW_PASSWORD �
 	fi; \
 	pnpm db:reset-password "$(USER)"
 
-# Casdoor 配置错误、所有人都不能登录时使用。只修改认证方式，不修改用户和密码。
-db-auth-set-local: ## 把认证方式改回 local（写修改记录和 [审计] 日志）
-	@set -euo pipefail; cd "$(ROOT_DIR)"; \
-	pnpm db:auth-set-local
-
 db-seed-demo: ## 灌自动化演示数据
 	@set -euo pipefail; cd "$(ROOT_DIR)"; \
 	pnpm db:seed-automation-demo
@@ -445,65 +440,6 @@ db-reset: ## ⚠️ 删库重建并重跑迁移（需要二次确认）
 	fi; \
 	$(MAKE_CMD) --no-print-directory db-migrate; \
 	echo "✅ 库已重建。要灌数据: make db-seed"
-
-##@ Casdoor（可选，plan 021）
-
-# 本地 Casdoor 只用于调试 Casdoor 认证模式。make up 不启动它（plan 021 D10）。
-# 它只能用 docker 启动，并且使用 compose 中的 postgres 容器（宿主机端口 5433）。
-# 宿主机端口 8100：8000 常被其他项目的 Casdoor 占用。
-CASDOOR_PORT := 8100
-# 第一次启动要创建全部表，比 Postgres 慢。
-CASDOOR_WAIT_TIMEOUT := 120
-
-# 先创建角色 casdoor 和库 casdoor，再启动 Casdoor。与生产相同，不使用 -createDatabase。
-# 角色和库已经存在时跳过，不修改已有角色的口令，不碰 automationstack 库。
-# 口令取环境变量 CASDOOR_DB_PASSWORD，默认值与 docker-compose.yml 相同，只用于本地。
-# 口令通过标准输入传给 psql，不出现在进程参数中。口令中不能有单引号。
-# make down 会停止 postgres。这时 Casdoor 连不上库并反复重启，先 make casdoor-down。
-casdoor-up: ## 起本地 Casdoor（http://localhost:8100），按需创建 casdoor 库
-	@set -euo pipefail; cd "$(ROOT_DIR)"; \
-	if ! command -v docker >/dev/null 2>&1 || ! docker info >/dev/null 2>&1; then \
-	  echo "❌ 本地 Casdoor 只能用 docker 启动，这台机器上 docker 不可用"; exit 1; \
-	fi; \
-	pw="$${CASDOOR_DB_PASSWORD:-casdoor-dev-only}"; \
-	case "$${pw}" in *"'"*) echo "❌ CASDOOR_DB_PASSWORD 中不能有单引号"; exit 1 ;; esac; \
-	echo "▶ docker compose up -d postgres"; \
-	docker compose up -d postgres; \
-	$(MAKE_CMD) --no-print-directory db-wait DB_BACKEND=docker; \
-	echo "▶ 创建角色 casdoor 和库 casdoor（已存在则跳过）"; \
-	printf '%s\n' \
-	  "\\set pw '$${pw}'" \
-	  "SELECT format('CREATE ROLE casdoor LOGIN PASSWORD %L', :'pw') WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'casdoor') \\gexec" \
-	  "SELECT 'CREATE DATABASE casdoor OWNER casdoor' WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'casdoor') \\gexec" \
-	  | docker compose exec -T postgres psql -X -q -v ON_ERROR_STOP=1 -U postgres -d postgres; \
-	echo "▶ docker compose --profile casdoor up -d casdoor"; \
-	docker compose --profile casdoor up -d casdoor; \
-	printf '⏳ 等 Casdoor (127.0.0.1:$(CASDOOR_PORT)) ready '; \
-	n=0; \
-	while [ $${n} -lt $(CASDOOR_WAIT_TIMEOUT) ]; do \
-	  if curl -fsS -o /dev/null "http://127.0.0.1:$(CASDOOR_PORT)/api/health" 2>/dev/null; then \
-	    printf ' ✅\n'; \
-	    echo "✅ Casdoor: http://localhost:$(CASDOOR_PORT)（内置管理员 admin / 123，只用于本地）"; \
-	    echo "   配置组织、应用和角色: make casdoor-bootstrap"; \
-	    exit 0; \
-	  fi; \
-	  printf '.'; sleep 1; n=$$((n + 1)); \
-	done; \
-	printf '\n❌ 等了 $(CASDOOR_WAIT_TIMEOUT)s 仍连不上 Casdoor。看日志: docker compose --profile casdoor logs casdoor\n'; \
-	exit 1
-
-# 只停止容器，不删除容器和 casdoor 库，下次 casdoor-up 时配置还在。
-casdoor-down: ## 停本地 Casdoor（保留 casdoor 库中的配置）
-	@set -euo pipefail; cd "$(ROOT_DIR)"; \
-	echo "▶ docker compose --profile casdoor stop casdoor"; \
-	docker compose --profile casdoor stop casdoor; \
-	echo "✅ Casdoor 已停止。postgres 没动"
-
-# 在本地 Casdoor 中创建 automationstack 的组织、应用、角色和测试用户。可以重复运行。
-# 详见 scripts/casdoor-dev-bootstrap.sh 开头的说明。
-casdoor-bootstrap: ## 在本地 Casdoor 中创建 automationstack 组织、应用、角色和测试用户（幂等）
-	@set -euo pipefail; cd "$(ROOT_DIR)"; \
-	CASDOOR_ORGANIZATION=automationstack CASDOOR_URL="http://localhost:$(CASDOOR_PORT)" scripts/casdoor-dev-bootstrap.sh
 
 ##@ 单机生产部署（数据库在外部机器上）
 

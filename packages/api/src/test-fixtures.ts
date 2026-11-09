@@ -2,10 +2,9 @@ import type { User } from "@automationstack/db/schema/users";
 
 const CREATED_AT = new Date("2026-01-01T00:00:00Z");
 
-/** 测试用的本地平台管理员 admin。只写与默认值不同的字段。 */
+/** 测试用的本地管理员 admin。只写与默认值不同的字段。 */
 export function testUser(overrides: Partial<User> = {}): User {
 	return {
-		authSource: "local",
 		createdAt: CREATED_AT,
 		disabledAt: null,
 		externalId: null,

@@ -17,7 +17,7 @@ vi.mock("@automationstack/db/repositories/projects-repository", () => ({
 	projectExists: mocks.projectExists,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: vi.fn(),
+	isProjectMember: vi.fn(),
 }));
 vi.mock("../lib/object-storage", () => ({
 	getObjectStorage: () => mocks.storage,

@@ -92,11 +92,7 @@ async function ensureSeedOwner(
 	if (ownerUserId === undefined) {
 		return "not-requested";
 	}
-	const added = await addProjectMember({
-		projectId,
-		role: "owner",
-		userId: ownerUserId,
-	});
+	const added = await addProjectMember({ projectId, userId: ownerUserId });
 	return added === null ? "already-member" : "added";
 }
 

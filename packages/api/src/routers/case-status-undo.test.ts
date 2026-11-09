@@ -1,4 +1,3 @@
-import type { ProjectRole } from "@automationstack/db/schema/project-members";
 import type { TestCase } from "@automationstack/db/schema/test-cases";
 import { call } from "@orpc/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +13,7 @@ import { caseStatusProcedures } from "./case-status";
 
 const mocks = vi.hoisted(() => ({
 	changeCaseStatusByFilter: vi.fn(),
-	getProjectRole: vi.fn(),
+	isProjectMember: vi.fn(),
 	publishInvalidate: vi.fn(),
 	undoCaseStatusChange: vi.fn(),
 }));
@@ -34,7 +33,7 @@ vi.mock("@automationstack/db/repositories/case-status-undo-repository", () => ({
 	undoCaseStatusChange: mocks.undoCaseStatusChange,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: mocks.getProjectRole,
+	isProjectMember: mocks.isProjectMember,
 }));
 vi.mock("@automationstack/db/repositories/project-scope-repository", () => ({
 	listCaseProjects: vi.fn(),
@@ -89,12 +88,8 @@ async function changeByFilter(): Promise<string> {
 	return undoToken;
 }
 
-function undoAs(
-	user: typeof owner,
-	token: string,
-	projectRole: ProjectRole | null = "member"
-) {
-	mocks.getProjectRole.mockResolvedValue(projectRole);
+function undoAs(user: typeof owner, token: string, isMember = true) {
+	mocks.isProjectMember.mockResolvedValue(isMember);
 	return call(
 		caseStatusProcedures.undoStatusChange,
 		{ token },
@@ -105,7 +100,7 @@ function undoAs(
 beforeEach(() => {
 	vi.clearAllMocks();
 	vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
-	mocks.getProjectRole.mockResolvedValue("member");
+	mocks.isProjectMember.mockResolvedValue(true);
 	mocks.undoCaseStatusChange.mockResolvedValue({
 		changes: [],
 		skippedIds: [],
@@ -144,7 +139,10 @@ describe("cases.undoStatusChange：凭撤销凭证恢复这次修改改过的用
 			projectId: PROJECT_ID,
 			status: "deprecated",
 		});
-		expect(mocks.getProjectRole).toHaveBeenLastCalledWith(PROJECT_ID, owner.id);
+		expect(mocks.isProjectMember).toHaveBeenLastCalledWith(
+			PROJECT_ID,
+			owner.id
+		);
 		expect(mocks.publishInvalidate).toHaveBeenLastCalledWith(
 			expect.objectContaining({
 				action: "update",
@@ -202,7 +200,7 @@ describe("cases.undoStatusChange：凭撤销凭证恢复这次修改改过的用
 		{
 			code: "FORBIDDEN",
 			name: "修改后不再是项目成员",
-			undo: (token) => undoAs(owner, token, null),
+			undo: (token) => undoAs(owner, token, false),
 		},
 	])("$name：$code，不写数据库", async ({ code, message, undo }) => {
 		const token = await changeByFilter();

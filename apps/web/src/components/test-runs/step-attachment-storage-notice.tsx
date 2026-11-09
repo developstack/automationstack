@@ -10,7 +10,7 @@ export function StepAttachmentStorageNotice() {
 	return (
 		<p className={`rounded-md border border-dashed p-3 ${RUN_SECTION_TEXT}`}>
 			附件存储暂时不可用，不能上传实际附件。判定与实际结果的文字都不受影响，
-			请让平台管理员检查「存储设置」，然后再补传。
+			请让管理员检查「存储设置」，然后再补传。
 		</p>
 	);
 }

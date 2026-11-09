@@ -2,7 +2,6 @@ import type { User, UserRole } from "@automationstack/db/schema/users";
 import { call } from "@orpc/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { effectiveSettings } from "../auth/settings-fixtures";
 import { callContext, testUser } from "../test-fixtures";
 import { usersRouter } from "./users";
 
@@ -10,9 +9,8 @@ const mocks = vi.hoisted(() => ({
 	countLocalLoginAdmins: vi.fn(),
 	createUser: vi.fn(),
 	getUserById: vi.fn(),
-	removeProjectMember: vi.fn(),
 	setUserDisabled: vi.fn(),
-	updateProjectMemberRole: vi.fn(),
+	updateUserPasswordHash: vi.fn(),
 	updateUserRole: vi.fn(),
 }));
 
@@ -23,13 +21,11 @@ vi.mock("@automationstack/db/repositories/users-repository", () => ({
 	listUsers: vi.fn(),
 	listUsersWithProjects: vi.fn(),
 	setUserDisabled: mocks.setUserDisabled,
-	updateUserPasswordHash: vi.fn(),
+	updateUserPasswordHash: mocks.updateUserPasswordHash,
 	updateUserRole: mocks.updateUserRole,
 }));
 vi.mock("@automationstack/db/repositories/project-members-repository", () => ({
-	getProjectRole: vi.fn(),
-	removeProjectMember: mocks.removeProjectMember,
-	updateProjectMemberRole: mocks.updateProjectMemberRole,
+	isProjectMember: vi.fn(),
 }));
 vi.mock("@automationstack/db/password", () => ({
 	hashPassword: vi.fn((password: string) =>
@@ -37,10 +33,6 @@ vi.mock("@automationstack/db/password", () => ({
 	),
 	MAX_PASSWORD_LENGTH: 128,
 	MIN_PASSWORD_LENGTH: 8,
-}));
-vi.mock("../auth/settings-store", () => ({
-	getEffectiveAuthSettings: () =>
-		Promise.resolve(effectiveSettings({ provider: "local" })),
 }));
 
 const actingAdmin = testUser();
@@ -52,8 +44,7 @@ const localUser = testUser({
 const context = callContext(actingAdmin);
 
 const PLATFORM_ROLES = [
-	["admin", "平台管理员"],
-	["project_admin", "项目管理员"],
+	["admin", "管理员"],
 	["member", "普通用户"],
 ] as const;
 
@@ -83,9 +74,20 @@ beforeEach(() => {
 	mocks.updateUserRole.mockImplementation((_id: string, role: UserRole) =>
 		Promise.resolve({ ...localUser, role })
 	);
+	mocks.setUserDisabled.mockImplementation((_id: string, disabled: boolean) =>
+		Promise.resolve({ ...localUser, disabledAt: disabled ? new Date() : null })
+	);
 });
 
-describe("users.create：新建内置认证用户时可以选择三个平台角色", () => {
+function setDisabled(id: string, disabled: boolean) {
+	return call(
+		usersRouter.setDisabled,
+		{ disabled, id },
+		{ context, path: ["users", "setDisabled"] }
+	);
+}
+
+describe("users.create：新建用户时可以选择两个平台角色", () => {
 	it.each(PLATFORM_ROLES)("%s（%s）", async (role, _label) => {
 		await expect(createWithRole(role)).resolves.toMatchObject({ role });
 		expect(mocks.createUser).toHaveBeenCalledWith(
@@ -112,7 +114,7 @@ describe("users.create：新建内置认证用户时可以选择三个平台角�
 	});
 });
 
-describe("users.setRole：内置认证用户可以设为三个平台角色", () => {
+describe("users.setRole：用户可以设为两个平台角色", () => {
 	it.each(PLATFORM_ROLES)("%s（%s）", async (role, _label) => {
 		await expect(setRole(localUser.id, role)).resolves.toMatchObject({
 			role,
@@ -121,58 +123,90 @@ describe("users.setRole：内置认证用户可以设为三个平台角色", () 
 	});
 });
 
-describe("users.setRole：降级为项目管理员时，原有保护仍然有效", () => {
-	it("不能把自己降级为项目管理员", async () => {
+describe("users.setRole 和 users.setDisabled：保护最后一个可以登录的管理员", () => {
+	const lastAdmin: User = { ...localUser, role: "admin" };
+
+	it("不能把自己降级为普通用户", async () => {
 		mocks.getUserById.mockResolvedValue(actingAdmin);
-		await expect(
-			setRole(actingAdmin.id, "project_admin")
-		).rejects.toMatchObject({
+		await expect(setRole(actingAdmin.id, "member")).rejects.toMatchObject({
 			code: "BAD_REQUEST",
-			message: "不能取消自己的平台管理员身份",
+			message: "不能取消自己的管理员身份",
 		});
 		expect(mocks.updateUserRole).not.toHaveBeenCalled();
 	});
 
-	it("不能把最后一个可以内置登录的平台管理员降级为项目管理员", async () => {
-		const lastAdmin: User = { ...localUser, role: "admin" };
+	it("不能停用自己的账号", async () => {
+		mocks.getUserById.mockResolvedValue(actingAdmin);
+		await expect(setDisabled(actingAdmin.id, true)).rejects.toMatchObject({
+			code: "BAD_REQUEST",
+			message: "不能停用自己的账号",
+		});
+		expect(mocks.setUserDisabled).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		["降级", () => setRole(lastAdmin.id, "member"), "不能降级最后一个管理员"],
+		["停用", () => setDisabled(lastAdmin.id, true), "不能停用最后一个管理员"],
+	])("只剩一个可以登录的管理员：不能%s", async (_name, act, message) => {
 		mocks.getUserById.mockResolvedValue(lastAdmin);
 		mocks.countLocalLoginAdmins.mockResolvedValue(1);
-		await expect(setRole(lastAdmin.id, "project_admin")).rejects.toMatchObject({
-			code: "CONFLICT",
-			message: "不能降级最后一个平台管理员",
-		});
+		await expect(act()).rejects.toMatchObject({ code: "CONFLICT", message });
 		expect(mocks.updateUserRole).not.toHaveBeenCalled();
+		expect(mocks.setUserDisabled).not.toHaveBeenCalled();
 	});
 
-	it("还有其他平台管理员：可以降级为项目管理员", async () => {
-		mocks.getUserById.mockResolvedValue({ ...localUser, role: "admin" });
-		await expect(setRole(localUser.id, "project_admin")).resolves.toMatchObject(
-			{ role: "project_admin" }
-		);
-	});
-});
-
-describe("users.setRole：项目管理员降级为普通用户", () => {
-	it("只修改平台角色，不修改项目成员记录（项目 owner 记录保留）", async () => {
-		mocks.getUserById.mockResolvedValue({
-			...localUser,
-			role: "project_admin",
-		});
-		await expect(setRole(localUser.id, "member")).resolves.toMatchObject({
+	it("没有本地密码的管理员不计入：降级不受限制", async () => {
+		mocks.getUserById.mockResolvedValue({ ...lastAdmin, passwordHash: null });
+		mocks.countLocalLoginAdmins.mockResolvedValue(1);
+		await expect(setRole(lastAdmin.id, "member")).resolves.toMatchObject({
 			role: "member",
 		});
-		expect(mocks.updateUserRole).toHaveBeenCalledWith(localUser.id, "member");
-		expect(mocks.updateProjectMemberRole).not.toHaveBeenCalled();
-		expect(mocks.removeProjectMember).not.toHaveBeenCalled();
+	});
+
+	it("还有其他管理员：可以停用，也可以恢复", async () => {
+		mocks.getUserById.mockResolvedValue(lastAdmin);
+		await expect(setDisabled(lastAdmin.id, true)).resolves.toMatchObject({
+			disabledAt: expect.any(Date),
+		});
+		await expect(setDisabled(lastAdmin.id, false)).resolves.toMatchObject({
+			disabledAt: null,
+		});
 	});
 });
 
-describe("非平台管理员不能管理用户", () => {
-	it.each([
-		["project_admin", "项目管理员"],
-		["member", "普通用户"],
-	] as const)("%s（%s）：FORBIDDEN，不写数据库", async (role, _label) => {
-		const caller = callContext({ ...actingAdmin, role });
+describe("users.resetPassword", () => {
+	it("以前的 Casdoor 账号也可以重置密码，用户下次登录后必须修改密码", async () => {
+		mocks.getUserById.mockResolvedValue({ ...localUser, passwordHash: null });
+		await expect(
+			call(
+				usersRouter.resetPassword,
+				{ id: localUser.id, password: "password-2" },
+				{ context, path: ["users", "resetPassword"] }
+			)
+		).resolves.toEqual({ id: localUser.id });
+		expect(mocks.updateUserPasswordHash).toHaveBeenCalledWith(
+			localUser.id,
+			"hash:password-2",
+			true
+		);
+	});
+
+	it("账号不存在：NOT_FOUND，不写数据库", async () => {
+		mocks.getUserById.mockResolvedValue(null);
+		await expect(
+			call(
+				usersRouter.resetPassword,
+				{ id: localUser.id, password: "password-2" },
+				{ context, path: ["users", "resetPassword"] }
+			)
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		expect(mocks.updateUserPasswordHash).not.toHaveBeenCalled();
+	});
+});
+
+describe("普通用户不能管理用户", () => {
+	it("member（普通用户）：FORBIDDEN，不写数据库", async () => {
+		const caller = callContext({ ...actingAdmin, role: "member" });
 		await expect(
 			call(
 				usersRouter.setRole,

@@ -1,11 +1,6 @@
 import "dotenv/config";
 import { createEnv } from "@t3-oss/env-core";
 import { z } from "zod";
-import {
-	CASDOOR_WEBHOOK_SECRET_MIN_LENGTH,
-	DEFAULT_CASDOOR_PROJECT_ADMIN_ROLE,
-	parseOriginUrl,
-} from "./casdoor-rules";
 import { devSecretMessage, findDevSecretsInProduction } from "./dev-secrets";
 
 const DEFAULT_PORT = 3000;
@@ -28,15 +23,6 @@ const HEADER_NAME = /^[A-Za-z0-9-]+$/;
 const ACCEL_PREFIX = /^\/[A-Za-z0-9_\-/]*\/$/;
 
 const SECRET_ENCRYPTION_KEY_BYTES = 32;
-
-const originUrlSchema = (name: string) =>
-	z
-		.string()
-		.refine(
-			(value) => parseOriginUrl(value) !== null,
-			`${name} 只能包含协议、主机和端口，例如 https://casdoor.example.com`
-		)
-		.transform((value) => parseOriginUrl(value) ?? value);
 
 function isValidSecretEncryptionKey(value: string): boolean {
 	try {
@@ -82,8 +68,6 @@ export const env = createEnv({
 			.max(ADMIN_USERNAME_MAX_LENGTH)
 			.regex(NO_WHITESPACE, "ADMIN_USERNAME 不能包含空白字符")
 			.default("admin"),
-		AUTH_ALLOW_LOCAL_LOGIN: z.stringbool().default(true),
-		AUTH_PROVIDER: z.enum(["local", "casdoor"]).default("local"),
 		AUTO_SUBMIT_SCAN_CRON: z.string().min(1).default("0 3 * * *"),
 		AUTO_SUBMIT_SCAN_TZ: z
 			.string()
@@ -93,26 +77,6 @@ export const env = createEnv({
 				"AUTO_SUBMIT_SCAN_TZ 必须是 IANA 时区名，如 Asia/Shanghai"
 			)
 			.default("Asia/Shanghai"),
-		// Casdoor 参数只是默认值。页面中保存过认证设置后，这些值不再生效（plan 021 §10.2）。
-		CASDOOR_ADMIN_ROLE: z.string().min(1).optional(),
-		CASDOOR_CLIENT_ID: z.string().min(1).optional(),
-		CASDOOR_CLIENT_SECRET: z.string().min(1).optional(),
-		// 集群内地址只能在环境变量中设置，页面只读显示。
-		CASDOOR_INTERNAL_URL: originUrlSchema("CASDOOR_INTERNAL_URL").optional(),
-		CASDOOR_ISSUER: originUrlSchema("CASDOOR_ISSUER").optional(),
-		CASDOOR_ORGANIZATION: z.string().min(1).optional(),
-		// 项目管理员角色名（#15）。与 CASDOOR_ADMIN_ROLE 的规则相同，只是有默认值。
-		CASDOOR_PROJECT_ADMIN_ROLE: z
-			.string()
-			.min(1)
-			.default(DEFAULT_CASDOOR_PROJECT_ADMIN_ROLE),
-		// Casdoor 定期对账的 cron 表达式（plan 021 T11a）。只在 casdoor 模式下执行。
-		CASDOOR_RECONCILE_CRON: z.string().min(1).default("*/10 * * * *"),
-		CASDOOR_REDIRECT_URL: z.url().optional(),
-		CASDOOR_WEBHOOK_SECRET: z
-			.string()
-			.min(CASDOOR_WEBHOOK_SECRET_MIN_LENGTH)
-			.optional(),
 		// 反向代理写入客户端 IP 的请求头，例如 x-real-ip。为空时，使用 TCP 连接的地址。
 		// 只在 server 只能经过这个代理访问时设置：否则客户端可以伪造这个请求头。
 		CLIENT_IP_HEADER: z

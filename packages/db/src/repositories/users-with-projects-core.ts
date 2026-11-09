@@ -1,10 +1,8 @@
-import type { ProjectRole } from "../schema/project-members";
 import type { PublicUser } from "../schema/users";
 
 export interface UserProjectMembership {
 	id: string;
 	name: string;
-	role: ProjectRole;
 }
 
 export interface UserWithProjects {
@@ -15,19 +13,14 @@ export interface UserWithProjects {
 export interface UserProjectRow {
 	projectId: string | null;
 	projectName: string | null;
-	projectRole: ProjectRole | null;
 	user: PublicUser;
 }
 
 function toMembership(row: UserProjectRow): UserProjectMembership | null {
-	if (
-		row.projectId === null ||
-		row.projectName === null ||
-		row.projectRole === null
-	) {
+	if (row.projectId === null || row.projectName === null) {
 		return null;
 	}
-	return { id: row.projectId, name: row.projectName, role: row.projectRole };
+	return { id: row.projectId, name: row.projectName };
 }
 
 export function groupUsersWithProjects(

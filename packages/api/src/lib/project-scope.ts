@@ -1,5 +1,5 @@
 import type { MindmapOperation } from "@automationstack/db/repositories/mindmap-operations";
-import { getProjectRole } from "@automationstack/db/repositories/project-members-repository";
+import { isProjectMember } from "@automationstack/db/repositories/project-members-repository";
 import {
 	getProjectIdByCaseId,
 	getProjectIdByModuleId,
@@ -30,8 +30,8 @@ async function enterProject(
 	projectId: string
 ): Promise<ProjectAccess> {
 	const projectAccess: ProjectAccess = {
+		isMember: await isProjectMember(projectId, user.id),
 		platformRole: user.role,
-		projectRole: await getProjectRole(projectId, user.id),
 	};
 	if (!canEnterProject(projectAccess)) {
 		throw new ORPCError("FORBIDDEN", { message: NOT_PROJECT_MEMBER_MESSAGE });

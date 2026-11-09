@@ -3,7 +3,6 @@ import type { RouterClient } from "@orpc/server";
 import { publicProcedure } from "../index";
 import { apiTokensRouter } from "./api-tokens";
 import { authRouter } from "./auth";
-import { authSettingsRouter } from "./auth-settings";
 import { caseAttachmentsRouter } from "./case-attachments";
 import { casesRouter } from "./cases";
 import { mindmapRouter } from "./mindmap";
@@ -20,7 +19,6 @@ import { usersRouter } from "./users";
 export const appRouter = {
 	apiTokens: apiTokensRouter,
 	auth: authRouter,
-	authSettings: authSettingsRouter,
 	caseAttachments: caseAttachmentsRouter,
 	cases: casesRouter,
 	healthCheck: publicProcedure.handler(() => "OK"),

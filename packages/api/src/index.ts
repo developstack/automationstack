@@ -1,4 +1,4 @@
-import { getProjectRole } from "@automationstack/db/repositories/project-members-repository";
+import { isProjectMember } from "@automationstack/db/repositories/project-members-repository";
 import { ORPCError, os } from "@orpc/server";
 
 import {
@@ -29,7 +29,7 @@ const requireUser = o.middleware(({ context, next, path }) => {
 
 const requireAdmin = o.middleware(({ context, next }) => {
 	if (context.user?.role !== "admin") {
-		throw new ORPCError("FORBIDDEN", { message: "需要平台管理员权限" });
+		throw new ORPCError("FORBIDDEN", { message: "需要管理员权限" });
 	}
 	return next();
 });
@@ -42,8 +42,8 @@ export const requireProjectMember = o.middleware(
 			throw new ORPCError("UNAUTHORIZED", { message: "请先登录" });
 		}
 		const projectAccess: ProjectAccess = {
+			isMember: await isProjectMember(input.projectId, context.user.id),
 			platformRole: context.user.role,
-			projectRole: await getProjectRole(input.projectId, context.user.id),
 		};
 		if (!canEnterProject(projectAccess)) {
 			throw new ORPCError("FORBIDDEN", { message: NOT_PROJECT_MEMBER_MESSAGE });

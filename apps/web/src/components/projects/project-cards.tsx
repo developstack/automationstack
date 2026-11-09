@@ -93,7 +93,7 @@ function ProjectsEmpty({ canCreate }: { canCreate: boolean }) {
 				<EmptyDescription>
 					{canCreate
 						? "点击「新建项目」创建第一个项目。"
-						: "你还没有加入任何项目，请联系项目 owner 把你加入项目。"}
+						: "你还没有加入任何项目，请联系管理员把你加入项目。"}
 				</EmptyDescription>
 			</EmptyHeader>
 		</Empty>

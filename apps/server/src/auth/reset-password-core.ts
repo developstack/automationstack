@@ -14,7 +14,7 @@ export interface ResetPasswordInput {
 	/** 环境变量 NEW_PASSWORD；空字符串等于未设置。 */
 	newPassword: string | undefined;
 	/** 按 args[0] 查到的账号；没有查到时为 null。 */
-	user: Pick<User, "authSource" | "disabledAt" | "id" | "username"> | null;
+	user: Pick<User, "disabledAt" | "id" | "username"> | null;
 }
 
 export type ResetPasswordPlan =
@@ -72,12 +72,6 @@ export function planPasswordReset(
 	}
 	if (input.user === null) {
 		return { kind: "error", message: "账号不存在。" };
-	}
-	if (input.user.authSource !== "local") {
-		return {
-			kind: "error",
-			message: `账号「${input.user.username}」不是本地账号，不能重置本地密码。`,
-		};
 	}
 	return {
 		generated: provided === undefined,

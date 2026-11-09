@@ -8,8 +8,7 @@ import { canVoidTestRun } from "../lib/test-run-access";
 import { rejectRunWrite, testRunErrors } from "../lib/test-run-errors";
 import { voidTestRunSchema } from "../schemas/test-run";
 
-const VOID_FORBIDDEN_MESSAGE =
-	"只有测试任务的创建者、项目 owner 和平台管理员可以作废测试任务";
+const VOID_FORBIDDEN_MESSAGE = "只有测试任务的创建者和管理员可以作废测试任务";
 
 export const testRunVoidProcedures = {
 	void: protectedProcedure

@@ -28,7 +28,7 @@ export function AddProjectMemberDialog({
 				<DialogHeader>
 					<DialogTitle>添加成员</DialogTitle>
 					<DialogDescription>
-						把一个已有的平台账号加进本项目；他登录后就能看到这个项目。
+						把一个已有的账号加进本项目；他登录后就能看到这个项目。
 					</DialogDescription>
 				</DialogHeader>
 				{open ? (

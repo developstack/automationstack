@@ -2,7 +2,6 @@ import type { RouteComponent } from "@tanstack/react-router";
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { AuthSettingsShell } from "@/components/auth-settings/auth-settings-shell";
 import { RouteError } from "@/components/layout/route-error";
 import { UsersShell } from "@/components/platform-users/users-shell";
 import { ProjectsShell } from "@/components/projects/projects-shell";
@@ -23,12 +22,6 @@ const PAGE_BODY = "页面内容";
 const MAX_WIDTH = /^max-w-/;
 /** 与项目以内的页面（p-4）相同的左右内边距。 */
 const INLINE_PADDING = ["p-4", "px-4"];
-
-const AuthSettingsPage: RouteComponent = () => (
-	<AuthSettingsShell phase="ready">
-		<p>{PAGE_BODY}</p>
-	</AuthSettingsShell>
-);
 
 const StorageSettingsPage: RouteComponent = () => (
 	<StorageSettingsShell phase="ready">
@@ -57,7 +50,6 @@ const PAGES: [string, RouteComponent][] = [
 			</UsersShell>
 		),
 	],
-	["认证设置", AuthSettingsPage],
 	["存储设置", StorageSettingsPage],
 	["路由出错页", RouteErrorPage],
 ];
@@ -97,11 +89,8 @@ describe("项目以外的页面：内容靠左，宽度由内容决定", () => {
 		}
 	);
 
-	it.each([
-		["认证设置", AuthSettingsPage],
-		["存储设置", StorageSettingsPage],
-	])("%s：表单区域靠左，最大宽度为 max-w-3xl", async (_name, page) => {
-		await renderPage(page);
+	it("存储设置：表单区域靠左，最大宽度为 max-w-3xl", async () => {
+		await renderPage(StorageSettingsPage);
 		const form = screen.getByText(PAGE_BODY).parentElement;
 
 		expect(form?.classList.contains("max-w-3xl")).toBe(true);
