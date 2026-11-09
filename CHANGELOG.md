@@ -14,6 +14,8 @@
   原来的项目管理员改为管理员。迁移 `0023` 删除认证设置表、账号来源列和项目角色列。
   没有密码的账号（以前的 Casdoor 账号）不能登录，管理员重置密码后才能使用。
 - **添加成员时没有可选账号**：表单说明原因，并给出「用户」页面的入口。
+- **dsh 插件在 dsh 中的显示**：插件包补充 `locale/` 和图标，dsh 的插件页显示「测试用例平台」和说明，
+  不再显示包名 `@automationstack/dsh-testcase-platform`。
 - **部署改为从 ACR 拉取镜像**：CI 构建 server 和 web 的镜像，并把它们推送到阿里云 ACR。
   `make up:prod` 拉取当前提交的镜像，不再在服务器上构建。`.env.prod` 增加必填键 `IMAGE_PREFIX`。
   web 镜像的前端地址与 `DOMAIN` 不同时，`make up:prod` 停止。

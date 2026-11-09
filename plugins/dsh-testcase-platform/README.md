@@ -49,6 +49,19 @@
 
 插件只读取包内的 `skills/` 目录。插件不扫描 dsh 的默认 skill 目录。
 
+### 在 dsh 中的显示
+
+dsh 的「插件」页显示的是插件包自带的显示元信息，不是包名。这些信息来自两个约定位置：
+
+| 文件 | 内容 |
+| --- | --- |
+| `locale/zh.json`、`locale/en.json` | `meta.title` 和 `meta.description`。中文界面读 `zh.json`，其他界面读 `en.json`。 |
+| `icon.svg` | 插件卡片上的图标。`package.json` 的 `exports` 用 `./icon` 导出它。 |
+
+dsh 读取 `locale/en.json` 后，用同一个目录下的其他语言文件补翻译；缺少的语言用英文兜底，
+再缺少就用 `package.json` 的 `name` 和 `description`。所以这两个语言文件不能删掉其中任何一个。
+图标只接受 SVG、PNG、JPEG 或 WebP，不超过 256 KiB。
+
 ## 前提条件
 
 - dsh 的版本必须在 0.2.x 范围内。`package.json` 中的 `engines.dsh` 是 `>=0.2.0-0 <0.3.0-0`。作者用 dsh 0.2.2-rc.1 检查了本文的安装和配置步骤。

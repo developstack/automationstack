@@ -9,12 +9,16 @@
   "exports": {
     ".": "./index.js",
     "./cordis.patch.yml": "./cordis.patch.yml",
+    "./icon": "./icon.svg",
+    "./locale/*.json": "./locale/*.json",
     "./package.json": "./package.json"
   },
   "files": [
     "index.js",
     "config.js",
     "cordis.patch.yml",
+    "icon.svg",
+    "locale",
     "skills"
   ],
   "engines": {
