@@ -133,6 +133,10 @@ test("非类名字符串中的方括号不报错", () => {
 		`const q = sql\`${D}{t.tags} ?| ${D}{sql.param(tags)}::text[]\`;`,
 		'const hint = \'e.g. ["Orders", "Payment"]\';',
 		'console.error(\'  "w-[96px]"    →  "w-24"\');',
+		// 没有前缀的方括号内容只有写成「属性: 值」才是 Tailwind 的任意属性。
+		// 少了这一条，IPv6 回环地址字面量会被当成任意值（插件配置里就有）。
+		'const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);',
+		'const a = "[&:hover]";',
 	];
 	for (const source of notClassNames) {
 		assert.deepEqual(values(source), [], source);

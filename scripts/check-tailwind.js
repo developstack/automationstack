@@ -11,6 +11,10 @@ const WHITESPACE = /\s/;
 const TOKEN_SEPARATOR = /\s+/;
 const UTILITY_PREFIX = /^(?:!?[a-z0-9@./-]*[-/])?$/;
 const ARBITRARY_SUFFIX = /^(?:\/[a-z0-9.%-]+)?!?$/;
+// 没有前缀的方括号 token 只有写成「CSS 属性: 值」才是 Tailwind 的任意属性。
+// 少了这一条，非 Tailwind 的方括号字符串会被误判，例如 IPv6 字面量 "[::1]"
+// （plugins/dsh-testcase-platform/config.js 中的回环地址白名单）。
+const ARBITRARY_PROPERTY = /^[a-z-]+:/i;
 
 function countNewlines(text) {
 	return text.split("\n").length - 1;
@@ -180,7 +184,7 @@ function isArbitraryUtility(utility) {
 	if (!UTILITY_PREFIX.test(prefix) || content === "") {
 		return false;
 	}
-	if (prefix === "" && !content.includes(":")) {
+	if (prefix === "" && !ARBITRARY_PROPERTY.test(content)) {
 		return false;
 	}
 	return ARBITRARY_SUFFIX.test(utility.slice(close + 1));

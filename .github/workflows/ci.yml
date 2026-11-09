@@ -136,6 +136,11 @@ jobs:
       - name: 安装脚本内嵌的 skill 未漂移
         run: node scripts/build-install-agent-skill.js --check
 
+      # dsh 插件中的 skill 是 .claude/skills/ 的副本。缺少源时脚本跳过（退出 0），原因同上。
+      # 失败时的修法：node scripts/build-dsh-plugin-skills.js
+      - name: dsh 插件中的 skill 未漂移
+        run: node scripts/build-dsh-plugin-skills.js --check
+
   docker:
     name: 构建镜像 (${{ matrix.app }})
     needs: check

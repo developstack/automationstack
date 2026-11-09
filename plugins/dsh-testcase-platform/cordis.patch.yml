@@ -1,0 +1,11 @@
+# @automationstack/dsh-testcase-platform 的 bundle 配置层。
+# 插入一行 testcase-platform。该行挂载两个子插件：
+#   - @deepseek-ai/dsh-skill-filesystem：读取包内 skills/ 目录（两个 skill）。
+#   - @deepseek-ai/dsh-mcp-client：连接平台的远程 MCP（streamable-http）。
+# 本行不写 config，默认值在 config.js 中。
+# 在 profile 的 cordis.patch.yml 中按 id 覆盖 config。
+# 注意：覆盖时 config 整行替换，必须写出需要的每个键。
+
+- insert:
+    - id: testcase-platform
+      name: '@automationstack/dsh-testcase-platform'
