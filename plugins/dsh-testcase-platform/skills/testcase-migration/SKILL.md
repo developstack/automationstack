@@ -14,7 +14,7 @@ description: 将**已经写好的存量测试用例**（Excel/CSV/XMind/TestRail
 ## 前置条件
 
 1. 平台服务在运行：`apps/server` 监听 `http://localhost:3000`（通常 `pnpm dev`）
-2. 仓库根 `.mcp.json` 已指向 `https://testcases.logwing.com/mcp`（本仓库已内置该配置）
+2. 仓库根 `.mcp.json` 已指向 `https://testcase.logwing.com/mcp`（本仓库已内置该配置）
 3. **环境变量 `AS_TOKEN` 已设置**为一枚平台 API token（`as_` 开头，在平台里生成）。
    `/mcp` 要求 `Authorization: Bearer <token>`，**MCP 的身份与权限就是这枚 token
    所属用户的身份与权限**：导入只能落进该用户所属的项目，`testcase-platform:list_projects` 也只

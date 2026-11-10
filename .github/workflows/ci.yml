@@ -194,7 +194,7 @@ jobs:
           VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL }}
         run: |
           if [ -z "${VITE_SERVER_URL}" ]; then
-            echo "::error::仓库变量 VITE_SERVER_URL 未配置。web 镜像在构建时把它写进前端产物。请到 Settings -> Secrets and variables -> Actions -> Variables 把它设为站点地址，例如 https://testcases.logwing.com。"
+            echo "::error::仓库变量 VITE_SERVER_URL 未配置。web 镜像在构建时把它写进前端产物。请到 Settings -> Secrets and variables -> Actions -> Variables 把它设为站点地址，例如 https://testcase.logwing.com。"
             exit 1
           fi
           echo "::notice::web 镜像将写入 VITE_SERVER_URL=${VITE_SERVER_URL}"
