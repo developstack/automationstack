@@ -59,7 +59,7 @@ test("生成：只复制 SKILL.md 与 references/*.md，并替换本地开发地
 	assert.equal(run(dirs).status, 0);
 	assert.equal(
 		readFileSync(join(dirs.target, "testcase-authoring/SKILL.md"), "utf-8"),
-		"地址 https://testcases.logwing.com/mcp 结束\n"
+		"地址 https://testcase.logwing.com/mcp 结束\n"
 	);
 	assert.ok(
 		existsSync(join(dirs.target, "testcase-authoring/references/b.md"))

@@ -8,7 +8,7 @@
  * 两个 skill 照常挂载。插件整体加载失败会把错误埋进启动日志，用户更难找到原因。
  */
 
-export const DEFAULT_URL = "https://testcases.logwing.com/mcp";
+export const DEFAULT_URL = "https://testcase.logwing.com/mcp";
 export const DEFAULT_TOKEN_ENV = "AS_TOKEN";
 
 /** MCP 工具名前缀：mcp__testcase-platform__<工具>，与平台 MCP server 自报的名字一致。 */

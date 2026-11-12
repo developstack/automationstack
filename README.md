@@ -210,7 +210,7 @@ server 的启动路径、两个 Dockerfile、CI 全都不跑。
 
 ### 单机生产部署（`make up:prod`）
 
-`make up:prod` 在一台服务器上运行生产镜像，例如 `testcases.logwing.com`。数据库在外部机器上（例如阿里云 RDS），本仓库不启动数据库。
+`make up:prod` 在一台服务器上运行生产镜像，例如 `testcase.logwing.com`。数据库在外部机器上（例如阿里云 RDS），本仓库不启动数据库。
 
 GitHub Actions 构建 server 和 web 的镜像，并把它们推送到阿里云容器镜像服务（ACR）。服务器只拉取镜像，不构建。
 推送 `main` 不会更新服务器。在服务器上执行 `make deploy:prod` 后，服务器才更新。
@@ -251,7 +251,7 @@ HTTPS 证书来自 Let's Encrypt。`make up:prod` 申请第一张证书。certbo
    | --- | --- |
    | `ACR_REGISTRY` | ACR 的公网地址，例如 `crpi-xxxx.cn-guangzhou.personal.cr.aliyuncs.com` |
    | `ACR_NAMESPACE` | 命名空间 |
-   | `VITE_SERVER_URL` | 站点的地址，例如 `https://testcases.logwing.com` |
+   | `VITE_SERVER_URL` | 站点的地址，例如 `https://testcase.logwing.com` |
 
 5. 在 GitHub 仓库中设置这些 Secrets：`ACR_USERNAME` 和 `ACR_PASSWORD`。它们是 ACR 的用户名和固定密码。
 6. 在 GitHub Actions 中手动运行 CI，或推送 `main`。CI 成功后，确认 ACR 中有 `sha-` 开头的 tag。

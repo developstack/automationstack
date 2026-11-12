@@ -12,7 +12,7 @@
 | profile | `$DSH_HOME/profiles/<名称>` 下的一个目录。profile 记录一组插件和这些插件的配置。 |
 | `$DSH_HOME` | dsh 的主目录。默认值是 `~/.dsh`。 |
 | API token | 平台为一个用户生成的凭据，以 `as_` 开头。 |
-| MCP 端点 | 平台的 MCP 地址。默认值是 `https://testcases.logwing.com/mcp`。 |
+| MCP 端点 | 平台的 MCP 地址。默认值是 `https://testcase.logwing.com/mcp`。 |
 | 工具 | MCP 端点提供的一个操作，例如 `list_projects`。 |
 | skill | 一个目录，包含 `SKILL.md` 和 `references/*.md`。skill 告诉模型完成一类任务的步骤。 |
 | 插件行 | `cordis.patch.yml` 中 `id: testcase-platform` 的那一行配置。 |
@@ -129,7 +129,7 @@ dsh plugin --profile <p> remove @automationstack/dsh-testcase-platform
 
 | 键 | 默认值 | 含义 |
 | --- | --- | --- |
-| `url` | `https://testcases.logwing.com/mcp` | MCP 端点。只接受 `http` 和 `https`。 |
+| `url` | `https://testcase.logwing.com/mcp` | MCP 端点。只接受 `http` 和 `https`。 |
 | `tokenEnv` | `AS_TOKEN` | 存放 API token 的环境变量的名称。 |
 
 API token 不是配置键。不要把 API token 写入 `cordis.patch.yml`。
