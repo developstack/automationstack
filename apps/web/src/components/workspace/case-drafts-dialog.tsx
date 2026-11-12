@@ -63,7 +63,9 @@ function CaseDraftRow({
 	return (
 		<li className="flex items-center gap-2 rounded-md border p-2">
 			<div className="min-w-0 flex-1">
-				<p className="truncate font-medium">{title}</p>
+				<p className="truncate font-medium" title={title}>
+					{title}
+				</p>
 				<p className="truncate text-muted-foreground text-xs">
 					{`${moduleName ?? ORPHAN_MODULE} · ${savedLabel}`}
 				</p>

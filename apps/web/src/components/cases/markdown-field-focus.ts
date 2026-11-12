@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 
+import type { FieldFocusLoss } from "@/components/cases/use-markdown-field-activation";
+
 export function useFocusOut(
 	container: HTMLDivElement | null,
-	onFocusOut: () => void
+	onFocusOut: (loss: FieldFocusLoss) => void
 ) {
 	useEffect(() => {
 		const stillInside = () =>
@@ -13,7 +15,7 @@ export function useFocusOut(
 				return;
 			}
 			if (next !== null) {
-				onFocusOut();
+				onFocusOut("moved");
 				return;
 			}
 			requestAnimationFrame(() => {
@@ -22,7 +24,7 @@ export function useFocusOut(
 				}
 				requestAnimationFrame(() => {
 					if (!stillInside()) {
-						onFocusOut();
+						onFocusOut("lost");
 					}
 				});
 			});

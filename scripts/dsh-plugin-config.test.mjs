@@ -68,11 +68,7 @@ const INVALID = [
 	["非字符串 url", { url: 42 }, "url 必须是非空字符串"],
 	["空 url", { url: " " }, "url 必须是非空字符串"],
 	["无法解析的 url", { url: "testcase.logwing.com/mcp" }, "不是合法的 URL"],
-	[
-		"非 http(s) 协议",
-		{ url: "ftp://testcase.logwing.com/mcp" },
-		"只支持 http",
-	],
+	["非 http(s) 协议", { url: "ftp://testcase.logwing.com/mcp" }, "只支持 http"],
 	[
 		"url 带用户名密码",
 		{ url: "https://u:p@testcase.logwing.com/mcp" },

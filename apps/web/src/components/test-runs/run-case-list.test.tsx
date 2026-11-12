@@ -87,7 +87,7 @@ function renderList(cases: readonly RunCaseDetail[]) {
 }
 
 describe("RunCaseList：左栏按模块分组", () => {
-	it("groups the cases under their modules", async () => {
+	it("groups the cases under their modules; hovering a case shows its full name", async () => {
 		renderList([vendorCase, modelCase]);
 
 		expect(
@@ -96,8 +96,12 @@ describe("RunCaseList：左栏按模块分组", () => {
 		expect(
 			screen.getByRole("button", { name: "供应商 模块，1 条用例" })
 		).toBeDefined();
-		expect(screen.getByText("新增供应商")).toBeDefined();
-		expect(screen.getByText("查看模型列表")).toBeDefined();
+		expect(screen.getByText("新增供应商").getAttribute("title")).toBe(
+			"新增供应商"
+		);
+		expect(screen.getByText("查看模型列表").getAttribute("title")).toBe(
+			"查看模型列表"
+		);
 	});
 
 	it("says so when the filter hides every case", () => {

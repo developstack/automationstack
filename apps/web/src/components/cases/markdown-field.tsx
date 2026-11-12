@@ -1,5 +1,6 @@
 import { Label } from "@automationstack/ui/components/label";
 import { Textarea } from "@automationstack/ui/components/textarea";
+import type { EditorView } from "@codemirror/view";
 import { ClientOnly } from "@tanstack/react-router";
 import { type ChangeEvent, lazy, Suspense, useCallback, useState } from "react";
 import {
@@ -12,6 +13,7 @@ import { MarkdownFieldUploads } from "@/components/cases/markdown-field-uploads"
 import { MarkdownPreviewPane } from "@/components/cases/markdown-preview-pane";
 import {
 	type FieldActivation,
+	loadedMarkdownEditor,
 	useFieldActivation,
 } from "@/components/cases/use-markdown-field-activation";
 import {
@@ -69,6 +71,7 @@ interface MarkdownFieldInputProps {
 	id?: string;
 	onChange: (value: string) => void;
 	onTextareaChange: (event: ChangeEvent<HTMLTextAreaElement>) => void;
+	onView: (view: EditorView | null) => void;
 	paste: MarkdownFieldPaste;
 	placeholder: string;
 	value: string;
@@ -80,21 +83,23 @@ function MarkdownFieldInput({
 	id,
 	onChange,
 	onTextareaChange,
+	onView,
 	paste,
 	placeholder,
 	value,
 }: MarkdownFieldInputProps) {
 	if (activation.editing) {
+		const Editor = loadedMarkdownEditor() ?? LazyMarkdownCodeEditor;
 		return (
 			<ClientOnly fallback={EDITOR_FALLBACK}>
 				<Suspense fallback={EDITOR_FALLBACK}>
-					<LazyMarkdownCodeEditor
+					<Editor
 						ariaLabel={ariaLabel}
 						initialCaret={activation.caretRef.current}
 						onChange={onChange}
 						onEscape={activation.handleEscape}
 						onPasteFiles={paste.handlePasteFiles}
-						onView={paste.setView}
+						onView={onView}
 						placeholder={placeholder}
 						value={value}
 					/>
@@ -115,6 +120,22 @@ function MarkdownFieldInput({
 			ref={activation.textareaRef}
 			value={value}
 		/>
+	);
+}
+
+/** 编辑器显示和关闭时，告诉粘贴和焦点两部分。 */
+function useEditorViewHandler(
+	activation: FieldActivation,
+	paste: MarkdownFieldPaste
+) {
+	const { handleEditorView } = activation;
+	const { setView } = paste;
+	return useCallback(
+		(view: EditorView | null) => {
+			setView(view);
+			handleEditorView(view);
+		},
+		[handleEditorView, setView]
 	);
 }
 
@@ -142,6 +163,8 @@ function MarkdownFieldControl({
 		[onChange]
 	);
 
+	const handleView = useEditorViewHandler(activation, paste);
+
 	const previewVisible = preview ?? activation.editing;
 
 	return (
@@ -153,6 +176,7 @@ function MarkdownFieldControl({
 					id={id}
 					onChange={onChange}
 					onTextareaChange={handleTextareaChange}
+					onView={handleView}
 					paste={paste}
 					placeholder={placeholder}
 					value={value}
