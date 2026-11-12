@@ -5,6 +5,7 @@ import { modules } from "../schema/modules";
 import { type TestCase, testCases } from "../schema/test-cases";
 import { planCaseRemoval, type SkippedCaseRemoval } from "./case-remove-core";
 import type { DbTransaction, RemoveTestCaseResult } from "./repository-types";
+import { syncRunCaseModulesInTx } from "./run-case-module";
 import {
 	countCaseRunReferences,
 	countRunReferencesByCase,
@@ -17,7 +18,18 @@ export type ReorderCasesResult =
 export type CaseStructureResult =
 	| { kind: "invalid-module" }
 	| { kind: "not-found" }
-	| { kind: "ok"; testCase: TestCase };
+	| {
+			kind: "ok";
+			/** 用例的模块跟着改的测试任务（ADR 0009）。 */
+			syncedRunIds: string[];
+			testCase: TestCase;
+	  };
+
+/**
+ * 只改排序时保留更新时间。用例列表按更新时间排序，插入或删除一条用例时，
+ * 同一模块中排在后面的用例不应该因为位置变化而排到最前面。
+ */
+const KEEP_UPDATED_AT = { updatedAt: sql`${testCases.updatedAt}` };
 
 export async function getTestCaseById(id: string): Promise<TestCase | null> {
 	const [row] = await db
@@ -61,7 +73,7 @@ export async function openCaseSlot(
 ): Promise<void> {
 	await tx
 		.update(testCases)
-		.set({ sortOrder: sql`${testCases.sortOrder} + 1` })
+		.set({ sortOrder: sql`${testCases.sortOrder} + 1`, ...KEEP_UPDATED_AT })
 		.where(
 			and(eq(testCases.moduleId, moduleId), gte(testCases.sortOrder, index))
 		);
@@ -74,7 +86,7 @@ export async function closeCaseSlot(
 ): Promise<void> {
 	await tx
 		.update(testCases)
-		.set({ sortOrder: sql`${testCases.sortOrder} - 1` })
+		.set({ sortOrder: sql`${testCases.sortOrder} - 1`, ...KEEP_UPDATED_AT })
 		.where(
 			and(eq(testCases.moduleId, moduleId), gt(testCases.sortOrder, index))
 		);
@@ -110,7 +122,12 @@ export async function moveTestCaseInTx(
 	if (!row) {
 		throw new Error("moveTestCase: update returned no row");
 	}
-	return { kind: "ok", testCase: row };
+	const syncedRunIds = await syncRunCaseModulesInTx(
+		tx,
+		[row.id],
+		input.moduleId
+	);
+	return { kind: "ok", syncedRunIds, testCase: row };
 }
 
 export async function reorderTestCasesInTx(
@@ -135,7 +152,7 @@ export async function reorderTestCasesInTx(
 		// biome-ignore lint/performance/noAwaitInLoops: 单连接事务内的语句必须顺序执行
 		await tx
 			.update(testCases)
-			.set({ sortOrder: position })
+			.set({ sortOrder: position, ...KEEP_UPDATED_AT })
 			.where(eq(testCases.id, id));
 	}
 	return { kind: "ok", projectId };

@@ -34,6 +34,7 @@
 | `search_cases` | 按关键字搜索用例。 |
 | `import_test_cases` | 一次写入 1 到 50 条用例。 |
 | `change_case_status` | 修改用例的状态：草稿、有效或废弃。 |
+| `move_cases` | 把用例移到同一项目的另一个模块。 |
 | `delete_cases` | 删除用例。删除操作不能撤销。 |
 | `create_screenshot_upload` | 为一条用例的截图取得上传地址。 |
 | `void_test_run` | 作废一个测试任务。 |

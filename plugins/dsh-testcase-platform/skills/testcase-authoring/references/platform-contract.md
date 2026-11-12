@@ -1,6 +1,6 @@
 # 平台契约：工具、字段、错误
 
-MCP server 名 `testcase-platform`，共 9 个工具。调用时一律写全限定名
+MCP server 名 `testcase-platform`，共 10 个工具。调用时一律写全限定名
 `testcase-platform:<工具>`。
 
 ## 工具
@@ -16,6 +16,7 @@ MCP server 名 `testcase-platform`，共 9 个工具。调用时一律写全限�
 | `import_test_cases` | `projectId`、`cases[]`（≤50）、`onDuplicate` | `{created[], skipped[], errors[]}` |
 | `search_cases` | `projectId`、`keyword`，可选 `limit` | 摘要行数组（**无正文**） |
 | `delete_cases` | `id` | `{id}`；被测试任务引用时返回 `CONFLICT` 拒绝 |
+| `move_cases` | `ids`（1–100，同一项目）、`moduleId` | `{moved[], unchanged[], missingIds[], syncedRunIds[]}`；目标模块不在同一项目时什么都不改 |
 
 细节：
 
@@ -32,6 +33,10 @@ MCP server 名 `testcase-platform`，共 9 个工具。调用时一律写全限�
   `id` 先从 `read_cases` / `search_cases` 拿。**被任何测试任务引用的用例删不掉**
   （返回 `CONFLICT`，错误里带引用数）——这是为了让历史报告可复现，正解是把
   `status` 改成 `deprecated`。
+- **`move_cases` 只改模块**：用例排到目标模块的最后，正文、状态和版本历史不变。
+  用例放错了模块时用它调整，**不要删除后重新导入**（删除会丢掉版本历史）。
+  待评审、待测试和测试中的测试任务里，这些用例的模块也跟着改（`syncedRunIds`）；
+  已完成、已提交和已作废的测试任务不变。调用后告诉用户改了哪些测试任务。
 - **`sourceRefPrefix` 是前缀匹配**（左锚定）：`gen:PROJ-1234#` 能捞出上一轮为这个需求
   生成的全部用例。`sourceRef` 为 null 的用例永远不会被它匹配到。
 

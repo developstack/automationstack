@@ -12,6 +12,7 @@ const LOGOUT_ID = "55555555-5555-4555-8555-555555555555";
 
 type ToolHandler = (input: {
 	ids: string[];
+	moduleId?: string;
 	status?: string;
 }) => Promise<ToolResult>;
 
@@ -110,5 +111,42 @@ describe("delete_cases：MCP 一次批量删除用例，报告删除和跳过的
 		expect(removeMany).toHaveBeenCalledTimes(1);
 		expect(removeMany).toHaveBeenCalledWith({ ids: [LOGIN_ID, LOGOUT_ID] });
 		expect(parsed(result)).toEqual(response);
+	});
+});
+
+describe("move_cases：MCP 一次把用例移到另一个模块", () => {
+	const MODULE_ID = "66666666-6666-4666-8666-666666666666";
+
+	it("一次调用 cases.moveMany，原样返回移动、不变和不存在的用例", async () => {
+		const response = {
+			missingIds: [],
+			moved: [{ id: LOGIN_ID, name: "登录成功" }],
+			unchanged: [{ id: LOGOUT_ID, name: "退出登录" }],
+		};
+		const moveMany = vi.fn().mockResolvedValue(response);
+		const result = await caseTool("move_cases", { moveMany })({
+			ids: [LOGIN_ID, LOGOUT_ID],
+			moduleId: MODULE_ID,
+		});
+		expect(moveMany).toHaveBeenCalledTimes(1);
+		expect(moveMany).toHaveBeenCalledWith({
+			ids: [LOGIN_ID, LOGOUT_ID],
+			moduleId: MODULE_ID,
+		});
+		expect(parsed(result)).toEqual(response);
+	});
+
+	it("目标模块不属于同一项目：把服务端的提示作为错误返回", async () => {
+		const moveMany = vi
+			.fn()
+			.mockRejectedValue(new Error("目标模块不存在或不属于同一项目"));
+		const result = await caseTool("move_cases", { moveMany })({
+			ids: [LOGIN_ID],
+			moduleId: MODULE_ID,
+		});
+		expect(result).toMatchObject({
+			content: [{ text: "Error: 目标模块不存在或不属于同一项目" }],
+			isError: true,
+		});
 	});
 });

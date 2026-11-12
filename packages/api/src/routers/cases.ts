@@ -33,9 +33,11 @@ import {
 	caseContentSchema,
 	caseListFilterSchema,
 	createCaseAttachmentSchema,
+	INVALID_TARGET_MODULE_MESSAGE,
 	MAX_NEW_CASE_ATTACHMENTS,
 } from "../schemas/case";
 import { caseImportProcedures } from "./case-import";
+import { caseMoveProcedures } from "./case-move";
 import { caseRemoveProcedures } from "./case-remove";
 import { caseStatusProcedures } from "./case-status";
 import { caseVersionProcedures } from "./case-versions";
@@ -84,6 +86,7 @@ function actorName(context: Context): string | null {
 
 export const casesRouter = {
 	...caseImportProcedures,
+	...caseMoveProcedures,
 	...caseRemoveProcedures,
 	...caseStatusProcedures,
 	...caseVersionProcedures,
@@ -174,12 +177,19 @@ export const casesRouter = {
 					moduleId: result.testCase.moduleId,
 					projectId: result.testCase.projectId,
 				});
+				if (result.syncedRunIds.length > 0) {
+					publishInvalidate({
+						action: "update",
+						context,
+						entity: "testRun",
+						ids: result.syncedRunIds,
+						projectId: result.testCase.projectId,
+					});
+				}
 				return result.testCase;
 			}
 			if (result.kind === "invalid-module") {
-				throw errors.BAD_REQUEST({
-					message: "目标模块不存在或不属于同一项目",
-				});
+				throw errors.BAD_REQUEST({ message: INVALID_TARGET_MODULE_MESSAGE });
 			}
 			throw errors.NOT_FOUND({ message: "用例不存在" });
 		}),

@@ -1,76 +1,22 @@
 import { MAX_BATCH_CASES } from "@automationstack/api/schemas/case";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-	fireEvent,
-	render,
-	screen,
-	waitFor,
-	within,
-} from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { CaseListBatchActions } from "@/components/cases/case-list-batch-actions";
-import { caseListFilter } from "@/components/cases/case-list-query";
-import type { CaseSelection } from "@/components/cases/use-case-selection";
-
-const api = vi.hoisted(() => ({
-	changeStatus: vi.fn<(input: unknown) => Promise<unknown>>(),
-	removeMany: vi.fn<(input: unknown) => Promise<unknown>>(),
-}));
+import {
+	caseIds,
+	caseRef,
+	currentQueryClient,
+	MODULES,
+	renderActions,
+} from "@/components/cases/case-list-batch-actions-test-kit";
+import { api } from "@/components/cases/case-list-batch-orpc-mock";
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), warning: vi.fn() } }));
-vi.mock("@/utils/orpc", () => ({
-	orpc: {
-		cases: {
-			changeStatus: {
-				mutationOptions: (options: object) => ({
-					...options,
-					mutationFn: api.changeStatus,
-				}),
-			},
-			key: () => ["cases"],
-			list: { key: () => ["cases", "list"] },
-			removeMany: {
-				mutationOptions: (options: object) => ({
-					...options,
-					mutationFn: api.removeMany,
-				}),
-			},
-			undoStatusChange: { mutationOptions: (options: object) => options },
-		},
-		mindmap: { key: () => ["mindmap"] },
-	},
-}));
-
-function caseIds(count: number): string[] {
-	return Array.from({ length: count }, (_, index) => `case-${index}`);
-}
-
-/** 最近一次渲染使用的 QueryClient，用来检查操作后重新载入了哪些查询。 */
-let queryClient = new QueryClient();
-
-function renderActions(ids: string[]) {
-	queryClient = new QueryClient();
-	const selection: CaseSelection = {
-		allMatching: false,
-		clear: vi.fn(),
-		ids: new Set(ids),
-		selectAllMatching: vi.fn(),
-		toggle: vi.fn(),
-		togglePage: vi.fn(),
-	};
-	render(
-		<QueryClientProvider client={queryClient}>
-			<CaseListBatchActions
-				filter={caseListFilter("project-1", {})}
-				page={{ items: [], total: ids.length }}
-				selection={selection}
-			/>
-		</QueryClientProvider>
-	);
-	return selection;
-}
+vi.mock("@/utils/orpc", async () => {
+	const mock = await import("@/components/cases/case-list-batch-orpc-mock");
+	return mock.orpcMock;
+});
 
 const statusButton = () => screen.queryByRole("button", { name: "改状态" });
 const deleteButton = () => screen.queryByRole("button", { name: "删除" });
@@ -82,8 +28,6 @@ async function confirmDelete() {
 	fireEvent.click(within(dialog).getByRole("button", { name: "删除" }));
 }
 
-const caseRef = (id: string) => ({ id, name: `用例 ${id}` });
-
 async function chooseStatus(label: string) {
 	fireEvent.click(screen.getByRole("button", { name: "改状态" }));
 	fireEvent.click(await screen.findByRole("menuitem", { name: label }));
@@ -91,6 +35,8 @@ async function chooseStatus(label: string) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	api.moduleTree.mockResolvedValue(MODULES);
+	api.moveImpact.mockResolvedValue({ runs: [] });
 });
 
 describe("CaseListBatchActions：有勾选时才出现批量操作栏", () => {
@@ -223,7 +169,7 @@ describe("CaseListBatchActions：批量删除，被测试任务用到的用例�
 				})),
 			});
 			const selection = renderActions(caseIds(2));
-			const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+			const invalidate = vi.spyOn(currentQueryClient(), "invalidateQueries");
 			await confirmDelete();
 			await waitFor(() => expect(selection.clear).toHaveBeenCalled());
 			// 用例列表（含条数）和脑图重新载入

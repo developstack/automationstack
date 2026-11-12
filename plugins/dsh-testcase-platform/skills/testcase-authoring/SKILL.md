@@ -143,5 +143,5 @@ description: 从需求文档、PRD、接口定义、用户故事或代码变更�
 
 - [references/techniques.md](references/techniques.md)——按"需求里出现什么信号"索引到方法；每种方法的产出形状与常见错误。**第 4 步查表用，只读用到的那几节。**
 - [references/case-quality.md](references/case-quality.md)——标题/前置条件/步骤/预期/优先级的判据，以及**第 5 步逐条打勾的自检清单**。
-- [references/platform-contract.md](references/platform-contract.md)——九个工具的入参与返回、用例字段与枚举、sourceRef 约定、错误文本对照表、连不上时的排查。**调用工具前不确定参数时读它。**
+- [references/platform-contract.md](references/platform-contract.md)——十个工具的入参与返回、用例字段与枚举、sourceRef 约定、错误文本对照表、连不上时的排查。**调用工具前不确定参数时读它。**
 - [references/worked-example.md](references/worked-example.md)——一段真实需求走完全流程：测试点、假设提问、方法矩阵、草案表、工具调用、汇总。**第一次用这个 skill、或不确定产出该长什么样时读它。**

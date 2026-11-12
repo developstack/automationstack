@@ -1,10 +1,10 @@
 import { and, eq, inArray, max } from "drizzle-orm";
-
 import { db } from "../index";
 import { testCases } from "../schema/test-cases";
 import { type TestRun, testRunCases } from "../schema/test-runs";
 import { users } from "../schema/users";
 import type { DbTransaction } from "./repository-types";
+import { caseModuleIdsInTx } from "./run-case-module";
 import {
 	dedupe,
 	findInvalidRunCaseIds,
@@ -84,11 +84,13 @@ export function addCasesToRun(
 			};
 		}
 		const base = await nextSortOrder(tx, run.id);
+		const moduleIds = await caseModuleIdsInTx(tx, caseIds);
 		const inserted = await tx
 			.insert(testRunCases)
 			.values(
 				caseIds.map((caseId, offset) => ({
 					caseId,
+					moduleId: moduleIds.get(caseId),
 					runId: run.id,
 					sortOrder: base + offset,
 				}))
