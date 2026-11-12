@@ -61,7 +61,9 @@ function RunCaseRowContent({
 				)}
 			/>
 			<span className="sr-only">{RESULT_LABELS[runCase.result]}</span>
-			<span className="min-w-0 flex-1 truncate">{testCase.name}</span>
+			<span className="min-w-0 flex-1 truncate" title={testCase.name}>
+				{testCase.name}
+			</span>
 			<StatusBadge kind="priority" value={testCase.priority} />
 			{runCase.assigneeId !== null && (
 				<UserIcon
