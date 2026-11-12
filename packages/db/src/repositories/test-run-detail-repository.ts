@@ -1,6 +1,5 @@
 import { asc, eq, getTableColumns } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-
 import { db } from "../index";
 import { modules } from "../schema/modules";
 import {
@@ -16,6 +15,7 @@ import {
 	testRuns,
 } from "../schema/test-runs";
 import { users } from "../schema/users";
+import { runCaseModuleId } from "./run-case-module";
 import { settleAutoSubmitForRun } from "./test-run-auto-submit-repository";
 
 export interface TestRunLiveCase {
@@ -73,7 +73,7 @@ async function loadRunCaseRows(runId: string) {
 			...getTableColumns(testRunCases),
 			caseCurrentVersion: testCases.currentVersion,
 			caseMaintainer: testCases.maintainer,
-			caseModuleId: testCases.moduleId,
+			caseModuleId: modules.id,
 			caseModuleName: modules.name,
 			caseName: testCases.name,
 			casePreconditions: testCases.preconditions,
@@ -85,7 +85,7 @@ async function loadRunCaseRows(runId: string) {
 		})
 		.from(testRunCases)
 		.innerJoin(testCases, eq(testCases.id, testRunCases.caseId))
-		.innerJoin(modules, eq(modules.id, testCases.moduleId))
+		.innerJoin(modules, eq(modules.id, runCaseModuleId))
 		.leftJoin(executor, eq(executor.id, testRunCases.executedBy))
 		.where(eq(testRunCases.runId, runId))
 		.orderBy(asc(testRunCases.sortOrder), asc(testRunCases.createdAt));

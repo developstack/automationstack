@@ -95,6 +95,30 @@ export const removeCasesInputSchema = z.union([
 	z.object({ filter: caseListFilterSchema }),
 ]);
 
+export const INVALID_TARGET_MODULE_MESSAGE = "目标模块不存在或不属于同一项目";
+
+const targetModuleIdSchema = z
+	.uuid()
+	.describe("The module to move the cases into. Must be in the same project.");
+
+/** 批量移动用例到一个模块（cases.moveMany）：勾选的用例。 */
+export const moveCasesSchema = z.object({
+	ids: z
+		.array(z.uuid())
+		.min(1)
+		.max(MAX_BATCH_CASES)
+		.describe(
+			`Ids of the cases to move, 1-${MAX_BATCH_CASES}, all in one project.`
+		),
+	moduleId: targetModuleIdSchema,
+});
+
+/** cases.moveMany 的输入：勾选的用例 { ids, moduleId }，或全部符合筛选的用例 { filter, moduleId }。 */
+export const moveCasesInputSchema = z.union([
+	moveCasesSchema,
+	z.object({ filter: caseListFilterSchema, moduleId: targetModuleIdSchema }),
+]);
+
 /** 每个步骤每组截图（操作截图、预期截图）最多的数量。 */
 export const MAX_COLUMN_SCREENSHOTS = 9;
 

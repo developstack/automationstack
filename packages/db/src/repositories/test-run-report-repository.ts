@@ -1,5 +1,4 @@
 import { asc, count, desc, eq, type SQL, sql } from "drizzle-orm";
-
 import { db } from "../index";
 import { modules } from "../schema/modules";
 import { type CasePriority, testCases } from "../schema/test-cases";
@@ -11,6 +10,7 @@ import {
 } from "../schema/test-runs";
 import { users } from "../schema/users";
 import { getProjectSettings } from "./project-settings-repository";
+import { runCaseModuleId } from "./run-case-module";
 import { settleAutoSubmitForRun } from "./test-run-auto-submit-repository";
 import {
 	computeCompletionRate,
@@ -123,7 +123,7 @@ function loadModuleStats(runId: string): Promise<TestRunModuleStat[]> {
 		})
 		.from(testRunCases)
 		.innerJoin(testCases, eq(testCases.id, testRunCases.caseId))
-		.innerJoin(modules, eq(modules.id, testCases.moduleId))
+		.innerJoin(modules, eq(modules.id, runCaseModuleId))
 		.where(eq(testRunCases.runId, runId))
 		.groupBy(modules.id, modules.name)
 		.orderBy(desc(resultCount("failed")), asc(modules.name));

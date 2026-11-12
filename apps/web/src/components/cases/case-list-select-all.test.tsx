@@ -11,39 +11,17 @@ import {
 	within,
 } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { CaseListBatchActions } from "@/components/cases/case-list-batch-actions";
+import { MODULES } from "@/components/cases/case-list-batch-actions-test-kit";
+import { api } from "@/components/cases/case-list-batch-orpc-mock";
 import { caseListFilter } from "@/components/cases/case-list-query";
 import type { CaseSelection } from "@/components/cases/use-case-selection";
 
-const api = vi.hoisted(() => ({
-	changeStatus: vi.fn<(input: unknown) => Promise<unknown>>(),
-	removeMany: vi.fn<(input: unknown) => Promise<unknown>>(),
-}));
-
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), warning: vi.fn() } }));
-vi.mock("@/utils/orpc", () => ({
-	orpc: {
-		cases: {
-			changeStatus: {
-				mutationOptions: (options: object) => ({
-					...options,
-					mutationFn: api.changeStatus,
-				}),
-			},
-			key: () => ["cases"],
-			list: { key: () => ["cases", "list"] },
-			removeMany: {
-				mutationOptions: (options: object) => ({
-					...options,
-					mutationFn: api.removeMany,
-				}),
-			},
-			undoStatusChange: { mutationOptions: (options: object) => options },
-		},
-		mindmap: { key: () => ["mindmap"] },
-	},
-}));
+vi.mock("@/utils/orpc", async () => {
+	const mock = await import("@/components/cases/case-list-batch-orpc-mock");
+	return mock.orpcMock;
+});
 
 const FILTER = caseListFilter("project-1", { status: "draft" });
 const PAGE_IDS = Array.from({ length: 20 }, (_, index) => `case-${index}`);
@@ -87,6 +65,8 @@ const selectAllButton = () =>
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	api.moduleTree.mockResolvedValue(MODULES);
+	api.moveImpact.mockResolvedValue({ runs: [] });
 });
 
 describe("CaseListBatchActions：选择全部符合筛选的用例", () => {
@@ -144,9 +124,33 @@ describe("CaseListBatchActions：选择全部符合筛选的用例", () => {
 		]);
 	});
 
-	it(`符合筛选的用例超过 ${MAX_FILTER_BATCH_CASES} 条：不显示「改状态」和「删除」，提示缩小筛选范围`, () => {
+	it("选择全部后移动：弹窗显示全部条数，一个请求发送筛选条件和目标模块", async () => {
+		api.moveMany.mockResolvedValue({
+			missingIds: [],
+			moved: [],
+			syncedRunIds: [],
+			unchanged: [],
+		});
+		const selection = renderActions({ allMatching: true });
+		fireEvent.click(await screen.findByRole("button", { name: "移动到模块" }));
+		const dialog = await screen.findByRole("dialog");
+		expect(dialog.textContent).toContain("移动 57 条用例");
+		fireEvent.click(within(dialog).getByRole("button", { name: "登录" }));
+		fireEvent.click(within(dialog).getByRole("button", { name: "确认移动" }));
+		await waitFor(() => expect(selection.clear).toHaveBeenCalled());
+		expect(api.moveMany.mock.calls.map(([input]) => input)).toEqual([
+			{ filter: FILTER, moduleId: "m-login" },
+		]);
+		expect(api.moveImpact.mock.calls.map(([input]) => input)).toEqual([
+			{ filter: FILTER, moduleId: "m-login" },
+		]);
+	});
+
+	it(`符合筛选的用例超过 ${MAX_FILTER_BATCH_CASES} 条：不显示批量操作，提示缩小筛选范围`, async () => {
 		renderActions({ allMatching: true, total: MAX_FILTER_BATCH_CASES + 1 });
+		await waitFor(() => expect(api.moduleTree).toHaveBeenCalled());
 		expect(screen.queryByRole("button", { name: "改状态" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "移动到模块" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "删除" })).toBeNull();
 		expect(screen.getByText(FILTER_BATCH_TOO_MANY_MESSAGE)).not.toBeNull();
 	});

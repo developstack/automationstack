@@ -169,6 +169,13 @@
       "when": 1794059921582,
       "tag": "0023_local_auth_two_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794475096871,
+      "tag": "0024_run_case_module",
+      "breakpoints": true
     }
   ]
 }

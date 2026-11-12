@@ -8,6 +8,10 @@ import {
 	type CaseListFilter,
 } from "./case-list-repository";
 import {
+	type MoveTestCasesResult,
+	moveTestCasesInTx,
+} from "./case-move-repository";
+import {
 	type CaseStatusChange,
 	changeCaseStatusInTx,
 } from "./case-mutations-repository";
@@ -44,6 +48,21 @@ async function lockCaseIdsByFilter(
 		.orderBy(asc(testCases.id))
 		.limit(limit + 1)
 		.for("update");
+	return rows.length > limit ? null : rows.map((row) => row.id);
+}
+
+/** 现在符合筛选的用例 id，不加锁，最多 limit 条；超过时返回 null。用于移动前的预览。 */
+export async function listCaseIdsByFilter({
+	filter,
+	limit,
+}: CaseFilterBatchInput): Promise<string[] | null> {
+	const conditions = await buildCaseListConditions(db, filter);
+	const rows = await db
+		.select({ id: testCases.id })
+		.from(testCases)
+		.where(and(...conditions))
+		.orderBy(asc(testCases.id))
+		.limit(limit + 1);
 	return rows.length > limit ? null : rows.map((row) => row.id);
 }
 
@@ -102,5 +121,27 @@ export function removeTestCasesByFilter(
 			projectId: input.filter.projectId,
 		});
 		return { kind: "ok", ...result };
+	});
+}
+
+export interface MoveTestCasesByFilterInput extends CaseFilterBatchInput {
+	moduleId: string;
+}
+
+export type MoveTestCasesByFilterResult = TooMany | MoveTestCasesResult;
+
+/**
+ * 把所有符合筛选的用例移到一个模块的最后，在一个事务中完成，规则与按 id 移动相同。
+ * 作用于提交请求时符合筛选的用例，返回实际移动的用例。
+ */
+export function moveTestCasesByFilter(
+	input: MoveTestCasesByFilterInput
+): Promise<MoveTestCasesByFilterResult> {
+	return db.transaction(async (tx) => {
+		const caseIds = await lockCaseIdsByFilter(tx, input);
+		if (caseIds === null) {
+			return { kind: "too-many" };
+		}
+		return moveTestCasesInTx(tx, { caseIds, moduleId: input.moduleId });
 	});
 }

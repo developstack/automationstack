@@ -444,7 +444,7 @@ description: 从需求文档、PRD、接口定义、用户故事或代码变更�
 
 - [references/techniques.md](references/techniques.md)——按"需求里出现什么信号"索引到方法；每种方法的产出形状与常见错误。**第 4 步查表用，只读用到的那几节。**
 - [references/case-quality.md](references/case-quality.md)——标题/前置条件/步骤/预期/优先级的判据，以及**第 5 步逐条打勾的自检清单**。
-- [references/platform-contract.md](references/platform-contract.md)——九个工具的入参与返回、用例字段与枚举、sourceRef 约定、错误文本对照表、连不上时的排查。**调用工具前不确定参数时读它。**
+- [references/platform-contract.md](references/platform-contract.md)——十个工具的入参与返回、用例字段与枚举、sourceRef 约定、错误文本对照表、连不上时的排查。**调用工具前不确定参数时读它。**
 - [references/worked-example.md](references/worked-example.md)——一段真实需求走完全流程：测试点、假设提问、方法矩阵、草案表、工具调用、汇总。**第一次用这个 skill、或不确定产出该长什么样时读它。**
 TCP_SKILL_EOF_1
 			;;
@@ -556,7 +556,7 @@ TCP_SKILL_EOF_2
 		cat <<'TCP_SKILL_EOF_3'
 # 平台契约：工具、字段、错误
 
-MCP server 名 `testcase-platform`，共 9 个工具。调用时一律写全限定名
+MCP server 名 `testcase-platform`，共 10 个工具。调用时一律写全限定名
 `testcase-platform:<工具>`。
 
 ## 工具
@@ -572,6 +572,7 @@ MCP server 名 `testcase-platform`，共 9 个工具。调用时一律写全限�
 | `import_test_cases` | `projectId`、`cases[]`（≤50）、`onDuplicate` | `{created[], skipped[], errors[]}` |
 | `search_cases` | `projectId`、`keyword`，可选 `limit` | 摘要行数组（**无正文**） |
 | `delete_cases` | `id` | `{id}`；被测试任务引用时返回 `CONFLICT` 拒绝 |
+| `move_cases` | `ids`（1–100，同一项目）、`moduleId` | `{moved[], unchanged[], missingIds[], syncedRunIds[]}`；目标模块不在同一项目时什么都不改 |
 
 细节：
 
@@ -588,6 +589,10 @@ MCP server 名 `testcase-platform`，共 9 个工具。调用时一律写全限�
   `id` 先从 `read_cases` / `search_cases` 拿。**被任何测试任务引用的用例删不掉**
   （返回 `CONFLICT`，错误里带引用数）——这是为了让历史报告可复现，正解是把
   `status` 改成 `deprecated`。
+- **`move_cases` 只改模块**：用例排到目标模块的最后，正文、状态和版本历史不变。
+  用例放错了模块时用它调整，**不要删除后重新导入**（删除会丢掉版本历史）。
+  待评审、待测试和测试中的测试任务里，这些用例的模块也跟着改（`syncedRunIds`）；
+  已完成、已提交和已作废的测试任务不变。调用后告诉用户改了哪些测试任务。
 - **`sourceRefPrefix` 是前缀匹配**（左锚定）：`gen:PROJ-1234#` 能捞出上一轮为这个需求
   生成的全部用例。`sourceRef` 为 null 的用例永远不会被它匹配到。
 
@@ -1026,7 +1031,7 @@ description: 将**已经写好的存量测试用例**（Excel/CSV/XMind/TestRail
 
 ## 工具契约（与实现对齐）
 
-九个工具都返回 JSON 文本内容块；调用失败（如项目不存在）返回 `isError: true` 的文本结果，不会中断会话。
+十个工具都返回 JSON 文本内容块；调用失败（如项目不存在）返回 `isError: true` 的文本结果，不会中断会话。
 
 | 工具 | 入参 | 返回 |
 |---|---|---|
@@ -1039,6 +1044,7 @@ description: 将**已经写好的存量测试用例**（Excel/CSV/XMind/TestRail
 | `testcase-platform:list_case_tags` | `projectId` | 项目已用标签的去重排序数组。源文件里的标签先跟它对一遍，同义标签（`登录`/`用户登录`/`auth`）并存会稀释平台的标签过滤 |
 | `testcase-platform:search_cases` | `projectId`、`keyword`(必填)、`limit`(可选，默认 20，上限 50) | `[{ id, name, moduleId, priority, status, caseType, sourceRef, updatedAt }]`，按 `updatedAt` 倒序；`%`/`_` 按字面量转义 |
 | `testcase-platform:delete_cases` | `id` | `{ id }`。硬删除、不可逆；被测试任务引用时返回 `CONFLICT`。**迁移流程不用它**，改错走 `import_test_cases` |
+| `testcase-platform:move_cases` | `ids`(1–100，同一项目)、`moduleId` | `{ moved[], unchanged[], missingIds[], syncedRunIds[] }`。导完发现一批用例进错了模块时用它移过去，不要删掉重导；用例排到目标模块最后，正文和版本历史不变。进行中的测试任务里的模块跟着改，已完成的不变 |
 
 ### `testcase-platform:import_test_cases` 返回结构
 

@@ -1,5 +1,4 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
-
 import { db } from "../index";
 import { automationExecutions } from "../schema/automation-executions";
 import { modules } from "../schema/modules";
@@ -15,6 +14,7 @@ import type {
 } from "../schema/test-run-enums";
 import { type TestRunExecutedVia, testRunCases } from "../schema/test-runs";
 import { users } from "../schema/users";
+import { runCaseModuleId } from "./run-case-module";
 import { listAttachmentsForRunCases } from "./test-run-attachments-repository";
 
 /** 报告列出的执行结果：失败和阻塞。 */
@@ -92,7 +92,7 @@ function selectFailedAndBlockedCaseRows(runId: string) {
 		})
 		.from(testRunCases)
 		.innerJoin(testCases, eq(testCases.id, testRunCases.caseId))
-		.innerJoin(modules, eq(modules.id, testCases.moduleId))
+		.innerJoin(modules, eq(modules.id, runCaseModuleId))
 		.leftJoin(users, eq(users.id, testRunCases.executedBy))
 		.leftJoin(
 			automationExecutions,

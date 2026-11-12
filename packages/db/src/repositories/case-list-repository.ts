@@ -1,7 +1,7 @@
 import {
 	and,
-	asc,
 	count,
+	desc,
 	eq,
 	ilike,
 	inArray,
@@ -115,7 +115,7 @@ export async function listTestCases(
 		.select()
 		.from(testCases)
 		.where(where)
-		.orderBy(asc(testCases.moduleId), asc(testCases.sortOrder))
+		.orderBy(desc(testCases.updatedAt), desc(testCases.id))
 		.limit(pageSize)
 		.offset((page - 1) * pageSize);
 	return { items, page, pageSize, total: countRow?.value ?? 0 };

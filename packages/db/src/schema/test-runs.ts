@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { automationExecutions } from "./automation-executions";
+import { modules } from "./modules";
 import { projects } from "./projects";
 import { runStepResultsJsonb } from "./run-step-results-column";
 import { testCases } from "./test-cases";
@@ -113,6 +114,14 @@ export const testRunCases = pgTable(
 			() => automationExecutions.id,
 			{ onDelete: "set null" }
 		),
+		/**
+		 * 用例在这个测试任务中所属的模块（ADR 0009）。加入测试任务时取用例当时的模块。
+		 * 用例移动时，进行中的测试任务跟着改，已完成、已提交和已作废的测试任务不改。
+		 * 为 null（模块已删除）时，使用用例当前的模块。
+		 */
+		moduleId: uuid("module_id").references(() => modules.id, {
+			onDelete: "set null",
+		}),
 		result: testRunCaseResultEnum("result").notNull().default("untested"),
 		runId: uuid("run_id")
 			.notNull()

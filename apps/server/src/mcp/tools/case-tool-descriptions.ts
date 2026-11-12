@@ -114,6 +114,24 @@ export const CHANGE_CASE_STATUS_DESCRIPTION =
 	"(id, name, status)}. To undo, call again once per distinct previousStatus " +
 	"with the ids that had it.";
 
+export const MOVE_CASES_DESCRIPTION =
+	"Move up to 100 test cases of ONE project into another module in one call. " +
+	"Get the target moduleId from get_module_tree or ensure_module_path, and the " +
+	"case ids from read_cases or search_cases. The target module must be in the " +
+	"same project as the cases. The moved cases go to the end of the target " +
+	"module. Cases from the same source module keep their order. Only the module " +
+	"changes: the content, the status and the version history stay as they are. " +
+	"A case that is already in the target module is left alone. If an id does " +
+	"not exist, the tool puts it in missingIds and moves the other cases in one " +
+	"transaction. If the ids belong to different projects, or the module is not " +
+	"in their project, the tool moves nothing. Any member of the project can " +
+	"call it. Split larger sets into calls of at most 100 ids. " +
+	"Test runs that are pending review, ready or in progress also change the " +
+	"module of these cases. Completed, submitted and voided test runs keep the " +
+	"old module. Tell the user which test runs changed. " +
+	"Returns {moved[] (id, name), unchanged[] (id, name), missingIds[], " +
+	"syncedRunIds[]}.";
+
 export const CREATE_SCREENSHOT_UPLOAD_DESCRIPTION =
 	"Get an upload URL for one image of one existing case. Use it to " +
 	"write action screenshots (操作截图) or expected screenshots (预期截图) of " +

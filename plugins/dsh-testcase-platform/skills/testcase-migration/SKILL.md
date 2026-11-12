@@ -31,7 +31,7 @@ description: 将**已经写好的存量测试用例**（Excel/CSV/XMind/TestRail
 
 ## 工具契约（与实现对齐）
 
-九个工具都返回 JSON 文本内容块；调用失败（如项目不存在）返回 `isError: true` 的文本结果，不会中断会话。
+十个工具都返回 JSON 文本内容块；调用失败（如项目不存在）返回 `isError: true` 的文本结果，不会中断会话。
 
 | 工具 | 入参 | 返回 |
 |---|---|---|
@@ -44,6 +44,7 @@ description: 将**已经写好的存量测试用例**（Excel/CSV/XMind/TestRail
 | `testcase-platform:list_case_tags` | `projectId` | 项目已用标签的去重排序数组。源文件里的标签先跟它对一遍，同义标签（`登录`/`用户登录`/`auth`）并存会稀释平台的标签过滤 |
 | `testcase-platform:search_cases` | `projectId`、`keyword`(必填)、`limit`(可选，默认 20，上限 50) | `[{ id, name, moduleId, priority, status, caseType, sourceRef, updatedAt }]`，按 `updatedAt` 倒序；`%`/`_` 按字面量转义 |
 | `testcase-platform:delete_cases` | `id` | `{ id }`。硬删除、不可逆；被测试任务引用时返回 `CONFLICT`。**迁移流程不用它**，改错走 `import_test_cases` |
+| `testcase-platform:move_cases` | `ids`(1–100，同一项目)、`moduleId` | `{ moved[], unchanged[], missingIds[], syncedRunIds[] }`。导完发现一批用例进错了模块时用它移过去，不要删掉重导；用例排到目标模块最后，正文和版本历史不变。进行中的测试任务里的模块跟着改，已完成的不变 |
 
 ### `testcase-platform:import_test_cases` 返回结构
 

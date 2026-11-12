@@ -1,5 +1,6 @@
 import {
 	changeCaseStatusSchema,
+	moveCasesSchema,
 	removeCasesSchema,
 } from "@automationstack/api/schemas/case";
 import {
@@ -20,6 +21,7 @@ import {
 	DELETE_CASES_DESCRIPTION,
 	IMPORT_TEST_CASES_DESCRIPTION,
 	LIST_CASE_TAGS_DESCRIPTION,
+	MOVE_CASES_DESCRIPTION,
 	READ_CASES_DESCRIPTION,
 	SEARCH_CASES_DESCRIPTION,
 } from "./case-tool-descriptions";
@@ -175,6 +177,12 @@ export function registerCaseTools(server: McpServer, client: ApiClient): void {
 			safeToolCall(async () => jsonResult(await client.cases.search(input)))
 	);
 	registerChangeCaseStatusTool(server, client);
+	server.registerTool(
+		"move_cases",
+		{ description: MOVE_CASES_DESCRIPTION, inputSchema: moveCasesSchema },
+		(input) =>
+			safeToolCall(async () => jsonResult(await client.cases.moveMany(input)))
+	);
 	server.registerTool(
 		"delete_cases",
 		{ description: DELETE_CASES_DESCRIPTION, inputSchema: removeCasesSchema },

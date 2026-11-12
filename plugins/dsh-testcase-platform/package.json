@@ -1,6 +1,6 @@
 {
   "name": "@automationstack/dsh-testcase-platform",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "DeepSeek Harness (dsh) plugin: test-case platform MCP tools and the testcase-authoring / testcase-migration skills",
   "license": "Apache-2.0",

@@ -1,10 +1,10 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
-
 import { db } from "../index";
 import { testCases } from "../schema/test-cases";
 import { testRunEvents } from "../schema/test-run-events";
 import { type TestRun, testRunCases, testRuns } from "../schema/test-runs";
 import type { DbTransaction } from "./repository-types";
+import { caseModuleIdsInTx } from "./run-case-module";
 import type { RunWriteLock } from "./test-run-status-core";
 import { ensureRunWritable } from "./test-run-status-repository";
 
@@ -67,9 +67,11 @@ export async function createTestRunInTx(
 	if (!run) {
 		throw new Error("createTestRun: insert returned no row");
 	}
+	const moduleIds = await caseModuleIdsInTx(tx, caseIds);
 	await tx.insert(testRunCases).values(
 		caseIds.map((caseId, sortOrder) => ({
 			caseId,
+			moduleId: moduleIds.get(caseId),
 			runId: run.id,
 			sortOrder,
 		}))
