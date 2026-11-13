@@ -1,7 +1,9 @@
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
+import { Button } from "@automationstack/ui/components/button";
 import { cn } from "@automationstack/ui/lib/utils";
 import { FolderIcon } from "lucide-react";
 import { useCallback } from "react";
+import { TruncatedText } from "@/components/interaction/truncated-text";
 
 export const MODULE_OPTION_ROW_CLASS =
 	"relative flex min-h-7 w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-left text-sm before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-foreground";
@@ -32,7 +34,7 @@ function ModuleOption({ node, onSelect, selectedModuleId }: ModuleOptionProps) {
 
 	return (
 		<li>
-			<button
+			<Button
 				aria-current={selected ? "true" : undefined}
 				className={cn(
 					MODULE_OPTION_ROW_CLASS,
@@ -40,10 +42,11 @@ function ModuleOption({ node, onSelect, selectedModuleId }: ModuleOptionProps) {
 				)}
 				onClick={handleSelect}
 				type="button"
+				variant="plain"
 			>
 				<FolderIcon aria-hidden="true" className={MODULE_OPTION_ICON_CLASS} />
-				<span className="truncate">{node.name}</span>
-			</button>
+				<TruncatedText text={node.name} />
+			</Button>
 			{node.children.length > 0 ? (
 				<ModuleOptionList
 					className="ps-3"

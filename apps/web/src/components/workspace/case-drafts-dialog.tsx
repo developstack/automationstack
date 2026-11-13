@@ -15,6 +15,7 @@ import {
 	caseDraftTitle,
 } from "@/components/cases/case-draft-labels";
 import type { CaseDraft } from "@/components/cases/case-draft-parse";
+import { TruncatedText } from "@/components/interaction/truncated-text";
 import { useCloseOnDismiss } from "@/components/use-close-on-dismiss";
 import { resumeDraftSearch } from "@/components/workspace/workspace-search";
 
@@ -63,9 +64,7 @@ function CaseDraftRow({
 	return (
 		<li className="flex items-center gap-2 rounded-md border p-2">
 			<div className="min-w-0 flex-1">
-				<p className="truncate font-medium" title={title}>
-					{title}
-				</p>
+				<TruncatedText className="block font-medium" text={title} />
 				<p className="truncate text-muted-foreground text-xs">
 					{`${moduleName ?? ORPHAN_MODULE} · ${savedLabel}`}
 				</p>

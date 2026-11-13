@@ -4,7 +4,7 @@ import {
 	StatusLabel,
 	type StatusProps,
 } from "@automationstack/ui/components/status";
-
+import { HintTooltip } from "@/components/interaction/hint-tooltip";
 import { PresenceAvatars } from "@/realtime/presence-avatars";
 import {
 	type RealtimeTone,
@@ -40,15 +40,13 @@ export function HeaderRealtimeStatus() {
 				role="status"
 				status={STATUS_BY_TONE[tone]}
 			>
-				{/* 圆点和短文字只给眼睛看；title 也放这里，放在 status 上会成为可访问名称，读两遍。 */}
-				<span
-					aria-hidden="true"
-					className="flex items-center gap-2"
-					title={fullText}
-				>
-					<StatusIndicator />
-					<StatusLabel className="tabular-nums">{shortLabel}</StatusLabel>
-				</span>
+				{/* 圆点和短文字只给眼睛看；完整文字的 Tooltip 也放这里，放在 status 上会读两遍。 */}
+				<HintTooltip label={fullText}>
+					<span aria-hidden="true" className="flex items-center gap-2">
+						<StatusIndicator />
+						<StatusLabel className="tabular-nums">{shortLabel}</StatusLabel>
+					</span>
+				</HintTooltip>
 				<span className="sr-only">{fullText}</span>
 			</Status>
 			{/* 头像放在 status 外：名称随别人切换页面而变，在实时区域里会被反复读出。 */}

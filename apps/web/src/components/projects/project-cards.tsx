@@ -23,6 +23,7 @@ import { MoreHorizontalIcon } from "lucide-react";
 import { useCallback } from "react";
 
 import { formatDateTime } from "@/components/cases/case-meta";
+import { TruncatedText } from "@/components/interaction/truncated-text";
 import {
 	PROJECT_CARD_DESCRIPTION,
 	PROJECT_CARD_GRID,
@@ -47,12 +48,11 @@ function ProjectCard({ onDelete, onEdit, project }: ProjectCardProps) {
 			<CardHeader>
 				<CardTitle className="min-w-0">
 					<Link
-						className="block truncate hover:underline"
+						className="block min-w-0 hover:underline"
 						params={{ projectId: project.id }}
-						title={project.name}
 						to="/projects/$projectId/overview"
 					>
-						{project.name}
+						<TruncatedText className="block" text={project.name} />
 					</Link>
 				</CardTitle>
 				<CardDescription className={PROJECT_CARD_DESCRIPTION}>

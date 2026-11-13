@@ -1,5 +1,6 @@
-import { Button } from "@automationstack/ui/components/button";
+import { buttonVariants } from "@automationstack/ui/components/button";
 import { ImageIcon, PaperclipIcon } from "lucide-react";
+import { TruncatedText } from "@/components/interaction/truncated-text";
 
 const BYTES_PER_KIB = 1024;
 const THUMBNAIL_PX = 40;
@@ -56,12 +57,14 @@ function AttachmentOpenLink({ url }: { url: string | null }) {
 		return null;
 	}
 	return (
-		<Button
-			render={<a href={url} rel="noopener" target="_blank" />}
-			variant="ghost"
+		<a
+			className={buttonVariants({ variant: "ghost" })}
+			href={url}
+			rel="noopener"
+			target="_blank"
 		>
 			打开
-		</Button>
+		</a>
 	);
 }
 
@@ -87,9 +90,7 @@ export function AttachmentRow({
 				url={url}
 			/>
 			<span className="min-w-0 flex-1">
-				<span className="block truncate text-sm" title={fileName}>
-					{fileName}
-				</span>
+				<TruncatedText className="block text-sm" text={fileName} />
 				<span className="text-muted-foreground text-xs">
 					{formatSize(sizeBytes)}
 					{url === null && " · 存储不可用，暂时打不开"}

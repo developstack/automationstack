@@ -1,3 +1,4 @@
+import { buttonVariants } from "@automationstack/ui/components/button";
 import type { AttachmentListItem } from "@/components/test-runs/attachment-list";
 
 const IMAGE_HEIGHT_CLASS = "h-40";
@@ -14,7 +15,12 @@ interface GalleryItemProps {
 function GalleryItem({ fileName, url }: GalleryItemProps) {
 	return (
 		<li className="flex flex-col items-start gap-1">
-			<a href={url} rel="noopener" target="_blank">
+			<a
+				className={buttonVariants({ size: "inline", variant: "plain" })}
+				href={url}
+				rel="noopener"
+				target="_blank"
+			>
 				{/* biome-ignore lint/correctness/useImageSize: 附件表里没有像素尺寸——它只存 contentType/sizeBytes（服务端 HeadObject 读回来的），先例见 image-node.tsx。猜一个宽高会给出错误的宽高比，图会先按错的比例撑开再跳回去，比不填更糟。这里用 h-40 把高度钉死，加载带来的位移只剩宽度那一维。 */}
 				<img
 					alt={fileName}

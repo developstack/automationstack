@@ -1,4 +1,14 @@
+import { buttonVariants } from "@automationstack/ui/components/button";
 import { Separator } from "@automationstack/ui/components/separator";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@automationstack/ui/components/table";
+import { cn } from "@automationstack/ui/lib/utils";
 import type { JSX } from "react";
 import Markdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -17,14 +27,17 @@ const HEADING_2_CLASS = "mt-2 font-semibold text-base text-foreground";
 const HEADING_3_CLASS = "mt-1 font-medium text-foreground text-sm";
 const HEADING_4_CLASS = "font-medium text-foreground text-sm";
 const LIST_CLASS = "flex flex-col gap-1 pl-5";
-const CELL_CLASS = "border-border/60 border-b px-2 py-1.5 align-top";
+const CELL_CLASS = "h-auto whitespace-normal px-2 py-1.5 align-top";
 
 function DocLink({ children, href }: JSX.IntrinsicElements["a"]) {
 	const isExternal = href !== undefined && EXTERNAL_HREF.test(href);
 	const isAsset = href !== undefined && STATIC_ASSET_HREF.test(href);
 	return (
 		<a
-			className="font-medium text-foreground underline underline-offset-4"
+			className={cn(
+				buttonVariants({ size: "inline", variant: "link" }),
+				"font-medium text-foreground underline"
+			)}
 			download={isAsset ? "" : undefined}
 			href={href}
 			rel={isExternal ? "noopener" : undefined}
@@ -68,15 +81,20 @@ const COMPONENTS: Components = {
 		<strong className="font-semibold text-foreground">{children}</strong>
 	),
 	table: ({ children }) => (
-		<div className="overflow-x-auto">
-			<table className="w-full border-collapse text-xs">{children}</table>
-		</div>
+		<Table className="border-collapse text-xs">{children}</Table>
 	),
-	td: ({ children }) => <td className={CELL_CLASS}>{children}</td>,
+	tbody: ({ children }) => <TableBody>{children}</TableBody>,
+	td: ({ children }) => (
+		<TableCell className={CELL_CLASS}>{children}</TableCell>
+	),
 	th: ({ children }) => (
-		<th className={`${CELL_CLASS} text-left font-medium text-foreground`}>
+		<TableHead className={CELL_CLASS}>{children}</TableHead>
+	),
+	thead: ({ children }) => <TableHeader>{children}</TableHeader>,
+	tr: ({ children }) => (
+		<TableRow className="border-border/60 hover:bg-transparent">
 			{children}
-		</th>
+		</TableRow>
 	),
 	ul: ({ children }) => (
 		<ul className={`list-disc ${LIST_CLASS}`}>{children}</ul>

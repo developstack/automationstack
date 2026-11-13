@@ -15,6 +15,7 @@ import type {
 	CaseMoveTarget,
 	MoveImpactRun,
 } from "@/components/cases/use-case-batch-move";
+import { TruncatedText } from "@/components/interaction/truncated-text";
 import { RUN_STATUS_LABELS } from "@/components/test-runs/test-run-meta";
 
 /** 弹窗中最多列出的测试任务数。更多的测试任务只显示数量。 */
@@ -28,9 +29,7 @@ function RunList({ runs }: { runs: readonly MoveImpactRun[] }) {
 		<ul className="flex flex-col gap-1 rounded-lg border p-3 text-sm">
 			{listed.map((run) => (
 				<li className="flex min-w-0 items-center gap-2" key={run.id}>
-					<span className="min-w-0 flex-1 truncate" title={run.name}>
-						{run.name}
-					</span>
+					<TruncatedText className="flex-1" text={run.name} />
 					<span className="shrink-0 text-muted-foreground text-xs">
 						{RUN_STATUS_LABELS[run.status]}
 					</span>

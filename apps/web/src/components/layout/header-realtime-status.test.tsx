@@ -10,6 +10,7 @@ import {
 	RealtimeContext,
 	type RealtimeContextValue,
 } from "@/realtime/realtime-context";
+import { hoverTooltipText } from "@/test-dom-fixtures";
 
 const CONNECTION = {} as RealtimeConnection;
 
@@ -56,10 +57,18 @@ describe("HeaderRealtimeStatus", () => {
 		expect(statusRegion().textContent).toContain("2 人在线");
 	});
 
-	it("鼠标悬停显示完整文字，但 title 不放在状态区域上，避免屏幕阅读器读两遍；头像不在状态区域里", () => {
+	it("鼠标悬停圆点和短文字时，Tooltip 显示完整文字；Tooltip 不在状态区域里，避免屏幕阅读器读两遍；头像不在状态区域里", async () => {
 		render(wrap(contextValue("open")));
-		expect(screen.getByTitle("实时协作已连接，2 人在线")).toBeDefined();
-		expect(statusRegion().hasAttribute("title")).toBe(false);
+		const visual = statusRegion().querySelector<HTMLElement>(
+			'[aria-hidden="true"]'
+		);
+		expect(visual).not.toBeNull();
+		expect(await hoverTooltipText(visual as HTMLElement)).toBe(
+			"实时协作已连接，2 人在线"
+		);
+		expect(
+			statusRegion().querySelector('[data-slot="tooltip-content"]')
+		).toBeNull();
 		const avatar = screen.getByRole("button", { name: "alice（我） · 列表" });
 		expect(statusRegion().contains(avatar)).toBe(false);
 	});

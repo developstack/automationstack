@@ -1,4 +1,9 @@
-import { type ChangeEvent, useCallback } from "react";
+import { Label } from "@automationstack/ui/components/label";
+import {
+	RadioGroup,
+	RadioGroupItem,
+} from "@automationstack/ui/components/radio-group";
+import { useCallback } from "react";
 
 import { SettingsSection } from "@/components/settings/settings-section";
 import {
@@ -16,37 +21,24 @@ const OPTIONS: readonly StorageBackendValue[] = ["local", "r2"];
 
 const RADIO_NAME = "storage-settings-backend";
 
-function BackendOption({
-	checked,
-	onChange,
-	option,
-	pending,
-}: {
-	checked: boolean;
-	onChange: (event: ChangeEvent<HTMLInputElement>) => void;
-	option: StorageBackendValue;
-	pending: boolean;
-}) {
+function BackendOption({ option }: { option: StorageBackendValue }) {
+	const labelId = `${RADIO_NAME}-${option}-label`;
 	const hintId = `${RADIO_NAME}-${option}-hint`;
 	return (
-		<label className="flex items-start gap-2 text-sm has-disabled:opacity-50">
-			<input
+		<Label className="items-start font-normal leading-normal has-data-disabled:opacity-50">
+			<RadioGroupItem
 				aria-describedby={hintId}
-				checked={checked}
-				className="mt-1"
-				disabled={pending}
-				name={RADIO_NAME}
-				onChange={onChange}
-				type="radio"
+				aria-labelledby={labelId}
+				className="mt-0.5"
 				value={option}
 			/>
 			<span className="flex flex-col gap-1">
-				<span>{BACKEND_LABELS[option]}</span>
+				<span id={labelId}>{BACKEND_LABELS[option]}</span>
 				<span className="text-muted-foreground text-xs" id={hintId}>
 					{DESCRIPTIONS[option]}
 				</span>
 			</span>
-		</label>
+		</Label>
 	);
 }
 
@@ -60,8 +52,7 @@ export function StorageBackendField({
 	value: StorageBackendValue;
 }) {
 	const handleChange = useCallback(
-		(event: ChangeEvent<HTMLInputElement>) =>
-			onChange(event.target.value === "r2" ? "r2" : "local"),
+		(next: unknown) => onChange(next === "r2" ? "r2" : "local"),
 		[onChange]
 	);
 
@@ -71,18 +62,18 @@ export function StorageBackendField({
 			headingId="storage-settings-backend-heading"
 			title="存储方式"
 		>
-			<fieldset className="flex flex-col gap-3">
-				<legend className="sr-only">存储方式</legend>
+			<RadioGroup
+				aria-labelledby="storage-settings-backend-heading"
+				className="gap-3"
+				disabled={pending}
+				name={RADIO_NAME}
+				onValueChange={handleChange}
+				value={value}
+			>
 				{OPTIONS.map((option) => (
-					<BackendOption
-						checked={value === option}
-						key={option}
-						onChange={handleChange}
-						option={option}
-						pending={pending}
-					/>
+					<BackendOption key={option} option={option} />
 				))}
-			</fieldset>
+			</RadioGroup>
 		</SettingsSection>
 	);
 }

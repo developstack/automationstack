@@ -1,4 +1,5 @@
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
+import { Button } from "@automationstack/ui/components/button";
 import { cn } from "@automationstack/ui/lib/utils";
 import { FilePenLineIcon } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -30,7 +31,7 @@ export function CaseDraftsLink({ nodes, projectId }: CaseDraftsLinkProps) {
 	return (
 		<>
 			{count > 0 ? (
-				<button
+				<Button
 					aria-label={`未完成草稿，共 ${count} 条`}
 					className={cn(
 						"flex min-h-8 min-w-0 items-center gap-1.5 rounded-md px-2 py-0.5 text-left text-sm outline-none transition-control",
@@ -38,6 +39,7 @@ export function CaseDraftsLink({ nodes, projectId }: CaseDraftsLinkProps) {
 					)}
 					onClick={handleOpen}
 					type="button"
+					variant="plain"
 				>
 					<FilePenLineIcon
 						aria-hidden="true"
@@ -47,7 +49,7 @@ export function CaseDraftsLink({ nodes, projectId }: CaseDraftsLinkProps) {
 					<span className="numeric ms-auto text-muted-foreground text-xs">
 						{count}
 					</span>
-				</button>
+				</Button>
 			) : null}
 			<CaseDraftsDialog
 				drafts={drafts.items}

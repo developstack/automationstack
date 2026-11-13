@@ -1,8 +1,10 @@
 import { Button } from "@automationstack/ui/components/button";
+import { Input } from "@automationstack/ui/components/input";
 import { PlusIcon } from "lucide-react";
 import { type ChangeEvent, useCallback, useRef } from "react";
 
 import { SCREENSHOT_ACCEPT } from "@/components/cases/column-screenshot-group";
+import { HintTooltip } from "@/components/interaction/hint-tooltip";
 
 interface AddScreenshotButtonProps {
 	/** 可以选择的文件类型。默认只有图片；实际附件还可以选择录屏。 */
@@ -32,18 +34,19 @@ export function AddScreenshotButton({
 	);
 	return (
 		<li>
-			<Button
-				aria-label={label}
-				className="size-10 border-dashed"
-				onClick={pick}
-				size="icon"
-				title={label}
-				type="button"
-				variant="outline"
-			>
-				<PlusIcon />
-			</Button>
-			<input
+			<HintTooltip label={label}>
+				<Button
+					aria-label={label}
+					className="size-10 border-dashed"
+					onClick={pick}
+					size="icon"
+					type="button"
+					variant="outline"
+				>
+					<PlusIcon />
+				</Button>
+			</HintTooltip>
+			<Input
 				accept={accept}
 				aria-hidden="true"
 				className="hidden"

@@ -4,6 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { MarkdownToolbar } from "@/components/cases/markdown-toolbar";
+import { hoverTooltipText } from "@/test-dom-fixtures";
 
 let view: EditorView | null = null;
 
@@ -38,11 +39,11 @@ describe("MarkdownToolbar：格式按钮和键盘焦点", () => {
 		expect(document.activeElement).toBe(buttons[0]);
 	});
 
-	it("按钮有可见的提示，点击「加粗」包住选中的文字", () => {
+	it("按钮悬停时 Tooltip 显示名称，点击「加粗」包住选中的文字", async () => {
 		const editor = createView("登录");
 		render(<MarkdownToolbar view={editor} />);
 		const bold = screen.getByRole("button", { name: "加粗" });
-		expect(bold.getAttribute("title")).toBe("加粗");
+		expect(await hoverTooltipText(bold)).toBe("加粗");
 		fireEvent.click(bold);
 		expect(editor.state.doc.toString()).toBe("**登录**");
 	});

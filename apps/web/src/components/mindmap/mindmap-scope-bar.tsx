@@ -1,7 +1,7 @@
 import { buttonVariants } from "@automationstack/ui/components/button";
 import { Link } from "@tanstack/react-router";
 import { LayersIcon, NetworkIcon } from "lucide-react";
-
+import { TruncatedText } from "@/components/interaction/truncated-text";
 import { clearModuleSelection } from "@/components/workspace/workspace-search";
 
 interface MindmapScopeBarProps {
@@ -25,7 +25,7 @@ export function MindmapScopeBar({
 					className="icon-stroke-regular size-3.5 shrink-0 text-muted-foreground"
 				/>
 				<span className="shrink-0 text-muted-foreground">当前只看模块</span>
-				<span className="truncate font-medium">{moduleName ?? "—"}</span>
+				<TruncatedText className="font-medium" text={moduleName ?? "—"} />
 			</p>
 			<Link
 				className={buttonVariants({

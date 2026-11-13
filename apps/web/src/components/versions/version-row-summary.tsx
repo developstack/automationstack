@@ -2,7 +2,7 @@ import { Badge } from "@automationstack/ui/components/badge";
 import type { ReactNode } from "react";
 
 import { formatDateTime } from "@/components/cases/case-meta";
-
+import { TruncatedText } from "@/components/interaction/truncated-text";
 import type { CaseVersionRow, VersionSelectionRole } from "./version-pair.ts";
 import { VersionTag } from "./version-tag.tsx";
 
@@ -51,9 +51,7 @@ export function VersionRowSummary({
 				</span>
 			</p>
 			{row.changeNote ? (
-				<p className="truncate text-xs" title={row.changeNote}>
-					{row.changeNote}
-				</p>
+				<TruncatedText className="block text-xs" text={row.changeNote} />
 			) : null}
 		</>
 	);

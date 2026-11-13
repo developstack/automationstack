@@ -1,3 +1,12 @@
+import {
+	Table,
+	TableBody,
+	TableCaption,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@automationstack/ui/components/table";
 import { formatCount } from "@/components/overview/overview-metrics";
 
 export interface TrendSrColumn<TRow> {
@@ -19,28 +28,30 @@ export function TrendSrTable<TRow extends { range: string }>({
 	rows,
 }: TrendSrTableProps<TRow>) {
 	return (
-		<table className="sr-only">
-			<caption>{caption}</caption>
-			<thead>
-				<tr>
-					<th scope="col">7 天区间</th>
+		<Table className="sr-only">
+			<TableCaption>{caption}</TableCaption>
+			<TableHeader>
+				<TableRow>
+					<TableHead scope="col">7 天区间</TableHead>
 					{columns.map((column) => (
-						<th key={column.key} scope="col">
+						<TableHead key={column.key} scope="col">
 							{column.label}
-						</th>
+						</TableHead>
 					))}
-				</tr>
-			</thead>
-			<tbody>
+				</TableRow>
+			</TableHeader>
+			<TableBody>
 				{rows.map((row) => (
-					<tr key={row.range}>
-						<th scope="row">{row.range}</th>
+					<TableRow key={row.range}>
+						<TableHead scope="row">{row.range}</TableHead>
 						{columns.map((column) => (
-							<td key={column.key}>{formatCount(column.countOf(row))}</td>
+							<TableCell key={column.key}>
+								{formatCount(column.countOf(row))}
+							</TableCell>
 						))}
-					</tr>
+					</TableRow>
 				))}
-			</tbody>
-		</table>
+			</TableBody>
+		</Table>
 	);
 }

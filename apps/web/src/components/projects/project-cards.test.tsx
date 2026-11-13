@@ -1,10 +1,14 @@
 import type { Project } from "@automationstack/db/schema/projects";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ProjectCards } from "@/components/projects/project-cards";
 import { ProjectListSkeleton } from "@/components/projects/project-list-skeleton";
-import { renderRoutes } from "@/test-dom-fixtures";
+import {
+	hoverTooltipText,
+	markTruncated,
+	renderRoutes,
+} from "@/test-dom-fixtures";
 
 const LONG_NAME = "一个名称很长很长很长很长很长很长很长很长很长很长的项目";
 const LONG_DESCRIPTION = "描述".repeat(200);
@@ -54,11 +58,13 @@ describe("ProjectCards：卡片尺寸固定，网格从左排列", () => {
 		expect(skeletonGrid?.className).toBe(card?.parentElement?.className);
 	});
 
-	it("项目名只占一行，完整名称在 title 中；描述最多两行", async () => {
+	it("项目名只占一行，被截断时悬停用 Tooltip 显示完整名称；描述最多两行", async () => {
 		const link = await renderCardsAndSkeleton();
+		const name = within(link).getByText(LONG_NAME);
 
-		expect(link.title).toBe(LONG_NAME);
-		expect(link.classList.contains("truncate")).toBe(true);
+		expect(name.classList.contains("truncate")).toBe(true);
+		markTruncated(name);
+		expect(await hoverTooltipText(name)).toBe(LONG_NAME);
 		expect(
 			screen.getByText(LONG_DESCRIPTION).classList.contains("line-clamp-2")
 		).toBe(true);

@@ -15,6 +15,7 @@ import {
 	TableRow,
 } from "@automationstack/ui/components/table";
 import { formatDateTime } from "@/components/cases/case-meta";
+import { HintTooltip } from "@/components/interaction/hint-tooltip";
 import {
 	formatExecutionCounts,
 	isExecutionIncomplete,
@@ -31,22 +32,19 @@ function ExecutionTimeCell({
 }) {
 	return (
 		<div className="flex flex-wrap items-center gap-2">
-			<span
-				title={
-					execution.finishedAt === null
-						? undefined
-						: `脚本自报的结束时间：${formatDateTime(execution.finishedAt)}`
-				}
-			>
-				{formatDateTime(execution.reportedAt)}
-			</span>
-			{isExecutionIncomplete(execution) ? (
-				<Badge
-					title="这一轮没跑完（进程被杀或写入回滚），下面的条数只是已经写进去的那部分"
-					variant="outline"
+			{execution.finishedAt === null ? (
+				<span>{formatDateTime(execution.reportedAt)}</span>
+			) : (
+				<HintTooltip
+					label={`脚本自报的结束时间：${formatDateTime(execution.finishedAt)}`}
 				>
-					未完成
-				</Badge>
+					<span>{formatDateTime(execution.reportedAt)}</span>
+				</HintTooltip>
+			)}
+			{isExecutionIncomplete(execution) ? (
+				<HintTooltip label="这一轮没跑完（进程被杀或写入回滚），下面的条数只是已经写进去的那部分">
+					<Badge variant="outline">未完成</Badge>
+				</HintTooltip>
 			) : null}
 		</div>
 	);

@@ -1,3 +1,5 @@
+import { buttonVariants } from "@automationstack/ui/components/button";
+import { cn } from "@automationstack/ui/lib/utils";
 import { Fragment, type ReactElement } from "react";
 
 import { ImageNode } from "@/components/cases/image-node";
@@ -46,7 +48,10 @@ function renderInline(
 		default:
 			return (
 				<a
-					className="text-primary underline underline-offset-2"
+					className={cn(
+						buttonVariants({ size: "inline", variant: "link" }),
+						"underline underline-offset-2"
+					)}
 					href={node.url}
 					rel="noopener"
 					target="_blank"

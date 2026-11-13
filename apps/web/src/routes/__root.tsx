@@ -1,5 +1,7 @@
+import { buttonVariants } from "@automationstack/ui/components/button";
 import { Toaster } from "@automationstack/ui/components/sonner";
 import { TooltipProvider } from "@automationstack/ui/components/tooltip";
+import { cn } from "@automationstack/ui/lib/utils";
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import {
@@ -107,7 +109,10 @@ function RootDocument() {
 			</head>
 			<body>
 				<a
-					className="skip-link top-2 left-2 z-50 rounded-md border bg-background px-3 py-2 font-medium text-foreground text-sm shadow-lg focus:ring-2 focus:ring-ring"
+					className={cn(
+						buttonVariants({ variant: "outline" }),
+						"skip-link top-2 left-2 z-50 bg-background px-3 py-2 shadow-lg focus:ring-2 focus:ring-ring"
+					)}
 					href="#main"
 				>
 					跳到主要内容
