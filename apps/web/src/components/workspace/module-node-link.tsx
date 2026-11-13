@@ -2,6 +2,7 @@ import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
 import { cn } from "@automationstack/ui/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { FolderIcon } from "lucide-react";
+import { TruncatedText } from "@/components/interaction/truncated-text";
 import { moduleLinkAttributes } from "@/components/workspace/module-tree-focus";
 import { treeTextClass } from "@/components/workspace/module-tree-text";
 import { useSelectModuleSearch } from "@/components/workspace/use-select-module-search";
@@ -38,7 +39,7 @@ export function ModuleNodeLink({ depth, node, selected }: ModuleNodeLinkProps) {
 					selected ? "text-foreground" : "text-muted-foreground"
 				)}
 			/>
-			<span className="truncate">{node.name}</span>
+			<TruncatedText text={node.name} />
 		</Link>
 	);
 }

@@ -19,6 +19,7 @@ import {
 
 import { useCaseAttachments } from "@/components/cases/case-attachment-context";
 import { MARKDOWN_TOOLBAR_CLASS } from "@/components/cases/markdown-editor-classes";
+import { HintTooltip } from "@/components/interaction/hint-tooltip";
 
 function wrapSelection(view: EditorView, marker: string) {
 	const range = view.state.selection.main;
@@ -159,21 +160,22 @@ function ToolbarButton({
 	);
 
 	return (
-		<Button
-			aria-label={command.label}
-			disabled={view === null}
-			onClick={handleClick}
-			onKeyDown={onKeyDown}
-			onMouseDown={handleMouseDown}
-			ref={handleRef}
-			size="icon-xs"
-			tabIndex={isActive ? 0 : -1}
-			title={command.label}
-			type="button"
-			variant="ghost"
-		>
-			<Icon />
-		</Button>
+		<HintTooltip label={command.label}>
+			<Button
+				aria-label={command.label}
+				disabled={view === null}
+				onClick={handleClick}
+				onKeyDown={onKeyDown}
+				onMouseDown={handleMouseDown}
+				ref={handleRef}
+				size="icon-xs"
+				tabIndex={isActive ? 0 : -1}
+				type="button"
+				variant="ghost"
+			>
+				<Icon />
+			</Button>
+		</HintTooltip>
 	);
 }
 

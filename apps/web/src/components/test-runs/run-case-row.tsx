@@ -1,9 +1,11 @@
+import { Button } from "@automationstack/ui/components/button";
 import { Checkbox } from "@automationstack/ui/components/checkbox";
 import { cn } from "@automationstack/ui/lib/utils";
 import { UserIcon } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
 
 import { CaseCollaboratorsCell } from "@/components/cases/case-collaborators-cell";
+import { TruncatedText } from "@/components/interaction/truncated-text";
 import { StatusBadge } from "@/components/status/status-badge";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
 import {
@@ -44,7 +46,7 @@ function RunCaseRowContent({
 	const Icon = RESULT_ICONS[runCase.result];
 
 	return (
-		<button
+		<Button
 			aria-current={selected ? "true" : undefined}
 			className={cn(
 				"flex min-w-0 flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-accent",
@@ -52,6 +54,7 @@ function RunCaseRowContent({
 			)}
 			onClick={onSelect}
 			type="button"
+			variant="plain"
 		>
 			<Icon
 				aria-hidden="true"
@@ -61,9 +64,7 @@ function RunCaseRowContent({
 				)}
 			/>
 			<span className="sr-only">{RESULT_LABELS[runCase.result]}</span>
-			<span className="min-w-0 flex-1 truncate" title={testCase.name}>
-				{testCase.name}
-			</span>
+			<TruncatedText className="flex-1" text={testCase.name} />
 			<StatusBadge kind="priority" value={testCase.priority} />
 			{runCase.assigneeId !== null && (
 				<UserIcon
@@ -71,7 +72,7 @@ function RunCaseRowContent({
 					className="icon-stroke-regular size-3 text-muted-foreground"
 				/>
 			)}
-		</button>
+		</Button>
 	);
 }
 

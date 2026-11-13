@@ -11,7 +11,7 @@ import {
 	PlusIcon,
 } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-
+import { HintTooltip } from "@/components/interaction/hint-tooltip";
 import type { MindmapFullscreen } from "./mindmap-fullscreen.ts";
 
 type ScaleListener = (scale: number) => void;
@@ -74,14 +74,11 @@ function CommandButton({
 	onClick,
 }: CommandButtonProps) {
 	return (
-		<ToolbarButton
-			aria-label={label}
-			disabled={disabled}
-			onClick={onClick}
-			title={label}
-		>
-			{children}
-		</ToolbarButton>
+		<HintTooltip label={label}>
+			<ToolbarButton aria-label={label} disabled={disabled} onClick={onClick}>
+				{children}
+			</ToolbarButton>
+		</HintTooltip>
 	);
 }
 

@@ -6,7 +6,7 @@ import {
 	waitFor,
 } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-
+import { hoverTooltipText } from "@/test-dom-fixtures";
 import {
 	MindmapToolbar,
 	type MindmapToolbarViewport,
@@ -104,7 +104,8 @@ describe("MindmapToolbar：缩放、回到中心和全屏", () => {
 		render(toolbar());
 		const buttons = screen.getAllByRole("button");
 		for (const button of buttons) {
-			expect(button.getAttribute("title")).toBe(
+			// biome-ignore lint/performance/noAwaitInLoops: 一次只能悬停一个按钮
+			expect(await hoverTooltipText(button)).toBe(
 				button.getAttribute("aria-label")
 			);
 		}

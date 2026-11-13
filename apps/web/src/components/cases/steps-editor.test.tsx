@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { StepsEditor } from "@/components/cases/steps-editor";
+import { hoverTooltipText } from "@/test-dom-fixtures";
 
 const EMPTY_HINT = /还没有步骤/;
 
@@ -68,9 +69,12 @@ describe("StepsEditor：步骤编辑器", () => {
 		]);
 	});
 
-	it("每一步有拖动排序的把手，键盘用户使用上移和下移按钮", () => {
+	it("每一步有拖动排序的把手，悬停时 Tooltip 显示说明；键盘用户使用上移和下移按钮", async () => {
 		renderEditor(STEPS);
-		const handle = screen.getByTitle("拖动第 2 步排序");
+		const handle = document.querySelectorAll<HTMLElement>(
+			"span.cursor-grab[aria-hidden='true']"
+		)[1] as HTMLElement;
+		expect(await hoverTooltipText(handle)).toBe("拖动第 2 步排序");
 		expect(handle.getAttribute("aria-hidden")).toBe("true");
 		expect(handle.tabIndex).toBe(-1);
 	});

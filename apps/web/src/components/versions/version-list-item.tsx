@@ -1,3 +1,4 @@
+import { Button } from "@automationstack/ui/components/button";
 import { cn } from "@automationstack/ui/lib/utils";
 import { useCallback } from "react";
 
@@ -46,16 +47,17 @@ export function VersionListItem({
 					className="absolute inset-y-2 left-1 w-0.5 rounded-full bg-foreground"
 				/>
 			)}
-			<button
+			<Button
 				aria-label={
 					selected
 						? `取消选择 v${row.version}`
 						: `选择 v${row.version} 查看或对比`
 				}
 				aria-pressed={selected}
-				className="absolute inset-0 cursor-pointer outline-none transition-focus-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+				className="absolute inset-0 cursor-pointer rounded-none p-0 outline-none transition-focus-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 				onClick={handleToggle}
 				type="button"
+				variant="plain"
 			/>
 			<VersionRowSummary
 				action={rollbackButton}

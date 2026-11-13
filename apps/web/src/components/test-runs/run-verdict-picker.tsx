@@ -1,5 +1,6 @@
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
 import { Button } from "@automationstack/ui/components/button";
+import { Kbd } from "@automationstack/ui/components/kbd";
 import { useCallback } from "react";
 
 import {
@@ -41,9 +42,9 @@ function VerdictButton({
 				className={active ? undefined : RESULT_TEXT_CLASSES[value]}
 			/>
 			{RESULT_LABELS[value]}
-			<kbd className="rounded border px-1 font-mono text-kbd-hint opacity-70">
+			<Kbd className="h-auto min-w-0 border bg-transparent font-mono text-current text-kbd-hint opacity-70">
 				{VERDICT_SHORTCUT_KEYS[value]}
-			</kbd>
+			</Kbd>
 		</Button>
 	);
 }

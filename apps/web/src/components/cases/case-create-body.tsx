@@ -9,7 +9,7 @@ import {
 	SheetHeader,
 	SheetTitle,
 } from "@automationstack/ui/components/sheet";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { CaseAttachmentProvider } from "@/components/cases/case-attachment-context";
 import { CaseDraftNotice } from "@/components/cases/case-draft-notice";
@@ -17,7 +17,6 @@ import { CaseDraftPicker } from "@/components/cases/case-draft-picker";
 import { CaseForm } from "@/components/cases/case-form";
 import { isCaseFormDirty } from "@/components/cases/case-form-dirty";
 import { CaseHeaderMeta } from "@/components/cases/case-header-meta";
-import { emptyCaseFormValues } from "@/components/cases/case-meta";
 import {
 	CASE_SHEET_HEADER_CLASS,
 	CASE_SHEET_TITLE_CLASS,
@@ -165,9 +164,8 @@ export function CaseCreateBody(props: CaseCreateBodyProps) {
 		onDirtyChange,
 		projectId,
 	} = props;
-	const baseline = useMemo(() => emptyCaseFormValues(), []);
 	const draft = useCaseCreateDraft(projectId, moduleId, draftId);
-	const { attachments, caseId, forget, values } = draft;
+	const { attachments, baseline, caseId, forget, values } = draft;
 
 	const create = useCaseCreateMutation({ forget, onClose, onCreated });
 

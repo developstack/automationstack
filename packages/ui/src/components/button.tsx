@@ -26,6 +26,9 @@ const buttonVariants = cva(
 				"icon-sm": "size-7 in-data-[slot=button-group]:rounded-md",
 				"icon-xs":
 					"size-6 in-data-[slot=button-group]:rounded-md [&_svg:not([class*='size-'])]:size-3",
+				// 本地增加：正文中的链接。和周围的文字一样排版，可以换行，没有高度和内边距
+				inline:
+					"inline h-auto select-text whitespace-normal border-0 p-0 align-baseline font-normal text-[length:inherit]",
 				lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
 				sm: "h-7 gap-1 in-data-[slot=button-group]:rounded-md px-2.5 has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5",
 				xs: "h-6 gap-1 in-data-[slot=button-group]:rounded-md px-2 text-xs has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
@@ -39,6 +42,10 @@ const buttonVariants = cva(
 				link: "text-primary underline-offset-4 hover:underline",
 				outline:
 					"border-border bg-card shadow-xs hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+				// 本地增加：列表中的整行按钮、缩略图和拖拽把手。左对齐，可以换行，没有背景和按压缩放。
+				// 背景、尺寸和内边距由调用方给出
+				plain:
+					"h-auto justify-start whitespace-normal border-0 text-left font-normal",
 				secondary:
 					"bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
 			},

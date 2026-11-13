@@ -1,3 +1,4 @@
+import { Button } from "@automationstack/ui/components/button";
 import { DropdownMenuTrigger } from "@automationstack/ui/components/dropdown-menu";
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 import { ChevronsUpDownIcon } from "lucide-react";
@@ -34,10 +35,11 @@ export function ProjectSwitcherTrigger({
 	return (
 		<DropdownMenuTrigger
 			render={
-				<button
+				<Button
 					aria-label={`切换项目：当前是 ${projectName}${roleSuffix}`}
-					className="flex h-12 w-full items-center gap-2.5 rounded-md border bg-card pr-2 pl-bordered-inset text-left text-card-foreground shadow-card outline-none transition-control hover:bg-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring aria-expanded:bg-accent"
+					className="flex h-12 w-full items-center gap-2.5 rounded-md border bg-card px-0 pr-2 pl-bordered-inset text-left text-card-foreground shadow-card outline-none transition-control hover:bg-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring aria-expanded:bg-accent"
 					type="button"
+					variant="plain"
 				>
 					<ProjectMark projectName={projectName} />
 					<span className="flex min-w-0 flex-1 flex-col">
@@ -48,7 +50,7 @@ export function ProjectSwitcherTrigger({
 						aria-hidden="true"
 						className="size-4 shrink-0 text-muted-foreground"
 					/>
-				</button>
+				</Button>
 			}
 		/>
 	);

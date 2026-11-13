@@ -1,4 +1,5 @@
 import type { TestRunCaseResult } from "@automationstack/db/schema/test-runs";
+import { Label } from "@automationstack/ui/components/label";
 import { Textarea } from "@automationstack/ui/components/textarea";
 import { type ChangeEvent, useCallback, useEffect, useState } from "react";
 
@@ -57,9 +58,12 @@ function VerdictCommentField({
 
 	return (
 		<div className="flex flex-col gap-1.5">
-			<label className={RUN_SECTION_TEXT} htmlFor="run-comment">
+			<Label
+				className={`${RUN_SECTION_TEXT} font-normal`}
+				htmlFor="run-comment"
+			>
 				{commentText.label}
-			</label>
+			</Label>
 			<Textarea
 				id="run-comment"
 				key={runCaseId}

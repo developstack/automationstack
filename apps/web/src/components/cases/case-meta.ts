@@ -88,10 +88,11 @@ export interface CaseFormValues {
 	tagsText: string;
 }
 
-export function emptyCaseFormValues(): CaseFormValues {
+/** 新用例的表单。维护人默认是创建者。 */
+export function emptyCaseFormValues(maintainer = ""): CaseFormValues {
 	return {
 		caseType: "functional",
-		maintainer: "",
+		maintainer,
 		name: "",
 		preconditions: "",
 		priority: "P2",

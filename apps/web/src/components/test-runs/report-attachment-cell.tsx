@@ -1,9 +1,10 @@
-import { Button } from "@automationstack/ui/components/button";
+import { Button, buttonVariants } from "@automationstack/ui/components/button";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@automationstack/ui/components/popover";
+import { cn } from "@automationstack/ui/lib/utils";
 import { ImageIcon } from "lucide-react";
 
 import type { AttachmentListItem } from "@/components/test-runs/attachment-list";
@@ -21,7 +22,10 @@ function AttachmentLinks({ items }: { items: readonly AttachmentListItem[] }) {
 						</span>
 					) : (
 						<a
-							className="text-sm underline underline-offset-2"
+							className={cn(
+								buttonVariants({ size: "inline", variant: "link" }),
+								"text-inherit text-sm underline underline-offset-2"
+							)}
 							href={url}
 							rel="noopener"
 							target="_blank"

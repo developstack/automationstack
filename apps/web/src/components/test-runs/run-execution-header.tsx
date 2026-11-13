@@ -1,5 +1,5 @@
 import type { TestRun } from "@automationstack/db/schema/test-runs";
-import { Button } from "@automationstack/ui/components/button";
+import { Button, buttonVariants } from "@automationstack/ui/components/button";
 import { Link } from "@tanstack/react-router";
 import { FileTextIcon } from "lucide-react";
 import { useCallback } from "react";
@@ -74,18 +74,14 @@ export function RunExecutionHeader({
 			actions={
 				<>
 					<ReviewActions run={run} />
-					<Button
-						render={
-							<Link
-								params={{ projectId, runId: run.id }}
-								to="/projects/$projectId/test-runs/$runId/report"
-							/>
-						}
-						variant="outline"
+					<Link
+						className={buttonVariants({ variant: "outline" })}
+						params={{ projectId, runId: run.id }}
+						to="/projects/$projectId/test-runs/$runId/report"
 					>
 						<FileTextIcon aria-hidden="true" data-icon="inline-start" />
 						查看报告
-					</Button>
+					</Link>
 				</>
 			}
 			badge={<StatusBadge kind="runStatus" value={run.status} />}

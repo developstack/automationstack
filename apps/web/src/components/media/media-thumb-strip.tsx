@@ -1,3 +1,4 @@
+import { Button } from "@automationstack/ui/components/button";
 import { type MouseEvent, type ReactNode, useCallback } from "react";
 
 import type {
@@ -33,14 +34,15 @@ function MoreButton({
 		[from, onOpen]
 	);
 	return (
-		<button
+		<Button
 			aria-label={`查看另外 ${hidden} 个`}
 			className={`${MEDIA_THUMB_CLASS} numeric text-muted-foreground text-xs`}
 			onClick={open}
 			type="button"
+			variant="plain"
 		>
 			{`+${hidden}`}
-		</button>
+		</Button>
 	);
 }
 

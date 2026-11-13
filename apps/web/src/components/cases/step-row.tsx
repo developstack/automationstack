@@ -9,6 +9,7 @@ import {
 } from "@/components/cases/step-drag";
 import { STEP_GRID_CLASS } from "@/components/cases/step-grid-header";
 import { StepRowActions } from "@/components/cases/step-row-actions";
+import { HintTooltip } from "@/components/interaction/hint-tooltip";
 
 const DROP_EDGE_CLASS: Record<Exclude<StepDropEdge, null>, string> = {
 	after: "before:bottom-0",
@@ -51,15 +52,16 @@ function StepNumber({
 }) {
 	return (
 		<div className="flex items-center gap-1 sm:flex-col sm:pt-1">
-			<span
-				aria-hidden="true"
-				className="flex size-6 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
-				ref={handle.setRef}
-				title={`拖动第 ${position} 步排序`}
-				{...handle.listeners}
-			>
-				<GripVerticalIcon className="size-3.5" />
-			</span>
+			<HintTooltip label={`拖动第 ${position} 步排序`}>
+				<span
+					aria-hidden="true"
+					className="flex size-6 cursor-grab touch-none items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground active:cursor-grabbing"
+					ref={handle.setRef}
+					{...handle.listeners}
+				>
+					<GripVerticalIcon className="size-3.5" />
+				</span>
+			</HintTooltip>
 			<span className="numeric text-muted-foreground text-xs">{position}</span>
 		</div>
 	);

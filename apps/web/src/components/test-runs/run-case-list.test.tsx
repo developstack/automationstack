@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { RunCaseList } from "@/components/test-runs/run-case-list";
 import type { RunCaseDetail } from "@/components/test-runs/run-execution-meta";
+import { hoverTooltipText, markTruncated } from "@/test-dom-fixtures";
 
 function node(
 	id: string,
@@ -96,12 +97,12 @@ describe("RunCaseList：左栏按模块分组", () => {
 		expect(
 			screen.getByRole("button", { name: "供应商 模块，1 条用例" })
 		).toBeDefined();
-		expect(screen.getByText("新增供应商").getAttribute("title")).toBe(
-			"新增供应商"
-		);
-		expect(screen.getByText("查看模型列表").getAttribute("title")).toBe(
-			"查看模型列表"
-		);
+		for (const name of ["新增供应商", "查看模型列表"]) {
+			const text = screen.getByText(name);
+			markTruncated(text);
+			// biome-ignore lint/performance/noAwaitInLoops: 一次只能悬停一个用例
+			expect(await hoverTooltipText(text)).toBe(name);
+		}
 	});
 
 	it("says so when the filter hides every case", () => {

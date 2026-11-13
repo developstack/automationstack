@@ -1,3 +1,4 @@
+import { Button } from "@automationstack/ui/components/button";
 import { cn } from "@automationstack/ui/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { LayersIcon } from "lucide-react";
@@ -35,7 +36,7 @@ export function CasePickerModules({
 
 	return (
 		<nav aria-label="按模块筛选用例" className="flex flex-col gap-1 p-2">
-			<button
+			<Button
 				aria-current={selectedModuleId === undefined ? "true" : undefined}
 				className={cn(
 					MODULE_OPTION_ROW_CLASS,
@@ -45,10 +46,11 @@ export function CasePickerModules({
 				)}
 				onClick={selectAll}
 				type="button"
+				variant="plain"
 			>
 				<LayersIcon aria-hidden="true" className={MODULE_OPTION_ICON_CLASS} />
 				全部用例
-			</button>
+			</Button>
 			<ModuleOptionList
 				nodes={treeQuery.data}
 				onSelect={onSelect}
