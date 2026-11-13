@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSession } from "@/components/auth/use-session";
 import {
 	type DraftSession,
 	freshSession,
@@ -26,6 +27,8 @@ function clearDraftIfAny(projectId: string, caseId: string | null): void {
 
 export interface CaseCreateDraft {
 	attachments: CaseDraftAttachments;
+	/** 没有改动的新用例表单。维护人是当前用户。 */
+	baseline: CaseFormValues;
 	caseId: string | null;
 	discard: () => void;
 	forget: () => void;
@@ -45,15 +48,24 @@ function sessionFields(
 	};
 }
 
+/** 新用例表单的值和没有改动时的值。维护人默认是当前用户。 */
+function useNewCaseValues() {
+	const maintainer = useSession().user?.username ?? "";
+	const [values, setValues] = useState<CaseFormValues>(() =>
+		emptyCaseFormValues(maintainer)
+	);
+	const baseline = useMemo(() => emptyCaseFormValues(maintainer), [maintainer]);
+	return { baseline, maintainer, setValues, values };
+}
+
 export function useCaseCreateDraft(
 	projectId: string,
 	moduleId: string,
 	draftId: string | undefined
 ): CaseCreateDraft {
 	const [session, setSession] = useState<DraftSession | null>(null);
-	const [values, setValues] = useState<CaseFormValues>(emptyCaseFormValues);
+	const { baseline, maintainer, setValues, values } = useNewCaseValues();
 	const [saved, setSaved] = useState(false);
-	const baseline = useMemo(() => emptyCaseFormValues(), []);
 
 	useEffect(() => {
 		const opened = openDraftSession(projectId, draftId);
@@ -61,7 +73,7 @@ export function useCaseCreateDraft(
 		if (opened.values !== null) {
 			setValues(opened.values);
 		}
-	}, [draftId, projectId]);
+	}, [draftId, projectId, setValues]);
 
 	const currentCaseId = session?.caseId ?? null;
 
@@ -83,9 +95,9 @@ export function useCaseCreateDraft(
 
 	const discard = useCallback(() => {
 		clearDraftIfAny(projectId, currentCaseId);
-		setValues(emptyCaseFormValues());
+		setValues(emptyCaseFormValues(maintainer));
 		setSession(freshSession());
-	}, [currentCaseId, projectId]);
+	}, [currentCaseId, maintainer, projectId, setValues]);
 
 	const forget = useCallback(() => {
 		setSaved(true);
@@ -94,6 +106,7 @@ export function useCaseCreateDraft(
 
 	return {
 		attachments,
+		baseline,
 		discard,
 		forget,
 		setValues,

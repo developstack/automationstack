@@ -75,7 +75,8 @@ function toCaseInsertValues(
 		caseType: input.caseType,
 		id: input.id,
 		lastModifiedBy: input.actorName,
-		maintainer: input.maintainer ?? null,
+		// 没有填维护人时，创建者就是维护人
+		maintainer: input.maintainer ?? input.actorName,
 		moduleId: input.moduleId,
 		name: input.name,
 		preconditions: input.preconditions ?? null,
