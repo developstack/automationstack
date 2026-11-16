@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createWriteStream } from "node:fs";
-import { mkdir, rename, rm, stat } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -99,6 +99,33 @@ function requirePath(root: string, storageKey: string): string {
 	return filePath;
 }
 
+async function readLocalBytes(
+	root: string,
+	storageKey: string
+): Promise<Uint8Array | null> {
+	try {
+		return new Uint8Array(await readFile(requirePath(root, storageKey)));
+	} catch (error) {
+		if (isMissingFile(error)) {
+			return null;
+		}
+		throw error;
+	}
+}
+
+/** 先写到同一目录中的临时文件再改名，与 writeLocalObject 相同，读取方不会读到写了一半的文件。 */
+async function writeLocalBytes(
+	root: string,
+	storageKey: string,
+	body: Uint8Array
+): Promise<void> {
+	const filePath = requirePath(root, storageKey);
+	await mkdir(path.dirname(filePath), { recursive: true });
+	const temporaryPath = `${filePath}.${randomUUID()}.uploading`;
+	await writeFile(temporaryPath, body, { flag: "wx" });
+	await rename(temporaryPath, filePath);
+}
+
 /**
  * 服务器本地目录中的对象存储。上传和下载使用 server 签发的地址（file-url-signing），
  * 与 R2 的预签名地址的用法相同，所以前端、MCP 和 SDK 不需要区分两种存储。
@@ -142,9 +169,11 @@ export function createLocalStorage(
 				})
 			);
 		},
+		readObject: (storageKey) => readLocalBytes(root, storageKey),
 		remove: async (storageKey) => {
 			await rm(requirePath(root, storageKey), { force: true });
 		},
+		writeObject: (storageKey, body) => writeLocalBytes(root, storageKey, body),
 	};
 }
 

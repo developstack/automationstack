@@ -17,7 +17,7 @@ export interface StorageParts {
 
 /**
  * 把本地存储和 R2 合成一个存储。新文件写到 upload。
- * 读取和删除时，本地目录中有这个对象就用本地，否则用 R2。
+ * 读取和删除时，本地目录中有这个对象就用本地，否则用 R2。复制时从文件所在的存储读取，写到 upload。
  * 所以切换存储方式后，以前上传的文件仍然可以查看和删除，不需要迁移。
  */
 export function composeObjectStorage(parts: StorageParts): ObjectStorage {
@@ -36,7 +36,11 @@ export function composeObjectStorage(parts: StorageParts): ObjectStorage {
 			(await holder(storageKey)).presignDownload(storageKey),
 		presignUpload: (storageKey, object) =>
 			parts.upload.presignUpload(storageKey, object),
+		readObject: async (storageKey) =>
+			(await holder(storageKey)).readObject(storageKey),
 		remove: async (storageKey) => (await holder(storageKey)).remove(storageKey),
+		writeObject: (storageKey, body, contentType) =>
+			parts.upload.writeObject(storageKey, body, contentType),
 	};
 }
 

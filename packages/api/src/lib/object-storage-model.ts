@@ -14,4 +14,12 @@ export interface ObjectStorage extends AttachmentObjectStore {
 	presignDownload: (storageKey: string) => Promise<string>;
 	/** 签发上传地址。地址只接受这个类型和这个准确大小的文件。 */
 	presignUpload: (storageKey: string, object: UploadObject) => Promise<string>;
+	/** 读取对象的内容。对象不存在时返回 null。 */
+	readObject: (storageKey: string) => Promise<Uint8Array | null>;
+	/** 写入对象。服务端复制文件时使用，例如把实际附件复制为预期截图。 */
+	writeObject: (
+		storageKey: string,
+		body: Uint8Array,
+		contentType: string
+	) => Promise<void>;
 }

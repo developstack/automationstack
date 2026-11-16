@@ -114,6 +114,17 @@ describe("createLocalStorage", () => {
 		await expect(storage.remove(KEY)).resolves.toBeUndefined();
 	});
 
+	it("writeObject and readObject copy the bytes; a missing file reads as null", async () => {
+		const storage = createLocalStorage(root);
+		await expect(storage.readObject(KEY)).resolves.toBeNull();
+		const body = new TextEncoder().encode("image");
+		await storage.writeObject(KEY, body, "image/png");
+		await expect(storage.readObject(KEY)).resolves.toEqual(body);
+		await expect(storage.headObject(KEY)).resolves.toMatchObject({
+			contentLength: body.byteLength,
+		});
+	});
+
 	it("addresses use the origin of the request and the /files/ path", async () => {
 		const storage = createLocalStorage(root);
 		const urls = await runWithRequestOrigin("https://test.example.com", () =>

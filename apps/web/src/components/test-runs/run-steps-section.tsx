@@ -19,12 +19,15 @@ import type { VerdictEditingMode } from "@/components/test-runs/run-verdict-edit
 import { StepAttachmentStorageNotice } from "@/components/test-runs/step-attachment-storage-notice";
 import { useRunStepDraft } from "@/components/test-runs/use-run-step-draft";
 import {
+	type StepAdoptionHandle,
 	useRunStepSave,
 	useRunStepShortcuts,
+	useStepAdoption,
 } from "@/components/test-runs/use-run-step-save";
 
 interface RunStepCardListProps {
 	actualResults: Record<string, string>;
+	adoption: StepAdoptionHandle;
 	editing: boolean;
 	imageUrls: MarkdownImageUrls;
 	judged: Record<string, TestRunStepResult>;
@@ -35,6 +38,7 @@ interface RunStepCardListProps {
 
 function RunStepCardList({
 	actualResults,
+	adoption,
 	editing,
 	imageUrls,
 	judged,
@@ -47,11 +51,13 @@ function RunStepCardList({
 			{steps.map((step, index) => (
 				<RunStepCard
 					actualResult={actualResults[step.id] ?? ""}
+					adopting={adoption.adopting}
 					editing={editing}
 					imageUrls={imageUrls}
 					index={index}
 					key={step.id}
 					onActualResultChange={onActualResultChange}
+					onAdopt={adoption.adopt}
 					onPick={onPick}
 					result={judged[step.id]}
 					step={step}
@@ -125,11 +131,9 @@ function useRunStepsSection(
 		stepResults: runCase.stepResults,
 		steps,
 	});
-	const { actualResults, judged } = draft;
-	const { markSaved } = draft;
+	const { actualResults, dirty, judged, markSaved } = draft;
 	const { editing, startEditing, stopEditing } = editingMode;
 
-	const { dirty } = draft;
 	useEffect(() => {
 		if (dirty) {
 			startEditing();
@@ -141,16 +145,18 @@ function useRunStepsSection(
 		stopEditing();
 	}, [markSaved, stopEditing]);
 
-	const attachedStepIds = useAttachedStepIds();
-	const save = useRunStepSave({
+	// 保存判定和设为预期结果提交同样的判定，成功后都调用 onSaved
+	const writes = {
 		actualResults,
-		attachedStepIds,
 		caseVersion: testCase.currentVersion,
 		judged,
 		onSaved,
 		runCaseId: runCase.id,
 		steps,
-	});
+	};
+	const attachedStepIds = useAttachedStepIds();
+	const save = useRunStepSave({ ...writes, attachedStepIds });
+	const adoption = useStepAdoption(writes);
 	useRunStepShortcuts({
 		enabled: editing,
 		judged,
@@ -159,6 +165,7 @@ function useRunStepsSection(
 	});
 
 	return {
+		adoption,
 		draft,
 		editing,
 		preview: useStepsPreview(steps, judged),
@@ -172,7 +179,7 @@ export function RunStepsSection({
 	imageUrls,
 	item,
 }: RunStepsSectionProps) {
-	const { draft, editing, preview, save, steps } = useRunStepsSection(
+	const { adoption, draft, editing, preview, save, steps } = useRunStepsSection(
 		item,
 		editingMode
 	);
@@ -187,6 +194,7 @@ export function RunStepsSection({
 			<StepAttachmentStorageNotice />
 			<RunStepCardList
 				actualResults={actualResults}
+				adoption={adoption}
 				editing={editing}
 				imageUrls={imageUrls}
 				judged={judged}
