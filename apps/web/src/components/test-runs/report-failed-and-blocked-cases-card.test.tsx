@@ -152,8 +152,9 @@ describe("报告中的失败和阻塞用例：每个步骤的实际结果", () =
 		fireEvent.click(screen.getByRole("button", { name: "查看录屏.file" }));
 		const dialog = screen.getByRole("dialog");
 		expect(
-			within(dialog).getByRole("heading", { name: "第 3 步 · 实际附件 1/1" })
+			within(dialog).getByRole("heading", { name: "第 3 步 · 实际附件" })
 		).toBeTruthy();
+		expect(within(dialog).getByText("1 / 1")).toBeTruthy();
 		expect(dialog.querySelector("video[controls]")).not.toBeNull();
 	});
 

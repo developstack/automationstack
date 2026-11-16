@@ -58,12 +58,15 @@ describe("MediaGallery：缩略图条和这一组的大图浏览", () => {
 	});
 
 	it.each([
-		["查看预期截图 2", "第 1 步 · 预期截图 2/5"],
-		["查看另外 2 个", "第 1 步 · 预期截图 4/5"],
-	])("clicking %s opens the lightbox at %s", (name, heading) => {
+		["查看预期截图 2", "2 / 5"],
+		["查看另外 2 个", "4 / 5"],
+	])("clicking %s opens the lightbox at %s", (name, position) => {
 		renderGallery(5);
 		fireEvent.click(screen.getByRole("button", { name }));
-		expect(screen.getByRole("heading", { name: heading })).toBeTruthy();
+		expect(
+			screen.getByRole("heading", { name: "第 1 步 · 预期截图" })
+		).toBeTruthy();
+		expect(screen.getByText(position)).toBeTruthy();
 	});
 
 	it("shows +N as text", () => {

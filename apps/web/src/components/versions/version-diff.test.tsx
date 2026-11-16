@@ -216,9 +216,8 @@ describe("VersionDiff：操作截图和预期截图的变化显示在各自一�
 			{ actionScreenshots: ["a"] }
 		);
 		fireEvent.click(screen.getByRole("button", { name: "查看操作截图 2" }));
-		const dialog = screen.getByRole("dialog", {
-			name: "第 1 步 · 操作截图 2/2",
-		});
+		const dialog = screen.getByRole("dialog", { name: "第 1 步 · 操作截图" });
+		expect(within(dialog).getByText("2 / 2")).toBeTruthy();
 		expect(within(dialog).getByText("删除")).toBeTruthy();
 	});
 });
