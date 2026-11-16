@@ -16,13 +16,13 @@ export const caseAttachmentErrors = {
 	NOT_FOUND: {},
 } as const;
 
-export interface CaseImagePresignInput {
+interface CaseImagePresignInput {
 	caseId: string;
 	contentType: string;
 	sizeBytes: number;
 }
 
-export interface PresignedCaseImage {
+interface PresignedCaseImage {
 	scope: CaseAttachmentKeyScope;
 	storageKey: string;
 	uploadUrl: string;

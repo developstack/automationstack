@@ -119,8 +119,9 @@ describe("CaseStepsList：只读的步骤是编号列表", () => {
 			within(actionStrip).getByRole("button", { name: "查看操作截图 2" })
 		);
 		expect(
-			screen.getByRole("heading", { name: "第 1 步 · 操作截图 2/4" })
+			screen.getByRole("heading", { name: "第 1 步 · 操作截图" })
 		).toBeTruthy();
+		expect(screen.getByText("2 / 4")).toBeTruthy();
 	});
 
 	it("shows the empty text when there are no steps", () => {

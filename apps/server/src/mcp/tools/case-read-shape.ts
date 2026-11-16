@@ -6,7 +6,7 @@ export const FULL_DEFAULT_PAGE_SIZE = 10;
 
 export const FULL_MAX_PAGE_SIZE = 20;
 
-export interface CaseSummaryRow {
+interface CaseSummaryRow {
 	caseType: TestCase["caseType"];
 	id: string;
 	maintainer: string | null;
@@ -19,12 +19,12 @@ export interface CaseSummaryRow {
 	updatedAt: Date;
 }
 
-export interface CaseFullRow extends CaseSummaryRow {
+interface CaseFullRow extends CaseSummaryRow {
 	preconditions: string | null;
 	steps: CaseStep[];
 }
 
-export interface ReadCasesPage {
+interface ReadCasesPage {
 	detail: CaseDetail;
 	items: CaseFullRow[] | CaseSummaryRow[];
 	page: number;
@@ -64,7 +64,7 @@ function toFullRow(row: TestCase): CaseFullRow {
 	return {
 		...toSummaryRow(row),
 		preconditions: row.preconditions,
-		// 只返回这三个字段。步骤可能带操作截图和预期截图（迁移 0019 以前是 screenshots），MCP 不返回截图
+		// 只返回这三个字段。步骤的操作截图和预期截图不返回给 MCP
 		steps: row.steps.map(({ expected, id, step }) => ({ expected, id, step })),
 	};
 }

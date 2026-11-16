@@ -71,18 +71,67 @@ function openAt(startIndex: number) {
 	return { dialog: screen.getByRole("dialog"), thumb };
 }
 
-const title = (text: string) => screen.getByRole("heading", { name: text });
+/** 图片下方的序号，例如「3 / 5」。 */
+const position = (text: string) => screen.getByText(text);
+
+const button = (name: string) => screen.getByRole("button", { name });
 
 describe("MediaLightbox：大图浏览一组图片和录屏", () => {
 	it.each([
-		["ArrowRight", 1, "第 2 步 · 操作截图 3/5"],
-		["ArrowLeft", 1, "第 2 步 · 操作截图 1/5"],
-		["ArrowLeft", 0, "第 2 步 · 操作截图 1/5"],
-		["ArrowRight", 4, "第 2 步 · 操作截图 5/5"],
-	])("%s from index %i shows the title %s", (key, startIndex, text) => {
+		["ArrowRight", 1, "3 / 5"],
+		["ArrowLeft", 1, "1 / 5"],
+		["ArrowLeft", 0, "1 / 5"],
+		["ArrowRight", 4, "5 / 5"],
+	])("%s from index %i shows the position %s", (key, startIndex, text) => {
 		const { dialog } = openAt(startIndex);
 		fireEvent.keyDown(dialog, { key });
-		expect(title(text)).toBeTruthy();
+		expect(position(text)).toBeTruthy();
+	});
+
+	it("the title names the group, and the position is below the image", () => {
+		openAt(1);
+		expect(
+			screen.getByRole("heading", { name: "第 2 步 · 操作截图" })
+		).toBeTruthy();
+		expect(position("2 / 5").getAttribute("aria-live")).toBe("polite");
+	});
+
+	it.each([
+		{
+			back: "ArrowRight",
+			name: "上一个",
+			start: 1,
+			text: "2 / 5",
+			toEnd: "ArrowLeft",
+		},
+		{
+			back: "ArrowLeft",
+			name: "下一个",
+			start: 3,
+			text: "4 / 5",
+			toEnd: "ArrowRight",
+		},
+	])(
+		"$name keeps the focus at the end, so the arrow keys still work",
+		({ back, name, start, text, toEnd }) => {
+			openAt(start);
+			const arrow = button(name);
+			arrow.focus();
+			fireEvent.keyDown(arrow, { key: toEnd });
+			expect(arrow.getAttribute("aria-disabled")).toBe("true");
+			expect(arrow.hasAttribute("disabled")).toBe(false);
+			expect(document.activeElement).toBe(arrow);
+			fireEvent.keyDown(arrow, { key: back });
+			expect(position(text)).toBeTruthy();
+		}
+	);
+
+	it("shows no arrows when there is only one item", () => {
+		render(<ItemsHarness items={ITEMS.slice(0, 1)} />);
+		fireEvent.click(button("缩略图"));
+		expect(screen.queryByRole("button", { name: "上一个" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "下一个" })).toBeNull();
+		expect(position("1 / 1")).toBeTruthy();
 	});
 
 	it("opens at the clicked item and never shows another image first", () => {
@@ -95,11 +144,9 @@ describe("MediaLightbox：大图浏览一组图片和录屏", () => {
 
 	it("the buttons step through the items and stop at the ends", () => {
 		openAt(0);
-		expect(
-			screen.getByRole("button", { name: "上一个" }).hasAttribute("disabled")
-		).toBe(true);
-		fireEvent.click(screen.getByRole("button", { name: "下一个" }));
-		expect(title("第 2 步 · 操作截图 2/5")).toBeTruthy();
+		expect(button("上一个").getAttribute("aria-disabled")).toBe("true");
+		fireEvent.click(button("下一个"));
+		expect(position("2 / 5")).toBeTruthy();
 	});
 
 	it("shows the actions for the current item", () => {
@@ -149,7 +196,7 @@ describe("MediaLightbox：大图浏览一组图片和录屏", () => {
 		expect(video.tagName).toBe("VIDEO");
 		expect(video.hasAttribute("controls")).toBe(true);
 		fireEvent.keyDown(video, { key: "ArrowLeft" });
-		expect(title("第 2 步 · 操作截图 5/5")).toBeTruthy();
+		expect(position("5 / 5")).toBeTruthy();
 	});
 
 	it("stays at the same position when the current item is deleted", () => {
@@ -157,7 +204,7 @@ describe("MediaLightbox：大图浏览一组图片和录屏", () => {
 		fireEvent.click(screen.getByRole("button", { name: "缩略图" }));
 		fireEvent.keyDown(screen.getByRole("dialog"), { key: "ArrowRight" });
 		rerender(<ItemsHarness items={ITEMS.filter((item) => item.id !== "i3")} />);
-		expect(title("第 1 步 · 预期截图 3/4")).toBeTruthy();
+		expect(position("3 / 4")).toBeTruthy();
 	});
 
 	it("closes when the last item is deleted, and does not open again when an item is added", async () => {

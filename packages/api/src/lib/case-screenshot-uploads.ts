@@ -29,7 +29,7 @@ const GROUP_LABELS: Record<ColumnScreenshotKey, string> = {
 	expectedScreenshots: "预期截图",
 };
 
-export const STORAGE_UNCONFIGURED_MESSAGE =
+const STORAGE_UNCONFIGURED_MESSAGE =
 	"附件存储（R2）未配置，无法写入操作截图或预期截图";
 
 const INVALID_TOKEN_MESSAGE =
@@ -63,7 +63,7 @@ export interface ScreenshotUploadContext {
 	userId: string | null;
 }
 
-export type ResolveColumnScreenshotUploadsResult =
+type ResolveColumnScreenshotUploadsResult =
 	| { kind: "none" }
 	| { kind: "error"; message: string }
 	| {
