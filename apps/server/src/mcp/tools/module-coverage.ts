@@ -1,9 +1,9 @@
 import type { ModuleTreeNode } from "@automationstack/api/lib/module-tree";
 import type { ModuleCoverageRow } from "@automationstack/db/repositories/project-stats-coverage";
 
-export type ModuleGap = ModuleCoverageRow["gap"];
+type ModuleGap = ModuleCoverageRow["gap"];
 
-export interface FlatModule {
+interface FlatModule {
 	activeCaseCount: number;
 	caseCount: number;
 	depth: number;

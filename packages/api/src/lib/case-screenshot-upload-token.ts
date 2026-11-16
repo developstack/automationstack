@@ -49,7 +49,7 @@ const tokenPayloadSchema = z.object({
 	userId: z.uuid(),
 });
 
-export type ReadScreenshotUploadTokenResult =
+type ReadScreenshotUploadTokenResult =
 	| { kind: "expired" }
 	| { kind: "invalid" }
 	| { kind: "ok"; upload: ScreenshotUpload };
