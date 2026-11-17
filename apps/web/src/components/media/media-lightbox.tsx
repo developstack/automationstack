@@ -131,7 +131,7 @@ export function MediaLightbox({
 	return (
 		<Dialog onOpenChange={handleOpenChange} open={open && item !== undefined}>
 			<DialogContent
-				className="gap-4 sm:max-w-4xl"
+				className="gap-4 sm:max-w-lightbox"
 				finalFocus={finalFocus}
 				onKeyDown={handleKeyDown}
 			>

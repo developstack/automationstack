@@ -39,6 +39,16 @@
 	padding-left: calc(var(--spacing) * 2 - 1px);
 }
 
+/* 大图浏览弹窗的最大宽度：图片面积约为 4xl 弹窗中的 3 倍。窗口较窄时，两边各留 2rem。 */
+@utility max-w-lightbox {
+	max-width: min(92rem, calc(100% - 4rem));
+}
+
+/* 大图浏览中图片和录屏的最大高度：窗口高度减去弹窗的标题、底部、内边距和上下的空白。 */
+@utility max-h-lightbox-media {
+	max-height: calc(100dvh - 12rem);
+}
+
 @utility text-kbd-hint {
 	font-size: 0.625rem;
 	line-height: 1rem;

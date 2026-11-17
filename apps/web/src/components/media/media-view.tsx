@@ -50,7 +50,7 @@ function LoadingImage({ name, url }: { name: string; url: string }) {
 			<img
 				alt={name}
 				className={cn(
-					"mx-auto max-h-160 w-auto max-w-full rounded-lg object-contain transition-opacity duration-150",
+					"mx-auto max-h-lightbox-media w-auto max-w-full rounded-lg object-contain transition-opacity duration-150",
 					loaded ? "opacity-100" : "opacity-0"
 				)}
 				decoding="async"
@@ -80,7 +80,7 @@ export function MediaView({ item }: { item: MediaItem }) {
 			// biome-ignore lint/a11y/useMediaCaption: 录屏是测试过程的画面，没有对白，所以没有字幕
 			<video
 				aria-label={item.name}
-				className="mx-auto max-h-160 w-auto max-w-full rounded-lg"
+				className="mx-auto max-h-lightbox-media w-auto max-w-full rounded-lg"
 				controls={true}
 				preload="metadata"
 				src={item.url}
