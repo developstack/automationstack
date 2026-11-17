@@ -1,4 +1,7 @@
-import { saveRunCaseStepResults } from "@automationstack/db/repositories/test-run-step-verdicts-repository";
+import {
+	type StepVerdictWriteRejection,
+	saveRunCaseStepResults,
+} from "@automationstack/db/repositories/test-run-step-verdicts-repository";
 import { z } from "zod";
 
 import { protectedProcedure } from "../index";
@@ -7,6 +10,7 @@ import { publishInvalidate } from "../lib/realtime-publish";
 import {
 	REVIEW_PENDING_MESSAGE,
 	rejectRunWrite,
+	type TestRunErrorThrowers,
 	testRunErrors,
 } from "../lib/test-run-errors";
 import { testRunStepResultSchema } from "../schemas/test-run";
@@ -18,7 +22,7 @@ const stepVerdictSchema = z.object({
 	stepId: z.string().min(1),
 });
 
-const saveStepResultsSchema = z.object({
+export const saveStepResultsSchema = z.object({
 	caseVersion: z.number().int().positive(),
 	runCaseId: z.uuid(),
 	steps: z
@@ -32,7 +36,7 @@ const saveStepResultsSchema = z.object({
 
 type StepVerdict = z.infer<typeof stepVerdictSchema>;
 
-function splitStepVerdicts(steps: StepVerdict[]) {
+export function splitStepVerdicts(steps: StepVerdict[]) {
 	return {
 		actualResults: Object.fromEntries(
 			steps.flatMap((step) =>
@@ -41,6 +45,42 @@ function splitStepVerdicts(steps: StepVerdict[]) {
 		),
 		judged: Object.fromEntries(steps.map((step) => [step.stepId, step.result])),
 	};
+}
+
+/** 保存判定被拒绝时的错误。设为预期结果使用相同的规则，所以也使用这个函数。 */
+export function throwStepVerdictRejection(
+	rejection: StepVerdictWriteRejection,
+	errors: TestRunErrorThrowers
+): never {
+	if (rejection.kind === "review-pending") {
+		throw errors.CONFLICT({ message: REVIEW_PENDING_MESSAGE });
+	}
+	if (rejection.kind === "case-changed") {
+		throw errors.CONFLICT({
+			message: `用例已被改到 v${rejection.currentVersion}，请刷新后对着新步骤重新判定（你刚才的判定仍留在本机草稿里）`,
+		});
+	}
+	if (rejection.kind === "no-steps") {
+		throw errors.BAD_REQUEST({
+			message: "该用例没有步骤，请直接给整条用例打结论",
+		});
+	}
+	if (rejection.kind === "unknown-steps") {
+		throw errors.BAD_REQUEST({
+			message: `以下步骤不属于该用例：${rejection.stepIds.join("、")}`,
+		});
+	}
+	if (rejection.kind === "actual-result-required") {
+		throw errors.BAD_REQUEST({
+			message: `步骤 ${rejection.stepNumbers.join("、")} 判为失败或阻塞，必须填写实际结果`,
+		});
+	}
+	if (rejection.kind === "verdict-required") {
+		throw errors.BAD_REQUEST({
+			message: `步骤 ${rejection.stepNumbers.join("、")} 没有判定，不能保存实际结果，请先选择判定`,
+		});
+	}
+	rejectRunWrite(rejection, errors);
 }
 
 export const testRunStepExecutionProcedures = {
@@ -55,36 +95,8 @@ export const testRunStepExecutionProcedures = {
 				...splitStepVerdicts(input.steps),
 				runCaseId: input.runCaseId,
 			});
-			if (result.kind === "review-pending") {
-				throw errors.CONFLICT({ message: REVIEW_PENDING_MESSAGE });
-			}
-			if (result.kind === "case-changed") {
-				throw errors.CONFLICT({
-					message: `用例已被改到 v${result.currentVersion}，请刷新后对着新步骤重新判定（你刚才的判定仍留在本机草稿里）`,
-				});
-			}
-			if (result.kind === "no-steps") {
-				throw errors.BAD_REQUEST({
-					message: "该用例没有步骤，请直接给整条用例打结论",
-				});
-			}
-			if (result.kind === "unknown-steps") {
-				throw errors.BAD_REQUEST({
-					message: `以下步骤不属于该用例：${result.stepIds.join("、")}`,
-				});
-			}
-			if (result.kind === "actual-result-required") {
-				throw errors.BAD_REQUEST({
-					message: `步骤 ${result.stepNumbers.join("、")} 判为失败或阻塞，必须填写实际结果`,
-				});
-			}
-			if (result.kind === "verdict-required") {
-				throw errors.BAD_REQUEST({
-					message: `步骤 ${result.stepNumbers.join("、")} 没有判定，不能保存实际结果，请先选择判定`,
-				});
-			}
 			if (result.kind !== "ok") {
-				rejectRunWrite(result, errors);
+				throwStepVerdictRejection(result, errors);
 			}
 			publishInvalidate({
 				action: "update",

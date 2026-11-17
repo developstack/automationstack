@@ -22,6 +22,7 @@ const ACTUAL_TEXT = /支付超时/;
 const OLD_REASON_LABELS = /失败原因|阻塞原因/;
 const FAILED_NAME = /失败/;
 const VERDICT_FIRST_HINT = /先选择这一步的判定/;
+const ADOPT = "设为预期结果";
 
 const STEP: CaseStep = {
 	actionScreenshots: [SHOT_A],
@@ -34,10 +35,12 @@ const STEP: CaseStep = {
 function renderCard(overrides: Partial<RunStepCardProps> = {}) {
 	const props: RunStepCardProps = {
 		actualResult: "",
+		adopting: false,
 		editing: false,
 		imageUrls: IMAGE_URLS,
 		index: 1,
 		onActualResultChange: vi.fn(),
+		onAdopt: vi.fn(),
 		onPick: vi.fn(),
 		result: undefined,
 		step: STEP,
@@ -135,6 +138,38 @@ describe("RunStepCard：执行页的步骤卡片", () => {
 			"支付超时\n订单没回滚"
 		);
 		expect(screen.queryByText(OLD_REASON_LABELS)).toBeNull();
+	});
+
+	it.each<[string, Partial<RunStepCardProps>]>([
+		["not editing", { editing: false }],
+		["editing without an actual result", { actualResult: "  " }],
+	])("hides 设为预期结果 when %s", (_case, overrides) => {
+		renderCard({
+			actualResult: "显示余额不足",
+			editing: true,
+			result: "failed",
+			...overrides,
+		});
+		expect(screen.queryByRole("button", { name: ADOPT })).toBeNull();
+	});
+
+	it("asks before 设为预期结果, lists what changes in the case, then adopts the step", () => {
+		const props = renderCard({
+			actualResult: "显示余额不足",
+			editing: true,
+			result: "failed",
+		});
+		fireEvent.click(screen.getByRole("button", { name: ADOPT }));
+		const dialog = screen.getByRole("alertdialog");
+		expect(
+			within(dialog).getByText("预期结果的文字改为实际结果的文字。")
+		).toBeTruthy();
+		expect(
+			within(dialog).getByText("实际结果没有图片，预期截图保留不变。")
+		).toBeTruthy();
+		expect(props.onAdopt).not.toHaveBeenCalled();
+		fireEvent.click(within(dialog).getByRole("button", { name: ADOPT }));
+		expect(props.onAdopt).toHaveBeenCalledWith("s2");
 	});
 
 	it("shows the verdict picker on the card when editing", () => {

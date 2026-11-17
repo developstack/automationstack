@@ -55,7 +55,7 @@ export interface VerdictRequired {
 	stepNumbers: number[];
 }
 
-type JudgementRejection =
+export type JudgementRejection =
 	| ActualResultRequired
 	| RunCaseChanged
 	| VerdictRequired
@@ -63,14 +63,13 @@ type JudgementRejection =
 	| { kind: "unknown-steps"; stepIds: string[] };
 
 export type SaveRunCaseStepResultsOutcome =
-	| JudgementRejection
-	| RunCaseWriteRejection
-	| RunReviewPending
+	| StepVerdictWriteRejection
 	| { kind: "ok"; run: TestRun; runCase: TestRunCase };
 
-interface StepVerdictTarget {
+export interface StepVerdictTarget {
 	/** 已有实际附件的步骤 id。 */
 	attachedStepIds: ReadonlySet<string>;
+	caseId: string;
 	caseVersion: number;
 	comment: string | null;
 	result: TestRunCase["result"];
@@ -84,6 +83,7 @@ async function selectStepVerdictTarget(
 ): Promise<StepVerdictTarget | null> {
 	const [target] = await tx
 		.select({
+			caseId: testRunCases.caseId,
 			caseVersion: testCases.currentVersion,
 			comment: testRunCases.comment,
 			result: testRunCases.result,
@@ -148,7 +148,7 @@ function rejectJudgement(
 		: null;
 }
 
-async function writeStepVerdict(
+export async function writeStepVerdict(
 	tx: DbTransaction,
 	input: SaveRunCaseStepResultsInput,
 	target: StepVerdictTarget,
@@ -192,27 +192,55 @@ async function writeStepVerdict(
 	};
 }
 
+export type StepVerdictWriteRejection =
+	| JudgementRejection
+	| RunCaseWriteRejection
+	| RunReviewPending;
+
+/**
+ * 保存判定前的检查：执行记录存在，测试任务可以写入并且不在评审中，判定符合规则。
+ * 通过时返回要写入的执行记录和测试任务。
+ */
+export async function prepareStepVerdictWrite(
+	tx: DbTransaction,
+	input: SaveRunCaseStepResultsInput
+): Promise<
+	| StepVerdictWriteRejection
+	| { kind: "ready"; run: TestRun; target: StepVerdictTarget }
+> {
+	const target = await selectStepVerdictTarget(tx, input.runCaseId);
+	if (!target) {
+		return { kind: "not-found" as const };
+	}
+	const writable = await ensureRunWritable(tx, target.runId);
+	if (writable.kind !== "ok") {
+		return writable;
+	}
+	const { run } = writable;
+	if (run.status === "pending_review") {
+		return { kind: "review-pending" as const };
+	}
+	const rejection = rejectJudgement(input, target);
+	if (rejection !== null) {
+		return rejection;
+	}
+	return { kind: "ready" as const, run, target };
+}
+
 export function saveRunCaseStepResults(
 	input: SaveRunCaseStepResultsInput
 ): Promise<SaveRunCaseStepResultsOutcome> {
 	return db.transaction(async (tx) => {
-		const target = await selectStepVerdictTarget(tx, input.runCaseId);
-		if (!target) {
-			return { kind: "not-found" as const };
+		const prepared = await prepareStepVerdictWrite(tx, input);
+		if (prepared.kind !== "ready") {
+			return prepared;
 		}
-		const writable = await ensureRunWritable(tx, target.runId);
-		if (writable.kind !== "ok") {
-			return writable;
-		}
-		const { run } = writable;
-		if (run.status === "pending_review") {
-			return { kind: "review-pending" as const };
-		}
-		const rejection = rejectJudgement(input, target);
-		if (rejection !== null) {
-			return rejection;
-		}
-		const written = await writeStepVerdict(tx, input, target, run);
+		const written = await writeStepVerdict(
+			tx,
+			input,
+			prepared.target,
+			prepared.run
+		);
 		return { kind: "ok" as const, run: written.run, runCase: written.runCase };
 	});
 }

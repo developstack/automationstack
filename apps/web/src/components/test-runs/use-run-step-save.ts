@@ -11,7 +11,10 @@ import { useCallback, useMemo } from "react";
 
 import { buildStepPayload } from "@/components/test-runs/run-step-payload";
 import { useRunShortcuts } from "@/components/test-runs/use-run-shortcuts";
-import { useSaveRunCaseStepResults } from "@/components/test-runs/use-test-run-mutations";
+import {
+	useAdoptActualAsExpected,
+	useSaveRunCaseStepResults,
+} from "@/components/test-runs/use-test-run-mutations";
 
 export interface RunStepSaveOptions {
 	actualResults: Record<string, string>;
@@ -95,6 +98,43 @@ export function useRunStepSave(options: RunStepSaveOptions): RunStepSaveHandle {
 		missingVerdict,
 		saving: mutation.isPending,
 	};
+}
+
+export interface StepAdoptionHandle {
+	adopt: (stepId: string) => void;
+	adopting: boolean;
+}
+
+/**
+ * 设为预期结果：这个步骤判定为通过，和其他步骤的判定、实际结果一起提交，
+ * 所以本机没保存的判定不会因为用例升版本而作废。成功后与保存判定相同，调用 onSaved。
+ */
+export function useStepAdoption(
+	options: Omit<RunStepSaveOptions, "attachedStepIds">
+): StepAdoptionHandle {
+	const { actualResults, caseVersion, judged, onSaved, runCaseId, steps } =
+		options;
+	const mutation = useAdoptActualAsExpected();
+	const { mutate } = mutation;
+	const adopt = useCallback(
+		(stepId: string) => {
+			mutate(
+				{
+					caseVersion,
+					runCaseId,
+					stepId,
+					steps: buildStepPayload(
+						steps,
+						{ ...judged, [stepId]: "passed" },
+						actualResults
+					),
+				},
+				{ onSuccess: onSaved }
+			);
+		},
+		[actualResults, caseVersion, judged, mutate, onSaved, runCaseId, steps]
+	);
+	return { adopt, adopting: mutation.isPending };
 }
 
 export interface RunStepShortcutOptions {

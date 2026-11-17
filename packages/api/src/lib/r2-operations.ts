@@ -105,6 +105,41 @@ export function presignR2Upload(
 	);
 }
 
+export async function readR2Object(
+	client: S3Client,
+	bucket: string,
+	storageKey: string
+): Promise<Uint8Array | null> {
+	try {
+		const object = await client.send(
+			new GetObjectCommand({ Bucket: bucket, Key: storageKey })
+		);
+		return (await object.Body?.transformToByteArray()) ?? null;
+	} catch (error) {
+		if (isObjectMissing(error)) {
+			return null;
+		}
+		throw error;
+	}
+}
+
+export async function putR2Object(
+	client: S3Client,
+	bucket: string,
+	storageKey: string,
+	object: { body: Uint8Array; contentType: string }
+): Promise<void> {
+	await client.send(
+		new PutObjectCommand({
+			Body: object.body,
+			Bucket: bucket,
+			ContentLength: object.body.byteLength,
+			ContentType: object.contentType,
+			Key: storageKey,
+		})
+	);
+}
+
 export async function removeR2Object(
 	client: S3Client,
 	bucket: string,

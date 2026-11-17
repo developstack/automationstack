@@ -17,7 +17,10 @@ function fakeStorage(name: string): ObjectStorage {
 		headObject: () => Promise.resolve({ contentLength: 1, contentType: name }),
 		presignDownload: (key) => Promise.resolve(`${name}:get:${key}`),
 		presignUpload: (key) => Promise.resolve(`${name}:put:${key}`),
+		readObject: (key) =>
+			Promise.resolve(new TextEncoder().encode(`${name}:${key}`)),
 		remove: vi.fn(() => Promise.resolve()),
+		writeObject: vi.fn(() => Promise.resolve()),
 	};
 }
 
@@ -45,6 +48,22 @@ describe("composeObjectStorage：新文件写到 upload，已有的文件从它�
 		);
 		await storage.remove(key);
 		expect((holder === "local" ? local : r2).remove).toHaveBeenCalledWith(key);
+		const body = await storage.readObject(key);
+		expect(new TextDecoder().decode(body ?? undefined)).toBe(
+			`${holder}:${key}`
+		);
+	});
+
+	it("writes copied files to the upload backend, wherever the source is", async () => {
+		const storage = composeObjectStorage({ local, r2, upload: r2 });
+		const body = await storage.readObject("old-local.png");
+		await storage.writeObject(
+			"copy.png",
+			body ?? new Uint8Array(),
+			"image/png"
+		);
+		expect(r2.writeObject).toHaveBeenCalledWith("copy.png", body, "image/png");
+		expect(local.writeObject).not.toHaveBeenCalled();
 	});
 
 	it("without R2, every read uses local disk", async () => {

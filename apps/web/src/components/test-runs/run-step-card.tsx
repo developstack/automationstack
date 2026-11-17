@@ -30,10 +30,12 @@ function StepResultBadge({
 
 export interface RunStepCardProps {
 	actualResult: string;
+	adopting: boolean;
 	editing: boolean;
 	imageUrls: MarkdownImageUrls;
 	index: number;
 	onActualResultChange: (stepId: string, text: string) => void;
+	onAdopt: (stepId: string) => void;
 	onPick: (stepId: string, result: TestRunStepResult) => void;
 	result: TestRunStepResult | undefined;
 	step: CaseStep;
@@ -46,9 +48,11 @@ type StepColumnsProps = Omit<RunStepCardProps, "index" | "onPick"> & {
 /** 三栏：步骤（含操作截图）、预期结果（含预期截图）、实际结果。卡片够宽时并排，窄时堆叠。 */
 function StepColumns({
 	actualResult,
+	adopting,
 	editing,
 	imageUrls,
 	onActualResultChange,
+	onAdopt,
 	position,
 	result,
 	step,
@@ -72,7 +76,9 @@ function StepColumns({
 				title="预期结果"
 			/>
 			<StepActualResultField
+				adopting={adopting}
 				editing={editing}
+				onAdopt={onAdopt}
 				onChange={onActualResultChange}
 				position={position}
 				result={result}
@@ -89,10 +95,12 @@ function StepColumns({
  */
 export function RunStepCard({
 	actualResult,
+	adopting,
 	editing,
 	imageUrls,
 	index,
 	onActualResultChange,
+	onAdopt,
 	onPick,
 	result,
 	step,
@@ -111,9 +119,11 @@ export function RunStepCard({
 			<CardContent className="@container">
 				<StepColumns
 					actualResult={actualResult}
+					adopting={adopting}
 					editing={editing}
 					imageUrls={imageUrls}
 					onActualResultChange={onActualResultChange}
+					onAdopt={onAdopt}
 					position={position}
 					result={result}
 					step={step}

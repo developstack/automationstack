@@ -22,6 +22,7 @@ import { rejectRunWrite, testRunErrors } from "../lib/test-run-errors";
 import { runIdSchema, testRunStatusSchema } from "../schemas/test-run";
 import { testRunEventProcedures } from "./test-run-events";
 import { testRunExecutionProcedures } from "./test-run-execution";
+import { testRunStepAdoptionProcedures } from "./test-run-step-adoption";
 import { testRunStepExecutionProcedures } from "./test-run-step-execution";
 import { testRunVoidProcedures } from "./test-run-void";
 
@@ -58,6 +59,7 @@ export const testRunsRouter = {
 	...testRunEventProcedures,
 	...testRunExecutionProcedures,
 	...testRunStepExecutionProcedures,
+	...testRunStepAdoptionProcedures,
 	...testRunVoidProcedures,
 	create: protectedProcedure
 		.errors(testRunErrors)

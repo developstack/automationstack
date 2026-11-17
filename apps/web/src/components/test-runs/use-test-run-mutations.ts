@@ -43,6 +43,40 @@ export function useSaveRunCaseStepResults() {
 	);
 }
 
+interface AdoptedExpected {
+	caseVersion: number;
+	skippedAttachments: number;
+	stepNumber: number;
+}
+
+function adoptedMessage(result: AdoptedExpected): string {
+	const done = `第 ${result.stepNumber} 步的预期结果已改为实际结果，用例升到 v${result.caseVersion}`;
+	if (result.skippedAttachments === 0) {
+		return done;
+	}
+	return `${done}。${result.skippedAttachments} 个实际附件不是可用的图片，没有复制为预期截图`;
+}
+
+/** 设为预期结果：用例也改变了，所以刷新测试任务、用例、用例图片和脑图。 */
+export function useAdoptActualAsExpected() {
+	const queryClient = useQueryClient();
+	return useMutation(
+		orpc.testRuns.adoptActualAsExpected.mutationOptions({
+			onSuccess: (result) => {
+				for (const queryKey of [
+					orpc.testRuns.key(),
+					orpc.cases.key(),
+					orpc.caseAttachments.key(),
+					orpc.mindmap.key(),
+				]) {
+					queryClient.invalidateQueries({ queryKey });
+				}
+				toast.success(adoptedMessage(result));
+			},
+		})
+	);
+}
+
 export function useBulkSetRunCaseResult() {
 	const invalidate = useInvalidateTestRuns();
 	return useMutation(

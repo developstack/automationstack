@@ -65,10 +65,12 @@ function renderStep(
 		<RunStepAttachmentsProvider value={value}>
 			<RunStepCard
 				actualResult=""
+				adopting={false}
 				editing={editing}
 				imageUrls={new Map()}
 				index={1}
 				onActualResultChange={vi.fn()}
+				onAdopt={vi.fn()}
 				onPick={vi.fn()}
 				result={result ?? undefined}
 				step={STEP}
@@ -109,6 +111,20 @@ describe("实际结果一栏中的实际附件", () => {
 			);
 		}
 	);
+
+	it("offers 设为预期结果 for actual images without text, and copies only the images", () => {
+		renderStep();
+		fireEvent.click(screen.getByRole("button", { name: "设为预期结果" }));
+		const dialog = screen.getByRole("alertdialog");
+		expect(
+			within(dialog).getByText("实际结果没有文字，预期结果的文字保留不变。")
+		).toBeTruthy();
+		expect(
+			within(dialog).getByText(
+				"预期截图改为实际附件中的 1 张图片。录屏和日志不复制。"
+			)
+		).toBeTruthy();
+	});
 
 	it("does not add actual attachments to a step without a verdict, but still shows the saved ones", () => {
 		const value = renderStep({}, true, null);
