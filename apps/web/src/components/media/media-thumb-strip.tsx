@@ -8,7 +8,7 @@ import type {
 import { MEDIA_THUMB_CLASS, MediaThumb } from "@/components/media/media-thumb";
 
 /** 缩略图条默认最多显示的缩略图数量，多出来的显示「+N」。 */
-export const DEFAULT_VISIBLE_THUMBS = 3;
+export const DEFAULT_VISIBLE_THUMBS = 6;
 
 export interface MediaThumbStripProps {
 	/** 放在缩略图后面的列表项（<li>），例如编辑模式中的「+」按钮。 */
@@ -47,8 +47,8 @@ function MoreButton({
 }
 
 /**
- * 固定高度的缩略图条：40×40 的缩略图，最多显示 maxVisible 个，多出来的显示「+N」，
- * 点「+N」从第一个没有显示的文件打开大图浏览。没有文件也没有 children 时不显示，不占位置。
+ * 缩略图条：40×40 的缩略图，最多显示 maxVisible 个，多出来的显示「+N」，
+ * 点「+N」从第一个没有显示的文件打开大图浏览。一行放不下时换行。没有文件也没有 children 时不显示，不占位置。
  */
 export function MediaThumbStrip({
 	children,
@@ -63,7 +63,7 @@ export function MediaThumbStrip({
 	const visible = items.slice(0, maxVisible);
 	const hidden = items.length - visible.length;
 	return (
-		<ul aria-label={label} className="flex h-10 items-center gap-1.5">
+		<ul aria-label={label} className="flex flex-wrap items-center gap-1.5">
 			{visible.map((item, index) => (
 				<li key={item.id}>
 					<MediaThumb index={index} item={item} onOpen={onOpen} />

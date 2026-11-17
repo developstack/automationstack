@@ -44,12 +44,15 @@ describe("MediaGallery：缩略图条和这一组的大图浏览", () => {
 
 	it.each([
 		[1, ["查看预期截图 1"]],
-		[3, ["查看预期截图 1", "查看预期截图 2", "查看预期截图 3"]],
+		[6, Array.from({ length: 6 }, (_, index) => `查看预期截图 ${index + 1}`)],
 		[
-			5,
-			["查看预期截图 1", "查看预期截图 2", "查看预期截图 3", "查看另外 2 个"],
+			8,
+			[
+				...Array.from({ length: 6 }, (_, index) => `查看预期截图 ${index + 1}`),
+				"查看另外 2 个",
+			],
 		],
-	])("with %i items shows at most 3 thumbnails, then +N", (count, names) => {
+	])("with %i items shows at most 6 thumbnails, then +N", (count, names) => {
 		renderGallery(count);
 		const buttons = within(strip()).getAllByRole("button");
 		expect(buttons.map((button) => button.getAttribute("aria-label"))).toEqual(
@@ -58,10 +61,10 @@ describe("MediaGallery：缩略图条和这一组的大图浏览", () => {
 	});
 
 	it.each([
-		["查看预期截图 2", "2 / 5"],
-		["查看另外 2 个", "4 / 5"],
+		["查看预期截图 2", "2 / 8"],
+		["查看另外 2 个", "7 / 8"],
 	])("clicking %s opens the lightbox at %s", (name, position) => {
-		renderGallery(5);
+		renderGallery(8);
 		fireEvent.click(screen.getByRole("button", { name }));
 		expect(
 			screen.getByRole("heading", { name: "第 1 步 · 预期截图" })
@@ -70,7 +73,7 @@ describe("MediaGallery：缩略图条和这一组的大图浏览", () => {
 	});
 
 	it("shows +N as text", () => {
-		renderGallery(9);
+		renderGallery(12);
 		expect(
 			screen.getByRole("button", { name: "查看另外 6 个" }).textContent
 		).toBe("+6");

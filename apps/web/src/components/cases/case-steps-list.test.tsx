@@ -90,12 +90,10 @@ describe("CaseStepsList：只读的步骤是编号列表", () => {
 
 	it("shows each screenshot group under the text of its own column, and opens the group's lightbox", () => {
 		const step: CaseStep = {
-			actionScreenshots: [
-				SHOT_A,
-				SHOT_B,
-				SHOT_A.replace("a", "c"),
-				SHOT_B.replace("b", "d"),
-			],
+			// 7 张：显示 6 张缩略图和「+1」
+			actionScreenshots: [..."abcdef0"].map((suffix) =>
+				SHOT_A.replace("a", suffix)
+			),
 			expected: "进入工作台",
 			expectedScreenshots: [SHOT_B],
 			id: "s1",
@@ -108,7 +106,7 @@ describe("CaseStepsList：只读的步骤是编号列表", () => {
 		const actionStrip = within(stepCell as HTMLElement).getByRole("list", {
 			name: "第 1 步操作截图",
 		});
-		expect(within(actionStrip).getAllByRole("button")).toHaveLength(4);
+		expect(within(actionStrip).getAllByRole("button")).toHaveLength(7);
 		expect(
 			within(actionStrip).getByRole("button", { name: "查看另外 1 个" })
 		).toBeTruthy();
@@ -121,7 +119,7 @@ describe("CaseStepsList：只读的步骤是编号列表", () => {
 		expect(
 			screen.getByRole("heading", { name: "第 1 步 · 操作截图" })
 		).toBeTruthy();
-		expect(screen.getByText("2 / 4")).toBeTruthy();
+		expect(screen.getByText("2 / 7")).toBeTruthy();
 	});
 
 	it("shows the empty text when there are no steps", () => {
