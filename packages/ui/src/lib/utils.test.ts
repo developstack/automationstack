@@ -25,4 +25,10 @@ describe("cn", () => {
 			);
 		}
 	);
+
+	it("max-w-lightbox 是最大宽度，替换 DialogContent 的 sm:max-w-md", () => {
+		expect(cn("max-w-full sm:max-w-md", "sm:max-w-lightbox")).toBe(
+			"max-w-full sm:max-w-lightbox"
+		);
+	});
 });
