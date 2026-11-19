@@ -12,7 +12,6 @@ import {
 } from "drizzle-orm";
 
 import { testCases } from "../schema/test-cases";
-import { testRunCaseEvents } from "../schema/test-run-case-events";
 import {
 	type TestRunStatus,
 	testRunCases,
@@ -77,16 +76,5 @@ export function runTrendConditions(projectId: string, now: Date): SQL[] {
 		...countedRunConditions(projectId),
 		// drizzle 的 or() 返回 SQL | undefined，这里直接写 or，不用类型断言
 		sql`(${gte(testRuns.createdAt, since)} or ${gte(testRuns.completedAt, since)})`,
-	];
-}
-
-/** 成员工作量中的执行：计入统计的测试任务中、过去 30 天内成员手动作出的判定。改回未测不算。 */
-export function memberExecutionConditions(projectId: string, now: Date): SQL[] {
-	return [
-		...countedRunConditions(projectId),
-		eq(testRunCaseEvents.executedVia, "manual"),
-		ne(testRunCaseEvents.toResult, "untested"),
-		isNotNull(testRunCaseEvents.actorId),
-		gte(testRunCaseEvents.createdAt, daysBefore(now, EXECUTION_WINDOW_DAYS)),
 	];
 }

@@ -11,7 +11,6 @@ const mocks = vi.hoisted(() => ({
 	getExecutionCoverage: vi.fn(),
 	getExecutionTrend: vi.fn(),
 	getLatestResults: vi.fn(),
-	getMemberWorkload: vi.fn(),
 	getRunTrend: vi.fn(),
 	isProjectMember: vi.fn(),
 }));
@@ -32,9 +31,6 @@ vi.mock("@automationstack/db/repositories/project-stats-trend", () => ({
 }));
 vi.mock("@automationstack/db/repositories/project-stats-runs", () => ({
 	getActiveRuns: mocks.getActiveRuns,
-}));
-vi.mock("@automationstack/db/repositories/project-stats-workload", () => ({
-	getMemberWorkload: mocks.getMemberWorkload,
 }));
 vi.mock("@automationstack/db/repositories/project-stats-activity", () => ({
 	getActivityFeed: mocks.getActivityFeed,
@@ -94,12 +90,6 @@ const NEW_QUERIES = [
 		invoke: () => call(projectStatsRouter.runTrend, INPUT, options("runTrend")),
 		name: "runTrend",
 		repo: mocks.getRunTrend,
-	},
-	{
-		invoke: () =>
-			call(projectStatsRouter.memberWorkload, INPUT, options("memberWorkload")),
-		name: "memberWorkload",
-		repo: mocks.getMemberWorkload,
 	},
 ];
 
@@ -169,7 +159,6 @@ describe("projectStats 的新只读查询", () => {
 			"executionCoverage",
 			"executionTrend",
 			"latestResults",
-			"memberWorkload",
 			"overview",
 			"runTrend",
 		]);

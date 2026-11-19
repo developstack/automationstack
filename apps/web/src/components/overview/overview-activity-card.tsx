@@ -4,7 +4,7 @@ import { type InfiniteData, useInfiniteQuery } from "@tanstack/react-query";
 import { useCallback, useRef } from "react";
 import { ActivityCardSkeleton } from "@/components/overview/activity-card-skeleton";
 import { ActivityFeedEntry } from "@/components/overview/activity-feed-entry";
-import { NARROW_CARD } from "@/components/overview/overview-layout";
+import { FULL_CARD } from "@/components/overview/overview-layout";
 import { OverviewQuery } from "@/components/overview/overview-query";
 import { OverviewSection } from "@/components/overview/overview-section";
 import { useLoadMoreOnVisible } from "@/components/overview/use-load-more-on-visible";
@@ -92,14 +92,14 @@ export function OverviewActivityCard({ projectId }: OverviewActivityCardProps) {
 
 	return (
 		<OverviewQuery
-			className={NARROW_CARD}
+			className={FULL_CARD}
 			query={query}
 			skeleton={<ActivityCardSkeleton />}
 			title={ACTIVITY_CARD_TITLE}
 		>
 			{(data) => (
 				<OverviewSection
-					className={NARROW_CARD}
+					className={FULL_CARD}
 					description={ACTIVITY_DESCRIPTION}
 					title={ACTIVITY_CARD_TITLE}
 				>

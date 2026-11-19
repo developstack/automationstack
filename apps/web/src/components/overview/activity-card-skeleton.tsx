@@ -1,14 +1,14 @@
 import { Skeleton } from "@automationstack/ui/components/skeleton";
 
 import { CardSkeleton } from "@/components/overview/card-skeleton";
-import { NARROW_CARD } from "@/components/overview/overview-layout";
+import { FULL_CARD } from "@/components/overview/overview-layout";
 
 const ENTRY_KEYS = ["e1", "e2", "e3", "e4", "e5"] as const;
 
 export function ActivityCardSkeleton() {
 	return (
 		<CardSkeleton
-			className={NARROW_CARD}
+			className={FULL_CARD}
 			descriptionWidth="w-64 max-w-full"
 			titleWidth="w-24"
 		>
