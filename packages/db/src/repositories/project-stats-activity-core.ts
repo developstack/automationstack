@@ -2,7 +2,7 @@
 
 import type { CaseActivityAction } from "../schema/case-activities";
 
-/** 操作日志只显示修改和删除。新建只用于成员工作量。 */
+/** 操作日志只显示修改和删除，不显示新建。 */
 export const FEED_ACTIONS = [
 	"updated",
 	"deleted",
