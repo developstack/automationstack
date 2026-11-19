@@ -190,6 +190,13 @@
       "when": 1795056738206,
       "tag": "0026_case_activities",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1795057308371,
+      "tag": "0027_run_case_event_executed_via",
+      "breakpoints": true
     }
   ]
 }

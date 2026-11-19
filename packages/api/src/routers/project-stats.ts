@@ -10,6 +10,7 @@ import {
 	getExecutionTrend,
 	getRunTrend,
 } from "@automationstack/db/repositories/project-stats-trend";
+import { getMemberWorkload } from "@automationstack/db/repositories/project-stats-workload";
 import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
@@ -39,6 +40,9 @@ export const projectStatsRouter = {
 	),
 	latestResults: projectStatsProcedure.handler(({ input }) =>
 		getLatestResults(input.projectId)
+	),
+	memberWorkload: projectStatsProcedure.handler(({ input }) =>
+		getMemberWorkload(input.projectId)
 	),
 	overview: projectStatsProcedure.handler(({ input }) =>
 		getProjectOverviewStats(input.projectId)

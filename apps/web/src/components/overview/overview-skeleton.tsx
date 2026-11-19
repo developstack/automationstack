@@ -13,6 +13,7 @@ import { PriorityCardSkeleton } from "@/components/overview/priority-card-skelet
 import { RingCardSkeleton } from "@/components/overview/ring-card-skeleton";
 import { TrendCardSkeleton } from "@/components/overview/trend-card-skeleton";
 import { UnexecutedCardSkeleton } from "@/components/overview/unexecuted-card-skeleton";
+import { WorkloadCardSkeleton } from "@/components/overview/workload-card-skeleton";
 
 const SUMMARY_PLACEHOLDER = (
 	<span
@@ -48,6 +49,7 @@ export function OverviewSkeleton() {
 			</div>
 			<CoverageCardSkeleton />
 			<PriorityCardSkeleton />
+			<WorkloadCardSkeleton />
 		</>
 	);
 }

@@ -18,6 +18,7 @@ import { OverviewPriorityCard } from "@/components/overview/overview-priority-ca
 import { OverviewRunTrendCard } from "@/components/overview/overview-run-trend-card";
 import { OverviewStatusCard } from "@/components/overview/overview-status-card";
 import { OverviewUnexecutedCard } from "@/components/overview/overview-unexecuted-card";
+import { OverviewWorkloadCard } from "@/components/overview/overview-workload-card";
 import { orpc } from "@/utils/orpc";
 
 /** 标题下的数据概要使用 3 个查询。任何一个还没有数据时不显示概要。 */
@@ -71,6 +72,7 @@ export function OverviewView({ projectId }: OverviewViewProps) {
 			</div>
 			<OverviewCoverageCard projectId={projectId} />
 			<OverviewPriorityCard projectId={projectId} />
+			<OverviewWorkloadCard projectId={projectId} />
 		</PageTransition>
 	);
 }

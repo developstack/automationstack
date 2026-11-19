@@ -15,6 +15,8 @@ export interface BuildRunCaseEventRowsInput {
 	actorId: string | null;
 	automationTakeover?: boolean;
 	comment?: string | null;
+	/** 判定的方式，默认是手动。 */
+	executedVia?: TestRunExecutedVia;
 	snapshots: RunCaseVerdictSnapshot[];
 	toResult: TestRunCaseResult;
 }
@@ -53,6 +55,8 @@ export function buildRunCaseEventRows(
 		rows.push({
 			actorId: input.actorId,
 			comment: pickEventComment(input, snapshot, isTakeover),
+			executedVia:
+				input.toResult === "untested" ? null : (input.executedVia ?? "manual"),
 			fromResult: snapshot.result,
 			runCaseId: snapshot.id,
 			toResult: input.toResult,

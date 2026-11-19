@@ -20,6 +20,7 @@ const overviewLoader = async ({
 	await Promise.all([
 		queryClient.prefetchQuery(stats.overview.queryOptions({ input })),
 		queryClient.prefetchQuery(stats.caseTrend.queryOptions({ input })),
+		queryClient.prefetchQuery(stats.memberWorkload.queryOptions({ input })),
 		queryClient.prefetchQuery(stats.executionCoverage.queryOptions({ input })),
 		queryClient.prefetchQuery(stats.activeRuns.queryOptions({ input })),
 		queryClient.prefetchQuery(stats.latestResults.queryOptions({ input })),

@@ -34,11 +34,16 @@ function event(
 	fromResult: TestRunCaseResult,
 	toResult: TestRunCaseResult,
 	comment: string | null = null,
-	overrides: { actorId?: string | null; runCaseId?: string } = {}
+	overrides: {
+		actorId?: string | null;
+		executedVia?: "automation" | "manual" | null;
+		runCaseId?: string;
+	} = {}
 ) {
 	return {
 		actorId: ZHANG,
 		comment,
+		executedVia: toResult === "untested" ? null : "manual",
 		fromResult,
 		runCaseId: CASE_A,
 		toResult,
