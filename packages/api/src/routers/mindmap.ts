@@ -6,8 +6,8 @@ import {
 import { listModulesByProject } from "@automationstack/db/repositories/modules-repository";
 import { z } from "zod";
 
-import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
+import { caseActor } from "../lib/case-actor";
 import { publishMindmapInvalidations } from "../lib/mindmap-invalidate";
 import { scopeMindmapTree } from "../lib/mindmap-scope";
 import { requireMindmapBatchMember } from "../lib/project-scope";
@@ -69,10 +69,6 @@ const batchSchema = z.object({
 	operations: z.array(mindmapOperationSchema).min(1).max(MINDMAP_BATCH_LIMIT),
 });
 
-function actorName(context: Context): string | null {
-	return context.actor?.name ?? null;
-}
-
 type MindmapBatchReasonCode =
 	| "batch-limit-exceeded"
 	| "blocked"
@@ -114,7 +110,7 @@ export const mindmapRouter = {
 		.handler(async ({ context, errors, input }) => {
 			const result = await runMindmapBatch(
 				input.operations,
-				actorName(context)
+				caseActor(context)
 			);
 			if (result.kind === "failed") {
 				throw errors.BAD_REQUEST({

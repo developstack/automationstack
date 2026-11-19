@@ -16,8 +16,8 @@ import {
 } from "@automationstack/db/repositories/test-cases-repository";
 import { z } from "zod";
 
-import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
+import { caseActor } from "../lib/case-actor";
 import { resolveNewCaseAttachments } from "../lib/case-attachment-draft-ingest";
 import {
 	columnScreenshotIds,
@@ -80,10 +80,6 @@ function tooManyAttachmentsMessage(count: number): string {
 	return `新用例一次最多保存 ${MAX_NEW_CASE_ATTACHMENTS} 张图片，这次有 ${count} 张。请减少图片后再保存`;
 }
 
-function actorName(context: Context): string | null {
-	return context.actor?.name ?? null;
-}
-
 export const casesRouter = {
 	...caseImportProcedures,
 	...caseMoveProcedures,
@@ -120,7 +116,7 @@ export const casesRouter = {
 			);
 			const result = await createTestCase({
 				...input,
-				actorName: actorName(context),
+				...caseActor(context),
 				attachments,
 			});
 			if (result.kind === "duplicate-id") {
@@ -198,7 +194,7 @@ export const casesRouter = {
 		.input(z.object({ id: z.uuid() }))
 		.use(requireCaseMember, toCaseScope)
 		.handler(async ({ context, errors, input }) => {
-			const result = await removeTestCase(input.id);
+			const result = await removeTestCase(input.id, caseActor(context));
 			if (result.kind === "not-found") {
 				throw errors.NOT_FOUND({ message: "用例不存在" });
 			}
@@ -253,7 +249,7 @@ export const casesRouter = {
 				throw errors.BAD_REQUEST({ message: FOREIGN_SCREENSHOT_MESSAGE });
 			}
 			const result = await updateTestCase({
-				actorName: actorName(context),
+				...caseActor(context),
 				changeNote: input.changeNote,
 				expectedVersion: input.expectedVersion,
 				id: input.id,

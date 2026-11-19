@@ -41,9 +41,12 @@ async function insertCase(steps: unknown[] = STEPS): Promise<string> {
 	return id;
 }
 
-function write(options: Omit<WriteCaseMutationOptions, "actorName">) {
+function write(
+	options: Omit<WriteCaseMutationOptions, "actorId" | "actorName">
+) {
 	return orm.transaction((tx) =>
 		writeCaseMutation(tx as unknown as DbTransaction, {
+			actorId: null,
 			actorName: "张三",
 			...options,
 		})

@@ -1,11 +1,23 @@
-import { and, asc, count, eq, gt, gte, isNull, ne, sql } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 import { db } from "../index";
 import { type Module, modules } from "../schema/modules";
 import {
+	type CaseActor,
+	recordModuleCaseDeletions,
+} from "./case-activity-writes";
+import {
 	checkModuleDeleteBlock,
 	type RemoveModuleResult,
 } from "./module-delete-guard";
+import {
+	clampIndex,
+	closeSlot,
+	countSiblings,
+	openSlot,
+	type SiblingGroup,
+	siblingWhere,
+} from "./module-slots";
 import { getModuleSubtreeIds } from "./module-subtree";
 import type { DbTransaction } from "./repository-types";
 
@@ -36,19 +48,6 @@ export type ModuleMutationResult =
 
 export type ReorderResult = { kind: "invalid-set" } | { kind: "ok" };
 
-interface SiblingGroup {
-	parentId: string | null;
-	projectId: string;
-}
-
-function siblingWhere(group: SiblingGroup) {
-	const parentCondition =
-		group.parentId === null
-			? isNull(modules.parentId)
-			: eq(modules.parentId, group.parentId);
-	return and(eq(modules.projectId, group.projectId), parentCondition);
-}
-
 async function getModuleInTx(
 	tx: DbTransaction,
 	id: string
@@ -59,43 +58,6 @@ async function getModuleInTx(
 		.where(eq(modules.id, id))
 		.limit(1);
 	return row ?? null;
-}
-
-async function countSiblings(
-	tx: DbTransaction,
-	group: SiblingGroup,
-	excludeId?: string
-): Promise<number> {
-	const base = siblingWhere(group);
-	const where = excludeId ? and(base, ne(modules.id, excludeId)) : base;
-	const [row] = await tx.select({ value: count() }).from(modules).where(where);
-	return row?.value ?? 0;
-}
-
-async function openSlot(
-	tx: DbTransaction,
-	group: SiblingGroup,
-	index: number
-): Promise<void> {
-	await tx
-		.update(modules)
-		.set({ sortOrder: sql`${modules.sortOrder} + 1` })
-		.where(and(siblingWhere(group), gte(modules.sortOrder, index)));
-}
-
-async function closeSlot(
-	tx: DbTransaction,
-	group: SiblingGroup,
-	index: number
-): Promise<void> {
-	await tx
-		.update(modules)
-		.set({ sortOrder: sql`${modules.sortOrder} - 1` })
-		.where(and(siblingWhere(group), gt(modules.sortOrder, index)));
-}
-
-function clampIndex(index: number | undefined, total: number): number {
-	return Math.min(Math.max(index ?? total, 0), total);
 }
 
 export function listModulesByProject(projectId: string): Promise<Module[]> {
@@ -248,7 +210,8 @@ export async function reorderModulesInTx(
 
 export async function removeModuleInTx(
 	tx: DbTransaction,
-	id: string
+	id: string,
+	actor: CaseActor
 ): Promise<RemoveModuleResult> {
 	const current = await getModuleInTx(tx, id);
 	if (!current) {
@@ -258,6 +221,7 @@ export async function removeModuleInTx(
 	if (blocked) {
 		return blocked;
 	}
+	await recordModuleCaseDeletions(tx, id, actor);
 	await tx.delete(modules).where(eq(modules.id, id));
 	await closeSlot(
 		tx,
@@ -292,6 +256,9 @@ export function reorderModules(
 	return db.transaction((tx) => reorderModulesInTx(tx, input));
 }
 
-export function removeModule(id: string): Promise<RemoveModuleResult> {
-	return db.transaction((tx) => removeModuleInTx(tx, id));
+export function removeModule(
+	id: string,
+	actor: CaseActor
+): Promise<RemoveModuleResult> {
+	return db.transaction((tx) => removeModuleInTx(tx, id, actor));
 }

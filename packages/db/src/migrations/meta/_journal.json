@@ -183,6 +183,13 @@
       "when": 1794534179431,
       "tag": "0025_case_maintainer_creator",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795056738206,
+      "tag": "0026_case_activities",
+      "breakpoints": true
     }
   ]
 }

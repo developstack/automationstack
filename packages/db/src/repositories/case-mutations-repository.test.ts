@@ -41,6 +41,7 @@ describe("createTestCase：维护人", () => {
 		{ expected: "bob", maintainer: "bob", name: "填了维护人：保留" },
 	])("$name", async ({ expected, maintainer }) => {
 		const result = await createTestCase({
+			actorId: null,
 			actorName: "alice",
 			maintainer,
 			moduleId: MODULE,

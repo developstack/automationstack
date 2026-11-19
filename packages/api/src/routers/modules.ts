@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 
 import { protectedProcedure, requireProjectMember } from "../index";
+import { caseActor } from "../lib/case-actor";
 import { buildModuleTree } from "../lib/module-tree";
 import { requireModuleMember } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
@@ -145,7 +146,7 @@ export const modulesRouter = {
 		.input(z.object({ id: z.uuid() }))
 		.use(requireModuleMember, toModuleScope)
 		.handler(async ({ context, errors, input }) => {
-			const result = await removeModule(input.id);
+			const result = await removeModule(input.id, caseActor(context));
 			if (result.kind === "not-found") {
 				throw errors.NOT_FOUND({ message: "模块不存在" });
 			}

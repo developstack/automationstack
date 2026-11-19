@@ -1,3 +1,4 @@
+import type { CaseActor } from "@automationstack/db/repositories/case-activity-writes";
 import {
 	type RemoveTestCasesByFilterResult,
 	removeTestCasesByFilter,
@@ -6,6 +7,7 @@ import { removeTestCases } from "@automationstack/db/repositories/test-cases-rep
 import type { z } from "zod";
 
 import { protectedProcedure } from "../index";
+import { caseActor } from "../lib/case-actor";
 import { onlyValue } from "../lib/only-value";
 import { requireExistingCasesMember, toCasesScope } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
@@ -20,15 +22,21 @@ type RemoveCasesInput = z.infer<typeof removeCasesInputSchema>;
 /** 删除勾选的用例或全部符合筛选的用例。符合筛选的用例超过上限时返回 too-many（转为 BAD_REQUEST）。 */
 async function writeRemove(
 	input: RemoveCasesInput,
-	projectId: string
+	projectId: string,
+	actor: CaseActor
 ): Promise<RemoveTestCasesByFilterResult> {
 	if ("filter" in input) {
 		return removeTestCasesByFilter({
+			actor,
 			filter: input.filter,
 			limit: MAX_FILTER_BATCH_CASES,
 		});
 	}
-	const result = await removeTestCases({ caseIds: input.ids, projectId });
+	const result = await removeTestCases({
+		actor,
+		caseIds: input.ids,
+		projectId,
+	});
 	return { kind: "ok", ...result };
 }
 
@@ -52,7 +60,11 @@ export const caseRemoveProcedures = {
 					skipped: [],
 				};
 			}
-			const result = await writeRemove(input, context.casesProjectId);
+			const result = await writeRemove(
+				input,
+				context.casesProjectId,
+				caseActor(context)
+			);
 			if (result.kind === "too-many") {
 				throw errors.BAD_REQUEST({ message: FILTER_BATCH_TOO_MANY_MESSAGE });
 			}

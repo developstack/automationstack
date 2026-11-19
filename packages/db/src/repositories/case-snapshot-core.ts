@@ -12,6 +12,7 @@ import {
 	type TestCase,
 	testCases,
 } from "../schema/test-cases";
+import { insertCaseActivities } from "./case-activity-writes";
 import type { CaseWriteResult, DbTransaction } from "./repository-types";
 
 export interface CaseContentPatch {
@@ -27,6 +28,7 @@ export interface CaseContentPatch {
 }
 
 export interface WriteCaseMutationOptions {
+	actorId: string | null;
 	actorName: string | null;
 	caseId: string;
 	changeNote?: string | null;
@@ -49,9 +51,15 @@ export function toCaseSnapshot(row: TestCase): CaseSnapshot {
 	};
 }
 
+/** 写入用例的一个版本，并记录这次新建（版本 1）或修改。 */
 export async function insertCaseVersion(
 	tx: DbTransaction,
-	options: { changeNote?: string | null; row: TestCase; savedBy: string | null }
+	options: {
+		actorId: string | null;
+		changeNote?: string | null;
+		row: TestCase;
+		savedBy: string | null;
+	}
 ): Promise<CaseVersion> {
 	const [version] = await tx
 		.insert(caseVersions)
@@ -59,6 +67,7 @@ export async function insertCaseVersion(
 			caseId: options.row.id,
 			changeNote: options.changeNote ?? null,
 			savedBy: options.savedBy,
+			savedById: options.actorId,
 			snapshot: toCaseSnapshot(options.row),
 			version: options.row.currentVersion,
 		})
@@ -66,6 +75,14 @@ export async function insertCaseVersion(
 	if (!version) {
 		throw new Error("insertCaseVersion: insert returned no row");
 	}
+	await insertCaseActivities(tx, [
+		{
+			action: version.version === 1 ? "created" : "updated",
+			actor: { actorId: options.actorId, actorName: options.savedBy },
+			changeNote: options.changeNote,
+			testCase: options.row,
+		},
+	]);
 	return version;
 }
 
@@ -217,6 +234,7 @@ export async function writeCaseMutation(
 		throw new Error("writeCaseMutation: update lost the locked row");
 	}
 	const version = await insertCaseVersion(tx, {
+		actorId: options.actorId,
 		changeNote: options.changeNote,
 		row: updated,
 		savedBy: options.actorName,

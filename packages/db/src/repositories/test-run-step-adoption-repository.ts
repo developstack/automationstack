@@ -149,6 +149,7 @@ async function writeAdoptedCase(
 		input.images
 	);
 	const written = await writeCaseMutation(tx, {
+		actorId: input.actorId,
 		actorName: input.actorName,
 		caseId: target.caseId,
 		changeNote: `用实际结果作为预期结果：测试任务「${run.name}」第 ${index + 1} 步`,

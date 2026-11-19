@@ -11,6 +11,7 @@ import {
 } from "./case-status-undo-core";
 
 export interface UndoCaseStatusChangeInput extends CaseStatusUndoTarget {
+	actorId: string | null;
 	actorName: string | null;
 	projectId: string;
 }
@@ -51,6 +52,7 @@ export function undoCaseStatusChange(
 		for (const { caseId, status } of plan.restores) {
 			// biome-ignore lint/performance/noAwaitInLoops: 同一个事务中的写入只能串行
 			const result = await writeCaseMutation(tx, {
+				actorId: input.actorId,
 				actorName: input.actorName,
 				caseId,
 				patch: { status },

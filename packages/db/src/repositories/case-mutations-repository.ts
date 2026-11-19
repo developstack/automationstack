@@ -27,6 +27,7 @@ import { countCasesInModule, openCaseSlot } from "./test-cases-repository";
 const CREATE_CHANGE_NOTE = "创建用例";
 
 export interface CreateTestCaseInput {
+	actorId: string | null;
 	actorName: string | null;
 	attachments?: NewCaseAttachmentRow[];
 	caseType?: CaseType;
@@ -115,6 +116,7 @@ export async function createTestCaseInTx(
 		throw new Error("createTestCase: insert returned no row");
 	}
 	const version = await insertCaseVersion(tx, {
+		actorId: input.actorId,
 		changeNote: CREATE_CHANGE_NOTE,
 		row,
 		savedBy: input.actorName,
@@ -153,6 +155,7 @@ export async function createTestCase(
 }
 
 export interface UpdateTestCaseInput {
+	actorId: string | null;
 	actorName: string | null;
 	changeNote?: string | null;
 	expectedVersion?: number;
@@ -164,6 +167,7 @@ export function updateTestCase(
 	input: UpdateTestCaseInput
 ): Promise<CaseWriteResult> {
 	const options: WriteCaseMutationOptions = {
+		actorId: input.actorId,
 		actorName: input.actorName,
 		caseId: input.id,
 		changeNote: input.changeNote,
@@ -174,6 +178,7 @@ export function updateTestCase(
 }
 
 export interface ChangeCaseStatusInput {
+	actorId: string | null;
 	actorName: string | null;
 	caseIds: readonly string[];
 	status: CaseStatus;
@@ -212,6 +217,7 @@ export async function changeCaseStatusInTx(
 		// 只改状态时不检查版本（不传 expectedVersion），状态变化时与普通保存一样记录新版本
 		// biome-ignore lint/performance/noAwaitInLoops: 同一个事务中的写入只能串行
 		const result = await writeCaseMutation(tx, {
+			actorId: input.actorId,
 			actorName: input.actorName,
 			caseId,
 			patch: { status: input.status },

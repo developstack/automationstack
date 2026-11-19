@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import type { Context } from "../context";
 import { protectedProcedure, requireProjectMember } from "../index";
+import { caseActor } from "../lib/case-actor";
 import { resolveColumnScreenshotUploads } from "../lib/case-screenshot-uploads";
 import { getObjectStorage } from "../lib/object-storage";
 import { publishInvalidate } from "../lib/realtime-publish";
@@ -107,10 +108,6 @@ async function resolveRowScreenshots(
 	return { invalidRows, rows };
 }
 
-function actorName(context: Context): string | null {
-	return context.actor?.name ?? null;
-}
-
 async function runImportBatch(
 	context: Context,
 	input: z.infer<typeof importBatchSchema>
@@ -120,7 +117,7 @@ async function runImportBatch(
 		{ projectId: input.projectId, userId: context.user?.id ?? null }
 	);
 	const result = await importTestCases({
-		actorName: actorName(context),
+		...caseActor(context),
 		onDuplicate: input.onDuplicate,
 		projectId: input.projectId,
 		rows,

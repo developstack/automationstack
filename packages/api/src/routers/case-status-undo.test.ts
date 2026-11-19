@@ -131,6 +131,7 @@ describe("cases.undoStatusChange：凭撤销凭证恢复这次修改改过的用
 			skippedIds: [caseId(1)],
 		});
 		expect(mocks.undoCaseStatusChange).toHaveBeenCalledWith({
+			actorId: testUser().id,
 			actorName: "bob",
 			idsByPreviousStatus: {
 				active: ids.filter((_, index) => index % 2 === 1),
