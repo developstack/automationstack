@@ -30,10 +30,3 @@ export const LazyRunTrendChart = lazy(async () => {
 	const chartModule = await import("@/components/overview/run-trend-chart");
 	return { default: chartModule.RunTrendChart };
 });
-
-export const LazyMemberWorkloadChart = lazy(async () => {
-	const chartModule = await import(
-		"@/components/overview/member-workload-chart"
-	);
-	return { default: chartModule.MemberWorkloadChart };
-});

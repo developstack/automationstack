@@ -19,10 +19,6 @@ vi.mock("@/utils/orpc", () => ({
 		},
 	},
 }));
-// 图表是懒加载的 Recharts。测试只检查给屏幕阅读器的列表。
-vi.mock("@/components/overview/overview-lazy-charts", () => ({
-	LazyMemberWorkloadChart: () => null,
-}));
 
 const WORKLOAD: WorkloadStats = {
 	members: [
@@ -41,30 +37,27 @@ const WORKLOAD: WorkloadStats = {
 	],
 };
 
-const PANELS = ["执行", "新建用例"];
-
-function listOf(title: string): string[] {
-	const panel = screen.getByRole("heading", { name: title }).closest("section");
-	if (panel === null) {
-		throw new Error(`没有找到「${title}」面板`);
-	}
-	return within(panel)
-		.getAllByRole("listitem")
-		.map((item) => item.textContent ?? "");
+function numbersOf(username: string): string[] {
+	return within(screen.getByRole("row", { name: new RegExp(username) }))
+		.getAllByRole("cell")
+		.map((cell) => cell.textContent ?? "");
 }
 
-function lists(): string[][] {
-	return PANELS.map(listOf);
+function numbers(): string[][] {
+	return ["alice", "bob"].map(numbersOf);
 }
 
 const LAST_30_DAYS = [
-	["alice：12", "bob：4"],
-	["alice：5", "bob：0"],
+	["12", "5"],
+	["4", "0"],
 ];
 const LAST_7_DAYS = [
-	["alice：3", "bob：0"],
-	["alice：1", "bob：0"],
+	["3", "1"],
+	["0", "0"],
 ];
+const SUMMARY_30_DAYS = "近 30 天共执行 16 条、新建 5 条用例";
+const SUMMARY_PATTERN = /共执行/;
+const SUMMARY_7_DAYS = "近 7 天共执行 3 条、新建 1 条用例";
 
 function renderCard(data: WorkloadStats) {
 	renderWithQuery(<OverviewWorkloadCard projectId="p1" />, [
@@ -76,13 +69,15 @@ function renderCard(data: WorkloadStats) {
 describe("OverviewWorkloadCard", () => {
 	it("默认显示近 30 天的数字，点击「近 7 天」切换，再点击已按下的选项时保持不变", () => {
 		renderCard(WORKLOAD);
-		expect(lists()).toEqual(LAST_30_DAYS);
+		expect(numbers()).toEqual(LAST_30_DAYS);
+		expect(screen.getByText(SUMMARY_30_DAYS)).toBeDefined();
 
 		fireEvent.click(screen.getByRole("button", { name: "近 7 天" }));
-		expect(lists()).toEqual(LAST_7_DAYS);
+		expect(numbers()).toEqual(LAST_7_DAYS);
+		expect(screen.getByText(SUMMARY_7_DAYS)).toBeDefined();
 
 		fireEvent.click(screen.getByRole("button", { name: "近 7 天" }));
-		expect(lists()).toEqual(LAST_7_DAYS);
+		expect(numbers()).toEqual(LAST_7_DAYS);
 		expect(
 			screen
 				.getByRole("button", { name: "近 7 天" })
@@ -90,13 +85,23 @@ describe("OverviewWorkloadCard", () => {
 		).toBe("true");
 
 		fireEvent.click(screen.getByRole("button", { name: "近 30 天" }));
-		expect(lists()).toEqual(LAST_30_DAYS);
+		expect(numbers()).toEqual(LAST_30_DAYS);
 	});
 
-	it("没有成员时显示提示，不显示面板", () => {
+	it("表头是成员、执行、新建用例", () => {
+		renderCard(WORKLOAD);
+
+		expect(
+			screen.getAllByRole("columnheader").map((header) => header.textContent)
+		).toEqual(["成员", "执行", "新建用例"]);
+		expect(screen.getByRole("button", { name: "统计口径" })).toBeDefined();
+	});
+
+	it("没有成员时显示提示，不显示表格", () => {
 		renderCard({ members: [] });
 
 		expect(screen.getByText("项目中还没有成员。")).toBeDefined();
-		expect(screen.queryByRole("heading", { name: "执行" })).toBeNull();
+		expect(screen.queryByRole("table")).toBeNull();
+		expect(screen.queryByText(SUMMARY_PATTERN)).toBeNull();
 	});
 });

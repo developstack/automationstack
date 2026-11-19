@@ -25,11 +25,3 @@ const UNEXECUTED_AXIS_BAND_PX = 8;
 export function unexecutedChartHeightPx(moduleCount: number): number {
 	return moduleCount * UNEXECUTED_ROW_HEIGHT_PX + UNEXECUTED_AXIS_BAND_PX;
 }
-
-const WORKLOAD_ROW_HEIGHT_PX = 24;
-const WORKLOAD_AXIS_BAND_PX = 8;
-
-/** 成员工作量条形图的高度：每个成员一行。两个图表的行数相同，所以同一个成员的两条横条对齐。 */
-export function workloadChartHeightPx(memberCount: number): number {
-	return memberCount * WORKLOAD_ROW_HEIGHT_PX + WORKLOAD_AXIS_BAND_PX;
-}
