@@ -41,7 +41,7 @@ function ActivityList({
 	}
 	const now = new Date();
 	return (
-		<div className="max-h-96 overflow-y-auto pr-1">
+		<div className="scrollbar-none max-h-96 overflow-y-auto">
 			<ul aria-label={ACTIVITY_CARD_TITLE} className="flex flex-col divide-y">
 				{entries.map((entry) => (
 					<ActivityFeedEntry
