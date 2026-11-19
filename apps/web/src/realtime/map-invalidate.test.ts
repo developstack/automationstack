@@ -19,7 +19,7 @@ function makeEvent(
 	return { action, actor: ACTOR, entity, ids: ["id-1"] };
 }
 
-const CASE_TARGETS = ["caseAttachments", "cases", "mindmap"];
+const CASE_TARGETS = ["caseAttachments", "cases", "mindmap", "projectStats"];
 
 test.each<[string, InvalidateEntity, InvalidateAction[], string[]]>([
 	["case + update 刷新用例、贴图与脑图", "case", ["update"], CASE_TARGETS],
@@ -33,7 +33,7 @@ test.each<[string, InvalidateEntity, InvalidateAction[], string[]]>([
 		"module 的任何动作都刷新 cases/mindmap/modules 且不重复",
 		"module",
 		["create", "delete", "move", "restore", "update"],
-		["cases", "mindmap", "modules"],
+		["cases", "mindmap", "modules", "projectStats"],
 	],
 	[
 		"project 的任何动作都只刷新 mindmap/projects",
@@ -45,12 +45,25 @@ test.each<[string, InvalidateEntity, InvalidateAction[], string[]]>([
 		"testRun 同时刷新测试任务与附件两个缓存根",
 		"testRun",
 		["create", "delete", "update"],
-		["testRunAttachments", "testRuns"],
+		["projectStats", "testRunAttachments", "testRuns"],
 	],
 ])("%s", (_name, entity, actions, targets) => {
 	for (const action of actions) {
 		expect(mapInvalidateTargets(makeEvent(entity, action))).toEqual(targets);
 	}
+});
+
+test.each<[InvalidateEntity, boolean]>([
+	["case", true],
+	["module", true],
+	["testRun", true],
+	["project", false],
+])("%s 事件刷新 projectStats：%j", (entity, included) => {
+	expect(mapInvalidateTargets(makeEvent(entity, "update"))).toEqual(
+		included
+			? expect.arrayContaining(["projectStats"])
+			: expect.not.arrayContaining(["projectStats"])
+	);
 });
 
 test("未知 entity 兜底为空列表（不抛异常）", () => {
@@ -70,6 +83,7 @@ test("ALL_INVALIDATE_TARGETS 覆盖全部缓存根", () => {
 		"mindmap",
 		"modules",
 		"projects",
+		"projectStats",
 		"testRunAttachments",
 		"testRuns",
 	]);

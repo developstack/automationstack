@@ -3,6 +3,7 @@ import { CONCLUDED_RESULTS } from "@automationstack/db/repositories/project-stat
 import { PageHeader } from "@/components/layout/page-header";
 import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import { ActiveRunsSkeleton } from "@/components/overview/active-runs-skeleton";
+import { ActivityCardSkeleton } from "@/components/overview/activity-card-skeleton";
 import { CoverageCardSkeleton } from "@/components/overview/coverage-card-skeleton";
 import {
 	STACKED_CHART_BOX,
@@ -50,6 +51,7 @@ export function OverviewSkeleton() {
 			<CoverageCardSkeleton />
 			<PriorityCardSkeleton />
 			<WorkloadCardSkeleton />
+			<ActivityCardSkeleton />
 		</>
 	);
 }

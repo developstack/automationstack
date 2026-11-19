@@ -21,6 +21,7 @@ const TARGET_KEYS: Record<InvalidateTarget, () => QueryKey> = {
 	cases: () => orpc.cases.key(),
 	mindmap: () => orpc.mindmap.key(),
 	modules: () => orpc.modules.key(),
+	projectStats: () => orpc.projectStats.key(),
 	projects: () => orpc.projects.key(),
 	testRunAttachments: () => orpc.testRunAttachments.key(),
 	testRuns: () => orpc.testRuns.key(),

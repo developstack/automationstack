@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PageTransition } from "@/components/layout/page-transition";
 import { WORKSPACE_VIEW_LABELS } from "@/components/layout/workspace-path";
 import { OverviewActiveRunsCard } from "@/components/overview/overview-active-runs-card";
+import { OverviewActivityCard } from "@/components/overview/overview-activity-card";
 import { OverviewCaseTrendCard } from "@/components/overview/overview-case-trend-card";
 import { OverviewCoverageCard } from "@/components/overview/overview-coverage-card";
 import { OverviewCoverageRateCard } from "@/components/overview/overview-coverage-rate-card";
@@ -73,6 +74,7 @@ export function OverviewView({ projectId }: OverviewViewProps) {
 			<OverviewCoverageCard projectId={projectId} />
 			<OverviewPriorityCard projectId={projectId} />
 			<OverviewWorkloadCard projectId={projectId} />
+			<OverviewActivityCard projectId={projectId} />
 		</PageTransition>
 	);
 }
