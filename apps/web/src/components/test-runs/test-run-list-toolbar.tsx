@@ -1,5 +1,4 @@
 import type { TestRunStatus } from "@automationstack/db/schema/test-runs";
-import { Input } from "@automationstack/ui/components/input";
 import {
 	Select,
 	SelectContent,
@@ -7,8 +6,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@automationstack/ui/components/select";
-import { type ChangeEvent, useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
+import { KeywordFilter } from "@/components/test-runs/keyword-filter";
 import {
 	DEFAULT_RUN_STATUS_FILTER_LABEL,
 	RUN_STATUS_LABELS,
@@ -17,41 +17,6 @@ import { TEST_RUN_STATUS_VALUES } from "@/components/test-runs/test-run-rates";
 import type { TestRunsSearch } from "@/components/test-runs/test-runs-search";
 
 const ALL_STATUS = "all";
-
-const KEYWORD_DEBOUNCE_MS = 300;
-
-interface KeywordFilterProps {
-	keyword: string;
-	onChange: (keyword: string) => void;
-}
-
-function KeywordFilter({ keyword, onChange }: KeywordFilterProps) {
-	const [text, setText] = useState(keyword);
-
-	useEffect(() => {
-		setText(keyword);
-	}, [keyword]);
-
-	useEffect(() => {
-		const timer = setTimeout(() => onChange(text), KEYWORD_DEBOUNCE_MS);
-		return () => clearTimeout(timer);
-	}, [onChange, text]);
-
-	const handleInput = useCallback(
-		(event: ChangeEvent<HTMLInputElement>) => setText(event.target.value),
-		[]
-	);
-
-	return (
-		<Input
-			aria-label="搜索测试任务名称"
-			className="w-64"
-			onChange={handleInput}
-			placeholder="搜索测试任务名称"
-			value={text}
-		/>
-	);
-}
 
 interface StatusOption {
 	label: string;
@@ -122,6 +87,7 @@ export function TestRunListToolbar({
 			<div className="flex flex-wrap items-center gap-2">
 				<KeywordFilter
 					keyword={search.runKeyword ?? ""}
+					label="搜索测试任务名称"
 					onChange={onKeywordChange}
 				/>
 				<StatusFilter onChange={onStatusChange} status={search.runStatus} />

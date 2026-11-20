@@ -1,3 +1,4 @@
+import { getActivityFeed } from "@automationstack/db/repositories/project-stats-activity";
 import { getProjectCoverageStats } from "@automationstack/db/repositories/project-stats-coverage";
 import {
 	getExecutionCoverage,
@@ -21,9 +22,23 @@ const projectStatsProcedure = protectedProcedure
 	.input(projectStatsInputSchema)
 	.use(requireProjectMember);
 
+/** 游标是上一页最后一条日志的 cursor，由服务端生成。 */
+const MAX_FEED_CURSOR_LENGTH = 200;
+
+const activityFeedProcedure = protectedProcedure
+	.input(
+		projectStatsInputSchema.extend({
+			cursor: z.string().max(MAX_FEED_CURSOR_LENGTH).optional(),
+		})
+	)
+	.use(requireProjectMember);
+
 export const projectStatsRouter = {
 	activeRuns: projectStatsProcedure.handler(({ input }) =>
 		getActiveRuns(input.projectId)
+	),
+	activityFeed: activityFeedProcedure.handler(({ input }) =>
+		getActivityFeed(input.projectId, input.cursor)
 	),
 	caseTrend: projectStatsProcedure.handler(({ input }) =>
 		getCaseTrend(input.projectId)

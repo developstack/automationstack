@@ -119,6 +119,7 @@ describe("cases.removeMany：批量删除用例，被测试任务用到的用例
 			})),
 		});
 		expect(mocks.removeTestCases).toHaveBeenCalledWith({
+			actor: { actorId: testUser().id, actorName: "bob" },
 			caseIds: ids,
 			projectId: PROJECT_ID,
 		});

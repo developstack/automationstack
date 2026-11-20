@@ -3,6 +3,7 @@ import { and, asc } from "drizzle-orm";
 import { db } from "../index";
 import type { CaseStatus } from "../schema/test-cases";
 import { testCases } from "../schema/test-cases";
+import type { CaseActor } from "./case-activity-writes";
 import {
 	buildCaseListConditions,
 	type CaseListFilter,
@@ -67,6 +68,7 @@ export async function listCaseIdsByFilter({
 }
 
 export interface ChangeCaseStatusByFilterInput extends CaseFilterBatchInput {
+	actorId: string | null;
 	actorName: string | null;
 	status: CaseStatus;
 }
@@ -88,6 +90,7 @@ export function changeCaseStatusByFilter(
 			return { kind: "too-many" };
 		}
 		const result = await changeCaseStatusInTx(tx, {
+			actorId: input.actorId,
 			actorName: input.actorName,
 			caseIds,
 			status: input.status,
@@ -100,6 +103,10 @@ export function changeCaseStatusByFilter(
 	});
 }
 
+export interface RemoveTestCasesByFilterInput extends CaseFilterBatchInput {
+	actor: CaseActor;
+}
+
 export type RemoveTestCasesByFilterResult =
 	| TooMany
 	| ({ kind: "ok" } & RemoveTestCasesResult);
@@ -109,7 +116,7 @@ export type RemoveTestCasesByFilterResult =
  * 作用于提交请求时符合筛选的用例，返回实际删除和跳过的用例。
  */
 export function removeTestCasesByFilter(
-	input: CaseFilterBatchInput
+	input: RemoveTestCasesByFilterInput
 ): Promise<RemoveTestCasesByFilterResult> {
 	return db.transaction(async (tx) => {
 		const caseIds = await lockCaseIdsByFilter(tx, input);
@@ -117,6 +124,7 @@ export function removeTestCasesByFilter(
 			return { kind: "too-many" };
 		}
 		const result = await removeTestCasesInTx(tx, {
+			actor: input.actor,
 			caseIds,
 			projectId: input.filter.projectId,
 		});

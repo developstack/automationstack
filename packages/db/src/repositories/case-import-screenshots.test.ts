@@ -86,6 +86,7 @@ function row(screenshotCaseId = CASE, sourceRef = SOURCE_REF): ImportCaseRow {
 
 const runImport = (onDuplicate: ImportOnDuplicate, importRow = row()) =>
 	importTestCases({
+		actorId: null,
 		actorName: "张三",
 		onDuplicate,
 		projectId: PROJECT,

@@ -110,6 +110,7 @@ export async function seedProject(
 		spec.modules
 	);
 	const result = await importTestCases({
+		actorId: null,
 		actorName: SEED_ACTOR,
 		onDuplicate: "skip",
 		projectId: project.id,

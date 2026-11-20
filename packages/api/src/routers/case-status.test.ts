@@ -90,6 +90,7 @@ describe("cases.changeStatus：只改用例状态，不检查版本", () => {
 			undoToken: version === null ? null : expect.any(String),
 		});
 		expect(mocks.changeCaseStatus).toHaveBeenCalledWith({
+			actorId: testUser().id,
 			actorName: "bob",
 			caseIds: [CASE_ID],
 			status: "deprecated",

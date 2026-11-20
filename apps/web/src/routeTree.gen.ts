@@ -21,6 +21,8 @@ import { Route as ProjectsProjectIdMindmapRouteImport } from './routes/projects/
 import { Route as ProjectsProjectIdOverviewRouteImport } from './routes/projects/$projectId/overview'
 import { Route as ProjectsProjectIdSettingsRouteImport } from './routes/projects/$projectId/settings'
 import { Route as ProjectsProjectIdUsersRouteImport } from './routes/projects/$projectId/users'
+import { Route as ProjectsProjectIdReportsIndexRouteImport } from './routes/projects/$projectId/reports/index'
+import { Route as ProjectsProjectIdReportsRunIdRouteImport } from './routes/projects/$projectId/reports/$runId'
 import { Route as ProjectsProjectIdTestRunsIndexRouteImport } from './routes/projects/$projectId/test-runs/index'
 import { Route as ProjectsProjectIdTestRunsRunIdIndexRouteImport } from './routes/projects/$projectId/test-runs/$runId/index'
 import { Route as ProjectsProjectIdTestRunsRunIdReportRouteImport } from './routes/projects/$projectId/test-runs/$runId/report'
@@ -88,6 +90,18 @@ const ProjectsProjectIdUsersRoute = ProjectsProjectIdUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => ProjectsProjectIdRouteRoute,
 } as any)
+const ProjectsProjectIdReportsIndexRoute =
+  ProjectsProjectIdReportsIndexRouteImport.update({
+    id: '/reports/',
+    path: '/reports/',
+    getParentRoute: () => ProjectsProjectIdRouteRoute,
+  } as any)
+const ProjectsProjectIdReportsRunIdRoute =
+  ProjectsProjectIdReportsRunIdRouteImport.update({
+    id: '/reports/$runId',
+    path: '/reports/$runId',
+    getParentRoute: () => ProjectsProjectIdRouteRoute,
+  } as any)
 const ProjectsProjectIdTestRunsIndexRoute =
   ProjectsProjectIdTestRunsIndexRouteImport.update({
     id: '/test-runs/',
@@ -120,6 +134,8 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
   '/projects/$projectId/users': typeof ProjectsProjectIdUsersRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/reports/$runId': typeof ProjectsProjectIdReportsRunIdRoute
+  '/projects/$projectId/reports/': typeof ProjectsProjectIdReportsIndexRoute
   '/projects/$projectId/test-runs/': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
   '/projects/$projectId/test-runs/$runId/': typeof ProjectsProjectIdTestRunsRunIdIndexRoute
@@ -136,6 +152,8 @@ export interface FileRoutesByTo {
   '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
   '/projects/$projectId/users': typeof ProjectsProjectIdUsersRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/reports/$runId': typeof ProjectsProjectIdReportsRunIdRoute
+  '/projects/$projectId/reports': typeof ProjectsProjectIdReportsIndexRoute
   '/projects/$projectId/test-runs': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
   '/projects/$projectId/test-runs/$runId': typeof ProjectsProjectIdTestRunsRunIdIndexRoute
@@ -154,6 +172,8 @@ export interface FileRoutesById {
   '/projects/$projectId/settings': typeof ProjectsProjectIdSettingsRoute
   '/projects/$projectId/users': typeof ProjectsProjectIdUsersRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
+  '/projects/$projectId/reports/$runId': typeof ProjectsProjectIdReportsRunIdRoute
+  '/projects/$projectId/reports/': typeof ProjectsProjectIdReportsIndexRoute
   '/projects/$projectId/test-runs/': typeof ProjectsProjectIdTestRunsIndexRoute
   '/projects/$projectId/test-runs/$runId/report': typeof ProjectsProjectIdTestRunsRunIdReportRoute
   '/projects/$projectId/test-runs/$runId/': typeof ProjectsProjectIdTestRunsRunIdIndexRoute
@@ -173,6 +193,8 @@ export interface FileRouteTypes {
     | '/projects/$projectId/settings'
     | '/projects/$projectId/users'
     | '/projects/$projectId/'
+    | '/projects/$projectId/reports/$runId'
+    | '/projects/$projectId/reports/'
     | '/projects/$projectId/test-runs/'
     | '/projects/$projectId/test-runs/$runId/report'
     | '/projects/$projectId/test-runs/$runId/'
@@ -189,6 +211,8 @@ export interface FileRouteTypes {
     | '/projects/$projectId/settings'
     | '/projects/$projectId/users'
     | '/projects/$projectId'
+    | '/projects/$projectId/reports/$runId'
+    | '/projects/$projectId/reports'
     | '/projects/$projectId/test-runs'
     | '/projects/$projectId/test-runs/$runId/report'
     | '/projects/$projectId/test-runs/$runId'
@@ -206,6 +230,8 @@ export interface FileRouteTypes {
     | '/projects/$projectId/settings'
     | '/projects/$projectId/users'
     | '/projects/$projectId/'
+    | '/projects/$projectId/reports/$runId'
+    | '/projects/$projectId/reports/'
     | '/projects/$projectId/test-runs/'
     | '/projects/$projectId/test-runs/$runId/report'
     | '/projects/$projectId/test-runs/$runId/'
@@ -307,6 +333,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdUsersRouteImport
       parentRoute: typeof ProjectsProjectIdRouteRoute
     }
+    '/projects/$projectId/reports/': {
+      id: '/projects/$projectId/reports/'
+      path: '/reports'
+      fullPath: '/projects/$projectId/reports/'
+      preLoaderRoute: typeof ProjectsProjectIdReportsIndexRouteImport
+      parentRoute: typeof ProjectsProjectIdRouteRoute
+    }
+    '/projects/$projectId/reports/$runId': {
+      id: '/projects/$projectId/reports/$runId'
+      path: '/reports/$runId'
+      fullPath: '/projects/$projectId/reports/$runId'
+      preLoaderRoute: typeof ProjectsProjectIdReportsRunIdRouteImport
+      parentRoute: typeof ProjectsProjectIdRouteRoute
+    }
     '/projects/$projectId/test-runs/': {
       id: '/projects/$projectId/test-runs/'
       path: '/test-runs'
@@ -337,6 +377,8 @@ interface ProjectsProjectIdRouteRouteChildren {
   ProjectsProjectIdSettingsRoute: typeof ProjectsProjectIdSettingsRoute
   ProjectsProjectIdUsersRoute: typeof ProjectsProjectIdUsersRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
+  ProjectsProjectIdReportsRunIdRoute: typeof ProjectsProjectIdReportsRunIdRoute
+  ProjectsProjectIdReportsIndexRoute: typeof ProjectsProjectIdReportsIndexRoute
   ProjectsProjectIdTestRunsIndexRoute: typeof ProjectsProjectIdTestRunsIndexRoute
   ProjectsProjectIdTestRunsRunIdReportRoute: typeof ProjectsProjectIdTestRunsRunIdReportRoute
   ProjectsProjectIdTestRunsRunIdIndexRoute: typeof ProjectsProjectIdTestRunsRunIdIndexRoute
@@ -349,6 +391,8 @@ const ProjectsProjectIdRouteRouteChildren: ProjectsProjectIdRouteRouteChildren =
     ProjectsProjectIdSettingsRoute: ProjectsProjectIdSettingsRoute,
     ProjectsProjectIdUsersRoute: ProjectsProjectIdUsersRoute,
     ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
+    ProjectsProjectIdReportsRunIdRoute: ProjectsProjectIdReportsRunIdRoute,
+    ProjectsProjectIdReportsIndexRoute: ProjectsProjectIdReportsIndexRoute,
     ProjectsProjectIdTestRunsIndexRoute: ProjectsProjectIdTestRunsIndexRoute,
     ProjectsProjectIdTestRunsRunIdReportRoute:
       ProjectsProjectIdTestRunsRunIdReportRoute,

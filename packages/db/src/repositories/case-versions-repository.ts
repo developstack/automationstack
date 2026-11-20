@@ -80,6 +80,7 @@ function snapshotToContentPatch(snapshot: CaseSnapshot): CaseContentPatch {
 }
 
 export interface RollbackCaseInput {
+	actorId: string | null;
 	actorName: string | null;
 	caseId: string;
 	version: number;
@@ -98,6 +99,7 @@ export function rollbackCaseToVersion(
 			return { kind: "not-found" };
 		}
 		return writeCaseMutation(tx, {
+			actorId: input.actorId,
 			actorName: input.actorName,
 			caseId: input.caseId,
 			changeNote: `回滚至 v${input.version}`,

@@ -69,6 +69,7 @@ export function buildAutomationEventRows(
 				actorId,
 				automationTakeover: true,
 				comment: first.comment,
+				executedVia: "automation",
 				snapshots,
 				toResult: first.result,
 			})

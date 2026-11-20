@@ -29,6 +29,15 @@
 	grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 7rem 12rem;
 }
 
+/* 隐藏滚动条，内容仍然可以用滚轮、触控板和键盘滚动。用于概览的「操作日志」。 */
+@utility scrollbar-none {
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+		display: none;
+	}
+}
+
 /* 侧栏顶部的上内边距：内容面板的 8px 外边距加 1px 边框，使侧栏顶部与内容区顶栏同一条中线。等价于 pt-[calc(--spacing(2)+1px)] */
 @utility pt-sidebar-top {
 	padding-top: calc(var(--spacing) * 2 + 1px);

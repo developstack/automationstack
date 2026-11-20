@@ -123,6 +123,7 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 			changeAs(true, { filter: FILTER, status: "deprecated" })
 		).resolves.toEqual({ changes, undoToken: expect.any(String) });
 		expect(mocks.changeCaseStatusByFilter).toHaveBeenCalledWith({
+			actorId: testUser().id,
 			actorName: "bob",
 			filter: FILTER,
 			limit: MAX_FILTER_BATCH_CASES,
@@ -152,6 +153,7 @@ describe("按筛选条件批量处理：服务端按筛选条件找出用例，�
 			skipped: [{ id: caseId(2), name: "用例 2", referencedByRunCount: 3 }],
 		});
 		expect(mocks.removeTestCasesByFilter).toHaveBeenCalledWith({
+			actor: { actorId: testUser().id, actorName: "bob" },
 			filter: FILTER,
 			limit: MAX_FILTER_BATCH_CASES,
 		});

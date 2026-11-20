@@ -59,6 +59,7 @@ export interface ImportCaseRow {
 }
 
 export interface ImportBatchInput {
+	actorId: string | null;
 	actorName: string | null;
 	onDuplicate: ImportOnDuplicate;
 	projectId: string;
@@ -127,6 +128,7 @@ async function createNewCase(
 	}
 	const result = await createTestCaseInTx(tx, {
 		...task.item,
+		actorId: task.batch.actorId,
 		actorName: task.batch.actorName,
 		projectId: task.batch.projectId,
 		sourceRef: options.sourceRef,
@@ -157,6 +159,7 @@ async function overwriteExisting(
 		return errorOutcome(task, FOREIGN_SCREENSHOTS_MESSAGE);
 	}
 	const result = await writeCaseMutation(tx, {
+		actorId: task.batch.actorId,
 		actorName: task.batch.actorName,
 		caseId: existing.id,
 		changeNote: OVERWRITE_CHANGE_NOTE,

@@ -3,6 +3,7 @@ import { and, asc, count, eq, gt, gte, inArray, ne, sql } from "drizzle-orm";
 import { db } from "../index";
 import { modules } from "../schema/modules";
 import { type TestCase, testCases } from "../schema/test-cases";
+import { type CaseActor, recordCaseDeletions } from "./case-activity-writes";
 import { planCaseRemoval, type SkippedCaseRemoval } from "./case-remove-core";
 import type { DbTransaction, RemoveTestCaseResult } from "./repository-types";
 import { syncRunCaseModulesInTx } from "./run-case-module";
@@ -160,7 +161,8 @@ export async function reorderTestCasesInTx(
 
 export async function removeTestCaseInTx(
 	tx: DbTransaction,
-	id: string
+	id: string,
+	actor: CaseActor
 ): Promise<RemoveTestCaseResult> {
 	const current = await getTestCaseInTx(tx, id);
 	if (!current) {
@@ -172,10 +174,12 @@ export async function removeTestCaseInTx(
 	}
 	await tx.delete(testCases).where(eq(testCases.id, id));
 	await closeCaseSlot(tx, current.moduleId, current.sortOrder);
+	await recordCaseDeletions(tx, [current], actor);
 	return { kind: "removed", testCase: current };
 }
 
 export interface RemoveTestCasesInput {
+	actor: CaseActor;
 	caseIds: readonly string[];
 	/** 只删除这个项目中的用例。其他项目的 id 与不存在的 id 一样处理。 */
 	projectId: string;
@@ -214,6 +218,7 @@ export async function removeTestCasesInTx(
 		await tx.delete(testCases).where(eq(testCases.id, testCase.id));
 		await closeCaseSlot(tx, testCase.moduleId, testCase.sortOrder);
 	}
+	await recordCaseDeletions(tx, plan.removable, input.actor);
 	return {
 		missingIds: plan.missingIds,
 		removed: plan.removable,
@@ -236,8 +241,11 @@ export function reorderTestCases(input: {
 	return db.transaction((tx) => reorderTestCasesInTx(tx, input));
 }
 
-export function removeTestCase(id: string): Promise<RemoveTestCaseResult> {
-	return db.transaction((tx) => removeTestCaseInTx(tx, id));
+export function removeTestCase(
+	id: string,
+	actor: CaseActor
+): Promise<RemoveTestCaseResult> {
+	return db.transaction((tx) => removeTestCaseInTx(tx, id, actor));
 }
 
 /**

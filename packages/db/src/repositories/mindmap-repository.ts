@@ -7,6 +7,7 @@ import {
 	type CaseStep,
 	testCases,
 } from "../schema/test-cases";
+import type { CaseActor } from "./case-activity-writes";
 import { createTestCaseInTx } from "./case-mutations-repository";
 import { writeCaseMutation } from "./case-snapshot-core";
 import {
@@ -83,9 +84,10 @@ function resolveId(idMap: Map<string, string>, id: string): string {
 
 async function applyRemoveModuleOp(
 	tx: DbTransaction,
-	moduleId: string
+	moduleId: string,
+	actor: CaseActor
 ): Promise<string | null> {
-	const removed = await removeModuleInTx(tx, moduleId);
+	const removed = await removeModuleInTx(tx, moduleId, actor);
 	if (removed.kind === "removed") {
 		return null;
 	}
@@ -97,7 +99,8 @@ async function applyRemoveModuleOp(
 async function applyModuleOp(
 	tx: DbTransaction,
 	op: MindmapModuleOperation,
-	idMap: Map<string, string>
+	idMap: Map<string, string>,
+	actor: CaseActor
 ): Promise<string | null> {
 	if (op.op === "createModule") {
 		const result = await createModuleInTx(tx, {
@@ -124,18 +127,19 @@ async function applyModuleOp(
 		});
 		return result.kind === "ok" ? null : result.kind;
 	}
-	return applyRemoveModuleOp(tx, resolveId(idMap, op.id));
+	return applyRemoveModuleOp(tx, resolveId(idMap, op.id), actor);
 }
 
 async function applyCaseOp(
 	tx: DbTransaction,
 	op: MindmapCaseOperation,
 	idMap: Map<string, string>,
-	actorName: string | null
+	actor: CaseActor
 ): Promise<string | null> {
 	if (op.op === "createCase") {
 		const created = await createTestCaseInTx(tx, {
-			actorName,
+			actorId: actor.actorId,
+			actorName: actor.actorName,
 			index: op.index,
 			moduleId: resolveId(idMap, op.moduleId),
 			name: op.name,
@@ -149,7 +153,8 @@ async function applyCaseOp(
 	}
 	if (op.op === "renameCase") {
 		const result = await writeCaseMutation(tx, {
-			actorName,
+			actorId: actor.actorId,
+			actorName: actor.actorName,
 			caseId: resolveId(idMap, op.id),
 			changeNote: RENAME_CASE_CHANGE_NOTE,
 			patch: { name: op.name },
@@ -167,7 +172,7 @@ async function applyCaseOp(
 		});
 		return result.kind === "ok" ? null : result.kind;
 	}
-	const removed = await removeTestCaseInTx(tx, resolveId(idMap, op.id));
+	const removed = await removeTestCaseInTx(tx, resolveId(idMap, op.id), actor);
 	return removed.kind === "removed" ? null : removed.kind;
 }
 
@@ -175,16 +180,16 @@ function applyOperation(
 	tx: DbTransaction,
 	op: MindmapOperation,
 	idMap: Map<string, string>,
-	actorName: string | null
+	actor: CaseActor
 ): Promise<string | null> {
 	return isModuleOp(op)
-		? applyModuleOp(tx, op, idMap)
-		: applyCaseOp(tx, op, idMap, actorName);
+		? applyModuleOp(tx, op, idMap, actor)
+		: applyCaseOp(tx, op, idMap, actor);
 }
 
 export async function runMindmapBatch(
 	operations: MindmapOperation[],
-	actorName: string | null
+	actor: CaseActor
 ): Promise<MindmapBatchResult> {
 	const [firstOperation] = operations;
 	if (!firstOperation) {
@@ -204,7 +209,7 @@ export async function runMindmapBatch(
 			projectId = await resolveBatchProjectId(tx, firstOperation);
 			for (const [index, op] of operations.entries()) {
 				// biome-ignore lint/performance/noAwaitInLoops: 批量操作必须按提交顺序串行应用（后项可引用前项 tempId）
-				const reason = await applyOperation(tx, op, idMap, actorName);
+				const reason = await applyOperation(tx, op, idMap, actor);
 				if (reason) {
 					throw new MindmapBatchError(index, reason);
 				}

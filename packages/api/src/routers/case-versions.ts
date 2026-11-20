@@ -5,8 +5,8 @@ import {
 } from "@automationstack/db/repositories/case-versions-repository";
 import { z } from "zod";
 
-import type { Context } from "../context";
 import { protectedProcedure } from "../index";
+import { caseActor } from "../lib/case-actor";
 import { requireCaseMember } from "../lib/project-scope";
 import { publishInvalidate } from "../lib/realtime-publish";
 
@@ -14,10 +14,6 @@ const caseVersionRefSchema = z.object({
 	caseId: z.uuid(),
 	version: z.number().int().min(1),
 });
-
-function actorName(context: Context): string | null {
-	return context.actor?.name ?? null;
-}
 
 export const caseVersionProcedures = {
 	getVersion: protectedProcedure
@@ -41,7 +37,7 @@ export const caseVersionProcedures = {
 		.use(requireCaseMember)
 		.handler(async ({ context, errors, input }) => {
 			const result = await rollbackCaseToVersion({
-				actorName: actorName(context),
+				...caseActor(context),
 				caseId: input.caseId,
 				version: input.version,
 			});

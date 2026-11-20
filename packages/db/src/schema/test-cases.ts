@@ -14,6 +14,7 @@ import {
 
 import { modules } from "./modules";
 import { projects } from "./projects";
+import { users } from "./users";
 
 export const casePriorityEnum = pgEnum("case_priority", [
 	"P0",
@@ -132,6 +133,10 @@ export const caseVersions = pgTable(
 			.defaultNow(),
 		id: uuid("id").primaryKey().defaultRandom(),
 		savedBy: text("saved_by"),
+		/** 保存人的用户 id。保存人的用户删除后为空；早于迁移 0026、用户名对不上的版本也为空。 */
+		savedById: uuid("saved_by_id").references(() => users.id, {
+			onDelete: "set null",
+		}),
 		snapshot: jsonb("snapshot").$type<CaseSnapshot>().notNull(),
 		version: integer("version").notNull(),
 	},

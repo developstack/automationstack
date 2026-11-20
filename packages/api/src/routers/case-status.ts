@@ -1,3 +1,4 @@
+import type { CaseActor } from "@automationstack/db/repositories/case-activity-writes";
 import { changeCaseStatusByFilter } from "@automationstack/db/repositories/case-filter-batch-repository";
 import {
 	type CaseStatusChange,
@@ -9,6 +10,7 @@ import type { z } from "zod";
 
 import type { Context } from "../context";
 import { protectedProcedure } from "../index";
+import { caseActor } from "../lib/case-actor";
 import {
 	caseStatusUndoOf,
 	readCaseStatusUndoToken,
@@ -39,18 +41,18 @@ type StatusWrite =
 
 function writeStatus(
 	input: ChangeCaseStatusInput,
-	actorName: string | null
+	actor: CaseActor
 ): Promise<StatusWrite> {
 	if ("filter" in input) {
 		return changeCaseStatusByFilter({
-			actorName,
+			...actor,
 			filter: input.filter,
 			limit: MAX_FILTER_BATCH_CASES,
 			status: input.status,
 		});
 	}
 	return changeCaseStatus({
-		actorName,
+		...actor,
 		caseIds: input.ids,
 		status: input.status,
 	});
@@ -90,7 +92,7 @@ export const caseStatusProcedures = {
 		.input(changeCaseStatusInputSchema)
 		.use(requireCasesMember, toCasesScope)
 		.handler(async ({ context, errors, input }) => {
-			const result = await writeStatus(input, context.actor?.name ?? null);
+			const result = await writeStatus(input, caseActor(context));
 			if (result.kind === "not-found") {
 				throw errors.NOT_FOUND({ message: "用例不存在" });
 			}
@@ -138,7 +140,7 @@ export const caseStatusProcedures = {
 			await requireProjectMember(context, undo.projectId);
 			const result = await undoCaseStatusChange({
 				...undo,
-				actorName: context.actor?.name ?? null,
+				...caseActor(context),
 			});
 			publishStatusChanges(context, result.changes);
 			return result;

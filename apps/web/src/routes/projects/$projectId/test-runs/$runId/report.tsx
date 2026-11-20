@@ -1,36 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { PageTransition } from "@/components/layout/page-transition";
+import { reportLoader } from "@/components/test-runs/report-loader";
 import { ReportSkeleton } from "@/components/test-runs/report-skeleton";
 import { REPORT_MAIN, ReportView } from "@/components/test-runs/report-view";
-import type { RouterAppContext } from "@/routes/__root";
-
-interface ReportLoaderData {
-	projectName: string;
-}
-
-const reportLoader = async ({
-	context,
-	params,
-}: {
-	context: RouterAppContext;
-	params: { projectId: string; runId: string };
-}): Promise<ReportLoaderData> => {
-	const [project] = await Promise.all([
-		context.queryClient.ensureQueryData(
-			context.orpc.projects.get.queryOptions({
-				input: { id: params.projectId },
-			})
-		),
-		context.queryClient.ensureQueryData(
-			context.orpc.testRuns.report.queryOptions({
-				input: { runId: params.runId },
-			})
-		),
-	]);
-	return { projectName: project.name };
-};
-
 export const Route = createFileRoute(
 	"/projects/$projectId/test-runs/$runId/report"
 )({

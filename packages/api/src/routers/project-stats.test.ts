@@ -6,6 +6,7 @@ import { projectStatsRouter } from "./project-stats";
 
 const mocks = vi.hoisted(() => ({
 	getActiveRuns: vi.fn(),
+	getActivityFeed: vi.fn(),
 	getCaseTrend: vi.fn(),
 	getExecutionCoverage: vi.fn(),
 	getExecutionTrend: vi.fn(),
@@ -30,6 +31,9 @@ vi.mock("@automationstack/db/repositories/project-stats-trend", () => ({
 }));
 vi.mock("@automationstack/db/repositories/project-stats-runs", () => ({
 	getActiveRuns: mocks.getActiveRuns,
+}));
+vi.mock("@automationstack/db/repositories/project-stats-activity", () => ({
+	getActivityFeed: mocks.getActivityFeed,
 }));
 vi.mock("@automationstack/db/repositories/project-stats-execution", () => ({
 	getExecutionCoverage: mocks.getExecutionCoverage,
@@ -117,9 +121,39 @@ describe("projectStats 的新只读查询", () => {
 		}
 	);
 
+	it.each([
+		[true, 1],
+		[false, 0],
+	])(
+		"activityFeed：项目成员（%s）按游标取操作日志",
+		async (isMember, calls) => {
+			mocks.isProjectMember.mockResolvedValue(isMember);
+			mocks.getActivityFeed.mockResolvedValue({
+				entries: [],
+				nextCursor: null,
+			});
+			const result = call(
+				projectStatsRouter.activityFeed,
+				{ ...INPUT, cursor: "123|updated:alice" },
+				options("activityFeed")
+			);
+			await (isMember
+				? expect(result).resolves.toEqual({ entries: [], nextCursor: null })
+				: expect(result).rejects.toMatchObject({ code: "FORBIDDEN" }));
+			expect(mocks.getActivityFeed).toHaveBeenCalledTimes(calls);
+			if (calls > 0) {
+				expect(mocks.getActivityFeed).toHaveBeenCalledWith(
+					PROJECT_ID,
+					"123|updated:alice"
+				);
+			}
+		}
+	);
+
 	it("删除了 staleHighPriority 和 recentChanges", () => {
 		expect(Object.keys(projectStatsRouter).sort()).toEqual([
 			"activeRuns",
+			"activityFeed",
 			"caseTrend",
 			"coverage",
 			"executionCoverage",

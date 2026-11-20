@@ -17,6 +17,7 @@ import { ProjectShellHeader } from "@/components/layout/project-shell-header";
 import { ProjectShellSkeleton } from "@/components/layout/project-shell-skeleton";
 import { PROJECTS_PATH_ITEM } from "@/components/layout/projects-path-item";
 import {
+	isNestedReportPath,
 	isNestedTestRunPath,
 	WORKSPACE_VIEW_LABELS,
 	type WorkspaceView,
@@ -64,27 +65,42 @@ export const Route = createFileRoute("/projects/$projectId")({
 const selectPathname = (state: { location: { pathname: string } }) =>
 	state.location.pathname;
 
+/** 执行页和报告页在列表之下，路径中的上级要链接回列表。 */
+function sectionListPath(
+	view: WorkspaceView,
+	pathname: string
+): "/projects/$projectId/reports" | "/projects/$projectId/test-runs" | null {
+	if (view === "testRuns" && isNestedTestRunPath(pathname)) {
+		return "/projects/$projectId/test-runs";
+	}
+	if (view === "reports" && isNestedReportPath(pathname)) {
+		return "/projects/$projectId/reports";
+	}
+	return null;
+}
+
 function sectionPathItem(
 	projectId: string,
 	view: WorkspaceView,
 	pathname: string
 ): HeaderPathItem {
 	const label = WORKSPACE_VIEW_LABELS[view];
-	if (view === "testRuns" && isNestedTestRunPath(pathname)) {
-		return {
-			key: "section",
-			label: (
-				<Link
-					className={HEADER_PATH_LINK_CLASS}
-					params={{ projectId }}
-					to="/projects/$projectId/test-runs"
-				>
-					{label}
-				</Link>
-			),
-		};
+	const listPath = sectionListPath(view, pathname);
+	if (listPath === null) {
+		return { current: true, key: "section", label };
 	}
-	return { current: true, key: "section", label };
+	return {
+		key: "section",
+		label: (
+			<Link
+				className={HEADER_PATH_LINK_CLASS}
+				params={{ projectId }}
+				to={listPath}
+			>
+				{label}
+			</Link>
+		),
+	};
 }
 
 function WorkspaceHeader({
