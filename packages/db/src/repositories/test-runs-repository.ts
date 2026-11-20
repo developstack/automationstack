@@ -46,6 +46,18 @@ function resultCount(result: TestRunCaseResult): SQL<number> {
 	);
 }
 
+/** 每种判定的用例数。查询必须 left join test_run_cases 并按测试任务分组。 */
+export function runCountColumns() {
+	return {
+		blocked: resultCount("blocked"),
+		failed: resultCount("failed"),
+		passed: resultCount("passed"),
+		skipped: resultCount("skipped"),
+		total: count(testRunCases.id),
+		untested: resultCount("untested"),
+	};
+}
+
 export async function listTestRuns(
 	projectId: string,
 	filter: Omit<ListTestRunsFilter, "projectId"> = {}
@@ -54,13 +66,8 @@ export async function listTestRuns(
 	const rows = await db
 		.select({
 			...getTableColumns(testRuns),
-			blocked: resultCount("blocked"),
+			...runCountColumns(),
 			createdByName: users.username,
-			failed: resultCount("failed"),
-			passed: resultCount("passed"),
-			skipped: resultCount("skipped"),
-			total: count(testRunCases.id),
-			untested: resultCount("untested"),
 		})
 		.from(testRuns)
 		.leftJoin(testRunCases, eq(testRunCases.runId, testRuns.id))

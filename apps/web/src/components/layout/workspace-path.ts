@@ -2,6 +2,7 @@ export type WorkspaceView =
 	| "list"
 	| "mindmap"
 	| "overview"
+	| "reports"
 	| "settings"
 	| "testRuns"
 	| "users";
@@ -9,15 +10,18 @@ export type WorkspaceView =
 const MINDMAP_PATH_SUFFIX = "/mindmap";
 const OVERVIEW_PATH_SUFFIX = "/overview";
 const TEST_RUNS_PATH_SEGMENT = "/test-runs";
+const REPORTS_PATH_SEGMENT = "/reports";
 const SETTINGS_PATH_SUFFIX = "/settings";
 const USERS_PATH_SUFFIX = "/users";
 const NESTED_TEST_RUN_PATH = /\/test-runs\/[^/]+/;
+const NESTED_REPORT_PATH = /\/reports\/[^/]+/;
 
 /* 页面标题和路径使用与侧栏导航相同的叫法。修改时，侧栏的文字也要一起修改。 */
 export const WORKSPACE_VIEW_LABELS: Record<WorkspaceView, string> = {
 	list: "用例管理",
 	mindmap: "脑图",
 	overview: "项目概览",
+	reports: "测试报告",
 	settings: "设置",
 	testRuns: "测试任务",
 	users: "成员",
@@ -34,6 +38,9 @@ export function workspaceViewFor(pathname: string): WorkspaceView {
 	if (pathname.includes(TEST_RUNS_PATH_SEGMENT)) {
 		return "testRuns";
 	}
+	if (pathname.includes(REPORTS_PATH_SEGMENT)) {
+		return "reports";
+	}
 	if (pathname.endsWith(SETTINGS_PATH_SUFFIX)) {
 		return "settings";
 	}
@@ -46,4 +53,9 @@ export function workspaceViewFor(pathname: string): WorkspaceView {
 /** 执行页和报告页在测试任务列表之下，路径中的「测试任务」要链接回列表。 */
 export function isNestedTestRunPath(pathname: string): boolean {
 	return NESTED_TEST_RUN_PATH.test(pathname);
+}
+
+/** 从测试报告列表打开的报告页在列表之下，路径中的「测试报告」要链接回列表。 */
+export function isNestedReportPath(pathname: string): boolean {
+	return NESTED_REPORT_PATH.test(pathname);
 }

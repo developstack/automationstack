@@ -25,12 +25,19 @@ async function renderNav() {
 }
 
 describe("ProjectNavGroup：项目侧栏导航", () => {
-	it("只有一个列表，顺序是项目概览、用例管理、测试任务、成员、设置；没有「工作」「项目」小标题", async () => {
+	it("只有一个列表，顺序是项目概览、用例管理、测试任务、测试报告、成员、设置；没有「工作」「项目」小标题", async () => {
 		await renderNav();
 		const names = within(screen.getByRole("list"))
 			.getAllByRole("link")
 			.map((link) => link.getAttribute("aria-label"));
-		expect(names).toEqual(["项目概览", "用例管理", "测试任务", "成员", "设置"]);
+		expect(names).toEqual([
+			"项目概览",
+			"用例管理",
+			"测试任务",
+			"测试报告",
+			"成员",
+			"设置",
+		]);
 		expect(screen.queryByText("工作")).toBeNull();
 		expect(screen.queryByText("项目")).toBeNull();
 	});
@@ -42,6 +49,9 @@ describe("ProjectNavGroup：项目侧栏导航", () => {
 			`/projects/${PROJECT_ID}/test-runs`
 		);
 		expect(testRuns.hasAttribute("data-active")).toBe(true);
+		expect(
+			screen.getByRole("link", { name: "测试报告" }).getAttribute("href")
+		).toBe(`/projects/${PROJECT_ID}/reports`);
 		const overview = screen.getByRole("link", { name: "项目概览" });
 		expect(overview.hasAttribute("data-active")).toBe(false);
 	});

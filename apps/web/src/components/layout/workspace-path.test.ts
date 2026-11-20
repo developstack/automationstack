@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	isNestedReportPath,
 	isNestedTestRunPath,
 	workspaceViewFor,
 } from "@/components/layout/workspace-path";
@@ -14,6 +15,8 @@ describe("workspaceViewFor", () => {
 		["/projects/p1/test-runs", "testRuns"],
 		["/projects/p1/test-runs/r1", "testRuns"],
 		["/projects/p1/test-runs/r1/report", "testRuns"],
+		["/projects/p1/reports", "reports"],
+		["/projects/p1/reports/r1", "reports"],
 		["/projects/p1/settings", "settings"],
 		["/projects/p1/users", "users"],
 	])("%s 属于 %s", (pathname, view) => {
@@ -31,5 +34,18 @@ describe("isNestedTestRunPath", () => {
 		["/projects/p1/overview", false],
 	])("%s → %s", (pathname, nested) => {
 		expect(isNestedTestRunPath(pathname)).toBe(nested);
+	});
+});
+
+describe("isNestedReportPath", () => {
+	it.each([
+		["/projects/p1/reports", false],
+		["/projects/p1/reports/", false],
+		["/projects/p1/reports/r1", true],
+		["/projects/p1/reports/r1/", true],
+		["/projects/p1/test-runs/r1/report", false],
+		["/projects/p1/overview", false],
+	])("%s → %s", (pathname, nested) => {
+		expect(isNestedReportPath(pathname)).toBe(nested);
 	});
 });

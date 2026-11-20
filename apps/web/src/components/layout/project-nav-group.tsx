@@ -10,6 +10,7 @@ import { LayoutDashboardIcon, ListChecksIcon } from "lucide-react";
 import { isCaseSectionPathname } from "@/components/layout/case-section-path";
 import { ProjectSettingsNavItem } from "@/components/layout/project-settings-nav-item";
 import { ProjectUsersNavItem } from "@/components/layout/project-users-nav-item";
+import { ReportsNavItem } from "@/components/layout/reports-nav-item";
 import { TestRunsNavItem } from "@/components/layout/test-runs-nav-item";
 
 const selectPathname = (state: { location: { pathname: string } }) =>
@@ -72,6 +73,7 @@ export function ProjectNavGroup({ projectId }: ProjectNavGroupProps) {
 				<OverviewNavItem pathname={pathname} projectId={projectId} />
 				<CasesNavItem pathname={pathname} projectId={projectId} />
 				<TestRunsNavItem pathname={pathname} projectId={projectId} />
+				<ReportsNavItem pathname={pathname} projectId={projectId} />
 				<ProjectUsersNavItem pathname={pathname} projectId={projectId} />
 				<ProjectSettingsNavItem pathname={pathname} projectId={projectId} />
 			</SidebarMenu>

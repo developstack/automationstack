@@ -50,6 +50,10 @@ vi.mock(
 vi.mock("@automationstack/db/repositories/test-run-report-repository", () => ({
 	getTestRunReport: mocks.getTestRunReport,
 }));
+vi.mock(
+	"@automationstack/db/repositories/test-run-report-list-repository",
+	() => ({ listSubmittedReports: vi.fn() })
+);
 vi.mock("../lib/object-storage", () => ({
 	getObjectStorage: () => mocks.storage,
 }));

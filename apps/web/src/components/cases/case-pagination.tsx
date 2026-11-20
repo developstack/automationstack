@@ -2,11 +2,15 @@ import { Button } from "@automationstack/ui/components/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useCallback } from "react";
 
-import { casePageCount } from "@/components/cases/case-list-query";
+import { CASE_PAGE_SIZE } from "@/components/cases/case-list-query";
 
 export interface CasePaginationProps {
+	/** 分页导航的无障碍名称。默认为「用例分页」。 */
+	label?: string;
 	onPageChange: (page: number) => void;
 	page: number;
+	/** 每页的条数。默认为用例列表的条数。 */
+	pageSize?: number;
 	total: number;
 }
 
@@ -24,11 +28,13 @@ function useGuardedPageStep(
 }
 
 export function CasePagination({
+	label = "用例分页",
 	onPageChange,
 	page,
+	pageSize = CASE_PAGE_SIZE,
 	total,
 }: CasePaginationProps) {
-	const pageCount = casePageCount(total);
+	const pageCount = Math.max(Math.ceil(total / pageSize), 1);
 	const atFirst = page <= 1;
 	const atLast = page >= pageCount;
 	const goPrevious = useGuardedPageStep(atFirst, onPageChange, page - 1);
@@ -39,7 +45,7 @@ export function CasePagination({
 	}
 
 	return (
-		<nav aria-label="用例分页" className="flex items-center justify-end gap-1">
+		<nav aria-label={label} className="flex items-center justify-end gap-1">
 			<Button
 				aria-disabled={atFirst}
 				aria-label="上一页"
